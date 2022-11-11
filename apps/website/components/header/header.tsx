@@ -15,9 +15,9 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemText from '@mui/material/ListItemText';
 import MenuIcon from '@mui/icons-material/Menu';
 import Toolbar from '@mui/material/Toolbar';
-import Button from '@mui/material/Button';
 
 import Link from '../link/link';
+import PillButton from '../pill-button/pill-button';
 
 interface Props {
   /**
@@ -97,46 +97,49 @@ function Header(props: Props) {
     return navItems.map((item: NavItems) => {
       if (item.linkName === "Let's Talk") {
         return (
-          <Button
+          <Box
             key={item.linkName}
-            sx={{
-              fontSize: '1rem',
-              borderRadius: '1.562rem',
-              color: 'info.contrastText',
-              textTransform: 'unset',
-              backgroundColor: 'secondary.main',
-              padding: '0.375rem 0.875rem',
-              ':hover': {
-                backgroundColor: 'secondary.main',
-                boxShadow: '2px 4px 10px rgb(255 98 167 / 40%)',
-              },
-            }}
+            sx={{ padding: { sm: '0 0.5rem', md: '0 1rem' } }}
           >
-            {item.linkName}
-          </Button>
+            <PillButton
+              text={item.linkName}
+              sx={{
+                backgroundColor: 'secondary.main',
+                padding: '.375rem .75rem',
+                ':hover': {
+                  backgroundColor: 'secondary.main',
+                  boxShadow: '2px 4px 10px rgb(255 98 167 / 40%)',
+                },
+              }}
+            />
+          </Box>
         );
       } else {
         return (
-          <Link
+          <Box
             key={item.linkName}
-            href={item.linkHref}
-            underline="none"
-            color={
-              router.pathname == item.linkHref ? 'primary.main' : 'info.main'
-            }
-            sx={{
-              textTransform: 'unset',
-              fontSize: '1rem',
-              fontWeight: '400',
-              paddingLeft: '1rem',
-              paddingRight: '1rem',
-              ':hover': {
-                color: 'primary.main',
-              },
-            }}
+            sx={{ padding: { sm: '0 0.5rem', md: '0 1rem' } }}
           >
-            {item.linkName}
-          </Link>
+            <Link
+              href={item.linkHref}
+              underline="none"
+              color={
+                router.pathname == item.linkHref ? 'primary.main' : 'info.main'
+              }
+              sx={{
+                textTransform: 'unset',
+                fontSize: '1rem',
+                fontWeight: '400',
+                // paddingLeft: '1rem',
+                // paddingRight: '1rem',
+                ':hover': {
+                  color: 'primary.main',
+                },
+              }}
+            >
+              {item.linkName}
+            </Link>
+          </Box>
         );
       }
     });
@@ -151,7 +154,7 @@ function Header(props: Props) {
           backgroundColor: 'transparent',
           height: { xs: '3.25rem', sm: '7.25rem' },
           justifyContent: 'center',
-          padding: { sm: '0 2rem' },
+          padding: { sm: '0 2.4rem' },
           boxShadow: 'none',
         }}
       >
@@ -173,7 +176,7 @@ function Header(props: Props) {
               alignItems: 'center',
             }}
           >
-            <NextLink href={'/'}>
+            <NextLink href={'/'} style={{ display: 'flex' }}>
               <Image
                 src="/images/logos/octalogic.svg"
                 alt="Octalogic logo"
@@ -182,7 +185,13 @@ function Header(props: Props) {
               />
             </NextLink>
           </Box>
-          <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+          <Box
+            sx={{
+              display: { xs: 'none', sm: 'flex' },
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
             {navLinks(navItems)}
           </Box>
         </Toolbar>
