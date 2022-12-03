@@ -1,4 +1,5 @@
 {
+  "name": "layouts",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/layouts/src",
   "projectType": "library",
@@ -6,20 +7,14 @@
   "targets": {
     "lint": {
       "executor": "@nrwl/linter:eslint",
-      "outputs": [
-        "{options.outputFile}"
-      ],
+      "outputs": ["{options.outputFile}"],
       "options": {
-        "lintFilePatterns": [
-          "packages/layouts/**/*.{ts,tsx,js,jsx}"
-        ]
+        "lintFilePatterns": ["packages/layouts/**/*.{ts,tsx,js,jsx}"]
       }
     },
     "test": {
       "executor": "@nrwl/jest:jest",
-      "outputs": [
-        "coverage/packages/layouts"
-      ],
+      "outputs": ["{workspaceRoot}/coverage/packages/layouts"],
       "options": {
         "jestConfig": "packages/layouts/jest.config.ts",
         "passWithNoTests": true

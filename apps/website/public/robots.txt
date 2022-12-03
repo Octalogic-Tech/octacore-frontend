@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Disallow: /
+
+# Host
+Host: https://octalogic.in
+
+# Sitemaps
+Sitemap: https://octalogic.in/sitemap.xml

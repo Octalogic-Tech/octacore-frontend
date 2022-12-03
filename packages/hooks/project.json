@@ -1,24 +1,19 @@
 {
+  "name": "hooks",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/hooks/src",
   "projectType": "library",
   "targets": {
     "lint": {
       "executor": "@nrwl/linter:eslint",
-      "outputs": [
-        "{options.outputFile}"
-      ],
+      "outputs": ["{options.outputFile}"],
       "options": {
-        "lintFilePatterns": [
-          "packages/hooks/**/*.ts"
-        ]
+        "lintFilePatterns": ["packages/hooks/**/*.ts"]
       }
     },
     "test": {
       "executor": "@nrwl/jest:jest",
-      "outputs": [
-        "coverage/packages/hooks"
-      ],
+      "outputs": ["{workspaceRoot}/coverage/packages/hooks"],
       "options": {
         "jestConfig": "packages/hooks/jest.config.ts",
         "passWithNoTests": true

@@ -1,13 +1,12 @@
 {
+  "name": "portfolio",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/portfolio/src",
   "projectType": "application",
   "targets": {
     "build": {
       "executor": "@nrwl/web:webpack",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
       "options": {
         "compiler": "babel",
@@ -69,20 +68,14 @@
     },
     "lint": {
       "executor": "@nrwl/linter:eslint",
-      "outputs": [
-        "{options.outputFile}"
-      ],
+      "outputs": ["{options.outputFile}"],
       "options": {
-        "lintFilePatterns": [
-          "apps/portfolio/**/*.{ts,tsx,js,jsx}"
-        ]
+        "lintFilePatterns": ["apps/portfolio/**/*.{ts,tsx,js,jsx}"]
       }
     },
     "test": {
       "executor": "@nrwl/jest:jest",
-      "outputs": [
-        "coverage/apps/portfolio"
-      ],
+      "outputs": ["{workspaceRoot}/coverage/apps/portfolio"],
       "options": {
         "jestConfig": "apps/portfolio/jest.config.ts",
         "passWithNoTests": true
