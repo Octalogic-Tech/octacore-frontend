@@ -1,20 +1,15 @@
+import CoreOverview from '../../../../apps/core/src/app/components/CoreOverview';
+import ProjectOverview from '../../../../apps/projects/src/app/components/ProjectOverview';
+import ProjectTechnology from '../../../../apps/projects/src/app/components/ProjectTechnology';
+import ProjectIndustry from '../../../../apps/projects/src/app/components/ProjectIndustry';
 
-const Route1Component = () => {
-  return <h1>Route 1</h1>;
-};
-
-const Route2Component = () => {
-  return <h1>Route 2</h1>;
-};
-
-
-/* eslint-disable-next-line */
 export const coreRoutes = [
-  { path: '/', component: Route1Component },
-  { path: '/route2', component: Route2Component },
+  { path: '/', component: CoreOverview },
 ];
 
-
-export default coreRoutes;
-
+export const projectRoutes = [
+  { path: '/projects/overview', component: ProjectOverview },
+  { path: '/projects/technology', component: ProjectTechnology },
+  { path: '/projects/industry', component: ProjectIndustry },
+];
 

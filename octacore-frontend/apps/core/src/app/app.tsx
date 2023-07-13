@@ -1,26 +1,22 @@
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import coreRoutes from '../../../../libs/constants/src/lib/constants';
-import { Button } from '@mui/material';
-import './app.module.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+// import { coreRoutes } from '../../../../libs/constants/src/index';
+// import styles from './app.module.css';
+// import NestedNavbar from './components/NestedNavbar';
+import CoreOverview from './components/CoreOverview';
+import { Navbar } from '../../../../libs/shared-ui/src/index';
+import styles from '../../../../libs/shared-css/shared.module.css';
+// import { Grid } from '@mui/material';
 
 function App() {
   return (
     <BrowserRouter>
-      <Button variant="contained" color="primary" style={{margin:'1rem'}}>
-        <Link to={'/'} style={{textDecoration: 'none'}}>
-          Route-1
-        </Link>
-      </Button>
-      <Button variant="contained" color="primary" style={{margin:'1rem'}}>
-        <Link to={'/route2'} style={{textDecoration: 'none'}}>
-          Route-2
-        </Link>
-      </Button>
-      <Routes>
-        <Route path={coreRoutes[0].path} Component={coreRoutes[0].component} />
-        <Route path={coreRoutes[1].path} Component={coreRoutes[1].component} />
-      </Routes>
-    </BrowserRouter>
+    <Navbar />
+    <div className={styles.content}>
+        <Routes>
+          <Route path="/" element={<CoreOverview />}/>
+        </Routes>
+    </div>
+  </BrowserRouter>
   );
 }
 

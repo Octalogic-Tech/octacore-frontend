@@ -15,7 +15,9 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@octacore-frontend/constants": ["libs/constants/src/index.ts"]
+      "@octacore-frontend/constants": ["libs/constants/src/index.ts"],
+      "@octacore-frontend/design-system": ["libs/design-system/src/index.ts"],
+      "@octacore-frontend/shared-ui": ["libs/shared-ui/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
