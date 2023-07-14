@@ -1,7 +1,7 @@
 import React from 'react';
 import { Grid } from '@mui/material';
-import { Cards } from '../../../../../libs/shared-ui/src/lib/card/card';
-import styles from '../../../../../libs/shared-css/shared.module.css';
+import { Cards } from '../../../../libs/shared-ui/src/lib/card/card';
+import styles from '../../../../libs/shared-css/shared.module.css';
 import { Tables } from '@octacore-frontend/shared-ui';
 
 function CoreOverview() {
