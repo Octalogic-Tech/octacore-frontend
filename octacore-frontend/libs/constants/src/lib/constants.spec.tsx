@@ -1,6 +1,6 @@
 import { render } from '@testing-library/react';
 
-import Constants from './constants';
+import { Constants } from './constants';
 
 describe('Constants', () => {
   it('should render successfully', () => {

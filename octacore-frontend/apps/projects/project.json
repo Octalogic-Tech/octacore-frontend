@@ -49,7 +49,8 @@
       "defaultConfiguration": "development",
       "options": {
         "buildTarget": "projects:build",
-        "hmr": true
+        "hmr": true,
+        "port":4201
       },
       "configurations": {
         "development": {

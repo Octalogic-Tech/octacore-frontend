@@ -15,7 +15,7 @@ interface ExpandMoreProps extends IconButtonProps {
   expand: boolean;
 }
 
-interface CardsProps {
+export interface CardProps {
   currentMonth: string;
 }
 
@@ -30,7 +30,7 @@ const ExpandMore = styled((props: ExpandMoreProps) => {
   }),
 }));
 
-export const Cards: React.FC<CardsProps>= (props) => {
+export const Cards = (props: CardProps) => {
   const { currentMonth } = props
   const [expanded, setExpanded] = React.useState(false);
 

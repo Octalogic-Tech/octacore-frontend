@@ -1,10 +1,11 @@
 import { render } from '@testing-library/react';
-
-import Tables from './tables';
+import { Tables } from './tables';
 
 describe('Tables', () => {
   it('should render successfully', () => {
-    const { baseElement } = render(<Tables />);
+    const outstandingInvoice = ["undefines"];
+
+    const { baseElement } = render(<Tables outstandingInvoice= {outstandingInvoice} />);
     expect(baseElement).toBeTruthy();
   });
 });
