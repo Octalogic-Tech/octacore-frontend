@@ -85,7 +85,7 @@ export function Navbar(props: NavbarProps) {
                         props.activeTab === tab.tab ? 'lightblue' : '',
                     }}
                     component={Link}
-                    to={`${tab.navTo}`}
+                    to={tab.navTo}
                   >
                     <ListItemIcon
                       sx={{

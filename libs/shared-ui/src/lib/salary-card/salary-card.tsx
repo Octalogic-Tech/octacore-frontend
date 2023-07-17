@@ -15,7 +15,7 @@ interface ExpandMoreProps extends IconButtonProps {
   expand: boolean;
 }
 
-export interface CardProps {
+export interface SalaryCardProps {
   currentMonth: string;
 }
 
@@ -30,7 +30,7 @@ const ExpandMore = styled((props: ExpandMoreProps) => {
   }),
 }));
 
-export const Cards = (props: CardProps) => {
+export const SalaryCard = (props: SalaryCardProps) => {
   const { currentMonth } = props
   const [expanded, setExpanded] = React.useState(false);
 
@@ -42,8 +42,7 @@ export const Cards = (props: CardProps) => {
     <Card sx={{ maxWidth: 350, background:"white"}}>
       <div style={{ margin: "2px" }}>
       <CardHeader
-        avatar={<Typography>Outstanding</Typography>}
-        action={<Chip color='success' label="24%" />}
+        avatar={<Typography>Salary</Typography>}
       />
       <CardContent sx={{
         width:"100%",

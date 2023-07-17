@@ -1,11 +1,10 @@
 import { render } from '@testing-library/react';
 
-import { Cards } from './card';
+import SalaryCard from './salary-card';
 
-describe('Card', () => {
+describe('SalaryCard', () => {
   it('should render successfully', () => {
-    const { baseElement } = render(<Cards currentMonth='Jan'/>);
+    const { baseElement } = render(<SalaryCard />);
     expect(baseElement).toBeTruthy();
   });
-  
 });

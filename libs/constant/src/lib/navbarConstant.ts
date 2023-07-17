@@ -1,3 +1,4 @@
+import { routes } from "./repoRoutes";
 export interface NavTabsInterface {
     tab:string,
     navTo: string
@@ -5,12 +6,12 @@ export interface NavTabsInterface {
   
   export const NavTabs = [
     {
-      tab: 'Core',
-      navTo: 'http://localhost:4200/',
+      tab: routes.core.projectName,
+      navTo: `${routes.host}${routes.core.port}${routes.core.overview}`,
     },
     {
-      tab: 'Projects',
-      navTo: 'http://localhost:4201/project/overview',
+      tab: routes.projects.projectName,
+      navTo:`${routes.host}${routes.projects.port}${routes.projects.overview}`,
     },
     {
       tab: 'People',
