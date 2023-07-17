@@ -8,7 +8,6 @@ import CardActions from '@mui/material/CardActions';
 import Collapse from '@mui/material/Collapse';
 import IconButton, { IconButtonProps } from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
-import { Chip } from '@mui/material';
 
 
 interface ExpandMoreProps extends IconButtonProps {

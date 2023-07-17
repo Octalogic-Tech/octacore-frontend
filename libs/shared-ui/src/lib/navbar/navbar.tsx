@@ -12,16 +12,8 @@ import {
   Box,
   Tooltip,
 } from '@mui/material';
-import CodeTwoToneIcon from '@mui/icons-material/CodeTwoTone';
 import NestedNavbar from '../nested-navbar/nested-navbar';
 import styles from './navbar.module.css';
-import ViewQuiltOutlinedIcon from '@mui/icons-material/ViewQuiltOutlined';
-import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
-import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
-import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
-import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined';
-import LocalAtmOutlinedIcon from '@mui/icons-material/LocalAtmOutlined';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import { NavTabs, NavTabsInterface } from '@octacore-frontend/constant';
 
 export interface NavbarProps {
@@ -94,7 +86,7 @@ export function Navbar(props: NavbarProps) {
                         justifyContent: 'center',
                       }}
                     >
-                      {tab.tab === 'Core' && <ViewQuiltOutlinedIcon />}
+                      {/* {tab.tab === 'Core' && <ViewQuiltOutlinedIcon />}
                       {tab.tab === 'Projects' && <CodeTwoToneIcon />}
                       {tab.tab === 'People' && <PeopleAltOutlinedIcon />}
                       {tab.tab === 'Documents' && <ArticleOutlinedIcon />}
@@ -109,7 +101,8 @@ export function Navbar(props: NavbarProps) {
                       )}
                       {tab.tab === 'Setting' && (
                         <SettingsOutlinedIcon />
-                      )}
+                      )} */}
+                      <tab.icon/>
                     </ListItemIcon>
                   </ListItemButton>
                 </ListItem>
