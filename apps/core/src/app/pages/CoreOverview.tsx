@@ -20,11 +20,11 @@ function CoreOverview() {
             overview
           </Typography>
         </Typography>
-        <Typography variant="h4" sx={{ margin: 0, padding: 0 }}>
+        <Typography variant="h4" gutterBottom>
           Overview
         </Typography>
       </Box>
-      <Grid container spacing={4}>
+      <Grid container spacing={1}>
         {expenseCardRepeat.map((_, index) => {
           return (
             <Grid key={index} item xs={12} sm={6} md={4} lg={3}>

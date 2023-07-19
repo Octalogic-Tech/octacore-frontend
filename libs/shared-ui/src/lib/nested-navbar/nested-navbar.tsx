@@ -4,12 +4,15 @@ import {
   ListItemIcon,
   ListItemText,
   ListItemButton,
+  Box,
+  Typography,
 } from '@mui/material';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { NestedNavTabProject, nestedNavTabs } from '@octacore-frontend/constant';
+import { NestedNavTabProject, activeBarsColorVariables, nestedNavTabs } from '@octacore-frontend/constant';
 export interface NestedNavbarProps {
   activeTab: string;
+  setOpen: React.Dispatch<React.SetStateAction<string>>;
 }
 
 export function NestedNavbar(props: NestedNavbarProps) {
@@ -29,12 +32,22 @@ export function NestedNavbar(props: NestedNavbarProps) {
 
   return (
     <List>
+      <Box sx={{marginBottom: '1rem'}}>
+        <Typography>
+          {props.activeTab} Module
+        </Typography>
+      </Box>
       {nestedTabsArray.map((project, index) => (
         <ListItem disablePadding key={index}  sx={{
-          background: project.tab === findActiveMainTab ? 'lightblue':""
+          background: project.tab === findActiveMainTab ? activeBarsColorVariables.activeNavItemColor: 'inherit',
+          color: project.tab === findActiveMainTab ? activeBarsColorVariables.activeNavIconColor: 'inherit',
         }}>
           <ListItemButton component={Link} to={project.navTo}
-          onClick={()=>handleActiveTab(project.tab)}>
+          aria-label={project.tab}
+          onClick={()=>{
+            handleActiveTab(project.tab);
+            props.setOpen("none")
+            }}>
             <ListItemIcon sx={{ width: 50, padding: 0 }}>
                 <project.icon/>
             </ListItemIcon>

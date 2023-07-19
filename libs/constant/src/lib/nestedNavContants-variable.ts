@@ -22,7 +22,7 @@ export interface NestedNavTabProject {
       projects: [
         {
           tab: 'Overview',
-          navTo: routes.core.overview,
+          navTo: routes.projects.overview,
           icon:StackedBarChartOutlinedIcon
         },
         {

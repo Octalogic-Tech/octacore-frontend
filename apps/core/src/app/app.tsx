@@ -14,9 +14,7 @@ function App() {
         }}>
             <Navbar activeTab={activeTab} />
         </Grid>
-        <Grid item xs={10} lg={9} sx={{
-          padding:'1rem'
-        }}>
+        <Grid item xs={10} lg={9}>
           <Routes>
             <Route path={routes.core.overview} element={<CoreOverview />} />
           </Routes>

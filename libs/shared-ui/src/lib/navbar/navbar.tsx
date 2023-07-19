@@ -1,20 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Drawer,
-  List,
   ListItem,
-  ListItemIcon,
-  Divider,
-  IconButton,
   ListItemButton,
   Grid,
   Box,
   Tooltip,
+  ThemeProvider,
+  Stack,
+  Typography,
+  List,
 } from '@mui/material';
 import NestedNavbar from '../nested-navbar/nested-navbar';
 import styles from './navbar.module.css';
-import { NavTabs, NavTabsInterface } from '@octacore-frontend/constant';
+import {
+  NavTabs,
+  NavTabsInterface,
+  activeBarsColorVariables,
+  leftMostNavBarThemeProvider,
+  logoStackThemeProvide,
+  nestedNavThemeProvider,
+} from '@octacore-frontend/constant';
+import { useTheme } from '@emotion/react';
 
 export interface NavbarProps {
   activeTab: string;
@@ -48,84 +56,60 @@ export function Navbar(props: NavbarProps) {
   };
   return (
     <Grid container>
-      <Grid item xs={10} lg={4}>
-        <Box>
-          <Drawer
-            variant="permanent"
-            sx={{
-              minWidth: 10,
-            }}
-          >
-            <Tooltip title="Click to show nested navigation">
-              <IconButton onClick={handleNestedNavbarDrawer}>
-                <img
-                  src={require('../../../../../assets/O-Only.png')}
-                  alt="octalogic"
-                  width="40px"
-                />
-              </IconButton>
-            </Tooltip>
-            <Divider />
-            <List>
-              {NavTabs.map((tab:NavTabsInterface, index:number) => (
-                <ListItem disablePadding key={index}>
-                  <ListItemButton
-                    sx={{
-                      minHeight: 48,
-                      justifyContent: 'initial',
-                      background:
-                        props.activeTab === tab.tab ? 'lightblue' : '',
-                    }}
-                    component={Link}
-                    to={tab.navTo}
-                  >
-                    <ListItemIcon
+      <ThemeProvider theme={leftMostNavBarThemeProvider}>
+        <Grid item xs={open === 'none' ? 12 : 4} lg={3}>
+          <Box>
+            <Drawer variant="permanent">
+              <Tooltip title="Click to show nested navigation">
+                <ThemeProvider theme={logoStackThemeProvide}>
+                  <Stack onClick={handleNestedNavbarDrawer}>
+                    <img
+                      src={require('../../../../../assets/O-Only.png')}
+                      alt="octalogic"
+                      width="40px"
+                    />
+                  </Stack>
+                </ThemeProvider>
+              </Tooltip>
+              <List>
+                {NavTabs.map((tab: NavTabsInterface, index: number) => (
+                  <ListItem disablePadding key={index}>
+                    <ListItemButton
+                      component={Link}
+                      to={tab.navTo}
                       sx={{
-                        minWidth: 0,
-                        mr: 'auto',
-                        justifyContent: 'center',
+                        background:
+                          props.activeTab === tab.tab ? activeBarsColorVariables.activeNavItemColor : '',
+                        color: props.activeTab === tab.tab ? activeBarsColorVariables.activeNavIconColor: 'inherit'
                       }}
                     >
-                      {/* {tab.tab === 'Core' && <ViewQuiltOutlinedIcon />}
-                      {tab.tab === 'Projects' && <CodeTwoToneIcon />}
-                      {tab.tab === 'People' && <PeopleAltOutlinedIcon />}
-                      {tab.tab === 'Documents' && <ArticleOutlinedIcon />}
-                      {tab.tab === 'Supports' && (
-                        <SupportAgentOutlinedIcon />
-                      )}
-                      {tab.tab === 'Marketing' && (
-                        <CampaignOutlinedIcon />
-                      )}
-                      {tab.tab === 'Finance' && (
-                        <LocalAtmOutlinedIcon />
-                      )}
-                      {tab.tab === 'Setting' && (
-                        <SettingsOutlinedIcon />
-                      )} */}
-                      <tab.icon/>
-                    </ListItemIcon>
-                  </ListItemButton>
-                </ListItem>
-              ))}
-            </List>
-          </Drawer>
-        </Box>
-      </Grid>
-      <Grid item xs={2} lg={8}>
-        <Box
+                      <Stack direction={'column'}>
+                        <tab.icon />
+                        <Typography>{tab.tab}</Typography>
+                      </Stack>
+                    </ListItemButton>
+                  </ListItem>
+                ))}
+              </List>
+            </Drawer>
+          </Box>
+        </Grid>
+      </ThemeProvider>
+      <Grid item xs={open === 'none' ? 0 : 8} lg={9}>
+        <ThemeProvider theme={nestedNavThemeProvider}>
+        <Stack
           sx={{
             display: isLarge ? 'block' : open,
-            position: 'absolute',
-            left: 50,
+            width: isLarge ? '100%' : '200px',
+            position: isLarge ? 'static': 'absolute',
+            left: isLarge? 0 : '100px',
             background: 'white',
-            minHeight: '100vh',
-            width: isLarge ? '80%': '200px'
+            zIndex:200
           }}
         >
-          <div className={styles['nested-nav']}>
-            <NestedNavbar activeTab={props.activeTab}/>
-          </div>
-        </Box>
+            <NestedNavbar activeTab={props.activeTab} setOpen={setOpen} />
+        </Stack>
+        </ThemeProvider>
       </Grid>
     </Grid>
   );
