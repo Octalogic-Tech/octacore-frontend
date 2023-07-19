@@ -21,6 +21,13 @@ export const mainRootTheme = createTheme({
     },
     h6:{
       fontSize:'0.7rem'
+    },
+    h4:{
+      fontSize:'2rem',
+      fontWeight: 'bolder',
+    },
+    h5: {
+      fontSize: '1.2rem'
     }
   },
 });
@@ -133,7 +140,7 @@ export const cardThemeProvider = createTheme({
 export const dollerCardThemeProvider = createTheme({
   typography:{
     h6:{
-      fontSize:'0.8rem'
+      fontSize:'0.7rem'
     }
   },
   components:{
@@ -179,5 +186,30 @@ export const nestedNavThemeProvider = createTheme({
         }
       }
     },
+  }
+});
+
+//theme for over view and technology pages
+export const overviewTechnologyThemProvider = createTheme({
+  typography:{
+    h4:{
+      fontSize:'1.5rem'
+    }
+  }
+})
+
+//add technology button theme provider
+export const buttonThemeProvider = createTheme({
+  components: {
+    MuiButton:{
+      styleOverrides: {
+        root: {
+          position:'absolute',
+          right:'7%',
+          bottom:'7%',
+          background: activeBarsColorVariables.activeNavItemColor,
+        }
+      }
+    }
   }
 })
