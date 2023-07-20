@@ -1,0 +1,26 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "es2015",
+    "module": "esnext",
+    "lib": ["es2020", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@octacore-frontend/constant": ["libs/constant/src/index.ts"],
+      "@octacore-frontend/constants": ["libs/constants/src/index.ts"],
+      "@octacore-frontend/design-system": ["libs/design-system/src/index.ts"],
+      "@octacore-frontend/my-library": ["libs/my-library/src/index.ts"],
+      "@octacore-frontend/shared-ui": ["libs/shared-ui/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}

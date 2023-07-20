@@ -1,0 +1,19 @@
+/*
+ * Replace this with your own classes
+ *
+ * e.g.
+ * .container {
+ * }
+*/
+.nested-nav{
+    position: static;
+    background-color: aliceblue;
+    width: 100px;
+}
+
+@media screen and(maxWidth:1250) {
+    .nested-nav{
+        position: absolute;
+        left: 50px;
+    }
+} 
