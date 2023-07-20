@@ -1,8 +1,8 @@
 import React from 'react';
 import { Grid, Typography, Box } from '@mui/material';
 import { ExpenseCards, SalaryCard } from '@octacore-frontend/shared-ui';
-import { OutstandingTable } from './OutstandingInvoiceTable';
-import { FollowUpsTable } from './FollowUpsTable';
+import { OutstandingTable } from '../components/OutstandingInvoiceTable';
+import { FollowUpsTable } from '../components/FollowUpsTable';
 
 function CoreOverview() {
   const currentDate = new Date();

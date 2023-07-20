@@ -40,7 +40,7 @@ export function NestedNavbar(props: NestedNavbarProps) {
       {nestedTabsArray.map((project, index) => (
         <ListItem disablePadding key={index}  sx={{
           background: project.tab === findActiveMainTab ? activeBarsColorVariables.activeNavItemColor: 'inherit',
-          color: project.tab === findActiveMainTab ? activeBarsColorVariables.activeNavIconColor: 'inherit',
+          color: project.tab === findActiveMainTab ? activeBarsColorVariables.activeNavIconColor: 'primary',
         }}>
           <ListItemButton component={Link} to={project.navTo}
           aria-label={project.tab}

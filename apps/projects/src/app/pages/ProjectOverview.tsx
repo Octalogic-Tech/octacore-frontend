@@ -1,8 +1,8 @@
 import React from 'react';
 import { Grid, Typography, Box } from '@mui/material';
 import { ExpenseCards, SalaryCard } from '@octacore-frontend/shared-ui';
-import { SupportProjectTable } from './SupportProjectTable';
-import { OngoingDevelopmentTable } from './OngoingDevelopmentTable';
+import { SupportProjectTable } from '../components/SupportProjectTable';
+import { OngoingDevelopmentTable } from '../components/OngoingDevelopmentTable';
 
 function ProjectOverview() {
   const currentDate = new Date();

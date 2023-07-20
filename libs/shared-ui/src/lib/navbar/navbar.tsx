@@ -13,7 +13,6 @@ import {
   List,
 } from '@mui/material';
 import NestedNavbar from '../nested-navbar/nested-navbar';
-import styles from './navbar.module.css';
 import {
   NavTabs,
   NavTabsInterface,
@@ -22,7 +21,7 @@ import {
   logoStackThemeProvide,
   nestedNavThemeProvider,
 } from '@octacore-frontend/constant';
-import { useTheme } from '@emotion/react';
+
 
 export interface NavbarProps {
   activeTab: string;
@@ -57,7 +56,7 @@ export function Navbar(props: NavbarProps) {
   return (
     <Grid container>
       <ThemeProvider theme={leftMostNavBarThemeProvider}>
-        <Grid item xs={open === 'none' ? 12 : 4} lg={3}>
+        <Grid item xs={open === 'none' ? 6 : 4} lg={3}>
           <Box>
             <Drawer variant="permanent">
               <Tooltip title="Click to show nested navigation">
@@ -80,7 +79,7 @@ export function Navbar(props: NavbarProps) {
                       sx={{
                         background:
                           props.activeTab === tab.tab ? activeBarsColorVariables.activeNavItemColor : '',
-                        color: props.activeTab === tab.tab ? activeBarsColorVariables.activeNavIconColor: 'inherit'
+                        color: props.activeTab === tab.tab ? activeBarsColorVariables.activeNavIconColor: 'primary'
                       }}
                     >
                       <Stack direction={'column'}>

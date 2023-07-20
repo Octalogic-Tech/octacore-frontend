@@ -5,17 +5,17 @@ import { activeBarsColorVariables, designVariable } from './design-system-variab
 export const mainRootTheme = createTheme({
   palette: {
     primary: {
-      main: designVariable.palette.primaryColor,
+      main: '#007bff',
     },
     secondary: {
-      main: designVariable.palette.secondaryColor,
+      main: '#feb236',
     },
     success: {
       main: '#00e676',
     },
   },
   typography: {
-    fontFamily: designVariable.typography.fontFamily,
+    fontFamily: 'Roboto, sans-serif',
     allVariants: {
       color: 'gray',
     },
@@ -63,6 +63,11 @@ export const tableThemeProvider = createTheme({
 
 //themes for the navbars drawer
 export const leftMostNavBarThemeProvider = createTheme({
+  palette:{
+    primary:{
+      main:'#616161'
+    },
+  },
   components: {
     MuiListItemButton: {
       styleOverrides: {
@@ -169,10 +174,19 @@ export const logoStackThemeProvide = createTheme({
 
 
 export const nestedNavThemeProvider = createTheme({
+  palette:{
+    primary:{
+      main:'#616161'
+    },
+  },
+  typography:{
+    fontSize:12,
+  },
   components: {
     MuiStack: {
       defaultProps: {
         minHeight: '100vh',
+        paddingRight:'0.5rem'
       },
     },
     MuiListItem: {
