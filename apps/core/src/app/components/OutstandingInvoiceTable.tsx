@@ -6,8 +6,6 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { ThemeProvider } from '@mui/material';
-import { tableThemeProvider } from '@octacore-frontend/constant';
 
 export interface OutstandingTableProps {
   outstandingInvoice: Array<string>;
@@ -17,31 +15,20 @@ export const OutstandingTable: React.FC<OutstandingTableProps> = (props) => {
   const { outstandingInvoice } = props;
 
   return (
-    <ThemeProvider theme={tableThemeProvider}>
-        <TableContainer component={Paper}>
-      <Table size="small" aria-label="simple table">
+    <TableContainer component={Paper}>
+      <Table size="small" aria-label="simple table" sx={{ minWidth: '600px' }}>
         <TableHead>
           <TableRow>
             <TableCell>column</TableCell>
-            <TableCell align="right">
-              column
-            </TableCell>
-            <TableCell align="right">
-              column
-            </TableCell>
-            <TableCell align="right">
-              column
-            </TableCell>
-            <TableCell align="right">
-              column
-            </TableCell>
+            <TableCell align="right">column</TableCell>
+            <TableCell align="right">column</TableCell>
+            <TableCell align="right">column</TableCell>
+            <TableCell align="right">column</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
           {outstandingInvoice.map((_, index) => (
-            <TableRow
-              key={index}
-            >
+            <TableRow key={index}>
               <TableCell component="th" scope="row">
                 column
               </TableCell>
@@ -54,6 +41,5 @@ export const OutstandingTable: React.FC<OutstandingTableProps> = (props) => {
         </TableBody>
       </Table>
     </TableContainer>
-    </ThemeProvider>
   );
 };

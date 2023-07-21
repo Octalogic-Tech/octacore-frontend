@@ -1,4 +1,4 @@
-import { routes } from "./repoRoutes";
+import { routes } from './repoRoutes';
 import { ViewQuiltOutlined } from '@mui/icons-material';
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
@@ -7,8 +7,6 @@ import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import CodeTwoToneIcon from '@mui/icons-material/CodeTwoTone';
 
-
-// type IconComponent = React.ReactHTMLElement<HTMLElement>;
 export interface NavTabsInterface {
   tab: string;
   navTo: string;

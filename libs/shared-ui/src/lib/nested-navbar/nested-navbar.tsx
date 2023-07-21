@@ -1,62 +1,90 @@
 import {
+  Box,
   List,
   ListItem,
+  ListItemButton,
   ListItemIcon,
   ListItemText,
-  ListItemButton,
-  Box,
   Typography,
 } from '@mui/material';
-import { Link } from 'react-router-dom';
+import { styled } from '@mui/material/styles';
+import {
+  NestedNavTabProject,
+  navBarFigma,
+  nestedNavTabs,
+} from '@octacore-frontend/constant';
 import { useEffect, useState } from 'react';
-import { NestedNavTabProject, activeBarsColorVariables, nestedNavTabs } from '@octacore-frontend/constant';
+import { Link } from 'react-router-dom';
 export interface NestedNavbarProps {
   activeTab: string;
-  setOpen: React.Dispatch<React.SetStateAction<string>>;
 }
+const BoxSticky = styled(Box)(({ theme }) => ({}));
 
-export function NestedNavbar(props: NestedNavbarProps) {
+export function NestedNav(props: NestedNavbarProps) {
   const [findActiveMainTab, setFindActiveTab] = useState('Overview');
-  const [nestedTabsArray, setNestedTabsArray] = useState<NestedNavTabProject[]>([]);
-
+  const [nestedTabsArray, setNestedTabsArray] = useState<NestedNavTabProject[]>(
+    []
+  );
   useEffect(() => {
-    const index = nestedNavTabs.findIndex((val) => val.appName === props.activeTab);
+    const index = nestedNavTabs.findIndex(
+      (val) => val.appName === props.activeTab
+    );
     if (index !== -1) {
       setNestedTabsArray(nestedNavTabs[index].projects);
     }
   }, [props.activeTab]);
 
-  const handleActiveTab = (activeTab:string) =>{
-    setFindActiveTab(activeTab)
-  } 
+  const handleActiveTab = (activeTab: string) => {
+    setFindActiveTab(activeTab);
+  };
 
   return (
-    <List>
-      <Box sx={{marginBottom: '1rem'}}>
-        <Typography>
-          {props.activeTab} Module
-        </Typography>
-      </Box>
-      {nestedTabsArray.map((project, index) => (
-        <ListItem disablePadding key={index}  sx={{
-          background: project.tab === findActiveMainTab ? activeBarsColorVariables.activeNavItemColor: 'inherit',
-          color: project.tab === findActiveMainTab ? activeBarsColorVariables.activeNavIconColor: 'primary',
-        }}>
-          <ListItemButton component={Link} to={project.navTo}
-          aria-label={project.tab}
-          onClick={()=>{
-            handleActiveTab(project.tab);
-            props.setOpen("none")
-            }}>
-            <ListItemIcon sx={{ width: 50, padding: 0 }}>
-                <project.icon/>
-            </ListItemIcon>
-            <ListItemText primary={project.tab} sx={{ padding: 0, margin: 0 }} />
-          </ListItemButton>
-        </ListItem>
-      ))}
-    </List>
+    <BoxSticky>
+      <Typography variant="h6" margin={'1.5rem 0 0'}>
+        {props.activeTab} Module
+      </Typography>
+      <List>
+        {nestedTabsArray.map((project, index) => (
+          <ListItem
+            disablePadding
+            key={index}
+            sx={{
+              background:
+                project.tab === findActiveMainTab
+                  ? navBarFigma.activeButtonColor
+                  : 'inherit',
+              borderRadius: 1,
+            }}
+          >
+            <ListItemButton
+              component={Link}
+              to={project.navTo}
+              aria-label={project.tab}
+              onClick={() => handleActiveTab(project.tab)}
+            >
+              <ListItemIcon
+                sx={{
+                  color:
+                    project.tab === findActiveMainTab
+                      ? navBarFigma.activeIconColor
+                      : '',
+                }}
+              >
+                <project.icon />
+              </ListItemIcon>
+              <ListItemText
+                primary={project.tab}
+                sx={{
+                  color:
+                    project.tab === findActiveMainTab ? 'secondary.main' : '',
+                }}
+              />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+    </BoxSticky>
   );
 }
 
-export default NestedNavbar;
+export default NestedNav;
