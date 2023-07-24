@@ -1,116 +1,92 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { styled } from '@mui/material/styles';
 import {
-  Drawer,
+  Box,
+  List,
   ListItem,
   ListItemButton,
-  Grid,
-  Box,
-  Tooltip,
-  ThemeProvider,
   Stack,
   Typography,
-  List,
 } from '@mui/material';
-import NestedNavbar from '../nested-navbar/nested-navbar';
-import styles from './navbar.module.css';
 import {
   NavTabs,
   NavTabsInterface,
-  activeBarsColorVariables,
-  leftMostNavBarThemeProvider,
-  logoStackThemeProvide,
-  nestedNavThemeProvider,
+  navBarFigma,
 } from '@octacore-frontend/constant';
-import { useTheme } from '@emotion/react';
-
+import { Link } from 'react-router-dom';
+import { Logout } from '@mui/icons-material';
 export interface NavbarProps {
   activeTab: string;
 }
+
+const StockIcon = styled(Stack)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: '40px',
+  borderRadius: theme.shape.borderRadius,
+}));
+
+const BoxFixed = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  justifyContent: 'space-between',
+  position: 'sticky',
+  minHeight: '100%',
+}));
+
 export function Navbar(props: NavbarProps) {
-  const [open, setOpen] = useState('none');
-  const [isLarge, setIsLarge] = useState(true);
-
-  useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 1200) {
-        setIsLarge(true);
-      } else {
-        setIsLarge(false);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => {
-      window.removeEventListener('resize', handleResize);
-    };
-  }, []);
-
-  const handleNestedNavbarDrawer = () => {
-    setOpen((open) => {
-      if (open === 'none') {
-        return 'block';
-      } else {
-        return 'none';
-      }
-    });
-  };
+  const { activeTab } = props;
   return (
-    <Grid container>
-      <ThemeProvider theme={leftMostNavBarThemeProvider}>
-        <Grid item xs={open === 'none' ? 12 : 4} lg={3}>
-          <Box>
-            <Drawer variant="permanent">
-              <Tooltip title="Click to show nested navigation">
-                <ThemeProvider theme={logoStackThemeProvide}>
-                  <Stack onClick={handleNestedNavbarDrawer}>
-                    <img
-                      src={require('../../../../../assets/O-Only.png')}
-                      alt="octalogic"
-                      width="40px"
-                    />
-                  </Stack>
-                </ThemeProvider>
-              </Tooltip>
-              <List>
-                {NavTabs.map((tab: NavTabsInterface, index: number) => (
-                  <ListItem disablePadding key={index}>
-                    <ListItemButton
-                      component={Link}
-                      to={tab.navTo}
-                      sx={{
-                        background:
-                          props.activeTab === tab.tab ? activeBarsColorVariables.activeNavItemColor : '',
-                        color: props.activeTab === tab.tab ? activeBarsColorVariables.activeNavIconColor: 'inherit'
-                      }}
-                    >
-                      <Stack direction={'column'}>
-                        <tab.icon />
-                        <Typography>{tab.tab}</Typography>
-                      </Stack>
-                    </ListItemButton>
-                  </ListItem>
-                ))}
-              </List>
-            </Drawer>
-          </Box>
-        </Grid>
-      </ThemeProvider>
-      <Grid item xs={open === 'none' ? 0 : 8} lg={9}>
-        <ThemeProvider theme={nestedNavThemeProvider}>
-        <Stack
-          sx={{
-            display: isLarge ? 'block' : open,
-            width: isLarge ? '100%' : '200px',
-            position: isLarge ? 'static': 'absolute',
-            left: isLarge? 0 : '100px',
-            background: 'white',
-            zIndex:200
-          }}
-        >
-            <NestedNavbar activeTab={props.activeTab} setOpen={setOpen} />
-        </Stack>
-        </ThemeProvider>
-      </Grid>
-    </Grid>
+    <BoxFixed>
+      <List sx={{ margin: '0.1rem' }}>
+        <ListItem disablePadding>
+          <ListItemButton>
+            <img
+              src={require('../../../../../assets/Logo.png')}
+              alt="octalogic"
+              width="40px"
+            />
+          </ListItemButton>
+        </ListItem>
+        <br />
+        {NavTabs.map((tab: NavTabsInterface, index: number) => (
+          <ListItem disablePadding key={index}>
+            <ListItemButton
+              component={Link}
+              to={tab.navTo}
+              sx={{
+                background:
+                  activeTab === tab.tab ? navBarFigma.activeButtonColor : '',
+                color: activeTab === tab.tab ? 'secondary.main' : '',
+              }}
+            >
+              <StockIcon>
+                <tab.icon />
+                <Typography
+                  fontSize={12}
+                  color={
+                    props.activeTab === tab.tab
+                      ? navBarFigma.activeIconColor
+                      : ''
+                  }
+                >
+                  {tab.tab}
+                </Typography>
+              </StockIcon>
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+      <List>
+        <ListItem disablePadding>
+          <ListItemButton>
+            <StockIcon>
+              <Logout />
+              <Typography fontSize={12}>Logout</Typography>
+            </StockIcon>
+          </ListItemButton>
+        </ListItem>
+      </List>
+    </BoxFixed>
   );
 }

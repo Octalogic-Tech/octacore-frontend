@@ -1,8 +1,20 @@
-import React from 'react';
 import { Grid, Typography, Box } from '@mui/material';
 import { ExpenseCards, SalaryCard } from '@octacore-frontend/shared-ui';
-import { SupportProjectTable } from './SupportProjectTable';
-import { OngoingDevelopmentTable } from './OngoingDevelopmentTable';
+import { SupportProjectTable } from '../components/SupportProjectTable';
+import { OngoingDevelopmentTable } from '../components/OngoingDevelopmentTable';
+import { styled } from '@mui/material/styles';
+import { overViewFigma } from '@octacore-frontend/constant';
+
+const TableHeadingBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginTop: '1rem',
+}));
+
+const TableBox = styled(Box)(({ theme }) => ({
+  overflow: 'scroll',
+}));
 
 function ProjectOverview() {
   const currentDate = new Date();
@@ -14,10 +26,18 @@ function ProjectOverview() {
     <>
       <Box textAlign="left">
         <Typography component="span">
-          Projects/
-          <Typography component="span" color="pink">overview</Typography>
+          core/
+          <Typography component="span" color="secondary.main">
+            overview
+          </Typography>
         </Typography>
-        <Typography variant="h4" gutterBottom>Overview</Typography>
+        <Typography
+          color={overViewFigma.breadCrumbsHeaderFontColor}
+          variant="h4"
+          gutterBottom
+        >
+          Overview
+        </Typography>
       </Box>
       <Grid container spacing={1}>
         <Grid item xs={12} sm={6} md={4} lg={3}>
@@ -27,20 +47,34 @@ function ProjectOverview() {
           <SalaryCard currentMonth={currentMonth} />
         </Grid>
       </Grid>
-      <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mt: 2 }}>
-        <Typography variant="h5">ONGOING DEVELOPMENT</Typography>
-        <Typography variant="body1" color="primary" style={{ cursor: 'pointer' }}>
+      <TableHeadingBox>
+        <Typography variant="h5">OUTSTANDING INVOICES</Typography>
+        <Typography
+          variant="body1"
+          color="secondary.main"
+          style={{ cursor: 'pointer' }}
+        >
           View All
         </Typography>
-      </Box>
-      <OngoingDevelopmentTable ongoingDevelopmentTableData={ongoingDevelopmentTableData} />
-      <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mt: 2 }}>
-        <Typography variant="h5">SUPPORT PROJECT</Typography>
-        <Typography variant="body1" color="primary" style={{ cursor: 'pointer' }}>
+      </TableHeadingBox>
+      <TableBox>
+        <OngoingDevelopmentTable
+          ongoingDevelopmentTableData={ongoingDevelopmentTableData}
+        />
+      </TableBox>
+      <TableHeadingBox>
+        <Typography variant="h5">FOLLOW UPS</Typography>
+        <Typography
+          variant="body1"
+          color="secondary.main"
+          style={{ cursor: 'pointer' }}
+        >
           View All
         </Typography>
-      </Box>
-      <SupportProjectTable supportTableData={supportTableData} />
+      </TableHeadingBox>
+      <TableBox>
+        <SupportProjectTable supportTableData={supportTableData} />
+      </TableBox>
     </>
   );
 }

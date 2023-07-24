@@ -1,48 +1,54 @@
 import Card from '@mui/material/Card';
-import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
-import CardActions from '@mui/material/CardActions';
 import Typography from '@mui/material/Typography';
-import { ThemeProvider } from '@emotion/react';
-import { cardThemeProvider, dollerCardThemeProvider } from '@octacore-frontend/constant';
-import { Button, Stack } from '@mui/material';
-
-
+import { Button, Box } from '@mui/material';
+import { styled } from '@mui/material/styles';
+import { cardFigma, navBarFigma } from '@octacore-frontend/constant';
 
 export interface SalaryCardProps {
   currentMonth: string;
 }
 
+const CardHeadBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'space-between',
+}));
 
+const CardFirstContentBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'start',
+  alignItems: 'center',
+  Padding: '0.5rem 0',
+}));
+
+const CardContentBox = styled(CardContent)(({ theme }) => ({
+  height: cardFigma.cardContentHeight,
+  background: cardFigma.cardContentColor,
+}));
 
 export const SalaryCard = (props: SalaryCardProps) => {
-  const { currentMonth } = props
-
+  const { currentMonth } = props;
   return (
-    <ThemeProvider theme={cardThemeProvider}>
-       <Card>
-      <Stack direction={'row'}>
-        <Typography>Salary</Typography>
-        </Stack>
-        <ThemeProvider theme={dollerCardThemeProvider}>
-        <Stack direction="row" spacing={1}>
-      <Typography variant="h5" component="div">
-        7000
-      </Typography>
-      <Typography variant="h6">
-        from 4400 
-      </Typography>
-    </Stack>
-        </ThemeProvider>
-      <CardContent>
-      </CardContent>
-      <CardActions disableSpacing>
-        <Button disabled size='small'>{currentMonth}</Button>
-        <Button size='small'>View All</Button>
-      </CardActions>
+    <Card sx={{ padding: '0.5rem' }}>
+      <CardHeadBox>
+        <Typography>Outstanding</Typography>
+      </CardHeadBox>
+      <CardFirstContentBox>
+        <Typography variant="h5" mr={1} component="div">
+          7000
+        </Typography>
+        <Typography variant="h6"> from 1,40,400</Typography>
+      </CardFirstContentBox>
+      <CardContentBox></CardContentBox>
+      <CardHeadBox>
+        <Button disabled size="small">
+          {currentMonth}
+        </Button>
+        <Button size="small" sx={{ color: navBarFigma.activeIconColor }}>
+          View All
+        </Button>
+      </CardHeadBox>
     </Card>
-    </ThemeProvider>
-    
   );
-}
-
+};

@@ -1,8 +1,20 @@
-import React from 'react';
 import { Grid, Typography, Box } from '@mui/material';
 import { ExpenseCards, SalaryCard } from '@octacore-frontend/shared-ui';
-import { OutstandingTable } from './OutstandingInvoiceTable';
-import { FollowUpsTable } from './FollowUpsTable';
+import { OutstandingTable } from '../components/OutstandingInvoiceTable';
+import { FollowUpsTable } from '../components/FollowUpsTable';
+import { styled } from '@mui/material/styles';
+import { overViewFigma } from '@octacore-frontend/constant';
+
+const TableHeadingBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginTop: '1rem',
+}));
+
+const TableBox = styled(Box)(({ theme }) => ({
+  overflow: 'scroll',
+}));
 
 function CoreOverview() {
   const currentDate = new Date();
@@ -10,17 +22,20 @@ function CoreOverview() {
   const outstandingInvoiceTableData = new Array(5).fill('values');
   const followUpstableData = new Array(5).fill('values');
   const expenseCardRepeat = new Array(3).fill('values');
-
   return (
     <>
       <Box textAlign="left">
         <Typography component="span">
           core/
-          <Typography component="span" color="pink">
+          <Typography component="span" color="secondary.main">
             overview
           </Typography>
         </Typography>
-        <Typography variant="h4" gutterBottom>
+        <Typography
+          color={overViewFigma.breadCrumbsHeaderFontColor}
+          variant="h4"
+          gutterBottom
+        >
           Overview
         </Typography>
       </Box>
@@ -36,38 +51,32 @@ function CoreOverview() {
           <SalaryCard currentMonth={currentMonth} />
         </Grid>
       </Grid>
-      <Box
-        display="flex"
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{ mt: 2 }}
-      >
+      <TableHeadingBox>
         <Typography variant="h5">OUTSTANDING INVOICES</Typography>
         <Typography
           variant="body1"
-          color="primary"
+          color="secondary.main"
           style={{ cursor: 'pointer' }}
         >
           View All
         </Typography>
-      </Box>
-      <OutstandingTable outstandingInvoice={outstandingInvoiceTableData} />
-      <Box
-        display="flex"
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{ mt: 2 }}
-      >
+      </TableHeadingBox>
+      <TableBox>
+        <OutstandingTable outstandingInvoice={outstandingInvoiceTableData} />
+      </TableBox>
+      <TableHeadingBox>
         <Typography variant="h5">FOLLOW UPS</Typography>
         <Typography
           variant="body1"
-          color="primary"
+          color="secondary.main"
           style={{ cursor: 'pointer' }}
         >
           View All
         </Typography>
-      </Box>
-      <FollowUpsTable followUpstableData={followUpstableData} />
+      </TableHeadingBox>
+      <TableBox>
+        <FollowUpsTable followUpstableData={followUpstableData} />
+      </TableBox>
     </>
   );
 }

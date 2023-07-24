@@ -6,8 +6,6 @@ import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Paper from '@mui/material/Paper';
-import { ThemeProvider } from '@mui/material';
-import { tableThemeProvider } from '@octacore-frontend/constant';
 
 export interface SupportProjectTableProps {
   supportTableData: Array<string>;
@@ -19,7 +17,6 @@ export const SupportProjectTable: React.FC<SupportProjectTableProps> = (
   const { supportTableData } = props;
 
   return (
-    <ThemeProvider theme={tableThemeProvider}>
       <TableContainer component={Paper}>
         <Table size="small" aria-label="simple table">
           <TableHead>
@@ -48,6 +45,5 @@ export const SupportProjectTable: React.FC<SupportProjectTableProps> = (
           </TableBody>
         </Table>
       </TableContainer>
-    </ThemeProvider>
   );
 };
