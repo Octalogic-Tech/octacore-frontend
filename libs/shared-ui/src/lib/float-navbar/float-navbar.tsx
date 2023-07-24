@@ -1,4 +1,4 @@
-import { Menu } from '@mui/icons-material';
+import { Close, Menu } from '@mui/icons-material';
 import { AppBar, Box, Stack, Toolbar } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useState } from 'react';
@@ -24,8 +24,9 @@ const FloatingSideBar = styled(Box)(({ theme }) => ({
   top: theme.mixins.toolbar.minHeight,
   left: 0,
   backgroundColor: 'white',
-  height: '100vh',
-  maxWidth: '400px',
+  minHeight: '100vh',
+  width: '100vw',
+  zIndex: theme.zIndex.drawer + 1,
   [theme.breakpoints.up('sm')]: {
     display: 'none',
   },
@@ -35,29 +36,30 @@ export function FloatNavbar(props: FloatNavbarProps) {
   const { activeTab } = props;
   const [isDrawerOpen, setIsDrawerOpen] = useState('none');
 
-  const handleDrawer = () => {
-    const status = isDrawerOpen === 'none' ? 'block' : 'none';
-    setIsDrawerOpen(status);
-  };
-
   return (
     <Box>
       <StyledAppBar>
         <StyledToolBar>
-          <Menu onClick={handleDrawer} />
+          {isDrawerOpen === 'none' ? (
+            <Menu onClick={() => setIsDrawerOpen('block')} />
+          ) : (
+            <Close onClick={() => setIsDrawerOpen('none')} />
+          )}
         </StyledToolBar>
       </StyledAppBar>
-      <Box>
-        <FloatingSideBar
-          display={isDrawerOpen}
-          onClick={() => setIsDrawerOpen('none')}
-        >
-          <Stack direction={'row'} spacing={2} p={2}>
+      <FloatingSideBar
+        display={isDrawerOpen}
+        onClick={() => setIsDrawerOpen('none')}
+      >
+        <Stack direction={'row'} spacing={2} p={2}>
+          <Box>
             <Navbar activeTab={activeTab} />
+          </Box>
+          <Box>
             <NestedNav activeTab={activeTab} />
-          </Stack>
-        </FloatingSideBar>
-      </Box>
+          </Box>
+        </Stack>
+      </FloatingSideBar>
     </Box>
   );
 }

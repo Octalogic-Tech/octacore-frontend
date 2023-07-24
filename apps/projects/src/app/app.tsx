@@ -1,7 +1,11 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { FloatNavbar, Navbar, NestedNav } from '@octacore-frontend/shared-ui';
 import { Box, CssBaseline, Stack } from '@mui/material';
-import { mainRootTheme, routes } from '@octacore-frontend/constant';
+import {
+  mainRootTheme,
+  navBarFigma,
+  routes,
+} from '@octacore-frontend/constant';
 import { styled } from '@mui/material/styles';
 import { ThemeProvider } from '@mui/material';
 import ProjectOverview from './pages/ProjectOverview';
@@ -32,14 +36,23 @@ const NestedNavbarBox = styled(Box)(({ theme }) => ({
   },
 }));
 
+const ContentContainer = styled(Box)(({ theme }) => ({
+  gap: 32,
+  flex: 18,
+  background: navBarFigma.hoverItemColor,
+  [theme.breakpoints.up('sm')]: {
+    padding: '0.3rem',
+  },
+}));
+
 function App() {
   const activeTab = 'Projects';
   return (
     <BrowserRouter>
       <CssBaseline>
         <ThemeProvider theme={mainRootTheme}>
-          <FloatNavbar activeTab={activeTab}/>
-          <Box sx={{ paddingTop: { xs: '50px', sm: 0 } }}>
+          <FloatNavbar activeTab={activeTab} />
+          <Box sx={{ paddingTop: { xs: '60px', sm: 0 } }}>
             <Stack
               direction={'row'}
               spacing={0}
@@ -51,7 +64,7 @@ function App() {
               <NestedNavbarBox>
                 <NestedNav activeTab={activeTab} />
               </NestedNavbarBox>
-              <Box gap={32} flex={18} p={1}>
+              <ContentContainer>
                 <Routes>
                   <Route
                     path={routes.projects.overview}
@@ -66,7 +79,7 @@ function App() {
                     element={<ProjectIndustry />}
                   />
                 </Routes>
-              </Box>
+              </ContentContainer>
             </Stack>
           </Box>
         </ThemeProvider>

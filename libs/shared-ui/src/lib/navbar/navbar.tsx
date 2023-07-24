@@ -58,6 +58,7 @@ export function Navbar(props: NavbarProps) {
                 background:
                   activeTab === tab.tab ? navBarFigma.activeButtonColor : '',
                 color: activeTab === tab.tab ? 'secondary.main' : '',
+                borderRadius: 1,
               }}
             >
               <StockIcon>

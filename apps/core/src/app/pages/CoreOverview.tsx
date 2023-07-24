@@ -1,19 +1,23 @@
 import { Grid, Typography, Box } from '@mui/material';
-import { ExpenseCards, SalaryCard } from '@octacore-frontend/shared-ui';
+import {
+  BreadCrumbs,
+  ExpenseCards,
+  SalaryCard,
+} from '@octacore-frontend/shared-ui';
 import { OutstandingTable } from '../components/OutstandingInvoiceTable';
 import { FollowUpsTable } from '../components/FollowUpsTable';
 import { styled } from '@mui/material/styles';
-import { overViewFigma } from '@octacore-frontend/constant';
 
 const TableHeadingBox = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
   marginTop: '1rem',
+  padding: '0px 0.3rem',
 }));
 
 const TableBox = styled(Box)(({ theme }) => ({
-  overflow: 'scroll',
+  overflow: 'hidden',
 }));
 
 function CoreOverview() {
@@ -22,23 +26,10 @@ function CoreOverview() {
   const outstandingInvoiceTableData = new Array(5).fill('values');
   const followUpstableData = new Array(5).fill('values');
   const expenseCardRepeat = new Array(3).fill('values');
+  const [currentProject, currentPage] = ['Projects', 'overview'];
   return (
     <>
-      <Box textAlign="left">
-        <Typography component="span">
-          core/
-          <Typography component="span" color="secondary.main">
-            overview
-          </Typography>
-        </Typography>
-        <Typography
-          color={overViewFigma.breadCrumbsHeaderFontColor}
-          variant="h4"
-          gutterBottom
-        >
-          Overview
-        </Typography>
-      </Box>
+      <BreadCrumbs currentPage={currentPage} currentProject={currentProject} />
       <Grid container spacing={1}>
         {expenseCardRepeat.map((_, index) => {
           return (

@@ -30,7 +30,7 @@ const CardContentBox = styled(CardContent)(({ theme }) => ({
 export const ExpenseCards = (props: ExpenseCardProps) => {
   const { currentMonth } = props;
   return (
-    <Card sx={{ padding: '0.5rem' }}>
+    <Card sx={{ padding: '0.5rem', maxWidth: 400 }}>
       <CardHeadBox>
         <Typography>Outstanding</Typography>
         <Chip

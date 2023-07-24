@@ -15,31 +15,37 @@ export const OutstandingTable: React.FC<OutstandingTableProps> = (props) => {
   const { outstandingInvoice } = props;
 
   return (
-    <TableContainer component={Paper}>
-      <Table size="small" aria-label="simple table" sx={{ minWidth: '600px' }}>
-        <TableHead>
-          <TableRow>
-            <TableCell>column</TableCell>
-            <TableCell align="right">column</TableCell>
-            <TableCell align="right">column</TableCell>
-            <TableCell align="right">column</TableCell>
-            <TableCell align="right">column</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {outstandingInvoice.map((_, index) => (
-            <TableRow key={index}>
-              <TableCell component="th" scope="row">
-                column
-              </TableCell>
+    <Paper sx={{ width: { xs: '100vw', sm: '100%' }, overflow: 'hidden' }}>
+      <TableContainer sx={{ maxHeight: 440 }}>
+        <Table
+          size="small"
+          aria-label="simple table"
+          sx={{ minWidth: '600px' }}
+        >
+          <TableHead>
+            <TableRow>
+              <TableCell>column</TableCell>
               <TableCell align="right">column</TableCell>
               <TableCell align="right">column</TableCell>
               <TableCell align="right">column</TableCell>
               <TableCell align="right">column</TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
+          </TableHead>
+          <TableBody>
+            {outstandingInvoice.map((_, index) => (
+              <TableRow key={index}>
+                <TableCell component="th" scope="row">
+                  column
+                </TableCell>
+                <TableCell align="right">column</TableCell>
+                <TableCell align="right">column</TableCell>
+                <TableCell align="right">column</TableCell>
+                <TableCell align="right">column</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
   );
 };

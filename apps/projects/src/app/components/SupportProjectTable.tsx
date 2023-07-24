@@ -17,7 +17,8 @@ export const SupportProjectTable: React.FC<SupportProjectTableProps> = (
   const { supportTableData } = props;
 
   return (
-      <TableContainer component={Paper}>
+    <Paper sx={{ width: { xs: '100vw', sm: '100%' }, overflow: 'hidden' }}>
+      <TableContainer>
         <Table size="small" aria-label="simple table">
           <TableHead>
             <TableRow>
@@ -30,9 +31,7 @@ export const SupportProjectTable: React.FC<SupportProjectTableProps> = (
           </TableHead>
           <TableBody>
             {supportTableData.map((_, index) => (
-              <TableRow
-                key={index}
-              >
+              <TableRow key={index}>
                 <TableCell component="th" scope="row">
                   column
                 </TableCell>
@@ -45,5 +44,6 @@ export const SupportProjectTable: React.FC<SupportProjectTableProps> = (
           </TableBody>
         </Table>
       </TableContainer>
+    </Paper>
   );
 };

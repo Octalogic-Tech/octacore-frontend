@@ -5,6 +5,7 @@ import { styled, alpha } from '@mui/material/styles';
 import InputBase from '@mui/material/InputBase';
 import { Add } from '@mui/icons-material';
 import { navBarFigma } from '@octacore-frontend/constant';
+import { BreadCrumbs } from '@octacore-frontend/shared-ui';
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
@@ -48,27 +49,21 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
   },
 }));
 
+const TableHeadingBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginTop: '1rem',
+  padding: '0px 0.3rem',
+}));
+
 function ProjectTechnology() {
   const array = new Array(5).fill('values');
+  const [currentProject, currentPage] = ['projects', 'technology'];
   return (
     <>
-      <Box textAlign="left">
-        <Typography component="span">
-          Projects/
-          <Typography component="span" color="pink">
-            Technology
-          </Typography>
-        </Typography>
-        <Typography variant="h4" gutterBottom>
-          Technology
-        </Typography>
-      </Box>
-      <Box
-        display="flex"
-        alignItems="center"
-        justifyContent="space-between"
-        sx={{ mt: 2 }}
-      >
+      <BreadCrumbs currentPage={currentPage} currentProject={currentProject} />
+      <TableHeadingBox>
         <Typography variant="h5">SUPPORT PROJECT</Typography>
         <Search>
           <SearchIconWrapper>
@@ -79,7 +74,7 @@ function ProjectTechnology() {
             inputProps={{ 'aria-label': 'search' }}
           />
         </Search>
-      </Box>
+      </TableHeadingBox>
       <SupportProjectTable supportTableData={array} />
       <Fab
         aria-label="add"
@@ -87,7 +82,7 @@ function ProjectTechnology() {
         sx={{
           position: 'fixed',
           bottom: 20,
-          right: { xs: 'calc(50% - 25px)', md: 30 },
+          right: { xs: 'calc(15%)', md: 30 },
           background: navBarFigma.activeButtonColor,
         }}
       >

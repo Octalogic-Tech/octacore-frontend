@@ -40,7 +40,7 @@ export function NestedNav(props: NestedNavbarProps) {
 
   return (
     <BoxSticky>
-      <Typography variant='h5' margin={'1.5rem 0 0'}>
+      <Typography variant="h5" margin={'1.5rem 0 0'}>
         {props.activeTab} Module
       </Typography>
       <List>
