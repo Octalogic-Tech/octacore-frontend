@@ -1,3 +1,4 @@
+export * from './lib/float-navbar/float-navbar';
 export * from './lib/salary-card/salary-card';
 export * from './lib/salary-card/salary-card';
 export * from './lib/salary-card/salary-card';

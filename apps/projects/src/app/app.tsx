@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Navbar, NestedNav } from '@octacore-frontend/shared-ui';
+import { FloatNavbar, Navbar, NestedNav } from '@octacore-frontend/shared-ui';
 import { Box, CssBaseline, Stack } from '@mui/material';
 import { mainRootTheme, routes } from '@octacore-frontend/constant';
 import { styled } from '@mui/material/styles';
@@ -38,7 +38,8 @@ function App() {
     <BrowserRouter>
       <CssBaseline>
         <ThemeProvider theme={mainRootTheme}>
-          <Box>
+          <FloatNavbar activeTab={activeTab}/>
+          <Box sx={{ paddingTop: { xs: '50px', sm: 0 } }}>
             <Stack
               direction={'row'}
               spacing={0}
