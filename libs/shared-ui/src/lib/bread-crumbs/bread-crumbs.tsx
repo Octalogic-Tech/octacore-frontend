@@ -28,7 +28,7 @@ export function BreadCrumbs(props: BreadCrumbsProps) {
         variant="h4"
         gutterBottom
       >
-        Overview
+        {currentPage}
       </Typography>
     </BreadCrumBox>
   );

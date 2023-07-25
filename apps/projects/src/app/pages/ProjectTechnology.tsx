@@ -59,7 +59,7 @@ const TableHeadingBox = styled(Box)(({ theme }) => ({
 
 function ProjectTechnology() {
   const array = new Array(5).fill('values');
-  const [currentProject, currentPage] = ['projects', 'technology'];
+  const [currentProject, currentPage] = ['Projects', 'technology'];
   return (
     <>
       <BreadCrumbs currentPage={currentPage} currentProject={currentProject} />

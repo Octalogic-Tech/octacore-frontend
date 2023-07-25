@@ -9,6 +9,7 @@ import {
 } from '@octacore-frontend/constant';
 import { styled } from '@mui/material/styles';
 import { ThemeProvider } from '@mui/material';
+import Categories from './pages/Categories';
 
 const NavbarBox = styled(Box)(({ theme }) => ({
   borderRight: '1px solid lightgray',
@@ -67,6 +68,10 @@ function App() {
                   <Route
                     path={routes.core.overview}
                     element={<CoreOverview />}
+                  />
+                   <Route
+                    path={routes.core.categories}
+                    element={<Categories />}
                   />
                 </Routes>
               </ContentContainer>

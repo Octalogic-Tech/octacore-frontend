@@ -26,7 +26,7 @@ function CoreOverview() {
   const outstandingInvoiceTableData = new Array(5).fill('values');
   const followUpstableData = new Array(5).fill('values');
   const expenseCardRepeat = new Array(3).fill('values');
-  const [currentProject, currentPage] = ['Projects', 'overview'];
+  const [currentProject, currentPage] = ['Core', 'overview'];
   return (
     <>
       <BreadCrumbs currentPage={currentPage} currentProject={currentProject} />

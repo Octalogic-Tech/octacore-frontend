@@ -14,7 +14,7 @@ import {
   nestedNavTabs,
 } from '@octacore-frontend/constant';
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 export interface NestedNavbarProps {
   activeTab: string;
 }
@@ -25,6 +25,8 @@ export function NestedNav(props: NestedNavbarProps) {
   const [nestedTabsArray, setNestedTabsArray] = useState<NestedNavTabProject[]>(
     []
   );
+  const location = useLocation();
+
   useEffect(() => {
     const index = nestedNavTabs.findIndex(
       (val) => val.appName === props.activeTab
@@ -34,9 +36,10 @@ export function NestedNav(props: NestedNavbarProps) {
     }
   }, [props.activeTab]);
 
-  const handleActiveTab = (activeTab: string) => {
-    setFindActiveTab(activeTab);
-  };
+  //useEffect for finding active nav bar whenever the page is refreshed
+  useEffect(() => {
+    setFindActiveTab(location.pathname);
+  }, [location.pathname]);
 
   return (
     <BoxSticky>
@@ -50,7 +53,7 @@ export function NestedNav(props: NestedNavbarProps) {
             key={index}
             sx={{
               background:
-                project.tab === findActiveMainTab
+                project.navTo === findActiveMainTab
                   ? navBarFigma.activeButtonColor
                   : 'inherit',
               borderRadius: 1,
@@ -60,7 +63,6 @@ export function NestedNav(props: NestedNavbarProps) {
               component={Link}
               to={project.navTo}
               aria-label={project.tab}
-              onClick={() => handleActiveTab(project.tab)}
             >
               <ListItemIcon
                 sx={{
