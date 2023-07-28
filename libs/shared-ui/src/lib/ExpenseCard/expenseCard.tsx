@@ -3,7 +3,7 @@ import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import { Box, Button, Chip } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { cardFigma, navBarFigma } from '@octacore-frontend/constant';
+import { cardFigma, colorParameter } from '@octacore-frontend/constant';
 
 export interface ExpenseCardProps {
   currentMonth: string;
@@ -54,7 +54,7 @@ export const ExpenseCards = (props: ExpenseCardProps) => {
         <Button disabled size="small">
           {currentMonth}
         </Button>
-        <Button size="small" sx={{ color: navBarFigma.activeIconColor }}>
+        <Button size="small" sx={{ color: colorParameter.darkPink }}>
           View All
         </Button>
       </CardHeadBox>

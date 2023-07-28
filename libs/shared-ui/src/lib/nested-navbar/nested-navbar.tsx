@@ -10,15 +10,32 @@ import {
 import { styled } from '@mui/material/styles';
 import {
   NestedNavTabProject,
-  navBarFigma,
+  borderParameter,
+  colorParameter,
+  marginParameters,
   nestedNavTabs,
+  textSizeParameter,
 } from '@octacore-frontend/constant';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 export interface NestedNavbarProps {
   activeTab: string;
 }
-const BoxSticky = styled(Box)(({ theme }) => ({}));
+const BoxSticky = styled(Box)(({ theme }) => ({
+  padding: '1.5rem 0.5rem',
+}));
+
+const listButtonStyle = {
+  borderRadius: borderParameter.containerRadius,
+  height: 40,
+  padding: '0.5rem',
+};
+
+const CustomNestedNavBox = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'start',
+}));
 
 export function NestedNav(props: NestedNavbarProps) {
   const [findActiveMainTab, setFindActiveTab] = useState('Overview');
@@ -43,7 +60,12 @@ export function NestedNav(props: NestedNavbarProps) {
 
   return (
     <BoxSticky>
-      <Typography variant="h5" margin={'1.5rem 0 0'}>
+      <Typography
+        sx={{
+          fontSize: textSizeParameter.tableLabelFontSize,
+          marginBottom: marginParameters.marginBottom,
+        }}
+      >
         {props.activeTab} Module
       </Typography>
       <List>
@@ -52,35 +74,41 @@ export function NestedNav(props: NestedNavbarProps) {
             disablePadding
             key={index}
             sx={{
-              background:
-                project.navTo === findActiveMainTab
-                  ? navBarFigma.activeButtonColor
-                  : 'inherit',
-              borderRadius: 1,
+              marginBottom: marginParameters.marginBottom,
             }}
           >
             <ListItemButton
               component={Link}
               to={project.navTo}
               aria-label={project.tab}
+              sx={{
+                background:
+                  project.navTo === findActiveMainTab
+                    ? colorParameter.lightPink
+                    : 'inherit',
+                ...listButtonStyle,
+              }}
+              disableGutters
             >
-              <ListItemIcon
+              <CustomNestedNavBox
                 sx={{
                   color:
-                    project.tab === findActiveMainTab
-                      ? navBarFigma.activeIconColor
-                      : '',
+                    project.navTo === findActiveMainTab ? 'secondary.main' : '',
                 }}
               >
                 <project.icon />
-              </ListItemIcon>
-              <ListItemText
-                primary={project.tab}
-                sx={{
-                  color:
-                    project.tab === findActiveMainTab ? 'secondary.main' : '',
-                }}
-              />
+                <Typography
+                  sx={{
+                    color:
+                      project.navTo === findActiveMainTab
+                        ? 'secondary.main'
+                        : '',
+                    marginLeft: '0.5rem',
+                  }}
+                >
+                  {project.tab}
+                </Typography>
+              </CustomNestedNavBox>
             </ListItemButton>
           </ListItem>
         ))}

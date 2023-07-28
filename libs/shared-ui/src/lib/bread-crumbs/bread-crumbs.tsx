@@ -1,6 +1,6 @@
 import { Box, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { overViewFigma } from '@octacore-frontend/constant';
+import { marginParameters, overViewFigma } from '@octacore-frontend/constant';
 
 /* eslint-disable-next-line */
 export interface BreadCrumbsProps {
@@ -10,16 +10,16 @@ export interface BreadCrumbsProps {
 
 const BreadCrumBox = styled(Box)(({ theme }) => ({
   textAlign: 'start',
-  padding: '0 0.3rem',
+  padding: '0 0.3rem 1rem 0.3rem',
 }));
 
 export function BreadCrumbs(props: BreadCrumbsProps) {
   const { currentPage, currentProject } = props;
   return (
     <BreadCrumBox>
-      <Typography component="span">
-        {currentProject}/
-        <Typography component="span" color="secondary.main">
+      <Typography variant="h6"mb={marginParameters.marginBottom}>
+        {currentProject} /{' '}
+        <Typography variant="h6" component="span" color="secondary.main">
           {currentPage}
         </Typography>
       </Typography>

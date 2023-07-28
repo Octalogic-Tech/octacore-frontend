@@ -3,18 +3,11 @@ import {
   BreadCrumbs,
   ExpenseCards,
   SalaryCard,
+  TableHeadingBox,
 } from '@octacore-frontend/shared-ui';
 import { SupportProjectTable } from '../components/SupportProjectTable';
 import { OngoingDevelopmentTable } from '../components/OngoingDevelopmentTable';
 import { styled } from '@mui/material/styles';
-
-const TableHeadingBox = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginTop: '1rem',
-  padding: '0px 0.3rem',
-}));
 
 const TableBox = styled(Box)(({ theme }) => ({
   overflow: 'scroll',
@@ -25,7 +18,7 @@ function ProjectOverview() {
   const currentMonth = currentDate.toLocaleString('default', { month: 'long' });
   const ongoingDevelopmentTableData = new Array(5).fill('values');
   const supportTableData = new Array(5).fill('values');
-  const [currentProject, currentPage] = ['Projects', 'overview'];
+  const [currentProject, currentPage] = ['Projects', 'Overview'];
 
   return (
     <>

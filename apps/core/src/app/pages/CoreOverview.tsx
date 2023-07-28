@@ -3,18 +3,11 @@ import {
   BreadCrumbs,
   ExpenseCards,
   SalaryCard,
+  TableHeadingBox,
 } from '@octacore-frontend/shared-ui';
 import { OutstandingTable } from '../components/OutstandingInvoiceTable';
 import { FollowUpsTable } from '../components/FollowUpsTable';
 import { styled } from '@mui/material/styles';
-
-const TableHeadingBox = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginTop: '1rem',
-  padding: '0px 0.3rem',
-}));
 
 const TableBox = styled(Box)(({ theme }) => ({
   overflow: 'hidden',
@@ -26,7 +19,7 @@ function CoreOverview() {
   const outstandingInvoiceTableData = new Array(5).fill('values');
   const followUpstableData = new Array(5).fill('values');
   const expenseCardRepeat = new Array(3).fill('values');
-  const [currentProject, currentPage] = ['Core', 'overview'];
+  const [currentProject, currentPage] = ['Core', 'Overview'];
   return (
     <>
       <BreadCrumbs currentPage={currentPage} currentProject={currentProject} />

@@ -1,48 +1,18 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import CoreOverview from './pages/CoreOverview';
-import { FloatNavbar, Navbar, NestedNav } from '@octacore-frontend/shared-ui';
-import { Box, CssBaseline, Stack } from '@mui/material';
 import {
-  mainRootTheme,
-  navBarFigma,
-  routes,
-} from '@octacore-frontend/constant';
-import { styled } from '@mui/material/styles';
+  ContentContainer,
+  FloatNavbar,
+  MainContainerBox,
+  Navbar,
+  NavbarBox,
+  NestedNav,
+  NestedNavbarBox,
+} from '@octacore-frontend/shared-ui';
+import { CssBaseline, Stack } from '@mui/material';
+import { mainRootTheme, routes } from '@octacore-frontend/constant';
 import { ThemeProvider } from '@mui/material';
 import Categories from './pages/Categories';
-
-const NavbarBox = styled(Box)(({ theme }) => ({
-  borderRight: '1px solid lightgray',
-  flex: 1,
-  padding: '0.1rem',
-  minHeight: '100vh',
-  [theme.breakpoints.up('xs')]: {
-    display: 'none',
-  },
-  [theme.breakpoints.up('sm')]: {
-    display: 'block',
-  },
-}));
-
-const NestedNavbarBox = styled(Box)(({ theme }) => ({
-  flex: 4,
-  padding: '0.1rem',
-  [theme.breakpoints.up('xs')]: {
-    display: 'none',
-  },
-  [theme.breakpoints.up('sm')]: {
-    display: 'block',
-  },
-}));
-
-const ContentContainer = styled(Box)(({ theme }) => ({
-  gap: 32,
-  flex: 18,
-  background: navBarFigma.hoverItemColor,
-  [theme.breakpoints.up('sm')]: {
-    padding: '0.3rem',
-  },
-}));
 
 function App() {
   const activeTab = 'Core';
@@ -51,7 +21,7 @@ function App() {
       <CssBaseline>
         <ThemeProvider theme={mainRootTheme}>
           <FloatNavbar activeTab={activeTab} />
-          <Box sx={{ paddingTop: { xs: '60px', sm: 0 } }}>
+          <MainContainerBox>
             <Stack
               direction={'row'}
               spacing={0}
@@ -69,14 +39,14 @@ function App() {
                     path={routes.core.overview}
                     element={<CoreOverview />}
                   />
-                   <Route
+                  <Route
                     path={routes.core.categories}
                     element={<Categories />}
                   />
                 </Routes>
               </ContentContainer>
             </Stack>
-          </Box>
+          </MainContainerBox>
         </ThemeProvider>
       </CssBaseline>
     </BrowserRouter>

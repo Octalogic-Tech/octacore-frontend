@@ -1,7 +1,7 @@
 import { createTheme } from '@mui/material/styles';
 import {
+  colorParameter,
   fontStyleFigma,
-  navBarFigma,
   overViewFigma,
 } from './design-system-variable';
 
@@ -12,8 +12,8 @@ export const mainRootTheme = createTheme({
       main: overViewFigma.breadCrumbsHeaderFontColor,
     },
     secondary: {
-      main: navBarFigma.activeIconColor,
-      light: navBarFigma.activeButtonColor,
+      main: colorParameter.darkPink,
+      light: colorParameter.lightPink,
     },
     success: {
       main: '#FFFFFF',
@@ -29,10 +29,11 @@ export const mainRootTheme = createTheme({
     },
     h4: {
       fontSize: overViewFigma.breadCrumbsHeaderFontSize,
-      fontWeight: 'bolder',
+      fontWeight: 700,
     },
     h5: {
       fontSize: overViewFigma.tableLabelFontSize,
+      fontWeight: 700,
     },
   },
   components: {
@@ -49,11 +50,15 @@ export const mainRootTheme = createTheme({
           fontWeight: fontStyleFigma.tableHeadFontWeight,
           color: fontStyleFigma.tableHeadFontColor,
           fontFamily: fontStyleFigma.allFontStyle,
+          fontSize:'1rem',
+          paddingTop:'8px',
+          paddingBottom:'16px'
         },
         body: {
           fontWeight: fontStyleFigma.tableBodyFontWeight,
           color: fontStyleFigma.tableBodyFontColor,
           fontFamily: fontStyleFigma.allFontStyle,
+          fontSize: '0.8rem'
         },
       },
     },

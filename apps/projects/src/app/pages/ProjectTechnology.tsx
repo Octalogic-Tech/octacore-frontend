@@ -1,21 +1,23 @@
 import { Box, Fab, Typography } from '@mui/material';
 import { SupportProjectTable } from '../components/SupportProjectTable';
 import SearchIcon from '@mui/icons-material/Search';
-import { styled, alpha } from '@mui/material/styles';
+import { styled } from '@mui/material/styles';
 import InputBase from '@mui/material/InputBase';
 import { Add } from '@mui/icons-material';
-import { navBarFigma } from '@octacore-frontend/constant';
+import { borderParameter, colorParameter, searchFieldFigma } from '@octacore-frontend/constant';
 import { BreadCrumbs } from '@octacore-frontend/shared-ui';
 
 const Search = styled('div')(({ theme }) => ({
   position: 'relative',
-  borderRadius: theme.shape.borderRadius,
-  backgroundColor: alpha(theme.palette.common.white, 0.15),
+  borderRadius: borderParameter.containerRadius,
+  border: searchFieldFigma.border,
+  backgroundColor: searchFieldFigma.backgroundColor,
   '&:hover': {
-    backgroundColor: alpha(theme.palette.common.white, 0.25),
+    backgroundColor: searchFieldFigma.hoverColor,
   },
   marginLeft: 0,
   width: '100%',
+  height: 32,
   [theme.breakpoints.up('sm')]: {
     marginLeft: theme.spacing(1),
     width: 'auto',
@@ -53,7 +55,7 @@ const TableHeadingBox = styled(Box)(({ theme }) => ({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  marginTop: '1rem',
+  margin: '0 0 0.5rem 0',
   padding: '0px 0.3rem',
 }));
 
@@ -83,7 +85,7 @@ function ProjectTechnology() {
           position: 'fixed',
           bottom: 20,
           right: { xs: 'calc(15%)', md: 30 },
-          background: navBarFigma.activeButtonColor,
+          background: colorParameter.lightPink,
         }}
       >
         <Add />

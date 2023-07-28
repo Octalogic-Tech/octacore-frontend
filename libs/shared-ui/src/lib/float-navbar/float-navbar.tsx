@@ -51,11 +51,11 @@ export function FloatNavbar(props: FloatNavbarProps) {
         display={isDrawerOpen}
         onClick={() => setIsDrawerOpen('none')}
       >
-        <Stack direction={'row'} spacing={2} p={2}>
-          <Box>
+        <Stack direction={'row'} spacing={2} p={2} margin={0} padding={0}>
+          <Box sx={{borderRight:'1px solid gray'}}>
             <Navbar activeTab={activeTab} />
           </Box>
-          <Box>
+          <Box width={'100%'}>
             <NestedNav activeTab={activeTab} />
           </Box>
         </Stack>
