@@ -1,15 +1,14 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { FloatNavbar, Navbar, NestedNav } from '@octacore-frontend/shared-ui';
+import { CssBaseline, Stack } from '@mui/material';
 import {
   ContentContainer,
-  FloatNavbar,
   MainContainerBox,
-  Navbar,
   NavbarBox,
-  NestedNav,
   NestedNavbarBox,
-} from '@octacore-frontend/shared-ui';
-import { CssBaseline, Stack } from '@mui/material';
-import { mainRootTheme, routes } from '@octacore-frontend/constant';
+  mainRootTheme,
+  routes,
+} from '@octacore-frontend/constant';
 import { ThemeProvider } from '@mui/material';
 import ProjectOverview from './pages/ProjectOverview';
 import ProjectTechnology from './pages/ProjectTechnology';
@@ -22,7 +21,7 @@ function App() {
       <CssBaseline>
         <ThemeProvider theme={mainRootTheme}>
           <FloatNavbar activeTab={activeTab} />
-          <MainContainerBox >
+          <MainContainerBox>
             <Stack
               direction={'row'}
               spacing={0}

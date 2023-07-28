@@ -32,6 +32,17 @@ export type AddCategoryModalProps = {
 
 //category table props interfaces-------
 export type CategoriesTableProps = {
-  categoriesArray: Array<string>;
+  categoryData?: CategoryDataArrayType | null;
   fetchCategoryData: () => void;
 };
+
+//category data types------------
+export type CategoryDataType = {
+  id: number;
+  name: string;
+  description: string;
+  updated: string;
+  created: string;
+}
+
+export type CategoryDataArrayType = CategoryDataType[]

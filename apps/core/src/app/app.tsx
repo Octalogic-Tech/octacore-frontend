@@ -1,16 +1,15 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import CoreOverview from './pages/CoreOverview';
+import { FloatNavbar, Navbar, NestedNav } from '@octacore-frontend/shared-ui';
+import { CssBaseline, Stack } from '@mui/material';
 import {
   ContentContainer,
-  FloatNavbar,
   MainContainerBox,
-  Navbar,
   NavbarBox,
-  NestedNav,
   NestedNavbarBox,
-} from '@octacore-frontend/shared-ui';
-import { CssBaseline, Stack } from '@mui/material';
-import { mainRootTheme, routes } from '@octacore-frontend/constant';
+  mainRootTheme,
+  routes,
+} from '@octacore-frontend/constant';
 import { ThemeProvider } from '@mui/material';
 import Categories from './pages/Categories';
 

@@ -3,11 +3,11 @@ import {
   BreadCrumbs,
   ExpenseCards,
   SalaryCard,
-  TableHeadingBox,
 } from '@octacore-frontend/shared-ui';
 import { OutstandingTable } from '../components/OutstandingInvoiceTable';
 import { FollowUpsTable } from '../components/FollowUpsTable';
 import { styled } from '@mui/material/styles';
+import { TableHeadingBox } from '@octacore-frontend/constant';
 
 const TableBox = styled(Box)(({ theme }) => ({
   overflow: 'hidden',

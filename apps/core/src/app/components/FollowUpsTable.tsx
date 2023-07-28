@@ -2,10 +2,9 @@ import React from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import Paper from '@mui/material/Paper';
+import { CustomPaperContainer, CustomTableContainer } from '@octacore-frontend/constant';
 
 export interface FollowUpsTableProps {
   followUpstableData: Array<string>;
@@ -14,16 +13,16 @@ export interface FollowUpsTableProps {
 export const FollowUpsTable: React.FC<FollowUpsTableProps> = (props) => {
   const { followUpstableData } = props;
   return (
-    <Paper sx={{ width: { xs: '100vw', sm: '100%' }, overflow: 'hidden' }}>
-      <TableContainer>
+    <CustomPaperContainer>
+      <CustomTableContainer>
         <Table size="small" aria-label="simple table">
           <TableHead>
             <TableRow>
               <TableCell>column</TableCell>
-              <TableCell align="right">column</TableCell>
-              <TableCell align="right">column</TableCell>
-              <TableCell align="right">column</TableCell>
-              <TableCell align="right">column</TableCell>
+              <TableCell align="left">column</TableCell>
+              <TableCell align="left">column</TableCell>
+              <TableCell align="left">column</TableCell>
+              <TableCell align="left">column</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -32,15 +31,15 @@ export const FollowUpsTable: React.FC<FollowUpsTableProps> = (props) => {
                 <TableCell component="th" scope="row">
                   column
                 </TableCell>
-                <TableCell align="right">column</TableCell>
-                <TableCell align="right">column</TableCell>
-                <TableCell align="right">column</TableCell>
-                <TableCell align="right">column</TableCell>
+                <TableCell align="left">column</TableCell>
+                <TableCell align="left">column</TableCell>
+                <TableCell align="left">column</TableCell>
+                <TableCell align="left">column</TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </TableContainer>
-    </Paper>
+      </CustomTableContainer>
+    </CustomPaperContainer>
   );
 };

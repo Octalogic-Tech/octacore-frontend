@@ -2,54 +2,14 @@ import { Box, Fab, Typography } from '@mui/material';
 import { SupportProjectTable } from '../components/SupportProjectTable';
 import SearchIcon from '@mui/icons-material/Search';
 import { styled } from '@mui/material/styles';
-import InputBase from '@mui/material/InputBase';
 import { Add } from '@mui/icons-material';
-import { borderParameter, colorParameter, searchFieldFigma } from '@octacore-frontend/constant';
+import {
+  Search,
+  SearchIconWrapper,
+  StyledInputBase,
+  fabStyle,
+} from '@octacore-frontend/constant';
 import { BreadCrumbs } from '@octacore-frontend/shared-ui';
-
-const Search = styled('div')(({ theme }) => ({
-  position: 'relative',
-  borderRadius: borderParameter.containerRadius,
-  border: searchFieldFigma.border,
-  backgroundColor: searchFieldFigma.backgroundColor,
-  '&:hover': {
-    backgroundColor: searchFieldFigma.hoverColor,
-  },
-  marginLeft: 0,
-  width: '100%',
-  height: 32,
-  [theme.breakpoints.up('sm')]: {
-    marginLeft: theme.spacing(1),
-    width: 'auto',
-  },
-}));
-
-const SearchIconWrapper = styled('div')(({ theme }) => ({
-  padding: theme.spacing(0, 2),
-  height: '100%',
-  position: 'absolute',
-  pointerEvents: 'none',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-}));
-
-const StyledInputBase = styled(InputBase)(({ theme }) => ({
-  color: 'inherit',
-  '& .MuiInputBase-input': {
-    padding: theme.spacing(1, 1, 1, 0),
-    // vertical padding + font size from searchIcon
-    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-    transition: theme.transitions.create('width'),
-    width: '100%',
-    [theme.breakpoints.up('sm')]: {
-      width: '12ch',
-      '&:focus': {
-        width: '20ch',
-      },
-    },
-  },
-}));
 
 const TableHeadingBox = styled(Box)(({ theme }) => ({
   display: 'flex',
@@ -78,16 +38,7 @@ function ProjectTechnology() {
         </Search>
       </TableHeadingBox>
       <SupportProjectTable supportTableData={array} />
-      <Fab
-        aria-label="add"
-        variant="extended"
-        sx={{
-          position: 'fixed',
-          bottom: 20,
-          right: { xs: 'calc(15%)', md: 30 },
-          background: colorParameter.lightPink,
-        }}
-      >
+      <Fab aria-label="add" variant="extended" sx={fabStyle}>
         <Add />
         Add Technology
       </Fab>

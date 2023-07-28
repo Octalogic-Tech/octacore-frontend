@@ -1,37 +1,32 @@
 import React, { useState } from 'react';
 import {
-  Paper,
   Table,
   TableBody,
   TableCell,
-  TableContainer,
   TableHead,
   TableRow,
   TablePagination,
   IconButton,
   Menu,
-  MenuItem,
 } from '@mui/material';
 import EditCategoryModal from './EditCategoryModal';
 import { Delete, Edit, MoreVert } from '@mui/icons-material';
 import {
   CategoriesTableProps,
+  CategoryDataType,
+  CustomMenuItem,
+  CustomPaperContainer,
+  CustomTableContainer,
   actionMenuParameter,
-  borderParameter,
   columns,
   rows,
 } from '@octacore-frontend/constant';
-import { styled } from '@mui/material/styles';
-
-//custom menu item styling-------------------
-const CustomMenuItem = styled(MenuItem)(({ theme }) => ({
-  '&:hover': {
-    background: actionMenuParameter.menuItemBackGroundColor,
-  },
-}));
 
 //Category table main Components--------------
-function CategoriesTable(props: CategoriesTableProps) {
+function CategoriesTable({
+  categoryData,
+  fetchCategoryData,
+}: CategoriesTableProps) {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(5);
   const [editCategoryData, setEditCategoryData] = useState({
@@ -47,10 +42,12 @@ function CategoriesTable(props: CategoriesTableProps) {
   //Menu Open function start here -----------------
   const handleMenuClick = (
     event: React.MouseEvent<HTMLElement>,
-    id: number
+    id: number | undefined
   ) => {
-    setRowId(id);
-    setAnchorEl(event.currentTarget);
+    if (id) {
+      setRowId(id);
+      setAnchorEl(event.currentTarget);
+    }
   };
   //menu close function start here ---------------
   const handleMenuCloseClick = () => {
@@ -73,14 +70,16 @@ function CategoriesTable(props: CategoriesTableProps) {
 
   //category edited data handled here --------------
   const handleEditClick = () => {
-    const index = rows.findIndex((row) => row.id === rowId);
-    setEditCategoryData({
-      id: rowId,
-      name: rows[index].name,
-      description: rows[index].description,
-    });
-    setEditModalOpen(true);
-    setAnchorEl(null);
+    if (categoryData) {
+      const index = categoryData.findIndex((row) => row.id === rowId);
+      setEditCategoryData({
+        id: rowId,
+        name: categoryData[index].name,
+        description: categoryData[index].description,
+      });
+      setEditModalOpen(true);
+      setAnchorEl(null);
+    }
   };
 
   //delete category data Api called here------------------
@@ -93,22 +92,14 @@ function CategoriesTable(props: CategoriesTableProps) {
     setEditModalOpen(false);
   }
 
+  if (!categoryData) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <>
-      <Paper
-        sx={{
-          width: { xs: '100vw', sm: '100%' },
-          borderRadius: borderParameter.containerRadius,
-          boxShadow: 'none',
-        }}
-      >
-        <TableContainer
-          sx={{
-            maxHeight: { xs: '350px', md: '400px' },
-            padding: '16px 16px 16px 16px',
-            gap: '16px',
-          }}
-        >
+      <CustomPaperContainer>
+        <CustomTableContainer>
           <Table size="small" stickyHeader aria-label="sticky table">
             <TableHead>
               <TableRow>
@@ -123,14 +114,14 @@ function CategoriesTable(props: CategoriesTableProps) {
               </TableRow>
             </TableHead>
             <TableBody>
-              {rows
-                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((row) => {
+              {categoryData
+                ?.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                .map((row?: CategoryDataType) => {
                   return (
-                    <TableRow key={row.id}>
-                      <TableCell align="left">{row.name}</TableCell>
-                      <TableCell align="left">{row.created}</TableCell>
-                      <TableCell align="left">{row.updated}</TableCell>
+                    <TableRow key={row?.id}>
+                      <TableCell align="left">{row?.name}</TableCell>
+                      <TableCell align="left">{row?.created}</TableCell>
+                      <TableCell align="left">{row?.updated}</TableCell>
                       <TableCell align="center">
                         <IconButton
                           aria-label="more"
@@ -138,7 +129,7 @@ function CategoriesTable(props: CategoriesTableProps) {
                           aria-controls={open ? 'long-menu' : undefined}
                           aria-expanded={open ? 'true' : undefined}
                           aria-haspopup="true"
-                          onClick={(e) => handleMenuClick(e, row.id)}
+                          onClick={(e) => handleMenuClick(e, row?.id)}
                           sx={{ padding: 0, margin: 0 }}
                         >
                           <MoreVert />
@@ -152,7 +143,7 @@ function CategoriesTable(props: CategoriesTableProps) {
                           anchorEl={anchorEl}
                           open={open}
                           onClose={handleMenuCloseClick}
-                          key={row.id}
+                          key={row?.id}
                           anchorOrigin={{
                             vertical: 'bottom',
                             horizontal: 'left',
@@ -169,7 +160,7 @@ function CategoriesTable(props: CategoriesTableProps) {
                           }}
                         >
                           <CustomMenuItem
-                            key={row.id}
+                            key={row?.id}
                             onClick={handleEditClick}
                           >
                             <Edit /> Edit
@@ -184,7 +175,7 @@ function CategoriesTable(props: CategoriesTableProps) {
                 })}
             </TableBody>
           </Table>
-        </TableContainer>
+        </CustomTableContainer>
         <TablePagination
           rowsPerPageOptions={[5, 10, 20]}
           component="div"
@@ -194,7 +185,7 @@ function CategoriesTable(props: CategoriesTableProps) {
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
         />
-      </Paper>
+      </CustomPaperContainer>
       <EditCategoryModal
         editCategoryData={editCategoryData}
         setEditCategoryData={setEditCategoryData}

@@ -2,12 +2,10 @@ import { Box, FormControl, OutlinedInput, Typography } from '@mui/material';
 import React from 'react';
 import {
   DialogBoxModal,
-  SubmitButton,
-  customPopupBoxStyle,
-} from '@octacore-frontend/shared-ui';
-import {
   EditCategoryModalProps,
+  SubmitButton,
   colorParameter,
+  customPopupBoxStyle,
   marginParameters,
   textSizeParameter,
 } from '@octacore-frontend/constant';

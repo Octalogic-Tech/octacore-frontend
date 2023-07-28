@@ -1,17 +1,21 @@
-import { BreadCrumbs, fabStyle } from '@octacore-frontend/shared-ui';
+import { BreadCrumbs } from '@octacore-frontend/shared-ui';
 import { styled } from '@mui/material/styles';
-import { Box, Fab, InputBase, Typography } from '@mui/material';
+import { Box, Fab, Typography } from '@mui/material';
 import {
   CategoryData,
-  borderParameter,
+  CategoryDataArrayType,
+  Search,
+  SearchIconWrapper,
+  StyledInputBase,
   breadCrumbsConstants,
-  searchFieldFigma,
+  fabStyle,
 } from '@octacore-frontend/constant';
 import CategoriesTable from '../components/CategoriesTable';
 import { useEffect, useState } from 'react';
 import AddCategoryModal from '../components/AddCategoryModal';
 import SearchIcon from '@mui/icons-material/Search';
 import { Add } from '@mui/icons-material';
+import axios from 'axios';
 
 //table heading custom mui start here------
 const TableHeadingBox = styled(Box)(({ theme }) => ({
@@ -27,54 +31,17 @@ const TableHeadingBox = styled(Box)(({ theme }) => ({
   },
 }));
 
-const Search = styled('div')(({ theme }) => ({
-  position: 'relative',
-  borderRadius: borderParameter.containerRadius,
-  border: searchFieldFigma.border,
-  backgroundColor: searchFieldFigma.backgroundColor,
-  marginLeft: 0,
-  width: '100%',
-  padding: 0,
-  boxShadow: 'none',
-  [theme.breakpoints.up('sm')]: {
-    marginLeft: theme.spacing(1),
-    width: 'auto',
-  },
-  [theme.breakpoints.down('sm')]: {
-    width: '100%',
-  },
-}));
-
-const SearchIconWrapper = styled('div')(({ theme }) => ({
-  padding: theme.spacing(0, 2),
-  height: '100%',
-  position: 'absolute',
-  pointerEvents: 'none',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-}));
-
-const StyledInputBase = styled(InputBase)(({ theme }) => ({
-  color: 'inherit',
-  '& .MuiInputBase-input': {
-    padding: theme.spacing(0.4, 0.3, 0.3, 0),
-    // vertical padding + font size from searchIcon
-    paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-    transition: theme.transitions.create('width'),
-    width: '100%',
-    [theme.breakpoints.up('sm')]: {
-      width: '12ch',
-      '&:focus': {
-        width: '20ch',
-      },
-    },
-  },
-}));
+type temporaryData = {
+  id: number
+  userId: number
+  body: string
+  title: string
+}
 
 //categories functional components start here---------------
 function Categories() {
-  const array = new Array(5).fill('values');
+  const [categoryData, setCategoryData] =
+    useState<CategoryDataArrayType | null>(null);
   const currentPage = breadCrumbsConstants.core.category;
   const currentProject = breadCrumbsConstants.core.name;
   const [addCategoryOpen, setAddCategoryOpen] = useState(false);
@@ -87,8 +54,22 @@ function Categories() {
   }, []);
 
   //backend call for listing all categories
-  function fetchCategoryData() {
-    return '';
+  async function fetchCategoryData() {
+    const data = await axios('https://jsonplaceholder.typicode.com/posts');
+    const currentDate = new Date();
+    setCategoryData(
+      data.data.map((val: temporaryData) => {
+        return {
+          id: val.id,
+          name: val.title,
+          description: val.body,
+          updated: `${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`,
+          created: `${currentDate.getMonth() + 1}/${
+            currentDate.getFullYear() - 1
+          }`,
+        };
+      })
+    );
   }
 
   //handle category data function
@@ -115,7 +96,7 @@ function Categories() {
         </Search>
       </TableHeadingBox>
       <CategoriesTable
-        categoriesArray={array}
+        categoryData={categoryData}
         fetchCategoryData={fetchCategoryData}
       />
       <Fab
