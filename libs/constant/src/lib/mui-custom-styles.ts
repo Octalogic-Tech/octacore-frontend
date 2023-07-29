@@ -16,11 +16,11 @@ import {
 
 export const CustomTableContainer = styled(TableContainer)(({ theme }) => ({
   [theme.breakpoints.down('sm')]: {
-    maxHieght: '350px',
+    maxHeight: '350px',
     padding: 0,
   },
   [theme.breakpoints.up('sm')]: {
-    maxHieght: '400px',
+    maxHeight: '400px',
     padding: '16px',
   },
   gap: '16px',

@@ -10,7 +10,7 @@ import CodeTwoToneIcon from '@mui/icons-material/CodeTwoTone';
 export interface NavTabsInterface {
   tab: string;
   navTo: string;
-  icon: any;
+  icon: React.ComponentType;
 }
 
 export const NavTabs: NavTabsInterface[] = [
