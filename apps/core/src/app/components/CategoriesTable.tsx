@@ -21,7 +21,6 @@ import {
   CustomTableContainer,
   actionMenuParameter,
   columns,
-  rows,
 } from '@octacore-frontend/constant';
 import { useTheme } from '@mui/material';
 
@@ -186,7 +185,7 @@ function CategoriesTable({
         <TablePagination
           rowsPerPageOptions={[5, 10, 20]}
           component="div"
-          count={rows.length}
+          count={categoryData.length}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}

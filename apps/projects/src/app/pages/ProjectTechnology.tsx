@@ -1,4 +1,4 @@
-import { Box, Fab, Typography } from '@mui/material';
+import { Box, Fab, Typography, useTheme } from '@mui/material';
 import { SupportProjectTable } from '../components/SupportProjectTable';
 import SearchIcon from '@mui/icons-material/Search';
 import { styled } from '@mui/material/styles';
@@ -22,14 +22,15 @@ const TableHeadingBox = styled(Box)(({ theme }) => ({
 function ProjectTechnology() {
   const array = new Array(5).fill('values');
   const [currentProject, currentPage] = ['Projects', 'technology'];
+  const { palette } = useTheme()
   return (
     <>
       <BreadCrumbs currentPage={currentPage} currentProject={currentProject} />
       <TableHeadingBox>
-        <Typography variant="h5">SUPPORT PROJECT</Typography>
+        <Typography variant="subtitle2">SUPPORT PROJECT</Typography>
         <Search>
           <SearchIconWrapper>
-            <SearchIcon />
+            <SearchIcon sx={{ color: palette.text.secondary }} />
           </SearchIconWrapper>
           <StyledInputBase
             placeholder="Search…"

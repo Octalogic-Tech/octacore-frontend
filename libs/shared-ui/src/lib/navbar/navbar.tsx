@@ -77,6 +77,7 @@ export function Navbar(props: NavbarProps) {
                 <tab.icon />
                 <Typography
                   variant='body2'
+                  color={activeTab === tab.tab ? palette.secondary.main : palette.text.secondary}
                 >
                   {tab.tab}
                 </Typography>
@@ -89,7 +90,7 @@ export function Navbar(props: NavbarProps) {
         <ListItem disablePadding>
           <ListItemButton disableGutters>
             <CustomeNavIconBox>
-              <Logout />
+              <Logout sx={{ color: palette.text.secondary }} />
               <Typography fontSize={12}>Logout</Typography>
             </CustomeNavIconBox>
           </ListItemButton>

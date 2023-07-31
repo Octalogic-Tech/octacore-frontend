@@ -32,7 +32,7 @@ function ProjectOverview() {
         </Grid>
       </Grid>
       <TableHeadingBox>
-        <Typography variant="h5">OUTSTANDING INVOICES</Typography>
+        <Typography variant="subtitle2">OUTSTANDING INVOICES</Typography>
         <Typography
           variant="body1"
           color="secondary.main"
@@ -47,7 +47,7 @@ function ProjectOverview() {
         />
       </TableBox>
       <TableHeadingBox>
-        <Typography variant="h5">FOLLOW UPS</Typography>
+        <Typography variant="subtitle2" >FOLLOW UPS</Typography>
         <Typography
           variant="body1"
           color="secondary.main"

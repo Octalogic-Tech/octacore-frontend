@@ -1,11 +1,12 @@
 import React from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import {
   CustomPaperContainer,
+  CustomTableCellBody,
+  CustomTableCellHeader,
   CustomTableContainer,
 } from '@octacore-frontend/constant';
 
@@ -24,23 +25,23 @@ export const OngoingDevelopmentTable: React.FC<OngoingDevelopmentTableProps> = (
         <Table size="small" aria-label="simple table">
           <TableHead>
             <TableRow>
-              <TableCell>column</TableCell>
-              <TableCell align="left">column</TableCell>
-              <TableCell align="left">column</TableCell>
-              <TableCell align="left">column</TableCell>
-              <TableCell align="left">column</TableCell>
+              <CustomTableCellHeader>column</CustomTableCellHeader>
+              <CustomTableCellHeader align="left">column</CustomTableCellHeader>
+              <CustomTableCellHeader align="left">column</CustomTableCellHeader>
+              <CustomTableCellHeader align="left">column</CustomTableCellHeader>
+              <CustomTableCellHeader align="left">column</CustomTableCellHeader>
             </TableRow>
           </TableHead>
           <TableBody>
             {ongoingDevelopmentTableData.map((_, index) => (
               <TableRow key={index}>
-                <TableCell component="th" scope="row">
+                <CustomTableCellBody component="th" scope="row">
                   column
-                </TableCell>
-                <TableCell align="left">column</TableCell>
-                <TableCell align="left">column</TableCell>
-                <TableCell align="left">column</TableCell>
-                <TableCell align="left">column</TableCell>
+                </CustomTableCellBody>
+                <CustomTableCellBody align="left">column</CustomTableCellBody>
+                <CustomTableCellBody align="left">column</CustomTableCellBody>
+                <CustomTableCellBody align="left">column</CustomTableCellBody>
+                <CustomTableCellBody align="left">column</CustomTableCellBody>
               </TableRow>
             ))}
           </TableBody>

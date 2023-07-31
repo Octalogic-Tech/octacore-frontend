@@ -1,6 +1,6 @@
 import { BreadCrumbs } from '@octacore-frontend/shared-ui';
 import { styled } from '@mui/material/styles';
-import { Box, Fab, Typography } from '@mui/material';
+import { Box, Fab, Typography, useTheme } from '@mui/material';
 import {
   CategoryData,
   CategoryDataArrayType,
@@ -47,6 +47,7 @@ function Categories() {
   const [addCategoryOpen, setAddCategoryOpen] = useState(false);
   const [addCategoryTextFieldData, setAddCategoryTextFieldData] =
     useState<CategoryData>({ name: '', description: '' });
+  const { palette } = useTheme()
 
   //handling useEffect for the initial fetching category
   useEffect(() => {
@@ -95,7 +96,7 @@ function Categories() {
         </Typography>
         <Search>
           <SearchIconWrapper>
-            <SearchIcon />
+            <SearchIcon sx={{color:palette.text.secondary}} />
           </SearchIconWrapper>
           <StyledInputBase
             placeholder="Search…"
