@@ -3,21 +3,18 @@ import {
   List,
   ListItem,
   ListItemButton,
-  ListItemIcon,
-  ListItemText,
   Typography,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import {
   NestedNavTabProject,
   borderParameter,
-  colorParameter,
   marginParameters,
   nestedNavTabs,
-  textSizeParameter,
 } from '@octacore-frontend/constant';
 import { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useTheme } from '@mui/material';
 export interface NestedNavbarProps {
   activeTab: string;
 }
@@ -31,11 +28,11 @@ const listButtonStyle = {
   padding: '0.5rem',
 };
 
-const CustomNestedNavBox = styled(Box)(({ theme }) => ({
+const CustomNestedNavBox = styled(Box)({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'start',
-}));
+});
 
 export function NestedNav(props: NestedNavbarProps) {
   const [findActiveMainTab, setFindActiveTab] = useState('Overview');
@@ -43,6 +40,7 @@ export function NestedNav(props: NestedNavbarProps) {
     []
   );
   const location = useLocation();
+  const { palette } = useTheme()
 
   useEffect(() => {
     const index = nestedNavTabs.findIndex(
@@ -61,8 +59,8 @@ export function NestedNav(props: NestedNavbarProps) {
   return (
     <BoxSticky>
       <Typography
+        variant='body1'
         sx={{
-          fontSize: textSizeParameter.tableLabelFontSize,
           marginBottom: marginParameters.marginBottom,
         }}
       >
@@ -84,8 +82,12 @@ export function NestedNav(props: NestedNavbarProps) {
               sx={{
                 background:
                   project.navTo === findActiveMainTab
-                    ? colorParameter.lightPink
-                    : 'inherit',
+                    ? palette.secondary.light
+                    : '',
+                color:
+                project.navTo === findActiveMainTab
+                    ? palette.secondary.main
+                    : palette.text.secondary,
                 ...listButtonStyle,
               }}
               disableGutters

@@ -32,13 +32,13 @@ export const SalaryCard = (props: SalaryCardProps) => {
   return (
     <Card sx={{ padding: '0.5rem', maxWidth: 400 }}>
       <CardHeadBox>
-        <Typography>Outstanding</Typography>
+        <Typography variant="body2">Outstanding</Typography>
       </CardHeadBox>
       <CardFirstContentBox>
-        <Typography variant="h5" mr={1} component="div">
+        <Typography variant='h6' mr={1} component="div">
           7000
         </Typography>
-        <Typography variant="h6"> from 1,40,400</Typography>
+        <Typography variant="body2"> from 1,40,400</Typography>
       </CardFirstContentBox>
       <CardContentBox></CardContentBox>
       <CardHeadBox>

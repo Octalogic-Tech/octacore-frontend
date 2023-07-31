@@ -1,3 +1,30 @@
+export const tokens = {
+  grey: {
+    200: '#E5E7EB',
+    300: '#D1D5DB',
+    900:"#212529"
+  },
+  primary: {
+    // light green
+    300: '#B2EECF',
+    900: '#043028',
+  },
+  secondary: {
+    100: '#FEDFE1',
+    200: '#FEC0CA',
+    800: '#901E75',
+  },
+  background: {
+    light: '#ffff',
+    main: '#1f2026',
+  },
+  text: {
+    primary: '#212529',
+    secondary: '#83858B',
+    tertiary: '#999999',
+  },
+};
+
 export const colorParameter = {
   darkPink: '#901E75',
   lightPink: '#FEDFE1',
@@ -75,3 +102,4 @@ export const searchFieldFigma = {
   backgroundColor: '#FFFFFF',
   border: '1px solid #E5E7EB',
 };
+

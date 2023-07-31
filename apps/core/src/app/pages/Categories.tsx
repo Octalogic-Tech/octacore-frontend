@@ -74,7 +74,15 @@ function Categories() {
 
   //handle category data function
   const handleCategorySubmit = () => {
-    console.log(addCategoryTextFieldData);
+    if(addCategoryTextFieldData.name && addCategoryTextFieldData.description){
+      //add category data api post request
+
+      setAddCategoryOpen(false)
+      //refresh the table
+      fetchCategoryData()
+      setAddCategoryTextFieldData({name: "", description: ""})
+    }
+    
   };
 
   //category jsx syntax start here
@@ -82,7 +90,7 @@ function Categories() {
     <>
       <BreadCrumbs currentProject={currentProject} currentPage={currentPage} />
       <TableHeadingBox>
-        <Typography variant="h5" sx={{ textTransform: 'uppercase' }}>
+        <Typography variant="subtitle2" sx={{ textTransform: 'uppercase' }}>
           Categories
         </Typography>
         <Search>

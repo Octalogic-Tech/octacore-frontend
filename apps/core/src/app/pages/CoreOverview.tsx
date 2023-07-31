@@ -1,4 +1,4 @@
-import { Grid, Typography, Box } from '@mui/material';
+import { Grid, Typography, Box, useTheme } from '@mui/material';
 import {
   BreadCrumbs,
   ExpenseCards,
@@ -20,6 +20,7 @@ function CoreOverview() {
   const followUpstableData = new Array(5).fill('values');
   const expenseCardRepeat = new Array(3).fill('values');
   const [currentProject, currentPage] = ['Core', 'Overview'];
+  const { palette } = useTheme()
   return (
     <>
       <BreadCrumbs currentPage={currentPage} currentProject={currentProject} />
@@ -36,10 +37,10 @@ function CoreOverview() {
         </Grid>
       </Grid>
       <TableHeadingBox>
-        <Typography variant="h5">OUTSTANDING INVOICES</Typography>
+        <Typography variant="subtitle2">OUTSTANDING INVOICES</Typography>
         <Typography
           variant="body1"
-          color="secondary.main"
+          color={palette.secondary.main}
           style={{ cursor: 'pointer' }}
         >
           View All
@@ -49,7 +50,7 @@ function CoreOverview() {
         <OutstandingTable outstandingInvoice={outstandingInvoiceTableData} />
       </TableBox>
       <TableHeadingBox>
-        <Typography variant="h5">FOLLOW UPS</Typography>
+        <Typography variant="subtitle2">FOLLOW UPS</Typography>
         <Typography
           variant="body1"
           color="secondary.main"

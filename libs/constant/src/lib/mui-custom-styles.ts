@@ -4,7 +4,9 @@ import {
   MenuItem,
   Modal,
   Paper,
+  TableCell,
   TableContainer,
+  TableHead,
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import {
@@ -12,6 +14,7 @@ import {
   borderParameter,
   containerSpecFigma,
   fabButtonParameter,
+  fontStyleFigma,
 } from './design-system-variable';
 
 export const CustomTableContainer = styled(TableContainer)(({ theme }) => ({
@@ -33,7 +36,7 @@ export const CustomPaperContainer = styled(Paper)(({ theme }) => ({
   [theme.breakpoints.up('sm')]: {
     maxWidth: '100%',
   },
-  borderRadius: borderParameter.containerRadius,
+  borderRadius: theme.shape.borderRadius,
   boxShadow: 'none',
 }));
 
@@ -158,3 +161,28 @@ export const customPopupBoxStyle = {
   borderRadius: borderParameter.containerRadius,
 };
 //dialog modal styling start here-----------------
+
+export const CustomTableHead = styled(TableHead)(({theme})=>({
+  fontWeight: fontStyleFigma.tableHeadFontWeight,
+  color: theme.palette.text.primary,
+  fontFamily: ['Nunito Sans', 'sans-serif'].join(','),
+  fontSize:'14px',
+  paddingTop:'8px',
+  paddingBottom:'16px',
+}))
+
+export const CustomTableCellHeader = styled(TableCell)(({theme})=>({
+  fontWeight: fontStyleFigma.tableHeadFontWeight,
+  color: theme.palette.text.primary,
+  fontFamily: ['Nunito Sans', 'sans-serif'].join(','),
+  fontSize:'14px',
+  paddingTop:'8px',
+  paddingBottom:'16px',
+}))
+
+export const CustomTableCellBody = styled(TableCell)(({theme})=>({
+  fontWeight: fontStyleFigma.tableBodyFontWeight,
+  color: theme.palette.text.primary,
+  fontFamily: ['Nunito Sans', 'sans-serif'].join(','),
+  fontSize:'14px',
+}))

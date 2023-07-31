@@ -17,15 +17,15 @@ export function BreadCrumbs(props: BreadCrumbsProps) {
   const { currentPage, currentProject } = props;
   return (
     <BreadCrumBox>
-      <Typography variant="h6"mb={marginParameters.marginBottom}>
+      <Typography variant="body2"mb={marginParameters.marginBottom}>
         {currentProject} /{' '}
-        <Typography variant="h6" component="span" color="secondary.main">
+        <Typography variant="body2" component="span" color="secondary.main">
           {currentPage}
         </Typography>
       </Typography>
       <Typography
         color={overViewFigma.breadCrumbsHeaderFontColor}
-        variant="h4"
+        variant="h5"
         gutterBottom
       >
         {currentPage}

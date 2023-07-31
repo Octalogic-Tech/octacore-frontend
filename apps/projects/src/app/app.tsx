@@ -1,25 +1,27 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { FloatNavbar, Navbar, NestedNav } from '@octacore-frontend/shared-ui';
-import { CssBaseline, Stack } from '@mui/material';
+import { CssBaseline, Stack, createTheme } from '@mui/material';
 import {
   ContentContainer,
   MainContainerBox,
   NavbarBox,
   NestedNavbarBox,
-  mainRootTheme,
   routes,
+  themeSettings,
 } from '@octacore-frontend/constant';
 import { ThemeProvider } from '@mui/material';
 import ProjectOverview from './pages/ProjectOverview';
 import ProjectTechnology from './pages/ProjectTechnology';
 import ProjectIndustry from './pages/ProjectIndustry';
+import { useMemo } from 'react';
 
 function App() {
   const activeTab = 'Projects';
+  const theme = useMemo(() => createTheme(themeSettings), [])
   return (
     <BrowserRouter>
       <CssBaseline>
-        <ThemeProvider theme={mainRootTheme}>
+        <ThemeProvider theme={theme}>
           <FloatNavbar activeTab={activeTab} />
           <MainContainerBox>
             <Stack

@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import {
   Table,
   TableBody,
-  TableCell,
   TableHead,
   TableRow,
   TablePagination,
   IconButton,
   Menu,
+  LinearProgress,
 } from '@mui/material';
 import EditCategoryModal from './EditCategoryModal';
 import { Delete, Edit, MoreVert } from '@mui/icons-material';
@@ -16,11 +16,14 @@ import {
   CategoryDataType,
   CustomMenuItem,
   CustomPaperContainer,
+  CustomTableCellBody,
+  CustomTableCellHeader,
   CustomTableContainer,
   actionMenuParameter,
   columns,
   rows,
 } from '@octacore-frontend/constant';
+import { useTheme } from '@mui/material';
 
 //Category table main Components--------------
 function CategoriesTable({
@@ -38,6 +41,7 @@ function CategoriesTable({
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const [rowId, setRowId] = useState<number>(0);
+  const {palette}  = useTheme()
 
   //Menu Open function start here -----------------
   const handleMenuClick = (
@@ -89,11 +93,13 @@ function CategoriesTable({
 
   //edit category api call
   function handleEdiCategorysubmit() {
-    setEditModalOpen(false);
+    if(editCategoryData.name && editCategoryData.description){
+      setEditModalOpen(false);
+    }
   }
 
   if (!categoryData) {
-    return <div>Loading...</div>;
+    return <LinearProgress color='secondary' />;
   }
 
   return (
@@ -102,14 +108,15 @@ function CategoriesTable({
         <CustomTableContainer>
           <Table size="small" stickyHeader aria-label="sticky table">
             <TableHead>
-              <TableRow>
+              <TableRow >
                 {columns.map((column) => (
-                  <TableCell
+                  <CustomTableCellHeader
                     key={column.id}
                     align={column.id === 'action' ? 'center' : 'left'}
+                    sx={{background: palette.background.paper}}
                   >
                     {column.label}
-                  </TableCell>
+                  </CustomTableCellHeader>
                 ))}
               </TableRow>
             </TableHead>
@@ -119,10 +126,10 @@ function CategoriesTable({
                 .map((row?: CategoryDataType) => {
                   return (
                     <TableRow key={row?.id}>
-                      <TableCell align="left">{row?.name}</TableCell>
-                      <TableCell align="left">{row?.created}</TableCell>
-                      <TableCell align="left">{row?.updated}</TableCell>
-                      <TableCell align="center">
+                      <CustomTableCellBody align="left">{row?.name}</CustomTableCellBody>
+                      <CustomTableCellBody align="left">{row?.created}</CustomTableCellBody>
+                      <CustomTableCellBody align="left">{row?.updated}</CustomTableCellBody>
+                      <CustomTableCellBody align="center">
                         <IconButton
                           aria-label="more"
                           id="long-button"
@@ -169,7 +176,7 @@ function CategoriesTable({
                             <Delete /> Delete
                           </CustomMenuItem>
                         </Menu>
-                      </TableCell>
+                      </CustomTableCellBody>
                     </TableRow>
                   );
                 })}

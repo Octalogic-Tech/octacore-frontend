@@ -1,5 +1,5 @@
 import { Box, FormControl, OutlinedInput, Typography } from '@mui/material';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   DialogBoxModal,
   EditCategoryModalProps,
@@ -20,6 +20,20 @@ function EditCategoryModal(props: EditCategoryModalProps) {
     handleEdiCategorysubmit,
   } = props;
 
+  const [validationrror, setValidationError] = useState(false)
+  
+
+  const handleValidateData = () => {
+    if(editCategoryData.name && editCategoryData.description){
+      setValidationError(false)
+      handleEdiCategorysubmit()
+    }
+    else{
+      setValidationError(true)
+    }
+    
+  }
+
   return (
     <DialogBoxModal
       open={editModalOpen}
@@ -29,7 +43,7 @@ function EditCategoryModal(props: EditCategoryModalProps) {
     >
       <Box sx={customPopupBoxStyle}>
         <Typography
-          variant="h5"
+          variant="subtitle2"
           mb={1}
           sx={{ marginBottom: marginParameters.marginBottom }}
         >
@@ -40,9 +54,8 @@ function EditCategoryModal(props: EditCategoryModalProps) {
             component="form"
             noValidate
             autoComplete="off"
-            mb={marginParameters.marginBottom}
           >
-            <FormControl fullWidth sx={{ padding: 0 }}>
+            <FormControl fullWidth sx={{ padding: 0, marginBottom:marginParameters.marginBottom}}>
               <OutlinedInput
                 placeholder="Enter Category Name"
                 sx={{
@@ -59,14 +72,7 @@ function EditCategoryModal(props: EditCategoryModalProps) {
                 }
               />
             </FormControl>
-          </Box>
-          <Box
-            component="form"
-            noValidate
-            autoComplete="off"
-            mb={marginParameters.marginBottom}
-          >
-            <FormControl fullWidth>
+            <FormControl fullWidth sx={{ padding: 0, marginBottom:marginParameters.marginBottom}}>
               <OutlinedInput
                 multiline
                 minRows={4}
@@ -86,11 +92,11 @@ function EditCategoryModal(props: EditCategoryModalProps) {
               />
             </FormControl>
           </Box>
-
+                {validationrror?<Typography color='error'>All field must be filled</Typography>:''}
           <SubmitButton
             variant="contained"
             fullWidth
-            onClick={handleEdiCategorysubmit}
+            onClick={handleValidateData}
           >
             Submit
           </SubmitButton>

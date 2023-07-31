@@ -9,12 +9,11 @@ import {
 import {
   NavTabs,
   NavTabsInterface,
-  borderParameter,
-  colorParameter,
   marginParameters,
 } from '@octacore-frontend/constant';
 import { Link } from 'react-router-dom';
 import { Logout } from '@mui/icons-material';
+import { useTheme } from '@mui/material';
 export interface NavbarProps {
   activeTab: string;
 }
@@ -26,7 +25,7 @@ const CustomeNavIconBox = styled(Box)(({ theme }) => ({
   justifyContent: 'center',
   width: '52px',
   height: '50px',
-  borderRadius: borderParameter.containerRadius,
+  borderRadius: theme.shape.borderRadius,
   padding: 0,
 }));
 
@@ -42,13 +41,14 @@ const BoxFixed = styled(Box)(({ theme }) => ({
 
 export function Navbar(props: NavbarProps) {
   const { activeTab } = props;
+  const { palette, shape } = useTheme()
   return (
     <BoxFixed>
       <List>
         <ListItem disablePadding sx={{
           marginBottom: '3rem'
         }}>
-          <ListItemButton disableGutters sx={{padding:0, margin:0}}>
+          <ListItemButton disableGutters sx={{ padding: 0, margin: 0 }}>
             <img
               src={require('../../../../../assets/Logo.png')}
               alt="octalogic"
@@ -65,10 +65,10 @@ export function Navbar(props: NavbarProps) {
               to={tab.navTo}
               sx={{
                 background:
-                  activeTab === tab.tab ? colorParameter.lightPink : '',
-                color: activeTab === tab.tab ? 'secondary.main' : '',
-                borderRadius: borderParameter.containerRadius,
-                padding: 0, 
+                  activeTab === tab.tab ? palette.secondary.light : '',
+                color: activeTab === tab.tab ? palette.secondary.main : palette.text.secondary,
+                borderRadius: shape.borderRadius,
+                padding: 0,
                 margin: 0,
               }}
               disableGutters
@@ -76,12 +76,7 @@ export function Navbar(props: NavbarProps) {
               <CustomeNavIconBox>
                 <tab.icon />
                 <Typography
-                  fontSize={12}
-                  color={
-                    props.activeTab === tab.tab
-                      ? 'secondary.main'
-                      : ''
-                  }
+                  variant='body2'
                 >
                   {tab.tab}
                 </Typography>
