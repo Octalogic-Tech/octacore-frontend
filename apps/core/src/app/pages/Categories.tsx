@@ -1,22 +1,14 @@
 import { BreadCrumbs } from '@octacore-frontend/shared-ui';
 import { styled } from '@mui/material/styles';
-import { Box, Fab, Typography, useTheme } from '@mui/material';
+import { Box, Typography, useTheme } from '@mui/material';
 import {
-  CategoryData,
-  CategoryDataArrayType,
   Search,
   SearchIconWrapper,
   StyledInputBase,
   breadCrumbsConstants,
-  fabStyle,
 } from '@octacore-frontend/constant';
 import CategoriesTable from '../components/CategoriesTable';
-import { useEffect, useState } from 'react';
-import AddCategoryModal from '../components/AddCategoryModal';
 import SearchIcon from '@mui/icons-material/Search';
-import { Add } from '@mui/icons-material';
-import axios from 'axios';
-
 //table heading custom mui start here------
 const TableHeadingBox = styled(Box)(({ theme }) => ({
   display: 'flex',
@@ -31,60 +23,11 @@ const TableHeadingBox = styled(Box)(({ theme }) => ({
   },
 }));
 
-type temporaryData = {
-  id: number
-  userId: number
-  body: string
-  title: string
-}
-
 //categories functional components start here---------------
 function Categories() {
-  const [categoryData, setCategoryData] =
-    useState<CategoryDataArrayType | null>(null);
   const currentPage = breadCrumbsConstants.core.category;
   const currentProject = breadCrumbsConstants.core.name;
-  const [addCategoryOpen, setAddCategoryOpen] = useState(false);
-  const [addCategoryTextFieldData, setAddCategoryTextFieldData] =
-    useState<CategoryData>({ name: '', description: '' });
   const { palette } = useTheme()
-
-  //handling useEffect for the initial fetching category
-  useEffect(() => {
-    fetchCategoryData();
-  }, []);
-
-  //backend call for listing all categories
-  async function fetchCategoryData() {
-    const data = await axios('https://jsonplaceholder.typicode.com/posts');
-    const currentDate = new Date();
-    setCategoryData(
-      data.data.map((val: temporaryData) => {
-        return {
-          id: val.id,
-          name: val.title,
-          description: val.body,
-          updated: `${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`,
-          created: `${currentDate.getMonth() + 1}/${
-            currentDate.getFullYear() - 1
-          }`,
-        };
-      })
-    );
-  }
-
-  //handle category data function
-  const handleCategorySubmit = () => {
-    if(addCategoryTextFieldData.name && addCategoryTextFieldData.description){
-      //add category data api post request
-
-      setAddCategoryOpen(false)
-      //refresh the table
-      fetchCategoryData()
-      setAddCategoryTextFieldData({name: "", description: ""})
-    }
-    
-  };
 
   //category jsx syntax start here
   return (
@@ -96,7 +39,7 @@ function Categories() {
         </Typography>
         <Search>
           <SearchIconWrapper>
-            <SearchIcon sx={{color:palette.text.secondary}} />
+            <SearchIcon sx={{ color: palette.text.secondary }} />
           </SearchIconWrapper>
           <StyledInputBase
             placeholder="Search…"
@@ -104,26 +47,7 @@ function Categories() {
           />
         </Search>
       </TableHeadingBox>
-      <CategoriesTable
-        categoryData={categoryData}
-        fetchCategoryData={fetchCategoryData}
-      />
-      <Fab
-        aria-label="add"
-        variant="extended"
-        sx={fabStyle}
-        onClick={() => setAddCategoryOpen(true)}
-      >
-        <Add />
-        Add Categories
-      </Fab>
-      <AddCategoryModal
-        addCategoryOpen={addCategoryOpen}
-        setAddCategoryOpen={setAddCategoryOpen}
-        addCategoryTextFieldData={addCategoryTextFieldData}
-        setAddCategoryTextFieldData={setAddCategoryTextFieldData}
-        handleCategorySubmit={handleCategorySubmit}
-      />
+      <CategoriesTable />
     </>
   );
 }

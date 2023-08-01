@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Table,
   TableBody,
@@ -8,11 +8,13 @@ import {
   IconButton,
   Menu,
   LinearProgress,
+  Fab,
 } from '@mui/material';
 import EditCategoryModal from './EditCategoryModal';
-import { Delete, Edit, MoreVert } from '@mui/icons-material';
+import { Add, Delete, Edit, MoreVert } from '@mui/icons-material';
 import {
-  CategoriesTableProps,
+  CategoryData,
+  CategoryDataArrayType,
   CategoryDataType,
   CustomMenuItem,
   CustomPaperContainer,
@@ -21,14 +23,14 @@ import {
   CustomTableContainer,
   actionMenuParameter,
   columns,
+  fabStyle,
 } from '@octacore-frontend/constant';
 import { useTheme } from '@mui/material';
+import { fetchCategoryTableData, temporaryData } from '@octacore-frontend/services/categories'
+import AddCategoryModal from './AddCategoryModal';
 
 //Category table main Components--------------
-function CategoriesTable({
-  categoryData,
-  fetchCategoryData,
-}: CategoriesTableProps) {
+function CategoriesTable() {
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(5);
   const [editCategoryData, setEditCategoryData] = useState({
@@ -40,7 +42,31 @@ function CategoriesTable({
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
   const [rowId, setRowId] = useState<number>(0);
-  const {palette}  = useTheme()
+  const { palette } = useTheme()
+  const [categoryData, setCategoryData] =
+    useState<CategoryDataArrayType | null>(null);
+  const [addCategoryOpen, setAddCategoryOpen] = useState(false);
+  const [addCategoryTextFieldData, setAddCategoryTextFieldData] =
+    useState<CategoryData>({ name: '', description: '' });
+
+
+  //react-Query----------------------
+  const { isLoading, data, error, refetch, isFetching } = fetchCategoryTableData()
+
+  useMemo(() => {
+    if (!data) return setCategoryData([]);
+
+    const currentDate = new Date();
+
+    setCategoryData(data.map((val: temporaryData) => ({
+      id: val.id,
+      name: val.title,
+      description: val.body,
+      updated: `${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`,
+      created: `${currentDate.getMonth() + 1}/${currentDate.getFullYear() - 1}`,
+    })))
+  }, [data]);
+
 
   //Menu Open function start here -----------------
   const handleMenuClick = (
@@ -88,17 +114,26 @@ function CategoriesTable({
   //delete category data Api called here------------------
   const handleDeleteClick = () => {
     setAnchorEl(null);
+    refetch()
   };
 
-  //edit category api call
+  //edit category api call-----------
   function handleEdiCategorysubmit() {
-    if(editCategoryData.name && editCategoryData.description){
-      setEditModalOpen(false);
-    }
+    setEditModalOpen(false);
+    refetch()
   }
 
-  if (!categoryData) {
+  //add new category refetch handle------------
+  const handleAddNewCategory = () => {
+    refetch()
+  }
+
+  if (isLoading || isFetching) {
     return <LinearProgress color='secondary' />;
+  }
+
+  if (error) {
+    return <h1>Error occurred</h1>
   }
 
   return (
@@ -112,7 +147,7 @@ function CategoriesTable({
                   <CustomTableCellHeader
                     key={column.id}
                     align={column.id === 'action' ? 'center' : 'left'}
-                    sx={{background: palette.background.paper}}
+                    sx={{ background: palette.background.paper }}
                   >
                     {column.label}
                   </CustomTableCellHeader>
@@ -185,7 +220,7 @@ function CategoriesTable({
         <TablePagination
           rowsPerPageOptions={[5, 10, 20]}
           component="div"
-          count={categoryData.length}
+          count={categoryData ? categoryData.length : 1}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}
@@ -198,6 +233,22 @@ function CategoriesTable({
         editModalOpen={editModalOpen}
         setEditModalOpen={setEditModalOpen}
         handleEdiCategorysubmit={handleEdiCategorysubmit}
+      />
+      <Fab
+        aria-label="add"
+        variant="extended"
+        sx={fabStyle}
+        onClick={() => setAddCategoryOpen(true)}
+      >
+        <Add />
+        Add Categories
+      </Fab>
+      <AddCategoryModal
+        addCategoryOpen={addCategoryOpen}
+        setAddCategoryOpen={setAddCategoryOpen}
+        addCategoryTextFieldData={addCategoryTextFieldData}
+        setAddCategoryTextFieldData={setAddCategoryTextFieldData}
+        handleAddNewCategory={handleAddNewCategory}
       />
     </>
   );
