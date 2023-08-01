@@ -8,7 +8,7 @@ import Diversity2OutlinedIcon from '@mui/icons-material/Diversity2Outlined';
 export interface NestedNavTabProject {
   tab: string;
   navTo: string;
-  icon: any;
+  icon: React.ComponentType;
 }
 
 export interface NestedNavTabGroup {
@@ -52,8 +52,13 @@ export const nestedNavTabs: NestedNavTabGroup[] = [
     projects: [
       {
         tab: 'Overview',
-        navTo: '/',
+        navTo: routes.core.overview,
         icon: StackedBarChartOutlinedIcon,
+      },
+      {
+        tab: 'Category',
+        navTo: routes.core.categories,
+        icon: CategoryOutlinedIcon,
       },
     ],
   },

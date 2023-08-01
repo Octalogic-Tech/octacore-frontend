@@ -4,26 +4,29 @@ import {
   List,
   ListItem,
   ListItemButton,
-  Stack,
   Typography,
 } from '@mui/material';
 import {
   NavTabs,
   NavTabsInterface,
-  navBarFigma,
+  marginParameters,
 } from '@octacore-frontend/constant';
 import { Link } from 'react-router-dom';
 import { Logout } from '@mui/icons-material';
+import { useTheme } from '@mui/material';
 export interface NavbarProps {
   activeTab: string;
 }
 
-const StockIcon = styled(Stack)(({ theme }) => ({
+const CustomeNavIconBox = styled(Box)(({ theme }) => ({
   display: 'flex',
+  flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  width: '40px',
+  width: '52px',
+  height: '50px',
   borderRadius: theme.shape.borderRadius,
+  padding: 0,
 }));
 
 const BoxFixed = styled(Box)(({ theme }) => ({
@@ -32,58 +35,64 @@ const BoxFixed = styled(Box)(({ theme }) => ({
   justifyContent: 'space-between',
   position: 'sticky',
   minHeight: '100%',
+  padding: '0.6rem 1rem',
+  width: '84px',
 }));
 
 export function Navbar(props: NavbarProps) {
   const { activeTab } = props;
+  const { palette, shape } = useTheme()
   return (
     <BoxFixed>
-      <List sx={{ margin: '0.1rem' }}>
-        <ListItem disablePadding>
-          <ListItemButton>
+      <List>
+        <ListItem disablePadding sx={{
+          marginBottom: '3rem'
+        }}>
+          <ListItemButton disableGutters sx={{ padding: 0, margin: 0 }}>
             <img
               src={require('../../../../../assets/Logo.png')}
               alt="octalogic"
-              width="40px"
+              width="48px"
             />
           </ListItemButton>
         </ListItem>
-        <br />
         {NavTabs.map((tab: NavTabsInterface, index: number) => (
-          <ListItem disablePadding key={index}>
+          <ListItem disablePadding key={index} sx={{
+            marginBottom: marginParameters.marginBottom
+          }}>
             <ListItemButton
               component={Link}
               to={tab.navTo}
               sx={{
                 background:
-                  activeTab === tab.tab ? navBarFigma.activeButtonColor : '',
-                color: activeTab === tab.tab ? 'secondary.main' : '',
+                  activeTab === tab.tab ? palette.secondary.light : '',
+                color: activeTab === tab.tab ? palette.secondary.main : palette.text.secondary,
+                borderRadius: shape.borderRadius,
+                padding: 0,
+                margin: 0,
               }}
+              disableGutters
             >
-              <StockIcon>
+              <CustomeNavIconBox>
                 <tab.icon />
                 <Typography
-                  fontSize={12}
-                  color={
-                    props.activeTab === tab.tab
-                      ? navBarFigma.activeIconColor
-                      : ''
-                  }
+                  variant='body2'
+                  color={activeTab === tab.tab ? palette.secondary.main : palette.text.secondary}
                 >
                   {tab.tab}
                 </Typography>
-              </StockIcon>
+              </CustomeNavIconBox>
             </ListItemButton>
           </ListItem>
         ))}
       </List>
       <List>
         <ListItem disablePadding>
-          <ListItemButton>
-            <StockIcon>
-              <Logout />
+          <ListItemButton disableGutters>
+            <CustomeNavIconBox>
+              <Logout sx={{ color: palette.text.secondary }} />
               <Typography fontSize={12}>Logout</Typography>
-            </StockIcon>
+            </CustomeNavIconBox>
           </ListItemButton>
         </ListItem>
       </List>

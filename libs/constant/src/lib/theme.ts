@@ -1,61 +1,99 @@
-import { createTheme } from '@mui/material/styles';
-import {
-  fontStyleFigma,
-  navBarFigma,
-  overViewFigma,
-} from './design-system-variable';
+import { tokens } from "./design-system-variable";
 
-// themes for the root projects
-export const mainRootTheme = createTheme({
+export const themeSettings = {
   palette: {
     primary: {
-      main: overViewFigma.breadCrumbsHeaderFontColor,
+      ...tokens.primary,
+      main: tokens.primary[900],
+      light: tokens.primary[300],
     },
     secondary: {
-      main: navBarFigma.activeIconColor,
-      light: navBarFigma.activeButtonColor,
+      ...tokens.secondary,
+      main: tokens.secondary[800],
+      light: tokens.secondary[100],
     },
-    success: {
-      main: '#FFFFFF',
+    grey: {
+      ...tokens.grey,
+      main: tokens.grey[200],
+    },
+    background: {
+      default: tokens.background.main,
+      light: tokens.background.light,
+    },
+    border: {
+      main: tokens.grey[300],
     },
   },
   typography: {
-    allVariants: {
-      color: fontStyleFigma.allTextColor,
-      fontFamily: fontStyleFigma.allFontStyle,
+    fontFamily: ['INunito Sans', 'sans-serif'].join(','),
+    fontSize: 12,
+    h1: {
+      fontFamily: ['Nunito Sans', 'sans-serif'].join(','),
+      fontSize: 90,
     },
-    h6: {
-      fontSize: overViewFigma.breadCrumbsParentFontSize,
+    h2: {
+      fontFamily: ['Nunito Sans', 'sans-serif'].join(','),
+      fontSize: 68,
+    },
+    h3: {
+      fontFamily: ['Nunito Sans', 'sans-serif'].join(','),
+      fontSize: 50,
+      fontWeight: 800,
+      color: tokens.grey[200],
     },
     h4: {
-      fontSize: overViewFigma.breadCrumbsHeaderFontSize,
-      fontWeight: 'bolder',
+      fontFamily: ['Nunito Sans', 'sans-serif'].join(','),
+      fontSize: 38,
+      fontWeight: 600,
+      color: tokens.grey[300],
     },
     h5: {
-      fontSize: overViewFigma.tableLabelFontSize,
+      fontFamily: ['Nunito Sans', 'sans-serif'].join(','),
+      fontSize: 28,
+      fontWeight: 400,
+      color: tokens.grey[300],
+    },
+    h6: {
+      fontFamily: ['Inter', 'sans-serif'].join(','),
+      fontSize: 22,
+      color: tokens.text.secondary,
+    },
+    subtitle1:{
+      fontFamily: ['Inter', 'sans-serif'].join(','),
+      fontSize: 22,
+      color: tokens.text.secondary,
+    },
+    subtitle2:{
+      fontFamily: ['Inter', 'sans-serif'].join(','),
+      fontSize: 16,
+      color: tokens.text.secondary,
+    },
+    body1:{
+      fontFamily: ['Inter', 'sans-serif'].join(','),
+      fontSize: 14,
+      color: tokens.text.tertiary
+    },
+    body2:{
+      fontFamily: ['Inter', 'sans-serif'].join(','),
+      fontSize: 12,
+      color: tokens.text.secondary,
+    }
+  },
+  shape: {
+    borderRadius: 2,
+  },
+  spacing: 8,
+  spacingProperties: {
+    margin: {
+      small: 4,
+      medium: 8,
+      large: 16,
+    },
+    marginBottom: {
+      small: 4,
+      medium: 8,
+      large: 16,
     },
   },
-  components: {
-    MuiTable: {
-      styleOverrides: {
-        root: {
-          minWidth: 600,
-        },
-      },
-    },
-    MuiTableCell: {
-      styleOverrides: {
-        head: {
-          fontWeight: fontStyleFigma.tableHeadFontWeight,
-          color: fontStyleFigma.tableHeadFontColor,
-          fontFamily: fontStyleFigma.allFontStyle,
-        },
-        body: {
-          fontWeight: fontStyleFigma.tableBodyFontWeight,
-          color: fontStyleFigma.tableBodyFontColor,
-          fontFamily: fontStyleFigma.allFontStyle,
-        },
-      },
-    },
-  },
-});
+ 
+};

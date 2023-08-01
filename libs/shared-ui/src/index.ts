@@ -1,3 +1,5 @@
+export * from './lib/bread-crumbs/bread-crumbs';
+export * from './lib/float-navbar/float-navbar';
 export * from './lib/salary-card/salary-card';
 export * from './lib/salary-card/salary-card';
 export * from './lib/salary-card/salary-card';

@@ -1,11 +1,14 @@
 import React from 'react';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
-import TableCell from '@mui/material/TableCell';
-import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-import Paper from '@mui/material/Paper';
+import {
+  CustomPaperContainer,
+  CustomTableCellBody,
+  CustomTableCellHeader,
+  CustomTableContainer,
+} from '@octacore-frontend/constant';
 
 export interface SupportProjectTableProps {
   supportTableData: Array<string>;
@@ -17,33 +20,33 @@ export const SupportProjectTable: React.FC<SupportProjectTableProps> = (
   const { supportTableData } = props;
 
   return (
-      <TableContainer component={Paper}>
+    <CustomPaperContainer>
+      <CustomTableContainer>
         <Table size="small" aria-label="simple table">
           <TableHead>
             <TableRow>
-              <TableCell>column</TableCell>
-              <TableCell align="right">column</TableCell>
-              <TableCell align="right">column</TableCell>
-              <TableCell align="right">column</TableCell>
-              <TableCell align="right">column</TableCell>
+              <CustomTableCellHeader>column</CustomTableCellHeader>
+              <CustomTableCellHeader align="left">column</CustomTableCellHeader>
+              <CustomTableCellHeader align="left">column</CustomTableCellHeader>
+              <CustomTableCellHeader align="left">column</CustomTableCellHeader>
+              <CustomTableCellHeader align="left">column</CustomTableCellHeader>
             </TableRow>
           </TableHead>
           <TableBody>
             {supportTableData.map((_, index) => (
-              <TableRow
-                key={index}
-              >
-                <TableCell component="th" scope="row">
+              <TableRow key={index}>
+                <CustomTableCellBody component="th" scope="row">
                   column
-                </TableCell>
-                <TableCell align="right">column</TableCell>
-                <TableCell align="right">column</TableCell>
-                <TableCell align="right">column</TableCell>
-                <TableCell align="right">column</TableCell>
+                </CustomTableCellBody>
+                <CustomTableCellBody align="left">column</CustomTableCellBody>
+                <CustomTableCellBody align="left">column</CustomTableCellBody>
+                <CustomTableCellBody align="left">column</CustomTableCellBody>
+                <CustomTableCellBody align="left">column</CustomTableCellBody>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-      </TableContainer>
+      </CustomTableContainer>
+    </CustomPaperContainer>
   );
 };

@@ -1,19 +1,16 @@
-import { Grid, Typography, Box } from '@mui/material';
-import { ExpenseCards, SalaryCard } from '@octacore-frontend/shared-ui';
+import { Grid, Typography, Box, useTheme } from '@mui/material';
+import {
+  BreadCrumbs,
+  ExpenseCards,
+  SalaryCard,
+} from '@octacore-frontend/shared-ui';
 import { OutstandingTable } from '../components/OutstandingInvoiceTable';
 import { FollowUpsTable } from '../components/FollowUpsTable';
 import { styled } from '@mui/material/styles';
-import { overViewFigma } from '@octacore-frontend/constant';
-
-const TableHeadingBox = styled(Box)(({ theme }) => ({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  marginTop: '1rem',
-}));
+import { TableHeadingBox } from '@octacore-frontend/constant';
 
 const TableBox = styled(Box)(({ theme }) => ({
-  overflow: 'scroll',
+  overflow: 'hidden',
 }));
 
 function CoreOverview() {
@@ -22,23 +19,11 @@ function CoreOverview() {
   const outstandingInvoiceTableData = new Array(5).fill('values');
   const followUpstableData = new Array(5).fill('values');
   const expenseCardRepeat = new Array(3).fill('values');
+  const [currentProject, currentPage] = ['Core', 'Overview'];
+  const { palette } = useTheme()
   return (
     <>
-      <Box textAlign="left">
-        <Typography component="span">
-          core/
-          <Typography component="span" color="secondary.main">
-            overview
-          </Typography>
-        </Typography>
-        <Typography
-          color={overViewFigma.breadCrumbsHeaderFontColor}
-          variant="h4"
-          gutterBottom
-        >
-          Overview
-        </Typography>
-      </Box>
+      <BreadCrumbs currentPage={currentPage} currentProject={currentProject} />
       <Grid container spacing={1}>
         {expenseCardRepeat.map((_, index) => {
           return (
@@ -52,10 +37,10 @@ function CoreOverview() {
         </Grid>
       </Grid>
       <TableHeadingBox>
-        <Typography variant="h5">OUTSTANDING INVOICES</Typography>
+        <Typography variant="subtitle2">OUTSTANDING INVOICES</Typography>
         <Typography
           variant="body1"
-          color="secondary.main"
+          color={palette.secondary.main}
           style={{ cursor: 'pointer' }}
         >
           View All
@@ -65,7 +50,7 @@ function CoreOverview() {
         <OutstandingTable outstandingInvoice={outstandingInvoiceTableData} />
       </TableBox>
       <TableHeadingBox>
-        <Typography variant="h5">FOLLOW UPS</Typography>
+        <Typography variant="subtitle2">FOLLOW UPS</Typography>
         <Typography
           variant="body1"
           color="secondary.main"

@@ -1,9 +1,9 @@
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
-import { Box, Button, Chip } from '@mui/material';
+import { Box, Button, Chip, useTheme } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { cardFigma, navBarFigma } from '@octacore-frontend/constant';
+import { cardFigma, colorParameter } from '@octacore-frontend/constant';
 
 export interface ExpenseCardProps {
   currentMonth: string;
@@ -29,32 +29,33 @@ const CardContentBox = styled(CardContent)(({ theme }) => ({
 
 export const ExpenseCards = (props: ExpenseCardProps) => {
   const { currentMonth } = props;
+  const {palette} = useTheme()
   return (
-    <Card sx={{ padding: '0.5rem' }}>
+    <Card sx={{ padding: '0.5rem', maxWidth: 400 }}>
       <CardHeadBox>
-        <Typography>Outstanding</Typography>
+        <Typography variant='body2'>Outstanding</Typography>
         <Chip
           label="24%"
           sx={{
             height: '1rem',
             margin: 0,
-            background: cardFigma.chipBackgroundColor,
-            color: cardFigma.chipTextColor,
+            background: palette.primary.light,
+            color: palette.primary.main,
           }}
         />
       </CardHeadBox>
       <CardFirstContentBox>
-        <Typography variant="h5" mr={1} component="div">
+        <Typography variant="h6" mr={1} component="div">
           $5600
         </Typography>
-        <Typography variant="h6"> from $4400 Last month</Typography>
+        <Typography variant="body2"> from $4400 Last month</Typography>
       </CardFirstContentBox>
       <CardContentBox></CardContentBox>
       <CardHeadBox>
         <Button disabled size="small">
           {currentMonth}
         </Button>
-        <Button size="small" sx={{ color: navBarFigma.activeIconColor }}>
+        <Button size="small" sx={{ color: colorParameter.darkPink }}>
           View All
         </Button>
       </CardHeadBox>

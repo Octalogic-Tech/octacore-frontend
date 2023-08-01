@@ -3,7 +3,7 @@ import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import { Button, Box } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { cardFigma, navBarFigma } from '@octacore-frontend/constant';
+import { cardFigma, colorParameter} from '@octacore-frontend/constant';
 
 export interface SalaryCardProps {
   currentMonth: string;
@@ -30,22 +30,22 @@ const CardContentBox = styled(CardContent)(({ theme }) => ({
 export const SalaryCard = (props: SalaryCardProps) => {
   const { currentMonth } = props;
   return (
-    <Card sx={{ padding: '0.5rem' }}>
+    <Card sx={{ padding: '0.5rem', maxWidth: 400 }}>
       <CardHeadBox>
-        <Typography>Outstanding</Typography>
+        <Typography variant="body2">Outstanding</Typography>
       </CardHeadBox>
       <CardFirstContentBox>
-        <Typography variant="h5" mr={1} component="div">
+        <Typography variant='h6' mr={1} component="div">
           7000
         </Typography>
-        <Typography variant="h6"> from 1,40,400</Typography>
+        <Typography variant="body2"> from 1,40,400</Typography>
       </CardFirstContentBox>
       <CardContentBox></CardContentBox>
       <CardHeadBox>
         <Button disabled size="small">
           {currentMonth}
         </Button>
-        <Button size="small" sx={{ color: navBarFigma.activeIconColor }}>
+        <Button size="small" sx={{ color: colorParameter.darkGray }}>
           View All
         </Button>
       </CardHeadBox>

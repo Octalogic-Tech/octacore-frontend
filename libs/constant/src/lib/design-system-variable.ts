@@ -1,12 +1,71 @@
-export const navBarFigma = {
-  activeIconColor: '#901E75',
-  activeButtonColor: '#FEDFE1',
-  hoverItemColor: '#E5E7EB',
-  hovorIconColor: '#83858B',
+export const tokens = {
+  grey: {
+    200: '#E5E7EB',
+    300: '#D1D5DB',
+    900:"#212529"
+  },
+  primary: {
+    // light green
+    300: '#B2EECF',
+    900: '#043028',
+  },
+  secondary: {
+    100: '#FEDFE1',
+    200: '#FEC0CA',
+    800: '#901E75',
+  },
+  background: {
+    light: '#ffff',
+    main: '#1f2026',
+  },
+  text: {
+    primary: '#212529',
+    secondary: '#83858B',
+    tertiary: '#999999',
+  },
 };
 
-export const nestedNavbarFigma = {
-  heaingTextColor: '#999999',
+export const colorParameter = {
+  darkPink: '#901E75',
+  lightPink: '#FEDFE1',
+  lightGray: '#E5E7EB',
+  darkGray: '#83858B',
+  headingTextColor: '#999999',
+  containerBackgroundColor: '#f5f5f5',
+};
+
+export const borderParameter = {
+  containerRadius: '6px',
+};
+
+export const marginParameters = {
+  marginBottom: '0.5rem',
+};
+
+export const textSizeParameter = {
+  twelveePx: '0.75rem',
+  fourteenPx: '0.9rem',
+  breadCrumbsHeaderFontSize: '1.75rem',
+  breadCrumbsParentFontSize: '0.75rem',
+  tableLabelFontSize: '1rem',
+};
+
+export const fabButtonParameter = {
+  borderRadius: '16px',
+  buttonColor: '#FEC0CA',
+  buttonTextColor: '#21005D',
+  buttonHieght: '56px',
+  padding: '16px 20px 16px 16px',
+  gap: '12px',
+  fontSize: '16px',
+  boxShadow: '0px 1px 3px 0px #0000004D',
+  hoverBoxShadow: '0px 4px 8px 3px #00000026',
+};
+
+export const actionMenuParameter = {
+  menuItemBackGroundColor: '#E6E0E9',
+  menuWidth: '200px',
+  menuShadowBox: '0px 1px 4px 1px #00000026',
 };
 
 export const overViewFigma = {
@@ -25,10 +84,22 @@ export const cardFigma = {
 };
 
 export const fontStyleFigma = {
-  allFontStyle: 'Nunito Sans',
+  allFontStyle: 'Nunito Sans, sans-serif',
   allTextColor: '#83858B',
   tableHeadFontWeight: 700,
   tableHeadFontColor: '#212529',
   tableBodyFontColor: '#212529',
   tableBodyFontWeight: 400,
 };
+
+export const containerSpecFigma = {
+  mainConatainerPadding: '24px 36px 24px 36px',
+  backgroundColor: '#f0f2f5',
+};
+
+export const searchFieldFigma = {
+  hoverColor: '#E5E7EB',
+  backgroundColor: '#FFFFFF',
+  border: '1px solid #E5E7EB',
+};
+
