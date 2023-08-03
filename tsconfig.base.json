@@ -22,6 +22,9 @@
       "@octacore-frontend/services/categories": [
         "libs/services/categories/src/index.ts"
       ],
+      "@octacore-frontend/services/core-technologies": [
+        "libs/services/core-technologies/src/index.ts"
+      ],
       "@octacore-frontend/shared-ui": ["libs/shared-ui/src/index.ts"]
     }
   },

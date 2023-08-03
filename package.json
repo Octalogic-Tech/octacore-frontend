@@ -2,7 +2,9 @@
   "name": "@octacore-frontend/source",
   "version": "0.0.0",
   "license": "MIT",
-  "scripts": {},
+  "scripts": {
+    "start:api": "json-server --watch json-server/db.json --port 3001"
+  },
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.11.1",
@@ -61,6 +63,7 @@
     "jest": "^29.4.1",
     "jest-environment-jsdom": "^29.4.1",
     "jsdom": "~22.1.0",
+    "json-server": "^0.17.3",
     "nx": "16.5.1",
     "nx-cloud": "latest",
     "prettier": "^2.6.2",

@@ -4,7 +4,8 @@ export const routes = {
     projectName: 'Core',
     port: 4200,
     overview: '/',
-    categories: '/categories'
+    categories: '/categories',
+    technologies: '/technologies',
   },
   projects: {
     projectName: 'Projects',

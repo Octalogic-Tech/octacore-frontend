@@ -14,6 +14,7 @@ import { ThemeProvider } from '@mui/material';
 import Categories from './pages/Categories';
 import { useMemo } from 'react';
 import { QueryClient, QueryClientProvider } from 'react-query';
+import Technologies from './pages/Technologies';
 const queryClient = new QueryClient()
 
 function App() {
@@ -46,6 +47,10 @@ function App() {
                     <Route
                       path={routes.core.categories}
                       element={<Categories />}
+                    />
+                    <Route
+                      path={routes.core.technologies}
+                      element={<Technologies />}
                     />
                   </Routes>
                 </ContentContainer>

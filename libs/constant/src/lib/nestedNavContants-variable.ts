@@ -4,6 +4,7 @@ import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
 import StackedBarChartOutlinedIcon from '@mui/icons-material/StackedBarChartOutlined';
 import Diversity2OutlinedIcon from '@mui/icons-material/Diversity2Outlined';
+import CodeOutlinedIcon from '@mui/icons-material/CodeOutlined';
 
 export interface NestedNavTabProject {
   tab: string;
@@ -59,6 +60,11 @@ export const nestedNavTabs: NestedNavTabGroup[] = [
         tab: 'Category',
         navTo: routes.core.categories,
         icon: CategoryOutlinedIcon,
+      },
+      {
+        tab: 'Technologies',
+        navTo: routes.core.technologies,
+        icon: CodeOutlinedIcon,
       },
     ],
   },

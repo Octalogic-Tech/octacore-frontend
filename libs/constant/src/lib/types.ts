@@ -17,6 +17,8 @@ export type CategoryData = {
   id?: number;
   name: string;
   description: string;
+  created?: string;
+  updated?: string;
 };
 
 // Props interface for the add category modal start here--

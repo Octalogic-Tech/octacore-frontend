@@ -22,11 +22,11 @@ import {
   CustomTableCellHeader,
   CustomTableContainer,
   actionMenuParameter,
-  columns,
+  categoriesColumns,
   fabStyle,
 } from '@octacore-frontend/constant';
 import { useTheme } from '@mui/material';
-import { fetchCategoryTableData, temporaryData } from '@octacore-frontend/services/categories'
+import { fetchCategoryTableData } from '@octacore-frontend/services/categories'
 import AddCategoryModal from './AddCategoryModal';
 
 //Category table main Components--------------
@@ -44,7 +44,7 @@ function CategoriesTable() {
   const [rowId, setRowId] = useState<number>(0);
   const { palette } = useTheme()
   const [categoryData, setCategoryData] =
-    useState<CategoryDataArrayType | null>(null);
+    useState<CategoryDataArrayType | undefined>(undefined);
   const [addCategoryOpen, setAddCategoryOpen] = useState(false);
   const [addCategoryTextFieldData, setAddCategoryTextFieldData] =
     useState<CategoryData>({ name: '', description: '' });
@@ -54,17 +54,7 @@ function CategoriesTable() {
   const { isLoading, data, error, refetch, isFetching } = fetchCategoryTableData()
 
   useMemo(() => {
-    if (!data) return setCategoryData([]);
-
-    const currentDate = new Date();
-
-    setCategoryData(data.map((val: temporaryData) => ({
-      id: val.id,
-      name: val.title,
-      description: val.body,
-      updated: `${currentDate.getMonth() + 1}/${currentDate.getFullYear()}`,
-      created: `${currentDate.getMonth() + 1}/${currentDate.getFullYear() - 1}`,
-    })))
+    setCategoryData(data)
   }, [data]);
 
 
@@ -143,7 +133,7 @@ function CategoriesTable() {
           <Table size="small" stickyHeader aria-label="sticky table">
             <TableHead>
               <TableRow >
-                {columns.map((column) => (
+                {categoriesColumns.map((column) => (
                   <CustomTableCellHeader
                     key={column.id}
                     align={column.id === 'action' ? 'center' : 'left'}
