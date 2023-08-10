@@ -136,7 +136,7 @@ export default defineComponent({
       itemsPerPage: 5,
     },
     //dialog variable
-    addBilldialogOpen: true,
+    addBilldialogOpen: false,
     // sarch query variable---
     nameSearchQuery: '',
     phoneSearchQuery: '',
