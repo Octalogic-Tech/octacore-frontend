@@ -40,7 +40,7 @@
                 <th
                   v-for="(head, i) in headers"
                   :key="i"
-                  class="text-left text-textPrimary"
+                  class="text-left text-textPrimary font-weight-bold"
                 >
                   {{ head }}
                 </th>
