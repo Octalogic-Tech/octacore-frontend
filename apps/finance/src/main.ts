@@ -32,6 +32,9 @@ export const tokens = {
     secondary: '#83858B',
     tertiary: '#999999',
   },
+  system: {
+      primary: '#21005D'
+  }
 };
 
 const myCustomLightTheme:ThemeDefinition = {
@@ -43,6 +46,7 @@ const myCustomLightTheme:ThemeDefinition = {
     'primary-darken-1': tokens.primary[300],
     secondary: tokens.secondary[800],
     'secondary-darken-1': tokens.secondary[100],
+    'secondary-darken-2': tokens.secondary[200],
     error: '#B00020',
     info: '#2196F3',
     success: '#4CAF50',
@@ -50,6 +54,7 @@ const myCustomLightTheme:ThemeDefinition = {
     'textPrimary':'#212529',
     'textSecondary': '#83858B',
     'textTertiary': '#999999',
+    'system-primary-1':tokens.system.primary
   },
 }
 

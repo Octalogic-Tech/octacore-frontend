@@ -118,5 +118,88 @@
       "created": "2023-07-25",
       "updated": "2023-07-25"
     }
+  ],
+  "receipts":[
+    {
+      "id": "1",
+      "name": "John Doe",
+      "phone": "123-456-7890",
+      "amount": "$100.00",
+      "designation": "Software Engineer",
+      "uploaded": "2023-08-10",
+      "status": true
+    },
+    {
+      "id": "2",
+      "name": "Jane Smith",
+      "phone": "987-654-3210",
+      "amount": "$200.00",
+      "designation": "Product Manager",
+      "uploaded": "2023-08-09",
+      "status": false
+    },
+    {
+      "id": "3",
+      "name": "Michael Johnson",
+      "phone": "555-123-4567",
+      "amount": "$50.00",
+      "designation": "UI/UX Designer",
+      "uploaded": "2023-08-08",
+      "status": true
+    },
+    {
+      "id": "4",
+      "name": "Emily Brown",
+      "phone": "111-222-3333",
+      "amount": "$75.00",
+      "designation": "Graphic Designer",
+      "uploaded": "2023-08-11",
+      "status": true
+    },
+    {
+      "id": "5",
+      "name": "William Johnson",
+      "phone": "444-555-6666",
+      "amount": "$150.00",
+      "designation": "Data Analyst",
+      "uploaded": "2023-08-12",
+      "status": false
+    },
+    {
+      "id": "6",
+      "name": "Olivia Davis",
+      "phone": "7778889999",
+      "amount": "$120.00",
+      "designation": "Marketing Specialist",
+      "uploaded": "2023-08-13",
+      "status": true
+    },
+    {
+      "id": "7",
+      "name": "Liam Anderson",
+      "phone": "555-123-9876",
+      "amount": "$90.00",
+      "designation": "Sales Manager",
+      "uploaded": "2023-08-14",
+      "status": false
+    },
+    {
+      "id": "8",
+      "name": "Sophia Martinez",
+      "phone": "777-888-5555",
+      "amount": "$180.00",
+      "designation": "Customer Support",
+      "uploaded": "2023-08-15",
+      "status": true
+    },
+    {
+      "id": "9",
+      "name": "Noah Thompson",
+      "phone": "222-333-4444",
+      "amount": "$60.00",
+      "designation": "Quality Assurance",
+      "uploaded": "2023-08-16",
+      "status": true
+    }
   ]
 }

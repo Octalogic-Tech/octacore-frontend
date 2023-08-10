@@ -1,7 +1,6 @@
 import { routes } from './repoRoutes';
-import { DashboardOutlined } from '@mui/icons-material';
+import { DashboardOutlined, LibraryBooksOutlined } from '@mui/icons-material';
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
-import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import CodeTwoToneIcon from '@mui/icons-material/CodeTwoTone';
@@ -32,7 +31,7 @@ export const NavTabs: NavTabsInterface[] = [
   {
     tab: 'Documents',
     navTo: 'http://localhost:4200/documents',
-    icon: ArticleOutlinedIcon,
+    icon: LibraryBooksOutlined,
   },
   {
     tab: 'Supports',
@@ -41,7 +40,7 @@ export const NavTabs: NavTabsInterface[] = [
   },
   {
     tab: 'Finance',
-    navTo: 'http://localhost:8080/finance/dashboard',
+    navTo: 'http://localhost:8080/finance/overview',
     icon: MoneyOutlinedIcon,
   },
   {

@@ -5,7 +5,9 @@
     "@vue/typescript/recommended",
     "prettier"
   ],
-  "rules": {},
+  "rules": {
+    "vue/no-deprecated-slot-attribute": "off"
+  },
   "ignorePatterns": ["!**/*"],
   "env": {
     "node": true

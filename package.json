@@ -15,6 +15,8 @@
     "@mui/material": "^5.14.0",
     "@mui/x-data-grid": "^6.10.1",
     "@swc/helpers": "~0.5.0",
+    "@vuelidate/core": "^2.0.3",
+    "@vuelidate/validators": "^2.0.3",
     "axios": "^1.4.0",
     "core-js": "^3.6.5",
     "formik": "^2.4.2",

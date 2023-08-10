@@ -73,7 +73,8 @@ export default defineComponent({
   height: 100%;
   flex: 1;
   border-right: 1px solid lightgray;
-  padding: 0.5rem 0.85rem;
+  padding: 10px 16px;
+  width: 84px;
 }
 .navbar-container-drawer {
   flex: 1;

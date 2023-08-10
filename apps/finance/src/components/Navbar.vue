@@ -66,7 +66,7 @@ export default {
           navTo: 'http://localhost:4201/project/overview',
         },
         { text: 'People', icon: 'group', navTo: '/' },
-        { text: 'Documents', icon: 'article', navTo: '/' },
+        { text: 'Documents', icon: 'library_books', navTo: '/' },
         { text: 'Supports', icon: 'support_agent', navTo: '/' },
         { text: 'Finance', icon: 'money', navTo: '/' },
         { text: 'Settings', icon: 'settings', navTo: '/finance/dashboard' },
