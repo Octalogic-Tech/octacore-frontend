@@ -1,6 +1,6 @@
 <template>
   <div class="d-flex justify-space-around">
-    <v-btn flat color="transparent" elevation="0">
+    <v-btn flat color="transparent px-0 ma-0" elevation="0">
       <v-icon>mdi-dots-vertical</v-icon>
       <v-menu activator="parent" location="start">
         <v-list>

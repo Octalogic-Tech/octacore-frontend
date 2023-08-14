@@ -6,6 +6,7 @@ import '@mdi/font/css/materialdesignicons.css';
 import { createVuetify, ThemeDefinition } from 'vuetify';
 import * as components from 'vuetify/components';
 import * as directives from 'vuetify/directives';
+import DayJsAdapter from '@date-io/dayjs'
 
 export const tokens = {
   grey: {
@@ -70,6 +71,9 @@ const vuetify = createVuetify({
       myCustomLightTheme,
     },
   },
+  date:{
+    adapter: DayJsAdapter,
+  }
 });
 
 const app = createApp(App);

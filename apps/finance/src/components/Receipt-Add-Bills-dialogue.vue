@@ -48,6 +48,7 @@
             ></v-select>
             <!-- reimbursement field -->
             <v-radio-group
+              :value="reimbursement"
               v-model="reimbursement"
               row
               @blur="validateField"
@@ -59,8 +60,8 @@
               "
             >
               <v-label>Reimbursement</v-label>
-              <v-radio value="true" label="Yes"></v-radio>
-              <v-radio value="false" label="No"></v-radio>
+              <v-radio value="Yes" label="Yes"></v-radio>
+              <v-radio value="No" label="No"></v-radio>
             </v-radio-group>
             <!-- add by field -->
             <v-select
@@ -72,9 +73,7 @@
               @blur="validateField"
               class="mt-1"
               :error-messages="
-                errorMassage.addedBy
-                  ? 'Expence field must be required.'
-                  : ''
+                errorMassage.addedBy ? 'Expence field must be required.' : ''
               "
             ></v-select>
             <!-- image upload field -->
@@ -90,7 +89,7 @@
                 ></v-file-input> -->
             <div class="d-flex pa-2 align-center">
               <p class="text-subtitle-1 text-textSecondary px-1">
-                Uplaod Bills
+                Upload Bills
               </p>
               <v-btn
                 flat
@@ -102,11 +101,17 @@
               >
                 <v-icon>mdi-camera</v-icon></v-btn
               >
-              <v-label v-if="selectedFile[0]">{{ selectedFile[0].name }}</v-label>
+              <v-label v-if="selectedFile[0]">{{
+                selectedFile[0].name
+              }}</v-label>
+              <p
+                class="text-error text-body-2"
+                v-if="errorMassage.selectedFile"
+              >
+                File must be required.
+              </p>
             </div>
-            <div class="text-error" v-if="errorMassage.selectedFile">
-              File must be required.
-            </div>
+
             <!-- Submit button -->
             <v-btn
               type="submit"
@@ -148,7 +153,7 @@ export default defineComponent({
     date: '',
     amount: '',
     billType: '',
-    reimbursement: true,
+    reimbursement: 'Yes',
     addedBy: '',
     selectedFile: [] as File[],
     billTypes: ['Regular', 'Incentive', 'Bonus'],
@@ -266,11 +271,5 @@ export default defineComponent({
 .card {
   min-height: 50%;
   overflow: auto;
-}
-
-.error-message {
-  color: red;
-  font-size: 12px;
-  margin-top: 4px;
 }
 </style>
