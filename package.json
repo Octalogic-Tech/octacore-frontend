@@ -4,7 +4,8 @@
   "license": "MIT",
   "scripts": {
     "start:api": "json-server --watch json-server/db.json --port 3001",
-    "postinstall": "node node_modules/@nx-plus/vue/patch-nx-dep-graph.js"
+    "postinstall": "node node_modules/@nx-plus/vue/patch-nx-dep-graph.js",
+    "dev:all": "nx run-many -t serve --parallel=true --maxParallel=100 --skip-nx-cache"
   },
   "private": true,
   "dependencies": {
