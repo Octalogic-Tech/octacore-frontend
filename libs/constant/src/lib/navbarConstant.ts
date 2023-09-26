@@ -1,11 +1,10 @@
 import { routes } from './repoRoutes';
-import { ViewQuiltOutlined } from '@mui/icons-material';
+import { DashboardOutlined, LibraryBooksOutlined } from '@mui/icons-material';
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
-import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import SupportAgentOutlinedIcon from '@mui/icons-material/SupportAgentOutlined';
-import CampaignOutlinedIcon from '@mui/icons-material/CampaignOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import CodeTwoToneIcon from '@mui/icons-material/CodeTwoTone';
+import MoneyOutlinedIcon from '@mui/icons-material/MoneyOutlined';
 
 export interface NavTabsInterface {
   tab: string;
@@ -17,7 +16,7 @@ export const NavTabs: NavTabsInterface[] = [
   {
     tab: routes.core.projectName,
     navTo: `${routes.host}${routes.core.port}${routes.core.overview}`,
-    icon: ViewQuiltOutlined,
+    icon: DashboardOutlined,
   },
   {
     tab: routes.projects.projectName,
@@ -32,7 +31,7 @@ export const NavTabs: NavTabsInterface[] = [
   {
     tab: 'Documents',
     navTo: 'http://localhost:4200/documents',
-    icon: ArticleOutlinedIcon,
+    icon: LibraryBooksOutlined,
   },
   {
     tab: 'Supports',
@@ -41,8 +40,8 @@ export const NavTabs: NavTabsInterface[] = [
   },
   {
     tab: 'Finance',
-    navTo: 'http://localhost:4200/finance',
-    icon: CampaignOutlinedIcon,
+    navTo: 'http://localhost:8080/finance/overview',
+    icon: MoneyOutlinedIcon,
   },
   {
     tab: 'Setting',
