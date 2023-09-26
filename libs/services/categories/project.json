@@ -1,0 +1,16 @@
+{
+  "name": "services-categories",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/services/categories/src",
+  "projectType": "library",
+  "targets": {
+    "lint": {
+      "executor": "@nx/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["libs/services/categories/**/*.ts"]
+      }
+    }
+  },
+  "tags": []
+}

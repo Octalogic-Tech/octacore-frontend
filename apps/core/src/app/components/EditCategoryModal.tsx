@@ -1,5 +1,5 @@
 import { Box, FormControl, OutlinedInput, Typography } from '@mui/material';
-import React, { useState } from 'react';
+import React from 'react';
 import {
   DialogBoxModal,
   EditCategoryModalProps,
@@ -10,29 +10,34 @@ import {
   textSizeParameter,
 } from '@octacore-frontend/constant';
 
+import { Formik, Form, ErrorMessage, FormikValues, Field } from 'formik';
+import * as Yup from 'yup';
+import { updateCategoryTable } from '@octacore-frontend/services/categories';
+
+const validationSchema = Yup.object({
+  name: Yup.string().required('Category Name is required'),
+  description: Yup.string().required('Category Description is required'),
+});
+
 //main edit compenent section here---------------------
 function EditCategoryModal(props: EditCategoryModalProps) {
   const {
     editCategoryData,
-    setEditCategoryData,
     editModalOpen,
     setEditModalOpen,
     handleEdiCategorysubmit,
   } = props;
 
-  const [validationrror, setValidationError] = useState(false)
-  
 
-  const handleValidateData = () => {
-    if(editCategoryData.name && editCategoryData.description){
-      setValidationError(false)
-      handleEdiCategorysubmit()
-    }
-    else{
-      setValidationError(true)
-    }
-    
-  }
+  const handleEditedData = (values: FormikValues) => {
+    updateCategoryTable()
+    handleEdiCategorysubmit();
+  };
+
+  const initialValues = {
+    name: editCategoryData.name || '',
+    description: editCategoryData.description || '',
+  };
 
   return (
     <DialogBoxModal
@@ -50,56 +55,61 @@ function EditCategoryModal(props: EditCategoryModalProps) {
           Edit Category
         </Typography>
         <Box width="100%">
-          <Box
-            component="form"
-            noValidate
-            autoComplete="off"
+          <Formik
+            initialValues={initialValues}
+            validationSchema={validationSchema}
+            onSubmit={handleEditedData}
           >
-            <FormControl fullWidth sx={{ padding: 0, marginBottom:marginParameters.marginBottom}}>
-              <OutlinedInput
-                placeholder="Enter Category Name"
-                sx={{
-                  padding: 0,
-                  fontSize: textSizeParameter.fourteenPx,
-                  color: colorParameter.darkGray,
-                }}
-                value={editCategoryData.name}
-                onChange={(e) =>
-                  setEditCategoryData({
-                    ...editCategoryData,
-                    name: e.target.value,
-                  })
-                }
-              />
-            </FormControl>
-            <FormControl fullWidth sx={{ padding: 0, marginBottom:marginParameters.marginBottom}}>
-              <OutlinedInput
-                multiline
-                minRows={4}
-                placeholder="Enter Category Name"
-                sx={{
-                  padding: '0.8rem 0.8rem',
-                  fontSize: textSizeParameter.fourteenPx,
-                  color: colorParameter.darkGray,
-                }}
-                value={editCategoryData.description}
-                onChange={(e) =>
-                  setEditCategoryData({
-                    ...editCategoryData,
-                    description: e.target.value,
-                  })
-                }
-              />
-            </FormControl>
-          </Box>
-                {validationrror?<Typography color='error'>All field must be filled</Typography>:''}
-          <SubmitButton
-            variant="contained"
-            fullWidth
-            onClick={handleValidateData}
-          >
-            Submit
-          </SubmitButton>
+            <Form>
+              <FormControl fullWidth sx={{ padding: 0, marginBottom: marginParameters.marginBottom }}>
+                <Field
+                  as={OutlinedInput}
+                  name="name"
+                  placeholder="Enter Category Name"
+                  sx={{
+                    padding: 0,
+                    fontSize: textSizeParameter.fourteenPx,
+                    color: colorParameter.darkGray,
+                  }}
+                />
+                <ErrorMessage name="name">
+                  {(msg) => (
+                    <Typography variant="body2" color="error">
+                      {msg}
+                    </Typography>
+                  )}
+                </ErrorMessage>
+              </FormControl>
+              <FormControl fullWidth sx={{ padding: 0, marginBottom: marginParameters.marginBottom }}>
+                <Field
+                  as={OutlinedInput}
+                  multiline
+                  minRows={4}
+                  name="description"
+                  placeholder="Enter Category Description"
+                  sx={{
+                    padding: '0.8rem 0.8rem',
+                    fontSize: textSizeParameter.fourteenPx,
+                    color: colorParameter.darkGray,
+                  }}
+                />
+                <ErrorMessage name="description">
+                  {(msg) => (
+                    <Typography variant="body2" color="error">
+                      {msg}
+                    </Typography>
+                  )}
+                </ErrorMessage>
+              </FormControl>
+              <SubmitButton
+                type='submit'
+                variant="contained"
+                fullWidth
+              >
+                Submit
+              </SubmitButton>
+            </Form>
+          </Formik>
         </Box>
       </Box>
     </DialogBoxModal>

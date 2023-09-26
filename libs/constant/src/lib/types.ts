@@ -17,6 +17,8 @@ export type CategoryData = {
   id?: number;
   name: string;
   description: string;
+  created?: string;
+  updated?: string;
 };
 
 // Props interface for the add category modal start here--
@@ -27,14 +29,12 @@ export type AddCategoryModalProps = {
   setAddCategoryTextFieldData: React.Dispatch<
     React.SetStateAction<CategoryData>
   >;
-  handleCategorySubmit: () => void;
+  handleAddNewCategory: () => void;
 };
 
-//category table props interfaces-------
-export type CategoriesTableProps = {
-  categoryData?: CategoryDataArrayType | null;
-  fetchCategoryData: () => void;
-};
+// //category table props interfaces-------
+// export type CategoriesTableProps = {
+// };
 
 //category data types------------
 export type CategoryDataType = {
@@ -43,6 +43,6 @@ export type CategoryDataType = {
   description: string;
   updated: string;
   created: string;
-}
+};
 
-export type CategoryDataArrayType = CategoryDataType[]
+export type CategoryDataArrayType = CategoryDataType[];
