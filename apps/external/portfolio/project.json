@@ -1,0 +1,79 @@
+{
+  "name": "external--portfolio",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/external//portfolio/src",
+  "projectType": "application",
+  "targets": {
+    "build": {
+      "executor": "@nx/vite:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/external/portfolio",
+        "postcssConfig": "apps/external/portfolio/postcss.config.js"
+      },
+      "configurations": {
+        "development": {
+          "mode": "development"
+        },
+        "production": {
+          "mode": "production"
+        }
+      }
+    },
+    "serve": {
+      "executor": "@nx/vite:dev-server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "external--portfolio:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "external--portfolio:build:development",
+          "hmr": true
+        },
+        "production": {
+          "buildTarget": "external--portfolio:build:production",
+          "hmr": false
+        }
+      }
+    },
+    "preview": {
+      "executor": "@nx/vite:preview-server",
+      "defaultConfiguration": "development",
+      "options": {
+        "buildTarget": "external--portfolio:build"
+      },
+      "configurations": {
+        "development": {
+          "buildTarget": "external--portfolio:build:development"
+        },
+        "production": {
+          "buildTarget": "external--portfolio:build:production"
+        }
+      }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": ["coverage/apps/external/portfolio"],
+      "options": {
+        "passWithNoTests": true,
+        "reportsDirectory": "../../../coverage/apps/external/portfolio"
+      }
+    },
+    "lint": {
+      "executor": "@nx/linter:eslint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["apps/external//portfolio/**/*.{ts,tsx,js,jsx}"]
+      }
+    },
+    "serve-static": {
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "external--portfolio:build"
+      }
+    }
+  },
+  "tags": []
+}
