@@ -1,13 +1,15 @@
-import { useEffect, useState } from 'react';
 import { ItemCard } from '../../components/ItemCard';
 import { exceptions, gridExceptionHandler } from '../../utils/grid';
+import { industries } from '../../mocked/industries';
+import { IBox } from '../../types/grid';
 
 export const Home = () => {
-  const [boxCount, setBoxCount] = useState(7); // You can change this number
+  const boxCount = industries.length;
 
-  let boxArray = Array.from({ length: boxCount }, (_, i) => {
-    return { count: i + 1, rowspan: 1, colspan: 1 };
+  let boxArray: IBox[] = industries.map((industry, index) => {
+    return { count: index + 1, rowspan: 1, colspan: 1, category: industry };
   });
+
   let columnCount = 1;
   let rowCount = 1;
 
@@ -30,8 +32,9 @@ export const Home = () => {
 
   return (
     <div
-      className={`p-4 h-full w-full bg-red-500 grid lg:grid-flow-col grid-cols-1 sm:grid-cols-2 lg:grid-cols-${columnCount} lg:grid-rows-${rowCount} gap-4 md:gap-6 lg:gap-8 mx-auto`}
+      className={`p-4 h-full w-ful grid lg:grid-flow-col grid-cols-1 sm:grid-cols-2 lg:grid-cols-${columnCount} lg:grid-rows-${rowCount} gap-4 md:gap-6 lg:gap-8 mx-auto`}
     >
+      
       {boxArray.map((box) => (
         <ItemCard
           box={box}
