@@ -4,13 +4,14 @@ import { NotFoundPage } from '@/app/not-found-page';
 import { PageStub } from '@/app/page-stub';
 import { CategoriesPage } from '@/features/categories/categories-page';
 import { TechnologiesPage } from '@/features/technologies/technologies-page';
+import { ProjectsPage } from '@/features/projects/projects-page';
 
 export default function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<PageStub title="Overview" />} />
-        <Route path="projects" element={<PageStub title="Projects" />} />
+        <Route path="projects" element={<ProjectsPage />} />
         <Route path="finance/receipts-bills" element={<PageStub title="Receipts and bills" />} />
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="technologies" element={<TechnologiesPage />} />
