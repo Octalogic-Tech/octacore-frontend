@@ -49,8 +49,14 @@ export function CategoryFormDialog({ open, onOpenChange, category }: CategoryFor
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Not while saving: a failure would land on a closed dialog and be lost.
+        if (!isSubmitting) onOpenChange(next);
+      }}
+    >
+      <DialogContent fallbackFocusId="category-search">
         <DialogTitle>{category ? 'Edit category' : 'New category'}</DialogTitle>
         <DialogDescription>Give the category a name and a short description.</DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
@@ -69,7 +75,7 @@ export function CategoryFormDialog({ open, onOpenChange, category }: CategoryFor
             <Button type="submit" disabled={isSubmitting}>
               Save
             </Button>
-            <Button variant="quiet" onClick={() => onOpenChange(false)}>
+            <Button variant="quiet" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
           </div>

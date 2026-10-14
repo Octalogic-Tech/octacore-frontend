@@ -100,3 +100,31 @@ describe('Sheet', () => {
     expect(screen.getByRole('button', { name: 'Close menu' })).toBeInTheDocument();
   });
 });
+
+describe('ConfirmDialog while the action is in flight', () => {
+  it('ignores Escape, so a failure is still shown to the user', async () => {
+    let fail!: (error: Error) => void;
+    const onConfirm = vi.fn(
+      () =>
+        new Promise<void>((_, reject) => {
+          fail = reject;
+        }),
+    );
+    const onOpenChange = vi.fn();
+    render(
+      <ConfirmDialog
+        open
+        onOpenChange={onOpenChange}
+        title="Delete?"
+        description="Sure?"
+        confirmLabel="Delete it"
+        onConfirm={onConfirm}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Delete it' }));
+    await userEvent.keyboard('{Escape}');
+    expect(onOpenChange).not.toHaveBeenCalled();
+    fail(new Error('network'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Try again');
+  });
+});

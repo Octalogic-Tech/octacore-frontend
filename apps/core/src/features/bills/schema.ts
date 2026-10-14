@@ -7,7 +7,12 @@ export const billFormSchema = z.object({
   amount: z
     .string()
     .min(1, 'Amount is required')
-    .refine((value) => Number.isFinite(Number(value)) && Number(value) > 0, 'Amount must be greater than 0'),
+    .refine((value) => Number.isFinite(Number(value)) && Number(value) > 0, 'Amount must be greater than 0')
+    // Cents, not fractions of a cent: what is stored is what the table and the CSV show.
+    .refine(
+      (value) => !Number.isFinite(Number(value)) || Number(Number(value).toFixed(2)) === Number(value),
+      'Amount can have at most two decimals',
+    ),
   billType: z.string().refine((value) => (BILL_TYPES as readonly string[]).includes(value), 'Bill type is required'),
   reimbursement: z.enum(['Yes', 'No']),
   addedBy: z.string().trim().min(1, 'Added by is required'),

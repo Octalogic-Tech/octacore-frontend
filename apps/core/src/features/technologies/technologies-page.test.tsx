@@ -102,3 +102,37 @@ describe('TechnologiesPage', () => {
     expect(await screen.findByText('No technologies yet.')).toBeInTheDocument();
   });
 });
+
+describe('TechnologiesPage dialogs', () => {
+  it('keeps the dialog open while saving, so a failed save is not lost', async () => {
+    let fail!: (error: Error) => void;
+    vi.mocked(api.post).mockImplementation(
+      (() =>
+        new Promise((_, reject) => {
+          fail = reject;
+        })) as never,
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<TechnologiesPage />);
+    await user.click(await screen.findByRole('button', { name: 'Add technology' }));
+    await user.type(screen.getByLabelText('Name'), 'Vite');
+    await user.type(screen.getByLabelText('Description'), 'A build tool.');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('dialog', { name: 'New technology' })).toBeInTheDocument();
+    fail(new Error('down'));
+    expect(await screen.findByText('That did not save. Try again.')).toBeInTheDocument();
+  });
+
+  it('moves focus to the search field after a delete removes the row that held it', async () => {
+    vi.mocked(api.delete).mockImplementation((async () => {
+      vi.mocked(api.get).mockResolvedValue({ data: rows.slice(1) });
+      return { data: {} };
+    }) as never);
+    const user = userEvent.setup();
+    renderWithProviders(<TechnologiesPage />);
+    await user.click(await screen.findByRole('button', { name: 'Delete React' }));
+    await user.click(screen.getByRole('button', { name: 'Delete technology' }));
+    await waitFor(() => expect(screen.getByLabelText('Search technologies')).toHaveFocus());
+  });
+});

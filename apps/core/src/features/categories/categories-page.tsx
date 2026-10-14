@@ -119,6 +119,7 @@ export function CategoriesPage() {
         title={`Delete category “${toDelete?.name ?? ''}”?`}
         description="This cannot be undone."
         confirmLabel="Delete category"
+        fallbackFocusId="category-search"
         onConfirm={async () => {
           if (toDelete) await remove.mutateAsync(toDelete.id);
         }}

@@ -62,3 +62,32 @@ describe('design contract', () => {
     expect(stray).toEqual([]);
   });
 });
+
+describe('design contract: the palette cannot be bypassed', () => {
+  const styles = css.map((f) => f.text).join('\n');
+  const defaultPaletteUtility =
+    /(?<![\w-])(?:bg|text|border|ring|outline|fill|stroke|decoration|divide|placeholder|caret|accent|from|via|to)-(?:(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}|white|black)(?![\w-])/;
+
+  it('removes the default Tailwind palette, so an unknown colour class cannot compile', () => {
+    expect(styles).toMatch(/--color-\*:\s*initial/);
+  });
+
+  it('uses no default-palette colour utilities (and the check catches them)', () => {
+    expect(defaultPaletteUtility.test('bg-gray-100')).toBe(true);
+    expect(defaultPaletteUtility.test('text-white')).toBe(true);
+    expect(defaultPaletteUtility.test('bg-navy text-teal text-on-navy border-rule')).toBe(false);
+    expect(code.filter((f) => defaultPaletteUtility.test(f.text)).map((f) => f.path)).toEqual([]);
+  });
+
+  it('writes no colour functions other than the scrim and the button seam', () => {
+    const functions = [...code, ...css]
+      .flatMap((f) => f.text.match(/(?<![a-z])(?:rgb|rgba|hsl|hsla|oklch|oklab|lab|lch)\([^)]*\)/g) ?? [])
+      .map((value) => value.replace(/[\s_]/g, ''))
+      .sort();
+    expect(functions).toEqual(['rgb(255255255/0.08)', 'rgb(31729/0.45)']);
+  });
+
+  it('declares no border-radius in CSS', () => {
+    expect(/border-radius\s*:\s*(?!0\b)/.test(styles)).toBe(false);
+  });
+});

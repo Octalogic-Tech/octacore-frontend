@@ -68,6 +68,14 @@ describe('App shell', () => {
     }
   });
 
+  it('returns focus to the menu button when the menu is closed', async () => {
+    const user = userEvent.setup();
+    renderAt('/');
+    await user.click(screen.getByRole('button', { name: 'Open menu' }));
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open menu' })).toHaveFocus());
+  });
+
   it('opens the menu sheet and closes it after navigating', async () => {
     const user = userEvent.setup();
     renderAt('/');

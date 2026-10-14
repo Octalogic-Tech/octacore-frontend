@@ -158,3 +158,70 @@ describe('CategoriesPage', () => {
     expect(screen.getByRole('dialog', { name: 'New category' })).toBeInTheDocument();
   });
 });
+
+describe('CategoriesPage dialogs', () => {
+  it('keeps the dialog open while saving, so a failed save is not lost', async () => {
+    let fail!: (error: Error) => void;
+    vi.mocked(api.post).mockImplementation(
+      (() =>
+        new Promise((_, reject) => {
+          fail = reject;
+        })) as never,
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<CategoriesPage />);
+    await user.click(await screen.findByRole('button', { name: 'Add category' }));
+    await user.type(screen.getByLabelText('Name'), 'Data');
+    await user.type(screen.getByLabelText('Description'), 'Data work');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('dialog', { name: 'New category' })).toBeInTheDocument();
+    fail(new Error('down'));
+    expect(await screen.findByText('That did not save. Try again.')).toBeInTheDocument();
+  });
+
+  it('moves focus to the search field after a delete removes the row that held it', async () => {
+    vi.mocked(api.delete).mockImplementation((async () => {
+      vi.mocked(api.get).mockResolvedValue({ data: rows.slice(1) });
+      return { data: {} };
+    }) as never);
+    const user = userEvent.setup();
+    renderWithProviders(<CategoriesPage />);
+    await user.click(await screen.findByRole('button', { name: 'Delete Web' }));
+    await user.click(screen.getByRole('button', { name: 'Delete category' }));
+    await waitFor(() => expect(screen.getByLabelText('Search categories')).toHaveFocus());
+  });
+
+  it('returns focus to the Delete button when the confirmation is cancelled', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<CategoriesPage />);
+    await user.click(await screen.findByRole('button', { name: 'Delete Web' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete Web' })).toHaveFocus());
+  });
+});
+
+describe('CategoriesPage focus', () => {
+  it('returns focus to the Add category button when the dialog is cancelled', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<CategoriesPage />);
+    await user.click(await screen.findByRole('button', { name: 'Add category' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add category' })).toHaveFocus());
+  });
+
+  it('moves focus to the search field when saving removes the button that opened the dialog', async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: [] });
+    vi.mocked(api.post).mockImplementation((async () => {
+      vi.mocked(api.get).mockResolvedValue({ data: rows });
+      return { data: { id: 3 } };
+    }) as never);
+    const user = userEvent.setup();
+    renderWithProviders(<CategoriesPage />);
+    await user.click(await screen.findByRole('button', { name: 'Add the first category' }));
+    await user.type(screen.getByLabelText('Name'), 'Data');
+    await user.type(screen.getByLabelText('Description'), 'Data work');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.getByLabelText('Search categories')).toHaveFocus());
+  });
+});

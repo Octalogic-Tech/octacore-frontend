@@ -53,8 +53,14 @@ export function TechnologyFormDialog({ open, onOpenChange, technology }: Technol
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Not while saving: a failure would land on a closed dialog and be lost.
+        if (!isSubmitting) onOpenChange(next);
+      }}
+    >
+      <DialogContent fallbackFocusId="technology-search">
         <DialogTitle>{technology ? 'Edit technology' : 'New technology'}</DialogTitle>
         <DialogDescription>Name the technology and say what it is used for.</DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
@@ -88,7 +94,7 @@ export function TechnologyFormDialog({ open, onOpenChange, technology }: Technol
             <Button type="submit" disabled={isSubmitting}>
               Save
             </Button>
-            <Button variant="quiet" onClick={() => onOpenChange(false)}>
+            <Button variant="quiet" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
           </div>

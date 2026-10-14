@@ -7,6 +7,8 @@ export function usePagedRows<T>(rows: readonly T[], initialPageSize = 5) {
 
   const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
   const page = Math.min(requestedPage, pageCount - 1);
+  // Keep the clamped page, so rows coming back do not jump the table forward again.
+  if (requestedPage !== page) setPage(page);
   const pageRows = useMemo(() => rows.slice(page * pageSize, page * pageSize + pageSize), [rows, page, pageSize]);
 
   function setPageSize(size: number) {

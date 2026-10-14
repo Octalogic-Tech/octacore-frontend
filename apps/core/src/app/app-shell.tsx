@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { SidebarNav } from '@/app/sidebar-nav';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { Logo, LogoMark } from '@/components/logo';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 
@@ -41,7 +42,9 @@ export function AppShell() {
           </button>
         </header>
         <main id="main" className="mx-auto w-full max-w-[75rem] flex-1 px-5 py-8 md:px-8 lg:py-12 xl:px-10">
-          <Outlet />
+          <ErrorBoundary key={pathname}>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>

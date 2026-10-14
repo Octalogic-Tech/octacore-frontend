@@ -102,3 +102,24 @@ describe('AddBillDialog', () => {
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 });
+
+describe('AddBillDialog while saving', () => {
+  it('keeps the dialog open, so a failed save is not lost', async () => {
+    let fail!: (error: Error) => void;
+    vi.mocked(api.post).mockImplementation(
+      (() =>
+        new Promise((_, reject) => {
+          fail = reject;
+        })) as never,
+    );
+    const user = userEvent.setup();
+    const onOpenChange = setup();
+    await fillValid(user);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.keyboard('{Escape}');
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Add bill' })).toBeInTheDocument();
+    fail(new Error('down'));
+    expect(await screen.findByText('That did not save. Try again.')).toBeInTheDocument();
+  });
+});

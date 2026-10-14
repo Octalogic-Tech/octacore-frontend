@@ -13,6 +13,10 @@
 /* Brand palette, copied from octa-website/src/styles/global.css.
    No colour enters the app that is not navy, teal, grey or a tint of them. */
 @theme static {
+  /* Drop Tailwind's default palette: only the brand colours below exist, so an unknown colour class
+     (text-white, bg-gray-100) does not compile. */
+  --color-*: initial;
+
   --color-grey: #f2f2f0;
   --color-navy: #0d3a5c;
   --color-navy-deep: #0a2f4b;

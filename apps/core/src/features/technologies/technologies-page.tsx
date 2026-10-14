@@ -122,6 +122,7 @@ export function TechnologiesPage() {
         title={`Delete technology “${toDelete?.name ?? ''}”?`}
         description="This cannot be undone."
         confirmLabel="Delete technology"
+        fallbackFocusId="technology-search"
         onConfirm={async () => {
           if (toDelete) await remove.mutateAsync(toDelete.id);
         }}

@@ -21,6 +21,15 @@ describe('usePagedRows', () => {
     expect(result.current.pageRows).toEqual([6, 7, 8, 9, 10]);
   });
 
+  it('stays on the clamped page when rows come back, instead of jumping to the old page', () => {
+    const { result, rerender } = renderHook(({ data }) => usePagedRows(data, 5), { initialProps: { data: rows } });
+    act(() => result.current.setPage(2));
+    rerender({ data: rows.slice(0, 10) });
+    expect(result.current.page).toBe(1);
+    rerender({ data: rows });
+    expect(result.current.page).toBe(1);
+  });
+
   it('goes back to the first page when the page size changes', () => {
     const { result } = renderHook(() => usePagedRows(rows, 5));
     act(() => result.current.setPage(2));

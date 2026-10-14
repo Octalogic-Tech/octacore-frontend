@@ -41,8 +41,14 @@ export function AddBillDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Not while saving: a failure would land on a closed dialog and be lost.
+        if (!isSubmitting) onOpenChange(next);
+      }}
+    >
+      <DialogContent className="max-w-2xl" fallbackFocusId="bills-from">
         <DialogTitle>Add bill</DialogTitle>
         <DialogDescription>Record a bill and attach a picture of it. It starts as pending.</DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6 sm:grid-cols-2">
@@ -110,7 +116,7 @@ export function AddBillDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             <Button type="submit" disabled={isSubmitting}>
               Save
             </Button>
-            <Button variant="quiet" onClick={() => onOpenChange(false)}>
+            <Button variant="quiet" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
           </div>
