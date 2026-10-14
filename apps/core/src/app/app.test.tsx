@@ -46,6 +46,14 @@ describe('App shell', () => {
     }
   });
 
+  it('shows who is signed in, with Change password and Sign out', () => {
+    renderAt('/');
+    const account = screen.getByRole('region', { name: 'Account' });
+    expect(within(account).getByText('Ada Admin')).toBeInTheDocument();
+    expect(within(account).getByRole('button', { name: 'Change password' })).toBeInTheDocument();
+    expect(within(account).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+
   it('marks only the current page', () => {
     renderAt('/projects');
     const nav = screen.getByRole('navigation', { name: 'Main' });

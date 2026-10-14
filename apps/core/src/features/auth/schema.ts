@@ -8,3 +8,17 @@ export const loginSchema = z.object({
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
+
+// 10 to 128 characters, the service's own limits, so what it would refuse is caught before the request.
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: z.string().min(10, 'Use at least 10 characters').max(128, 'Use at most 128 characters'),
+    confirmPassword: z.string(),
+  })
+  .refine((values) => values.newPassword === values.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'The passwords do not match',
+  });
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
