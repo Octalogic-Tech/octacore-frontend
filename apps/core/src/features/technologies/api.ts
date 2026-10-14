@@ -1,31 +1,33 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import type { TechnologyInput } from './schema';
-import type { Technology } from './types';
+import { coreApi, unwrap } from '@/lib/core-api';
+import { technologyRowsSchema, type TechnologyChanges } from './schema';
 
-const KEY = ['technologies'] as const;
+export const technologiesKey = ['technologies'] as const;
 
 export function useTechnologies() {
   return useQuery({
-    queryKey: KEY,
-    queryFn: async () => (await api.get<Technology[]>('/technologies')).data,
+    queryKey: technologiesKey,
+    queryFn: async () => unwrap((await coreApi.get('/technologies')).data, technologyRowsSchema),
   });
 }
 
 export function useCreateTechnology() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: TechnologyInput) => (await api.post<Technology>('/technologies', input)).data,
-    onSuccess: () => client.invalidateQueries({ queryKey: KEY }),
+    mutationFn: async (input: TechnologyChanges) => {
+      await coreApi.post('/technologies', input);
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: technologiesKey }),
   });
 }
 
 export function useUpdateTechnology() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...input }: TechnologyInput & { id: number }) =>
-      (await api.patch<Technology>(`/technologies/${id}`, input)).data,
-    onSuccess: () => client.invalidateQueries({ queryKey: KEY }),
+    mutationFn: async ({ id, ...input }: TechnologyChanges & { id: number }) => {
+      await coreApi.patch(`/technologies/${id}`, input);
+    },
+    onSuccess: () => client.invalidateQueries({ queryKey: technologiesKey }),
   });
 }
 
@@ -33,8 +35,8 @@ export function useDeleteTechnology() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      await api.delete(`/technologies/${id}`);
+      await coreApi.delete(`/technologies/${id}`);
     },
-    onSuccess: () => client.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () => client.invalidateQueries({ queryKey: technologiesKey }),
   });
 }

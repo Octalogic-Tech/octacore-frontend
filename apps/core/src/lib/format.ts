@@ -18,11 +18,6 @@ export function formatDate(iso: string): string {
   return shortDate.format(new Date(Number(year), Number(month) - 1, Number(day)));
 }
 
-/** The local date as `YYYY-MM-DD`; json-server does not stamp `created` and `updated` itself. */
-export function today(): string {
-  return new Date().toLocaleDateString('en-CA');
-}
-
 export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : plural}`;
 }

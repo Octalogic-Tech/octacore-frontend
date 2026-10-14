@@ -1,27 +1,31 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { api } from '@/lib/api';
+import { coreApi } from '@/lib/core-api';
+import { categoriesEnvelope, categoryRows } from '@/test/fixtures/categories';
 import { renderWithProviders } from '@/test/utils';
 import { CategoriesPage } from './categories-page';
 
-vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() } }));
-
-const rows = [
-  { id: 1, name: 'Web', description: 'Websites and portals', created: '2023-07-25', updated: '2023-07-26' },
-  { id: 2, name: 'Mobile', description: 'Phone apps', created: '2023-08-01', updated: '2023-08-01' },
-];
+vi.mock('@/lib/core-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/core-api')>()),
+  coreApi: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+}));
 
 const numbered = (count: number) =>
   Array.from({ length: count }, (_, index) => ({
+    ...categoryRows[0],
     id: index + 1,
     name: `Category ${index + 1}`,
     description: 'anything',
-    created: '2023-07-25',
-    updated: '2023-07-25',
   }));
 
+/** The next GET answers with these rows, in the service's envelope. */
+const serve = (rows: unknown) => vi.mocked(coreApi.get).mockResolvedValue({ data: categoriesEnvelope(rows) });
+
+/** What the service answers a save with; the page does not read it. */
+const saved = { data: { statusCode: 200, message: 'saved', data: categoryRows[0], meta: null } };
+
 beforeEach(() => {
-  vi.mocked(api.get).mockResolvedValue({ data: rows });
+  serve(categoryRows);
 });
 
 afterEach(() => {
@@ -29,12 +33,26 @@ afterEach(() => {
 });
 
 describe('CategoriesPage', () => {
-  it('lists categories with readable dates', async () => {
+  it('asks the core service for the categories, not the mock API', async () => {
+    renderWithProviders(<CategoriesPage />);
+    await screen.findByText('Web');
+    expect(coreApi.get).toHaveBeenCalledWith('/categories');
+  });
+
+  it('lists categories with readable dates from the service timestamps', async () => {
     renderWithProviders(<CategoriesPage />);
     expect(await screen.findByText('Web')).toBeInTheDocument();
     expect(screen.getByText('25 Jul 2023')).toBeInTheDocument();
     expect(screen.getByText('26 Jul 2023')).toBeInTheDocument();
     expect(screen.getByText('1–2 of 2')).toBeInTheDocument();
+  });
+
+  it('lists a category the service holds without a description, and edits it from an empty field', async () => {
+    serve([{ ...categoryRows[1], description: null }]);
+    const user = userEvent.setup();
+    renderWithProviders(<CategoriesPage />);
+    await user.click(await screen.findByRole('button', { name: 'Edit Mobile' }));
+    expect(screen.getByLabelText('Description')).toHaveValue('');
   });
 
   it('filters by search text and says when nothing matches', async () => {
@@ -50,7 +68,7 @@ describe('CategoriesPage', () => {
   });
 
   it('goes back to the first page when searching from a later page', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: numbered(12) });
+    serve(numbered(12));
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
     await user.click(await screen.findByRole('button', { name: 'Next' }));
@@ -60,8 +78,8 @@ describe('CategoriesPage', () => {
     expect(screen.getByText('Category 12')).toBeInTheDocument();
   });
 
-  it('creates a category from the dialog', async () => {
-    vi.mocked(api.post).mockResolvedValue({ data: { id: 3 } });
+  it('creates a category from the dialog, sending only what the service does not stamp itself', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
     await user.click(await screen.findByRole('button', { name: 'Add category' }));
@@ -69,10 +87,7 @@ describe('CategoriesPage', () => {
     await user.type(screen.getByLabelText('Description'), 'Data work');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
-      expect(api.post).toHaveBeenCalledWith(
-        '/categories',
-        expect.objectContaining({ name: 'Data', description: 'Data work', created: expect.any(String), updated: expect.any(String) }),
-      ),
+      expect(coreApi.post).toHaveBeenCalledWith('/categories', { name: 'Data', description: 'Data work' }),
     );
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
   });
@@ -84,11 +99,11 @@ describe('CategoriesPage', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Name is required')).toBeInTheDocument();
     expect(screen.getByText('Description is required')).toBeInTheDocument();
-    expect(api.post).not.toHaveBeenCalled();
+    expect(coreApi.post).not.toHaveBeenCalled();
   });
 
-  it('edits a category, starting from its current values', async () => {
-    vi.mocked(api.patch).mockResolvedValue({ data: {} });
+  it('edits a category with PATCH, starting from its current values', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
     await user.click(await screen.findByRole('button', { name: 'Edit Web' }));
@@ -98,10 +113,10 @@ describe('CategoriesPage', () => {
     await user.type(name, 'Web 2');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
-      expect(api.patch).toHaveBeenCalledWith(
-        '/categories/1',
-        expect.objectContaining({ name: 'Web 2', description: 'Websites and portals' }),
-      ),
+      expect(coreApi.patch).toHaveBeenCalledWith('/categories/1', {
+        name: 'Web 2',
+        description: 'Websites and portals',
+      }),
     );
   });
 
@@ -115,21 +130,43 @@ describe('CategoriesPage', () => {
   });
 
   it('deletes only after the confirmation', async () => {
-    vi.mocked(api.delete).mockResolvedValue({ data: {} });
+    vi.mocked(coreApi.delete).mockResolvedValue(saved);
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
     await user.click(await screen.findByRole('button', { name: 'Delete Web' }));
-    expect(api.delete).not.toHaveBeenCalled();
+    expect(coreApi.delete).not.toHaveBeenCalled();
     expect(screen.getByRole('alertdialog', { name: 'Delete category “Web”?' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Delete category' }));
-    await waitFor(() => expect(api.delete).toHaveBeenCalledWith('/categories/1'));
+    await waitFor(() => expect(coreApi.delete).toHaveBeenCalledWith('/categories/1'));
+  });
+
+  it('marks the technologies stale after a delete, because they carry category names', async () => {
+    vi.mocked(coreApi.delete).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    const { client } = renderWithProviders(<CategoriesPage />);
+    client.setQueryData(['technologies'], []);
+    await user.click(await screen.findByRole('button', { name: 'Delete Web' }));
+    await user.click(screen.getByRole('button', { name: 'Delete category' }));
+    await waitFor(() => expect(client.getQueryState(['technologies'])?.isInvalidated).toBe(true));
+  });
+
+  it('marks the technologies stale after a rename, because they carry category names', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    const { client } = renderWithProviders(<CategoriesPage />);
+    client.setQueryData(['technologies'], []);
+    await user.click(await screen.findByRole('button', { name: 'Edit Web' }));
+    await user.clear(screen.getByLabelText('Name'));
+    await user.type(screen.getByLabelText('Name'), 'Web 2');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(client.getQueryState(['technologies'])?.isInvalidated).toBe(true));
   });
 
   it('lands on the last page that still exists after deleting the only row on the last page', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: numbered(11) });
-    vi.mocked(api.delete).mockImplementation(async () => {
-      vi.mocked(api.get).mockResolvedValue({ data: numbered(10) });
-      return { data: {} };
+    serve(numbered(11));
+    vi.mocked(coreApi.delete).mockImplementation(async () => {
+      serve(numbered(10));
+      return saved;
     });
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
@@ -140,8 +177,10 @@ describe('CategoriesPage', () => {
     expect(screen.getByText('Category 1')).toBeInTheDocument();
   });
 
-  it('shows an error with a retry when the API is down, then recovers', async () => {
-    vi.mocked(api.get).mockRejectedValueOnce(new Error('down')).mockResolvedValue({ data: rows });
+  it('shows an error with a retry when the service is down, then recovers', async () => {
+    vi.mocked(coreApi.get)
+      .mockRejectedValueOnce(new Error('down'))
+      .mockResolvedValue({ data: categoriesEnvelope() });
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
     expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
@@ -149,8 +188,17 @@ describe('CategoriesPage', () => {
     expect(await screen.findByText('Web')).toBeInTheDocument();
   });
 
+  it.each([
+    ['a bare array, which is what the json-server mock sends', categoryRows],
+    ['an envelope whose row has lost its name', categoriesEnvelope([{ ...categoryRows[0], name: undefined }])],
+  ])('shows the error state, not a broken table, when the service answers with %s', async (_label, body) => {
+    vi.mocked(coreApi.get).mockResolvedValue({ data: body });
+    renderWithProviders(<CategoriesPage />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+  });
+
   it('offers to add the first category when there are none', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [] });
+    serve([]);
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
     expect(await screen.findByText('No categories yet.')).toBeInTheDocument();
@@ -162,7 +210,7 @@ describe('CategoriesPage', () => {
 describe('CategoriesPage dialogs', () => {
   it('keeps the dialog open while saving, so a failed save is not lost', async () => {
     let fail!: (error: Error) => void;
-    vi.mocked(api.post).mockImplementation(
+    vi.mocked(coreApi.post).mockImplementation(
       (() =>
         new Promise((_, reject) => {
           fail = reject;
@@ -181,9 +229,9 @@ describe('CategoriesPage dialogs', () => {
   });
 
   it('moves focus to the search field after a delete removes the row that held it', async () => {
-    vi.mocked(api.delete).mockImplementation((async () => {
-      vi.mocked(api.get).mockResolvedValue({ data: rows.slice(1) });
-      return { data: {} };
+    vi.mocked(coreApi.delete).mockImplementation((async () => {
+      serve(categoryRows.slice(1));
+      return saved;
     }) as never);
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
@@ -211,10 +259,10 @@ describe('CategoriesPage focus', () => {
   });
 
   it('moves focus to the search field when saving removes the button that opened the dialog', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: [] });
-    vi.mocked(api.post).mockImplementation((async () => {
-      vi.mocked(api.get).mockResolvedValue({ data: rows });
-      return { data: { id: 3 } };
+    serve([]);
+    vi.mocked(coreApi.post).mockImplementation((async () => {
+      serve(categoryRows);
+      return saved;
     }) as never);
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);

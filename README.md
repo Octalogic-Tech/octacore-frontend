@@ -17,9 +17,11 @@ pnpm nx serve core   # the app on http://localhost:4200
 
 Set `VITE_API_URL` (see `apps/core/.env.example`) to point the app at another API.
 
-### Countries and the FastAPI core service
+### Categories, Technologies, Countries and the FastAPI core service
 
-The Countries page is the first page wired to the real backend, the FastAPI service in `octacore-backend`. Start it once with `make setup` and then `make run` (port 5001, base path `/api/v1`). Point the app at another address with `VITE_CORE_API_URL`. If the service is down, the page shows an error with a Try again button; every other page keeps working on the mock.
+The Categories, Technologies and Countries pages are wired to the real backend, the FastAPI service in `octacore-backend`. Adding, editing and deleting a category or a technology writes to it (Countries is read-only). Start it once with `make setup` and then `make run` (port 5001, base path `/api/v1`). Point the app at another address with `VITE_CORE_API_URL`. If the service is down, the page shows an error with a Try again button; Projects and Receipts and bills keep working on the mock.
+
+A technology can have one category (optional). The Technologies dialog offers the categories the service holds, and the table shows the one chosen.
 
 The service listens on IPv4 only (`127.0.0.1`). Browsers fall back to it when `localhost` resolves to `::1` first, but tools that do not (Cypress's proxy, for one) need `VITE_CORE_API_URL=http://127.0.0.1:5001/api/v1`.
 
@@ -27,6 +29,12 @@ To check the app's expectations against the running service (opt-in, skipped oth
 
 ```bash
 CORE_API_LIVE=1 pnpm nx test core --skip-nx-cache
+```
+
+The Categories and Technologies checks add a record, edit it and delete it, so they run only when `CORE_API_WRITE_URL` names a service on a scratch database (start one with `DB_NAME=<scratch db> .venv/bin/uvicorn app.main:create_app --factory --port 5002` in `octacore-backend`):
+
+```bash
+CORE_API_WRITE_URL=http://127.0.0.1:5002/api/v1 pnpm nx test core --skip-nx-cache
 ```
 
 ## Generate code

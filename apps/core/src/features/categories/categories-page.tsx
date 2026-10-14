@@ -74,8 +74,8 @@ export function CategoriesPage() {
                   {paging.pageRows.map((category) => (
                     <TableRow key={category.id}>
                       <TableCell className="font-semibold">{category.name}</TableCell>
-                      <TableCell className="tabular">{formatDate(category.created)}</TableCell>
-                      <TableCell className="tabular">{formatDate(category.updated)}</TableCell>
+                      <TableCell className="tabular">{formatDate(category.createdDate)}</TableCell>
+                      <TableCell className="tabular">{formatDate(category.updatedDate)}</TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         <Button
                           variant="quiet"

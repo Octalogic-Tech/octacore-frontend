@@ -1,4 +1,4 @@
-import { formatCurrency, formatDate, pluralize, today } from './format';
+import { formatCurrency, formatDate, pluralize } from './format';
 
 describe('formatCurrency', () => {
   it('drops the cents on whole amounts', () => {
@@ -19,18 +19,6 @@ describe('formatDate', () => {
   it('returns what it cannot read, untouched', () => {
     expect(formatDate('')).toBe('');
     expect(formatDate('nonsense')).toBe('nonsense');
-  });
-});
-
-describe('today', () => {
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
-  it('is the local date as YYYY-MM-DD', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2024, 0, 5, 12));
-    expect(today()).toBe('2024-01-05');
   });
 });
 

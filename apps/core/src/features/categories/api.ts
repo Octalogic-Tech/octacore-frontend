@@ -1,33 +1,39 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { today } from '@/lib/format';
-import type { CategoryInput } from './schema';
-import type { Category } from './types';
+import { technologiesKey } from '@/features/technologies/api';
+import { coreApi, unwrap } from '@/lib/core-api';
+import { categoryRowsSchema, type CategoryInput } from './schema';
 
 const KEY = ['categories'] as const;
 
 export function useCategories() {
   return useQuery({
     queryKey: KEY,
-    queryFn: async () => (await api.get<Category[]>('/categories')).data,
+    queryFn: async () => unwrap((await coreApi.get('/categories')).data, categoryRowsSchema),
   });
 }
 
 export function useCreateCategory() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (input: CategoryInput) =>
-      (await api.post<Category>('/categories', { ...input, created: today(), updated: today() })).data,
+    mutationFn: async (input: CategoryInput) => {
+      await coreApi.post('/categories', input);
+    },
     onSuccess: () => client.invalidateQueries({ queryKey: KEY }),
   });
 }
 
+/** A technology carries its category's name, so a rename or a delete makes the technologies stale too. */
 export function useUpdateCategory() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...input }: CategoryInput & { id: number }) =>
-      (await api.patch<Category>(`/categories/${id}`, { ...input, updated: today() })).data,
-    onSuccess: () => client.invalidateQueries({ queryKey: KEY }),
+    mutationFn: async ({ id, ...input }: CategoryInput & { id: number }) => {
+      await coreApi.patch(`/categories/${id}`, input);
+    },
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: KEY }),
+        client.invalidateQueries({ queryKey: technologiesKey }),
+      ]),
   });
 }
 
@@ -35,8 +41,12 @@ export function useDeleteCategory() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (id: number) => {
-      await api.delete(`/categories/${id}`);
+      await coreApi.delete(`/categories/${id}`);
     },
-    onSuccess: () => client.invalidateQueries({ queryKey: KEY }),
+    onSuccess: () =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: KEY }),
+        client.invalidateQueries({ queryKey: technologiesKey }),
+      ]),
   });
 }
