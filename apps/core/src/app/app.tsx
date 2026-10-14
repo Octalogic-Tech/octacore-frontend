@@ -1,17 +1,17 @@
 import { Route, Routes } from 'react-router-dom';
 import { AppShell } from '@/app/app-shell';
 import { NotFoundPage } from '@/app/not-found-page';
-import { PageStub } from '@/app/page-stub';
 import { CategoriesPage } from '@/features/categories/categories-page';
 import { TechnologiesPage } from '@/features/technologies/technologies-page';
 import { ProjectsPage } from '@/features/projects/projects-page';
 import { BillsPage } from '@/features/bills/bills-page';
+import { OverviewPage } from '@/features/overview/overview-page';
 
 export default function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route index element={<PageStub title="Overview" />} />
+        <Route index element={<OverviewPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="finance/receipts-bills" element={<BillsPage />} />
         <Route path="categories" element={<CategoriesPage />} />
