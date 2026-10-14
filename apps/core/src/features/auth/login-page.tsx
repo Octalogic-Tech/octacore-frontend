@@ -34,14 +34,21 @@ export function LoginPage() {
   // Signing in flips the status, which brings the person back to the page they asked for.
   if (status === 'authenticated') return <Navigate to={savedPath(location.state)} replace />;
 
-  const submit = handleSubmit(async (values) => {
-    setFailure(null);
-    try {
-      await signIn(values.email, values.password);
-    } catch (error) {
-      setFailure(statusOf(error) === 401 ? 'credentials' : 'unreachable');
-    }
-  });
+  const submit = handleSubmit(
+    async (values) => {
+      setFailure(null);
+      try {
+        await signIn(values.email, values.password);
+      } catch (error) {
+        // A 422 is the service refusing the input itself (an address it cannot read, say): to the person that is a
+        // failed sign-in like any other.
+        const code = statusOf(error);
+        setFailure(code === 401 || code === 422 ? 'credentials' : 'unreachable');
+      }
+    },
+    // A form sent again with a field missing is a new attempt: the last attempt's message no longer applies.
+    () => setFailure(null),
+  );
 
   return (
     <main id="main" className="grid min-h-dvh place-items-center px-5 py-12">

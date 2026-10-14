@@ -6,10 +6,28 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { serviceMessage } from '@/lib/core-api';
+import { useAuth } from '@/features/auth/auth-context';
+import { refreshSession, serviceMessage, statusOf } from '@/lib/core-api';
 import { useCreateUser, useUpdateUser } from './api';
 import { emptyUserForm, ROLES, userFormSchema, type UserFormValues } from './schema';
 import type { User } from './types';
+
+const GENERIC_FAILURE = 'That did not save. Try again.';
+
+/**
+ * What to tell the person when a save fails. A 409 or 422 carries the service's own message, which is shown, except
+ * the two generic ones that read like a database or a framework talking: a unique-index clash (the email, the only
+ * unique field a user has) and the request-validation catch-all.
+ */
+function failureMessage(error: unknown): string {
+  const status = statusOf(error);
+  const message = serviceMessage(error);
+  if (status === 409 && message === 'A record with the same unique value already exists') {
+    return 'A user with that email already exists';
+  }
+  if (status === 422 && message === 'Validation failed') return GENERIC_FAILURE;
+  return message ?? GENERIC_FAILURE;
+}
 
 interface UserFormDialogProps {
   open: boolean;
@@ -21,8 +39,11 @@ interface UserFormDialogProps {
 export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps) {
   const create = useCreateUser();
   const update = useUpdateUser();
+  const { user: me } = useAuth();
   const [failure, setFailure] = useState<string | null>(null);
   const editing = user !== undefined;
+  // Your own password changes through Change password, which asks for the current one; the service refuses it here.
+  const ownRow = editing && user.id === me?.id;
   // A password is required when adding and optional when editing, so the schema depends on which this is.
   const resolver = useMemo(() => zodResolver(userFormSchema(editing)), [editing]);
   const {
@@ -34,6 +55,7 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
 
   useEffect(() => {
     if (open) {
+      // The cast is safe only while ROLES is ['admin'], the one role the service has: widen it when roles are added.
       reset(user ? { name: user.name, email: user.email, role: user.role as UserFormValues['role'], password: '' } : emptyUserForm);
       setFailure(null);
     }
@@ -45,9 +67,11 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
       if (user) await update.mutateAsync({ id: user.id, values });
       else await create.mutateAsync(values);
       onOpenChange(false);
+      // The sidebar shows your name and email from the session: a refresh brings the new ones (AuthProvider hears
+      // whose session it is). If it fails, the old details stay on screen until the next refresh.
+      if (ownRow) refreshSession().catch(() => undefined);
     } catch (error) {
-      // A 409 (email already in use) carries a message written for people; anything else is generic.
-      setFailure(serviceMessage(error) ?? 'That did not save. Try again.');
+      setFailure(failureMessage(error));
     }
   });
 
@@ -62,7 +86,9 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
       <DialogContent fallbackFocusId="user-search">
         <DialogTitle>{editing ? 'Edit user' : 'New user'}</DialogTitle>
         <DialogDescription>
-          {editing
+          {ownRow
+            ? 'Change your name, email or role.'
+            : editing
             ? 'Change their details, or set a new password to replace the current one.'
             : 'Name the person, give them the email they will sign in with, and set a password.'}
         </DialogDescription>
@@ -87,23 +113,27 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
               ))}
             </Select>
           </Field>
-          <Field
-            label={editing ? 'New password' : 'Password'}
-            htmlFor="user-password"
-            error={errors.password?.message}
-            hint={
-              editing
-                ? 'Leave blank to keep the current password. Setting one signs the person out everywhere.'
-                : 'At least 10 characters.'
-            }
-          >
-            <Input
-              {...fieldA11y('user-password', errors.password?.message)}
-              {...register('password')}
-              type="password"
-              autoComplete="new-password"
-            />
-          </Field>
+          {ownRow ? (
+            <p className="text-small text-navy-72">Use Change password to change your own password.</p>
+          ) : (
+            <Field
+              label={editing ? 'New password' : 'Password'}
+              htmlFor="user-password"
+              error={errors.password?.message}
+              hint={
+                editing
+                  ? 'Leave blank to keep the current password. Setting one signs the person out everywhere.'
+                  : 'At least 10 characters.'
+              }
+            >
+              <Input
+                {...fieldA11y('user-password', errors.password?.message)}
+                {...register('password')}
+                type="password"
+                autoComplete="new-password"
+              />
+            </Field>
+          )}
           {failure ? (
             <p role="alert" className="text-small font-semibold text-foreground">
               {failure}

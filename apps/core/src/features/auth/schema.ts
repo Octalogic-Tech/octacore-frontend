@@ -1,10 +1,11 @@
 import { z } from 'zod';
 
 // The email is not checked as an address: the service answers an unknown account with the same message as a
-// wrong password. The password is used exactly as typed (no trim): a space can be part of it.
+// wrong password. The password is used exactly as typed (no trim): a space can be part of it. 128 characters is the
+// service's limit; it refuses anything longer.
 export const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email is required'),
-  password: z.string().min(1, 'Password is required'),
+  password: z.string().min(1, 'Password is required').max(128, 'Use at most 128 characters'),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;

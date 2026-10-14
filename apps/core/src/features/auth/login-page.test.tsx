@@ -79,6 +79,40 @@ describe('LoginPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password');
   });
 
+  it('treats a 422 from the service like a failed credential check', async () => {
+    const user = userEvent.setup();
+    renderLogin({ signIn: vi.fn().mockRejectedValue(rejection(422)) });
+    await user.type(screen.getByLabelText('Email'), 'ada@example.com');
+    await user.type(screen.getByLabelText('Password'), 'wrong');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password.');
+  });
+
+  it('refuses a password longer than 128 characters before calling the service', async () => {
+    const signIn = vi.fn();
+    const user = userEvent.setup();
+    renderLogin({ signIn });
+    await user.type(screen.getByLabelText('Email'), 'ada@example.com');
+    await user.click(screen.getByLabelText('Password'));
+    await user.paste('x'.repeat(129));
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByText('Use at most 128 characters')).toBeInTheDocument();
+    expect(signIn).not.toHaveBeenCalled();
+  });
+
+  it('drops the old "Invalid email or password" when the form is sent again with a field missing', async () => {
+    const user = userEvent.setup();
+    renderLogin({ signIn: vi.fn().mockRejectedValue(rejection(401)) });
+    await user.type(screen.getByLabelText('Email'), 'ada@example.com');
+    await user.type(screen.getByLabelText('Password'), 'wrong');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password');
+    await user.clear(screen.getByLabelText('Password'));
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(await screen.findByText('Password is required')).toBeInTheDocument();
+    expect(screen.queryByText('Invalid email or password.')).not.toBeInTheDocument();
+  });
+
   it('says the service could not be reached for any other failure', async () => {
     const user = userEvent.setup();
     renderLogin({ signIn: vi.fn().mockRejectedValue(rejection(500)) });
