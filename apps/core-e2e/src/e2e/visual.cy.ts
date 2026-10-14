@@ -2,6 +2,7 @@ import { stubApi } from '../support/api';
 
 const pages = [
   ['overview', '/'],
+  ['clients', '/clients'],
   ['projects', '/projects'],
   ['bills', '/finance/receipts-bills'],
   ['categories', '/categories'],

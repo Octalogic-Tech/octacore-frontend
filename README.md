@@ -17,9 +17,9 @@ pnpm nx serve core   # the app on http://localhost:4200
 
 Set `VITE_API_URL` (see `apps/core/.env.example`) to point the app at another API.
 
-### Categories, Technologies, Countries and the FastAPI core service
+### Categories, Technologies, Clients, Countries and the FastAPI core service
 
-The Categories, Technologies and Countries pages are wired to the real backend, the FastAPI service in `octacore-backend`. Adding, editing and deleting a category or a technology writes to it (Countries is read-only). Start it once with `make setup` and then `make run` (port 5001, base path `/api/v1`). Point the app at another address with `VITE_CORE_API_URL`. If the service is down, the page shows an error with a Try again button; Projects and Receipts and bills keep working on the mock.
+The Categories, Technologies, Clients and Countries pages are wired to the real backend, the FastAPI service in `octacore-backend`. Adding, editing and deleting a category, a technology or a client writes to it (Countries is read-only). A client has one primary contact (name, email and phone), kept in the service's `client_contact` table and saved by the same dialog; deleting a client deletes its contact. Start it once with `make setup` and then `make run` (port 5001, base path `/api/v1`). Point the app at another address with `VITE_CORE_API_URL`. If the service is down, the page shows an error with a Try again button; Projects and Receipts and bills keep working on the mock.
 
 A technology can have one category (optional). The Technologies dialog offers the categories the service holds, and the table shows the one chosen.
 
@@ -31,7 +31,7 @@ To check the app's expectations against the running service (opt-in, skipped oth
 CORE_API_LIVE=1 pnpm nx test core --skip-nx-cache
 ```
 
-The Categories and Technologies checks add a record, edit it and delete it, so they run only when `CORE_API_WRITE_URL` names a service on a scratch database (start one with `DB_NAME=<scratch db> .venv/bin/uvicorn app.main:create_app --factory --port 5002` in `octacore-backend`):
+The Categories, Technologies and Clients checks add a record, edit it and delete it, so they run only when `CORE_API_WRITE_URL` names a service on a scratch database (start one with `DB_NAME=<scratch db> .venv/bin/uvicorn app.main:create_app --factory --port 5002` in `octacore-backend`):
 
 ```bash
 CORE_API_WRITE_URL=http://127.0.0.1:5002/api/v1 pnpm nx test core --skip-nx-cache

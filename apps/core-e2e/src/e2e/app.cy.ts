@@ -11,7 +11,7 @@ describe('core', () => {
 
   it('moves through every page from the sidebar', () => {
     cy.contains('h1', 'Overview');
-    for (const page of ['Projects', 'Receipts and bills', 'Categories', 'Technologies', 'Countries', 'Overview']) {
+    for (const page of ['Clients', 'Projects', 'Receipts and bills', 'Categories', 'Technologies', 'Countries', 'Overview']) {
       cy.get(nav).contains('a', page).click();
       cy.contains('h1', page);
     }
@@ -20,6 +20,14 @@ describe('core', () => {
   it('marks only the current page', () => {
     cy.get(nav).contains('a', 'Categories').click();
     cy.get(`${nav} a[aria-current="page"]`).should('have.length', 1).and('contain', 'Categories');
+  });
+
+  it('lists the clients with their primary contact', () => {
+    cy.get(nav).contains('a', 'Clients').click();
+    cy.contains('td', 'Acme').should('be.visible');
+    cy.contains('td', 'Ada Lovelace').should('be.visible');
+    cy.contains('td', 'ada@example.com').should('be.visible');
+    cy.contains('td', 'Globex').should('be.visible');
   });
 
   it('adds a category and deletes it through the confirmation', () => {
