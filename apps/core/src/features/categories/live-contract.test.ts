@@ -1,23 +1,23 @@
 import { unwrap } from '@/lib/core-api';
 import { categoryRowSchema, categoryRowsSchema } from './schema';
+import { signInLive, type LiveSend } from '@/test/live-api';
 
 // Opt-in: this talks to the real FastAPI service and WRITES to it (it adds one category, edits it and
 // deletes it again; the delete is soft, so a row stays in the table). It only runs when CORE_API_WRITE_URL
 // names a service on a scratch database, never one you care about.
 //   (in octacore-backend)  DB_NAME=<scratch db> .venv/bin/uvicorn app.main:create_app --factory --port 5002
-//   (here)                 CORE_API_WRITE_URL=http://localhost:5002/api/v1 pnpm nx test core --skip-nx-cache
+//   (here)                 CORE_API_WRITE_URL=http://localhost:5002/api/v1 CORE_API_TEST_EMAIL=<email> CORE_API_TEST_PASSWORD=<password> pnpm exec nx test core --skip-nx-cache
 const base = process.env.CORE_API_WRITE_URL;
 
-const send = (method: string, path: string, body?: unknown) =>
-  fetch(`${base}${path}`, {
-    method,
-    headers: { 'content-type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+let send: LiveSend;
 
 const listed = async () => unwrap(await (await send('GET', '/categories')).json(), categoryRowsSchema);
 
 describe.skipIf(!base)('the running core service, categories', () => {
+  beforeAll(async () => {
+    send = await signInLive(base as string);
+  });
+
   it('takes the bodies the page sends and answers in the shape the app expects', async () => {
     const created = await send('POST', '/categories', { name: 'Wiring check', description: 'Made by the live test' });
     expect(created.status).toBe(201);

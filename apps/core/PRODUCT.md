@@ -38,8 +38,8 @@ It replaces three separate apps (Core, Projects, Finance) that only linked to ea
 ## Capabilities and Constraints
 
 - Six areas: Overview, Projects, Receipts and bills, Categories, Technologies, and Countries (read-only, from the core service). The old navigation's People, Documents, Supports and Setting were dead links and are not part of the app.
-- Sign-in and roles are planned soon and not built. The shell must not assume one anonymous user forever, and must not show login controls that do nothing.
-- Open decisions: hosting; how and when the rest of the FastAPI service is wired in and how its fields map to the mock's; where bill images are stored; the currency (the app shows `$` through one formatter, as the old cards did); which roles will exist.
+- Sign-in is built. Every page sits behind an email and password checked by the core service (it issues the tokens; there is no third-party provider), and the sidebar shows who is signed in with Change password and Sign out. One role exists, `admin`, with full access; admins manage accounts on the Users page. The json-server mock (Projects, Bills) does not check tokens until those move to the core service.
+- Open decisions: hosting; how and when the rest of the FastAPI service is wired in and how its fields map to the mock's; where bill images are stored; the currency (the app shows `$` through one formatter, as the old cards did); which roles beyond `admin` will exist.
 - Terminology: the page is "Receipts and bills"; "Reimbursement" is stored as `actualExpense`.
 
 ## Brand Commitments
