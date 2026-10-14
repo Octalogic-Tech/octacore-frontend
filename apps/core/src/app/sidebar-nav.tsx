@@ -38,7 +38,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
                           className={
                             isActive
                               ? 'w-4 text-teal'
-                              : 'w-3 text-rule-on-navy group-hover/nav:w-4 group-hover/nav:text-teal'
+                              : 'w-3 text-on-navy-muted group-hover/nav:w-4 group-hover/nav:text-teal'
                           }
                         />
                         {item.label}

@@ -42,10 +42,10 @@ export function AddBillDialog({ open, onOpenChange }: { open: boolean; onOpenCha
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-2xl">
         <DialogTitle>Add bill</DialogTitle>
         <DialogDescription>Record a bill and attach a picture of it. It starts as pending.</DialogDescription>
-        <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
+        <form onSubmit={submit} noValidate className="mt-6 grid gap-6 sm:grid-cols-2">
           <Field label="Date" htmlFor="bill-date" error={errors.billDate?.message}>
             <Input type="date" {...fieldA11y('bill-date', errors.billDate?.message)} {...register('billDate')} />
           </Field>
@@ -102,11 +102,11 @@ export function AddBillDialog({ open, onOpenChange }: { open: boolean; onOpenCha
             />
           </Field>
           {saveFailed ? (
-            <p role="alert" className="text-small font-semibold text-foreground">
+            <p role="alert" className="text-small font-semibold text-foreground sm:col-span-2">
               That did not save. Try again.
             </p>
           ) : null}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
             <Button type="submit" disabled={isSubmitting}>
               Save
             </Button>

@@ -27,7 +27,7 @@ export function OverviewPage() {
       >
         <div className="border-t border-navy">
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-b border-rule py-5">
-            <p className="max-w-[40ch] text-statement">
+            <p className="max-w-[64ch] text-statement">
               <span className="tabular font-semibold">{formatCurrency(summary.totalOutstanding)}</span> outstanding
               across {pluralize(summary.projectCount, 'project')}, of{' '}
               <span className="tabular font-semibold">{formatCurrency(summary.totalValue)}</span> in total.
@@ -35,7 +35,7 @@ export function OverviewPage() {
             <LinkArrow to="/projects">All projects</LinkArrow>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-b border-rule py-5">
-            <p className="max-w-[40ch] text-statement">
+            <p className="max-w-[64ch] text-statement">
               {summary.pendingCount === 0
                 ? 'No bills are waiting for approval.'
                 : `${pluralize(summary.pendingCount, 'bill')} ${summary.pendingCount === 1 ? 'is' : 'are'} waiting for approval.`}

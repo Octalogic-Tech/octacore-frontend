@@ -30,3 +30,42 @@ describe('visual captures', () => {
     }
   }
 });
+
+describe('visual captures: overlays', () => {
+  beforeEach(() => {
+    stubApi();
+  });
+
+  it('the mobile menu at 390px', () => {
+    cy.viewport(390, 844);
+    cy.visit('/');
+    cy.get('button[aria-label="Open menu"]').click();
+    cy.get('[role="dialog"]').should('be.visible');
+    cy.screenshot('menu-390', { capture: 'viewport' });
+  });
+
+  it('the add bill dialog at 1440px', () => {
+    cy.viewport(1440, 900);
+    cy.visit('/finance/receipts-bills');
+    cy.contains('button', 'Add bill').click();
+    cy.get('[role="dialog"]').should('be.visible');
+    cy.screenshot('add-bill-1440', { capture: 'viewport' });
+  });
+
+  it('the add bill dialog with its errors showing at 1440px', () => {
+    cy.viewport(1440, 900);
+    cy.visit('/finance/receipts-bills');
+    cy.contains('button', 'Add bill').click();
+    cy.get('[role="dialog"]').contains('button', 'Save').click();
+    cy.get('[role="dialog"]').contains('Date is required').should('be.visible');
+    cy.screenshot('add-bill-errors-1440', { capture: 'viewport' });
+  });
+
+  it('the delete confirmation at 1440px', () => {
+    cy.viewport(1440, 900);
+    cy.visit('/categories');
+    cy.get('button[aria-label="Delete Web"]').click();
+    cy.get('[role="alertdialog"]').should('be.visible');
+    cy.screenshot('confirm-delete-1440', { capture: 'viewport' });
+  });
+});

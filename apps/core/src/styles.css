@@ -209,11 +209,6 @@
     );
   }
 
-  /* The supplied logo on navy: white wordmark and mark, the offset arm keeps its teal. */
-  .on-navy .logo .cls-1 {
-    fill: var(--color-on-navy);
-  }
-
   .skip-link {
     position: absolute;
     left: 1rem;
@@ -227,6 +222,13 @@
   .skip-link:focus {
     top: 1rem;
   }
+}
+
+/* The supplied logo on navy: white wordmark and mark, the offset arm keeps its teal.
+   Unlayered on purpose: the SVG carries its own unlayered <style> (its own dark fill on .cls-1), and an
+   unlayered rule beats any layered one whatever its specificity. */
+.on-navy .logo .cls-1 {
+  fill: var(--color-on-navy);
 }
 
 @utility tabular {
