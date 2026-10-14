@@ -62,7 +62,7 @@ Out of scope: the Nest API wiring, authentication, the People, Documents, Suppor
 
 Root `package.json` is a single shared manifest (the portfolio app uses it too), so changes are made with the portfolio in mind. Exact versions are chosen and verified in the probe (5.3).
 
-- Add: `tailwindcss` 4 with `@tailwindcss/postcss`, `tw-animate-css`, `class-variance-authority`, `tailwind-merge` (current major), `radix-ui`, `@tanstack/react-query` 5, `@tanstack/react-table`, `react-hook-form`, `zod`, `@hookform/resolvers`, `@fontsource-variable/schibsted-grotesk`, React 19 with matching `@types`, and a Testing Library release that supports React 19. `clsx` and `axios` are already present.
+- Add: `tailwindcss` 4 with `@tailwindcss/postcss`, `class-variance-authority`, `tailwind-merge` (current major), `@radix-ui/react-dialog` and `@radix-ui/react-alert-dialog`, `@tanstack/react-query` 5, `react-hook-form`, `zod`, `@hookform/resolvers`, `@fontsource-variable/schibsted-grotesk`, React 19 with matching `@types`, and the Testing Library packages that support React 19 (`@testing-library/react`, `dom`, `jest-dom` and `user-event`). Paging and search are client-side over a few dozen rows, so no table library and no animation library are added. `clsx` and `axios` are already present.
 - Remove: `@mui/*`, `@emotion/*`, `styled-components` with its Babel plugin and types, `formik`, `yup`, react-query 3, `vue`, `vuetify`, `vue-router`, `@vuelidate/*`, `vue3-datepicker`, `vue-material-design-icons`, `@mdi/font`, `@date-io/dayjs`, `csv-writer`, `@nx-plus/vue`, the Vue lint and test packages, `@nx/webpack` and the webpack-only tooling, if nothing else uses them.
 - The root `postinstall` script runs `node node_modules/@nx-plus/vue/patch-nx-dep-graph.js`. It must be removed together with `@nx-plus/vue`, or `pnpm install` fails.
 - `tsconfig.base.json` path entries for the deleted libs are removed, along with three entries that already point at libs that do not exist (`constants`, `design-system`, `my-library`).
@@ -99,7 +99,7 @@ Navigation is text-led and has no icon set. The current page is marked by the we
 - One `react-router` 6 router. Unknown paths show a not-found page inside the shell.
 - Below 1024px the sidebar becomes a shadcn Sheet opened from a header toggle, the same breakpoint the website uses for its nav.
 - Dropped on purpose: Logout (there is no auth to log out of), People, Documents, Supports and Setting (dead links).
-- The logo is the website's supplied SVG (`octa-website/brand/logo.svg` and `logo-mark.svg`), copied unmodified, with the approved reversal on navy. It replaces `Logo.png`.
+- The logo is the website's supplied SVG (`octa-website/src/assets/brand/logo.svg` and `logo-mark.svg`, the copies trimmed to the artwork), copied unmodified, with the approved reversal on navy. It replaces `Logo.png`.
 - The exact composition of the shell (sidebar ground, header, page title placement) is decided in impeccable's `shape` step inside the rules of section 7, and recorded in DESIGN.md.
 
 ## 7. Design system
@@ -134,7 +134,7 @@ Teal keeps the website's meaning: it is a signal, never decoration, and never ca
 
 ### 7.3 Component rules
 
-- **Components used:** Button, Input, Textarea, Label, Select, RadioGroup, Table, Dialog, AlertDialog, Sheet, Badge, Form (react-hook-form with zod), and a pagination control with rows-per-page of 5, 10 and 20, as the current tables have.
+- **Components used:** Button, Input, Textarea, Label and Field, Select, Table, Dialog, AlertDialog, Sheet, Badge, and a pagination control with rows-per-page of 5, 10 and 20, as the current tables have. They are written by hand in shadcn's structure (cva variants, `data-slot`, a `cn()` helper, Radix for the dialogs and the sheet); `components.json` is kept so the CLI can be used later. Select and the Yes/No choice are native elements (a native `<select>` and native radio buttons styled as chips) because they work better on phones and with keyboards than Radix equivalents. Forms use react-hook-form with zod.
 - **Inputs** are the website's underline fields: a 1px Muted Navy rule that turns navy on hover and firms to 3px navy on focus, with an arm leading each label. Errors use a 2px navy rule, a navy arm and the message, with no red.
 - **Buttons** are a label plus a square arm cell, as on the website. One primary button per screen.
 - **Drawn marks, not glyphs:** the checkbox tick, select chevron, dialog close and pagination arrows are small drawn SVGs (squares, bars and the 45 degree arm). There is no lucide or other icon dependency.
@@ -198,7 +198,7 @@ Kept: `apps/external/portfolio` (and its e2e), `apps/core-e2e`, `json-server/`, 
   - The form schemas.
   - Create and delete flows with the API mocked.
   - Nav current-state marking.
-- **E2E smoke** (Cypress): with json-server running, visit each of the five routes from the nav, add a category, delete it through the confirm dialog, and export a CSV. This replaces the broken generated spec.
+- **E2E smoke** (Cypress): the API is stubbed with `cy.intercept`, so the test needs no second process and is deterministic. It visits each of the five routes from the nav, adds a category, deletes it through the confirm dialog, and exports a CSV. A second spec captures every page at 1440px and 390px for the design review. This replaces the broken generated spec.
 - **Before calling it done:** `nx build core`, `nx test core`, `nx lint core`, `nx e2e core-e2e` and `nx build external--portfolio` all pass, and the app has been run against json-server with screenshots taken at 1440px and 390px.
 - **Accessibility:** target WCAG 2.2 AA. Check visible focus, 44px targets, a label on every field, keyboard-operable dialogs and sheet, and reduced motion. Impeccable's `audit` and `critique` run once each after the build.
 
@@ -230,8 +230,8 @@ These are judgement calls where this spec differs from a literal port of what ex
 
 1. Create a feature branch from `develop`. The uncommitted pnpm changes come along and are left as they are.
 2. Probe (5.3) and decide the Tailwind and React versions.
-3. Impeccable `init` writes PRODUCT.md for the core app (platform web, Operate mode, users are Octalogic staff). `document` writes DESIGN.md from the website's, applying section 7. `shape` settles the shell and page compositions.
+3. Impeccable `init` writes PRODUCT.md for the core app (platform web, Operate mode, users are Octalogic staff). The shell and page compositions are fixed by the implementation plan, so `shape` is not run. `document` runs after the design system and pages are built, because it records what exists: it writes DESIGN.md with the website's as lineage and lists the app's deliberate differences from it.
 4. Build in this order: foundation and shell, Categories and Technologies (they already work), Projects and Overview, Receipts and bills.
-5. Remove the retired apps, libs and dependencies. Verify as in section 11. Run impeccable's `critique`, `audit` and `polish` once each.
+5. Remove the retired apps, libs and dependencies. Verify as in section 11. Run impeccable's `critique` and `audit` once, as one batched review of the screenshots and code, and fix the findings in one batch.
 
 An implementation plan with these steps broken into tasks is written after this spec is approved.
