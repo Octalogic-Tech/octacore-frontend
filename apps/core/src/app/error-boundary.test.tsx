@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { AuthTestProvider } from '@/test/auth';
 import App from './app';
 
 vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() } }));
@@ -16,9 +17,11 @@ const malformed = [
 function renderAt(route: string) {
   return render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter initialEntries={[route]}>
-        <App />
-      </MemoryRouter>
+      <AuthTestProvider>
+        <MemoryRouter initialEntries={[route]}>
+          <App />
+        </MemoryRouter>
+      </AuthTestProvider>
     </QueryClientProvider>,
   );
 }
