@@ -31,8 +31,6 @@ describe('core', () => {
       cy.contains('button', 'Save').click();
     });
     cy.get('[role="dialog"]').should('not.exist');
-    // The new row is the eighth, so it sits on page two: find it with the search field.
-    cy.get('#category-search').type('Data');
     cy.contains('td', 'Data').should('be.visible');
 
     cy.get('button[aria-label="Delete Data"]').click();

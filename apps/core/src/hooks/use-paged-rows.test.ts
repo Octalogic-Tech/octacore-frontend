@@ -4,6 +4,13 @@ import { usePagedRows } from './use-paged-rows';
 const rows = Array.from({ length: 12 }, (_, index) => index + 1);
 
 describe('usePagedRows', () => {
+  it('shows ten rows per page by default', () => {
+    const { result } = renderHook(() => usePagedRows(rows));
+    expect(result.current.pageSize).toBe(10);
+    expect(result.current.pageRows).toHaveLength(10);
+    expect(result.current.pageCount).toBe(2);
+  });
+
   it('slices the current page', () => {
     const { result } = renderHook(() => usePagedRows(rows, 5));
     expect(result.current.pageRows).toEqual([1, 2, 3, 4, 5]);

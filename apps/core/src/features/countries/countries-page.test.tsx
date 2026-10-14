@@ -32,7 +32,7 @@ describe('CountriesPage', () => {
     expect(within(row).getByText('AFG')).toBeInTheDocument();
     expect(within(row).getByText('004')).toBeInTheDocument();
     expect(within(row).getByText('+93')).toBeInTheDocument();
-    expect(screen.getByText('1–5 of 12')).toBeInTheDocument();
+    expect(screen.getByText('1–10 of 12')).toBeInTheDocument();
   });
 
   it('shows a dash where the data has no ISO3 code, numeric code or calling code', async () => {
@@ -81,7 +81,7 @@ describe('CountriesPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<CountriesPage />);
     await user.click(await screen.findByRole('button', { name: 'Next' }));
-    expect(screen.getByText('6–10 of 12')).toBeInTheDocument();
+    expect(screen.getByText('11–12 of 12')).toBeInTheDocument();
     await user.type(screen.getByLabelText('Search countries'), 'japan');
     expect(screen.getByText('1–1 of 1')).toBeInTheDocument();
   });

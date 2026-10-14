@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PageHeader } from './page-header';
 import { QueryBoundary } from './query-boundary';
@@ -94,6 +94,13 @@ describe('TablePager', () => {
   it('reports 0–0 for an empty table', () => {
     render(<TablePager {...props} page={0} pageCount={1} total={0} />);
     expect(screen.getByText('0–0 of 0')).toBeInTheDocument();
+  });
+
+  it('offers 10, 20 and 50 rows per page', () => {
+    render(<TablePager {...props} pageSize={10} />);
+    const options = within(screen.getByRole('combobox', { name: 'Rows per page' })).getAllByRole('option');
+    expect(options.map((option) => option.textContent)).toEqual(['10', '20', '50']);
+    expect(screen.getByRole('combobox', { name: 'Rows per page' })).toHaveValue('10');
   });
 
   it('changes page and page size', async () => {

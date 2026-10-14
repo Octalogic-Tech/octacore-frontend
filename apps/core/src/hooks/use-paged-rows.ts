@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 
 /** Client-side paging. The page is clamped, so rows disappearing never strands the table past its end. */
-export function usePagedRows<T>(rows: readonly T[], initialPageSize = 5) {
+export function usePagedRows<T>(rows: readonly T[], initialPageSize = 10) {
   const [requestedPage, setPage] = useState(0);
   const [pageSize, setPageSizeState] = useState(initialPageSize);
 

@@ -50,14 +50,14 @@ describe('CategoriesPage', () => {
   });
 
   it('goes back to the first page when searching from a later page', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: numbered(7) });
+    vi.mocked(api.get).mockResolvedValue({ data: numbered(12) });
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
     await user.click(await screen.findByRole('button', { name: 'Next' }));
-    expect(screen.getByText('6–7 of 7')).toBeInTheDocument();
-    await user.type(screen.getByLabelText('Search categories'), 'Category 1');
+    expect(screen.getByText('11–12 of 12')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Search categories'), 'Category 12');
     expect(screen.getByText('1–1 of 1')).toBeInTheDocument();
-    expect(screen.getByText('Category 1')).toBeInTheDocument();
+    expect(screen.getByText('Category 12')).toBeInTheDocument();
   });
 
   it('creates a category from the dialog', async () => {
@@ -126,17 +126,17 @@ describe('CategoriesPage', () => {
   });
 
   it('lands on the last page that still exists after deleting the only row on the last page', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: numbered(6) });
+    vi.mocked(api.get).mockResolvedValue({ data: numbered(11) });
     vi.mocked(api.delete).mockImplementation(async () => {
-      vi.mocked(api.get).mockResolvedValue({ data: numbered(5) });
+      vi.mocked(api.get).mockResolvedValue({ data: numbered(10) });
       return { data: {} };
     });
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
     await user.click(await screen.findByRole('button', { name: 'Next' }));
-    await user.click(screen.getByRole('button', { name: 'Delete Category 6' }));
+    await user.click(screen.getByRole('button', { name: 'Delete Category 11' }));
     await user.click(screen.getByRole('button', { name: 'Delete category' }));
-    expect(await screen.findByText('1–5 of 5')).toBeInTheDocument();
+    expect(await screen.findByText('1–10 of 10')).toBeInTheDocument();
     expect(screen.getByText('Category 1')).toBeInTheDocument();
   });
 

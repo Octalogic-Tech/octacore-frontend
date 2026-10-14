@@ -19,7 +19,7 @@ export function TablePager({
   total,
   onPageChange,
   onPageSizeChange,
-  pageSizes = [5, 10, 20],
+  pageSizes = [10, 20, 50],
 }: TablePagerProps) {
   const id = useId();
   const first = total === 0 ? 0 : page * pageSize + 1;
