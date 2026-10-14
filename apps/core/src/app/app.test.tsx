@@ -35,13 +35,13 @@ function renderAt(route: string) {
 }
 
 describe('App shell', () => {
-  it('lists every page in three groups', () => {
+  it('lists every page in four groups', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    for (const label of ['Overview', 'Clients', 'Projects', 'Receipts and bills', 'Categories', 'Technologies', 'Countries']) {
+    for (const label of ['Overview', 'Clients', 'Projects', 'Receipts and bills', 'Categories', 'Technologies', 'Countries', 'Users']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
-    for (const group of ['Work', 'Finance', 'Reference data']) {
+    for (const group of ['Work', 'Finance', 'Reference data', 'Admin']) {
       expect(within(nav).getByText(group)).toBeInTheDocument();
     }
   });
@@ -69,6 +69,7 @@ describe('App shell', () => {
     ['/categories', 'Categories'],
     ['/technologies', 'Technologies'],
     ['/countries', 'Countries'],
+    ['/users', 'Users'],
   ])('shows the page title for %s', (route, title) => {
     renderAt(route);
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();

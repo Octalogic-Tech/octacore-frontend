@@ -3,17 +3,20 @@ import { AccountBlock } from '@/app/account-block';
 import { NAV_GROUPS } from '@/app/nav';
 import { Logo } from '@/components/logo';
 import { Arm } from '@/components/ui/marks';
+import { useAuth } from '@/features/auth/auth-context';
 import { cn } from '@/lib/utils';
 
 /** The one navigation: the logo, then groups of text links. The current page carries a teal arm. The account block sits under it. */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+  const { user } = useAuth();
+  const groups = NAV_GROUPS.filter((group) => !group.roles || (user !== null && group.roles.includes(user.role)));
   return (
     <div className="flex min-h-full flex-1 flex-col px-6 py-8">
       <nav aria-label="Main" className="flex flex-col gap-8">
         <Link to="/" onClick={onNavigate} aria-label="Octalogic Tech home" className="inline-flex min-h-11 items-center">
           <Logo height={30} />
         </Link>
-        {NAV_GROUPS.map((group, index) => {
+        {groups.map((group, index) => {
           const headingId = `nav-group-${index}`;
           return (
             <div key={group.label}>

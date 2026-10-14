@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { AuthProvider, type AuthContextValue } from '@/features/auth/auth-context';
 import { coreApi } from '@/lib/core-api';
 import { setAccessToken } from '@/lib/session';
 import { AuthTestProvider } from '@/test/auth';
+import { adminUser } from '@/test/fixtures/users';
 import { envelope, fakeAdapter, sessionEnvelope } from '@/test/fake-adapter';
 import App from './app';
 
@@ -14,6 +15,11 @@ vi.mock('@/lib/api', () => ({
 }));
 
 const originalAdapter = coreApi.defaults.adapter;
+
+// The Users page calls coreApi: answer it here so no request leaves the test (the deep-link test installs its own).
+beforeEach(() => {
+  coreApi.defaults.adapter = fakeAdapter(() => ({ status: 200, data: envelope([]) }));
+});
 
 afterEach(() => {
   coreApi.defaults.adapter = originalAdapter;
@@ -91,5 +97,21 @@ describe('the app behind sign-in', () => {
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Clients' })).toBeInTheDocument();
     expect(screen.getByText('at /clients?q=acme')).toBeInTheDocument();
+  });
+
+  it('shows the Admin group and the Users page to an admin', async () => {
+    renderWithContext('/users', {});
+    expect(await screen.findByRole('heading', { level: 1, name: 'Users' })).toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByText('Admin')).toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: 'Users' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('hides the Admin group and the Users page from a person who is not an admin', async () => {
+    renderWithContext('/users', { user: { ...adminUser, role: 'viewer' } });
+    expect(await screen.findByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).queryByText('Admin')).not.toBeInTheDocument();
+    expect(within(nav).queryByRole('link', { name: 'Users' })).not.toBeInTheDocument();
   });
 });
