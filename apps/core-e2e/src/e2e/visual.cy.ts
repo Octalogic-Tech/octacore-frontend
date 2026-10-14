@@ -6,6 +6,7 @@ const pages = [
   ['bills', '/finance/receipts-bills'],
   ['categories', '/categories'],
   ['technologies', '/technologies'],
+  ['countries', '/countries'],
 ] as const;
 
 const viewports = [

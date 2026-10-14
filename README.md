@@ -17,6 +17,18 @@ pnpm nx serve core   # the app on http://localhost:4200
 
 Set `VITE_API_URL` (see `apps/core/.env.example`) to point the app at another API.
 
+### Countries and the FastAPI core service
+
+The Countries page is the first page wired to the real backend, the FastAPI service in `octacore-backend`. Start it once with `make setup` and then `make run` (port 5001, base path `/api/v1`). Point the app at another address with `VITE_CORE_API_URL`. If the service is down, the page shows an error with a Try again button; every other page keeps working on the mock.
+
+The service listens on IPv4 only (`127.0.0.1`). Browsers fall back to it when `localhost` resolves to `::1` first, but tools that do not (Cypress's proxy, for one) need `VITE_CORE_API_URL=http://127.0.0.1:5001/api/v1`.
+
+To check the app's expectations against the running service (opt-in, skipped otherwise):
+
+```bash
+CORE_API_LIVE=1 pnpm nx test core --skip-nx-cache
+```
+
 ## Generate code
 
 If you happen to use Nx plugins, you can leverage code generators that might come with it.

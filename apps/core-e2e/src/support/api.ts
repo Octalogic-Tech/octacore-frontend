@@ -1,4 +1,7 @@
+import { countriesBody } from './countries';
+
 export const API = 'http://localhost:3001';
+export const CORE_API = 'http://localhost:5001/api/v1';
 
 type Row = Record<string, unknown>;
 
@@ -39,6 +42,9 @@ export function stubApi() {
     rows = rows.filter((row) => row.id !== id);
     req.reply({});
   });
+
+  // `body`: an object that holds `statusCode` would otherwise be read by Cypress as the response itself.
+  cy.intercept('GET', `${CORE_API}/countries`, { body: countriesBody });
 
   cy.intercept('GET', `${API}/technologies`, [
     { id: 1, name: 'React', description: 'A library for user interfaces.', category: 'Frontend' },

@@ -26,6 +26,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Categories', to: '/categories' },
       { label: 'Technologies', to: '/technologies' },
+      { label: 'Countries', to: '/countries' },
     ],
   },
 ];

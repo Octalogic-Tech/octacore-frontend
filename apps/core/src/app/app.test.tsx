@@ -22,7 +22,7 @@ describe('App shell', () => {
   it('lists every page in three groups', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    for (const label of ['Overview', 'Projects', 'Receipts and bills', 'Categories', 'Technologies']) {
+    for (const label of ['Overview', 'Projects', 'Receipts and bills', 'Categories', 'Technologies', 'Countries']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
     for (const group of ['Work', 'Finance', 'Reference data']) {
@@ -43,6 +43,7 @@ describe('App shell', () => {
     ['/finance/receipts-bills', 'Receipts and bills'],
     ['/categories', 'Categories'],
     ['/technologies', 'Technologies'],
+    ['/countries', 'Countries'],
   ])('shows the page title for %s', (route, title) => {
     renderAt(route);
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();

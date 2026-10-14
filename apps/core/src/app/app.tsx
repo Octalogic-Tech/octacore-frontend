@@ -5,6 +5,7 @@ import { CategoriesPage } from '@/features/categories/categories-page';
 import { TechnologiesPage } from '@/features/technologies/technologies-page';
 import { ProjectsPage } from '@/features/projects/projects-page';
 import { BillsPage } from '@/features/bills/bills-page';
+import { CountriesPage } from '@/features/countries/countries-page';
 import { OverviewPage } from '@/features/overview/overview-page';
 
 export default function App() {
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="finance/receipts-bills" element={<BillsPage />} />
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="technologies" element={<TechnologiesPage />} />
+        <Route path="countries" element={<CountriesPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>

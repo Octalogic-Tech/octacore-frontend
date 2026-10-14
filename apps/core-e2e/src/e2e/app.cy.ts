@@ -11,7 +11,7 @@ describe('core', () => {
 
   it('moves through every page from the sidebar', () => {
     cy.contains('h1', 'Overview');
-    for (const page of ['Projects', 'Receipts and bills', 'Categories', 'Technologies', 'Overview']) {
+    for (const page of ['Projects', 'Receipts and bills', 'Categories', 'Technologies', 'Countries', 'Overview']) {
       cy.get(nav).contains('a', page).click();
       cy.contains('h1', page);
     }
@@ -39,6 +39,14 @@ describe('core', () => {
     cy.get('[role="alertdialog"]').should('contain', 'This cannot be undone.');
     cy.get('[role="alertdialog"]').contains('button', 'Delete category').click();
     cy.contains('td', 'Data').should('not.exist');
+  });
+
+  it('lists the countries from the core service and finds one by calling code', () => {
+    cy.get(nav).contains('a', 'Countries').click();
+    cy.contains('td', 'Afghanistan').should('be.visible');
+    cy.get('#country-search').type('+44');
+    cy.contains('td', 'United Kingdom').should('be.visible');
+    cy.contains('td', 'Afghanistan').should('not.exist');
   });
 
   it('exports the filtered bills as a CSV file', () => {
