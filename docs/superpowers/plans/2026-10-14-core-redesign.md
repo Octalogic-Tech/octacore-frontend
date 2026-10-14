@@ -2017,7 +2017,9 @@ describe('formatDate', () => {
 });
 
 describe('today', () => {
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it('is the local date as YYYY-MM-DD', () => {
     vi.useFakeTimers();
@@ -4321,7 +4323,9 @@ describe('neutraliseFormula', () => {
 });
 
 describe('downloadCsv', () => {
-  afterEach(() => vi.restoreAllMocks());
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
   it('downloads under the given name and releases the object URL', () => {
     const createObjectURL = vi.fn(() => 'blob:csv');
