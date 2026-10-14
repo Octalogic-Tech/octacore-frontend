@@ -217,7 +217,7 @@ Loading is five grey rows. A failed request is an inline message with a Try agai
 - **Don't** add an icon library (the design-contract test fails on one).
 - **Don't** put teal text on grey, or Muted Navy text on a hover fill.
 - **Don't** build metric tiles; put numbers inside a sentence on a ruled line.
-- **Don't** show a login, user menu or settings control until the thing behind it exists.
+- **Don't** show a control until the thing behind it exists. Sign-in exists, so the login page and the account controls (Change password, Sign out) are shown; a user menu or settings control still waits for something real behind it.
 
 ## Differences from octa-website
 
