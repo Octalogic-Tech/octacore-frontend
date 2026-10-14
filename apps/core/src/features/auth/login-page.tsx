@@ -8,6 +8,7 @@ import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { statusOf } from '@/lib/core-api';
 import { useAuth } from './auth-context';
+import { hasPendingLogout } from './pending-logout';
 import { loginSchema, type LoginInput } from './schema';
 
 /** The page RequireAuth saved in router state, or the overview. Never read from the URL, so it cannot be a redirect trick. */
@@ -45,6 +46,11 @@ export function LoginPage() {
         <Logo height={30} />
         <h1 className="mt-10 text-headline font-semibold text-foreground">Sign in</h1>
         <p className="mt-2 text-body text-navy-80">Use the email and password an admin gave you.</p>
+        {hasPendingLogout() ? (
+          <p className="mt-4 text-small font-semibold text-foreground">
+            We could not reach the service to end your last session. Close this browser window to be sure.
+          </p>
+        ) : null}
         <form onSubmit={submit} noValidate className="mt-8 grid gap-6">
           <Field label="Email" htmlFor="login-email" error={errors.email?.message}>
             <Input

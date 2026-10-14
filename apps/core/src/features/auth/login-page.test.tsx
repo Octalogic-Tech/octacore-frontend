@@ -81,6 +81,21 @@ describe('LoginPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('We could not sign you in');
   });
 
+  it('says when the last sign-out could not reach the service', () => {
+    window.localStorage.setItem('octacore.pendingLogout', '1');
+    try {
+      renderLogin();
+      expect(screen.getByText(/We could not reach the service to end your last session/)).toBeInTheDocument();
+    } finally {
+      window.localStorage.clear();
+    }
+  });
+
+  it('says nothing about the last session when it ended normally', () => {
+    renderLogin();
+    expect(screen.queryByText(/end your last session/)).not.toBeInTheDocument();
+  });
+
   it('disables the button while signing in', async () => {
     const user = userEvent.setup();
     renderLogin({ signIn: vi.fn(() => new Promise<void>(() => undefined)) });

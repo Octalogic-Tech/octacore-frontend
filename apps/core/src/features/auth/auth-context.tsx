@@ -4,6 +4,7 @@ import type { UserRow } from '@/lib/auth-schema';
 import { refreshSession } from '@/lib/core-api';
 import { onSessionEnded, setAccessToken } from '@/lib/session';
 import { changePassword as requestPasswordChange, login, logout } from './api';
+import { clearPendingLogout, hasPendingLogout, markPendingLogout } from './pending-logout';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
 
@@ -35,9 +36,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading', user: null });
 
   // Restore the session from the refresh cookie. `refreshSession` is single-flighted at module level, so
-  // StrictMode's double mount in development makes one request, not two.
+  // StrictMode's double mount in development makes one request, not two. If the last sign-out never reached the
+  // service, finish it instead: the cookie still belongs to whoever signed out. The status stays `loading` until
+  // that answer is in, so nobody can sign in while its cookie-clearing answer is still on the way. Logout is
+  // idempotent, so StrictMode asking twice does no harm. The flag is cleared only once the service has said yes.
   useEffect(() => {
     let active = true;
+    if (hasPendingLogout()) {
+      logout()
+        .then(clearPendingLogout, () => undefined)
+        .then(() => {
+          if (active) setState(SIGNED_OUT);
+        });
+      return () => {
+        active = false;
+      };
+    }
     refreshSession().then(
       (session) => {
         if (active) setState({ status: 'authenticated', user: session.user });
@@ -63,6 +77,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(async (email: string, password: string) => {
     const session = await login(email, password);
+    // The new cookie replaced the one a failed sign-out left behind.
+    clearPendingLogout();
     setState({ status: 'authenticated', user: session.user });
   }, []);
 
@@ -70,7 +86,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await logout();
     } catch {
-      // Signing out always succeeds locally; the cookie expires on its own if the service was unreachable.
+      // Signing out always succeeds locally. The refresh cookie was neither revoked nor cleared, though, so the next
+      // load must finish the job before anyone can be signed back in with it.
+      markPendingLogout();
     }
     setAccessToken(null);
     setState(SIGNED_OUT);

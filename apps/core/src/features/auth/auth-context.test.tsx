@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AxiosError } from 'axios';
 import { StrictMode } from 'react';
 import { coreApi } from '@/lib/core-api';
 import { endSession, getAccessToken, setAccessToken } from '@/lib/session';
@@ -8,10 +9,12 @@ import { envelope, fakeAdapter, sessionEnvelope, type FakeReply } from '@/test/f
 import { AuthProvider, useAuth } from './auth-context';
 
 const originalAdapter = coreApi.defaults.adapter;
+const PENDING_LOGOUT = 'octacore.pendingLogout';
 
 afterEach(() => {
   coreApi.defaults.adapter = originalAdapter;
   setAccessToken(null);
+  window.localStorage.clear();
 });
 
 const unauthorized: FakeReply = { status: 401, data: envelope(null, 401) };
@@ -163,6 +166,82 @@ describe('AuthProvider', () => {
 
     expect(await screen.findByText('status: anonymous')).toBeInTheDocument();
     expect(getAccessToken()).toBeNull();
+  });
+
+  it('does not leave a pending sign-out behind when the service answers', async () => {
+    coreApi.defaults.adapter = server();
+    const user = userEvent.setup();
+    mount();
+    await screen.findByText('status: authenticated');
+
+    await user.click(screen.getByRole('button', { name: 'sign out' }));
+
+    await screen.findByText('status: anonymous');
+    expect(window.localStorage.getItem(PENDING_LOGOUT)).toBeNull();
+  });
+
+  it('when sign-out cannot reach the service, the next load ends that session instead of restoring it', async () => {
+    coreApi.defaults.adapter = server({ '/auth/logout': { status: 500, data: envelope(null, 500) } });
+    const user = userEvent.setup();
+    const first = mount();
+    await screen.findByText('status: authenticated');
+    await user.click(screen.getByRole('button', { name: 'sign out' }));
+    await screen.findByText('status: anonymous');
+    expect(window.localStorage.getItem(PENDING_LOGOUT)).toBe('1');
+    first.unmount();
+
+    const adapter = server();
+    coreApi.defaults.adapter = adapter;
+    mount();
+
+    expect(await screen.findByText('status: anonymous')).toBeInTheDocument();
+    expect(adapter.calls.map((call) => call.url)).toEqual(['/auth/logout']);
+    expect(window.localStorage.getItem(PENDING_LOGOUT)).toBeNull();
+    expect(getAccessToken()).toBeNull();
+  });
+
+  it('keeps the pending sign-out when the logout on load fails too', async () => {
+    window.localStorage.setItem(PENDING_LOGOUT, '1');
+    const adapter = server({ '/auth/logout': { status: 503, data: envelope(null, 503) } });
+    coreApi.defaults.adapter = adapter;
+    mount();
+
+    expect(await screen.findByText('status: anonymous')).toBeInTheDocument();
+    expect(adapter.calls.map((call) => call.url)).toEqual(['/auth/logout']);
+    expect(window.localStorage.getItem(PENDING_LOGOUT)).toBe('1');
+  });
+
+  it('signing in clears a pending sign-out: the new cookie replaces the old one', async () => {
+    window.localStorage.setItem(PENDING_LOGOUT, '1');
+    coreApi.defaults.adapter = server({ '/auth/logout': { status: 503, data: envelope(null, 503) } });
+    const user = userEvent.setup();
+    mount();
+    await screen.findByText('status: anonymous');
+
+    await user.click(screen.getByRole('button', { name: 'sign in' }));
+
+    expect(await screen.findByText('status: authenticated')).toBeInTheDocument();
+    expect(window.localStorage.getItem(PENDING_LOGOUT)).toBeNull();
+  });
+
+  it('a sign-out that times out still signs out locally, and the request has a 5 second timeout', async () => {
+    const adapter = fakeAdapter((config) => {
+      if (config.url === '/auth/logout') throw new AxiosError('timeout of 5000ms exceeded', 'ECONNABORTED', config);
+      return { status: 200, data: sessionEnvelope('refreshed') };
+    });
+    coreApi.defaults.adapter = adapter;
+    const user = userEvent.setup();
+    const { client } = mount();
+    await screen.findByText('status: authenticated');
+    client.setQueryData(['categories'], [{ id: 1 }]);
+
+    await user.click(screen.getByRole('button', { name: 'sign out' }));
+
+    expect(await screen.findByText('status: anonymous')).toBeInTheDocument();
+    expect(getAccessToken()).toBeNull();
+    expect(client.getQueryData(['categories'])).toBeUndefined();
+    expect(window.localStorage.getItem(PENDING_LOGOUT)).toBe('1');
+    expect(adapter.calls.find((call) => call.url === '/auth/logout')?.timeout).toBe(5000);
   });
 
   it('changes the password and carries on with the fresh token', async () => {
