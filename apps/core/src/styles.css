@@ -1,1 +1,240 @@
-/* You can add global styles to this file, and also import other style files */
+@import 'tailwindcss' source('./');
+
+/* Metric-matched fallback so the font swap does not shift layout (as on octa-website). */
+@font-face {
+  font-family: 'Schibsted Fallback';
+  src: local('Arial');
+  size-adjust: 99%;
+  ascent-override: 96%;
+  descent-override: 25%;
+  line-gap-override: 0%;
+}
+
+/* Brand palette, copied from octa-website/src/styles/global.css.
+   No colour enters the app that is not navy, teal, grey or a tint of them. */
+@theme static {
+  /* Drop Tailwind's default palette: only the brand colours below exist, so an unknown colour class
+     (text-white, bg-gray-100) does not compile. */
+  --color-*: initial;
+
+  --color-grey: #f2f2f0;
+  --color-navy: #0d3a5c;
+  --color-navy-deep: #0a2f4b;
+  --color-navy-80: #3f627d;
+  --color-navy-72: #4d6e85;
+  --color-rule: #c4cdd2;
+  --color-rule-soft: #e0e3e4;
+  --color-teal: #60e4cf;
+  --color-on-navy: #ffffff;
+  --color-on-navy-muted: #c2ced6;
+  --color-rule-on-navy: #2f5672;
+  --color-scrim: rgb(3 17 29 / 0.45);
+
+  --font-sans: 'Schibsted Grotesk Variable', 'Schibsted Fallback', system-ui, sans-serif;
+
+  /* Type scale, fluid between 360px and 1280px viewports (octa-website). Never below 14px. */
+  --text-headline: clamp(1.875rem, 1.6rem + 1.2vw, 2.75rem);
+  --text-headline--line-height: 1.1;
+  --text-headline--letter-spacing: -0.022em;
+  --text-statement: clamp(1.375rem, 1.25rem + 0.55vw, 1.625rem);
+  --text-statement--line-height: 1.35;
+  --text-statement--letter-spacing: -0.01em;
+  --text-title: clamp(1.25rem, 1.15rem + 0.45vw, 1.5rem);
+  --text-title--line-height: 1.3;
+  --text-title--letter-spacing: -0.005em;
+  --text-lead: clamp(1.1875rem, 1.139rem + 0.217vw, 1.3125rem);
+  --text-lead--line-height: 1.5;
+  --text-body: clamp(1rem, 0.976rem + 0.109vw, 1.0625rem);
+  --text-body--line-height: 1.6;
+  --text-small: clamp(0.875rem, 0.851rem + 0.109vw, 0.9375rem);
+  --text-small--line-height: 1.5;
+
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* shadcn's semantic variables, mapped onto the palette.
+   `accent` is shadcn's hover fill, not teal; teal is `signal`. There is no red: destructive is navy. */
+:root {
+  --background: var(--color-grey);
+  --foreground: var(--color-navy);
+  --card: var(--color-grey);
+  --card-foreground: var(--color-navy);
+  --popover: var(--color-grey);
+  --popover-foreground: var(--color-navy);
+  --primary: var(--color-navy);
+  --primary-foreground: var(--color-on-navy);
+  --secondary: var(--color-rule-soft);
+  --secondary-foreground: var(--color-navy);
+  --muted: var(--color-rule-soft);
+  --muted-foreground: var(--color-navy-80);
+  --accent: var(--color-rule-soft);
+  --accent-foreground: var(--color-navy);
+  --destructive: var(--color-navy);
+  --border: var(--color-rule);
+  --input: var(--color-navy-72);
+  --ring: var(--color-navy);
+  --radius: 0px;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-signal: var(--color-teal);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+}
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: var(--color-border);
+  }
+  html {
+    background: var(--color-grey);
+    color: var(--color-navy);
+    font-family: var(--font-sans);
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    scrollbar-color: var(--color-navy-72) var(--color-rule-soft);
+  }
+  body {
+    min-height: 100dvh;
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 600;
+    text-wrap: balance;
+  }
+  p,
+  li {
+    text-wrap: pretty;
+  }
+  ::selection {
+    background: var(--color-navy);
+    color: var(--color-on-navy);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-navy);
+    outline-offset: 3px;
+  }
+  .on-navy :focus-visible {
+    outline-color: var(--color-teal);
+  }
+  input,
+  textarea,
+  select {
+    caret-color: var(--color-navy);
+    accent-color: var(--color-navy);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      transition: none !important;
+      animation: none !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer components {
+  /* The arm: a short bar at 45 degrees, the logo's offset arm. It takes the colour it is given. */
+  .arm {
+    display: inline-block;
+    flex: none;
+    width: 1rem;
+    height: 2px;
+    background: currentColor;
+    transform: rotate(-45deg);
+    transform-origin: left center;
+    transition:
+      width 220ms var(--ease-out-quart),
+      color 220ms var(--ease-out-quart);
+  }
+
+  /* The arm that becomes an arrow when its link or button is hovered or focused. */
+  .arm-arrow {
+    flex: none;
+    overflow: visible;
+  }
+  .arm-arrow__shaft {
+    transform-origin: 12px 12px;
+    transform: rotate(-45deg) scaleX(0.72);
+    transition: transform 320ms var(--ease-out-expo);
+  }
+  .arm-arrow__head {
+    opacity: 0;
+    transform: translateX(-4px);
+    transition:
+      opacity 160ms var(--ease-out-quart),
+      transform 320ms var(--ease-out-expo);
+  }
+  :is(a, button):is(:hover, :focus-visible) .arm-arrow__shaft {
+    transform: rotate(0deg) scaleX(1);
+  }
+  :is(a, button):is(:hover, :focus-visible) .arm-arrow__head {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* One 45 degree cut at the bottom right, for dialogs sitting on the scrim. */
+  .cut-br {
+    clip-path: polygon(
+      0 0,
+      100% 0,
+      100% calc(100% - var(--cut, 1.75rem)),
+      calc(100% - var(--cut, 1.75rem)) 100%,
+      0 100%
+    );
+  }
+
+  .skip-link {
+    position: absolute;
+    left: 1rem;
+    top: -4rem;
+    z-index: 60;
+    padding: 0.75rem 1rem;
+    background: var(--color-navy);
+    color: var(--color-on-navy);
+    font-weight: 550;
+  }
+  .skip-link:focus {
+    top: 1rem;
+  }
+}
+
+/* The supplied logo on navy: white wordmark and mark, the offset arm keeps its teal.
+   Unlayered on purpose: the SVG carries its own unlayered <style> (its own dark fill on .cls-1), and an
+   unlayered rule beats any layered one whatever its specificity. */
+.on-navy .logo .cls-1 {
+  fill: var(--color-on-navy);
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}

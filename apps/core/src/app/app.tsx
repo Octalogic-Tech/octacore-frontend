@@ -1,66 +1,25 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import CoreOverview from './pages/CoreOverview';
-import { FloatNavbar, Navbar, NestedNav } from '@octacore-frontend/shared-ui';
-import { CssBaseline, Stack, createTheme } from '@mui/material';
-import {
-  ContentContainer,
-  MainContainerBox,
-  NavbarBox,
-  NestedNavbarBox,
-  routes,
-  themeSettings,
-} from '@octacore-frontend/constant';
-import { ThemeProvider } from '@mui/material';
-import Categories from './pages/Categories';
-import { useMemo } from 'react';
-import { QueryClient, QueryClientProvider } from 'react-query';
-import Technologies from './pages/Technologies';
-const queryClient = new QueryClient()
+import { Route, Routes } from 'react-router-dom';
+import { AppShell } from '@/app/app-shell';
+import { NotFoundPage } from '@/app/not-found-page';
+import { CategoriesPage } from '@/features/categories/categories-page';
+import { TechnologiesPage } from '@/features/technologies/technologies-page';
+import { ProjectsPage } from '@/features/projects/projects-page';
+import { BillsPage } from '@/features/bills/bills-page';
+import { CountriesPage } from '@/features/countries/countries-page';
+import { OverviewPage } from '@/features/overview/overview-page';
 
-function App() {
-  const activeTab = 'Core';
-  const theme = useMemo(() => createTheme(themeSettings), [])
+export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <CssBaseline>
-          <ThemeProvider theme={theme}>
-            <FloatNavbar activeTab={activeTab} />
-            <MainContainerBox>
-              <Stack
-                direction={'row'}
-                spacing={0}
-                justifyContent={'space-between'}
-              >
-                <NavbarBox>
-                  <Navbar activeTab={activeTab} />
-                </NavbarBox>
-                <NestedNavbarBox>
-                  <NestedNav activeTab={activeTab} />
-                </NestedNavbarBox>
-                <ContentContainer>
-                  <Routes>
-                    <Route
-                      path={routes.core.overview}
-                      element={<CoreOverview />}
-                    />
-                    <Route
-                      path={routes.core.categories}
-                      element={<Categories />}
-                    />
-                    <Route
-                      path={routes.core.technologies}
-                      element={<Technologies />}
-                    />
-                  </Routes>
-                </ContentContainer>
-              </Stack>
-            </MainContainerBox>
-          </ThemeProvider>
-        </CssBaseline>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route index element={<OverviewPage />} />
+        <Route path="projects" element={<ProjectsPage />} />
+        <Route path="finance/receipts-bills" element={<BillsPage />} />
+        <Route path="categories" element={<CategoriesPage />} />
+        <Route path="technologies" element={<TechnologiesPage />} />
+        <Route path="countries" element={<CountriesPage />} />
+        <Route path="*" element={<NotFoundPage />} />
+      </Route>
+    </Routes>
   );
 }
-
-export default App;
