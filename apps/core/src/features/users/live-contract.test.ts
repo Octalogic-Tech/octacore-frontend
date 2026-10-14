@@ -6,7 +6,7 @@ import { userRowsSchema } from './schema';
 // and walks the refresh and logout cookie; deletes are soft, so a row stays in the table). It only runs when
 // CORE_API_WRITE_URL names a service on a scratch database, never one you care about, and it signs in with the admin
 // that `make seed-admin` created there.
-//   (in octacore-backend)  ADMIN_EMAIL=<email> ADMIN_PASSWORD=<password> ADMIN_NAME=<name> make seed-admin
+//   (in octacore-backend)  DB_NAME=<scratch db> ADMIN_EMAIL=<email> ADMIN_PASSWORD=<password> ADMIN_NAME=<name> make seed-admin
 //   (here)                 CORE_API_WRITE_URL=http://127.0.0.1:5003/api/v1 CORE_API_TEST_EMAIL=<email> CORE_API_TEST_PASSWORD=<password> pnpm exec nx test core --skip-nx-cache
 const base = process.env.CORE_API_WRITE_URL;
 const email = process.env.CORE_API_TEST_EMAIL;
@@ -51,17 +51,21 @@ describe.skipIf(!base)('the running core service, sign-in and users', () => {
     expect(wrong.status).toBe(401);
     expect(await wrong.json()).toMatchObject({ message: 'Invalid email or password' });
 
-    // Add a user, read it back, change it.
-    const created = await call('POST', '/users', {
-      token: session.accessToken,
-      body: { name: 'Live Check', email: newEmail, role: 'admin', password: newPassword },
-    });
-    expect(created.status).toBe(201);
-    const createdText = await created.text();
-    // The raw body, not the parsed row: parsing drops keys it does not know, which would hide a leaked hash.
-    expect(createdText).not.toMatch(/password/i);
-    const row = unwrap(JSON.parse(createdText), userRowSchema);
+    // Add a user, read it back, change it. The id is taken from the raw body first, so a failed check on that body
+    // still deletes the user it created.
+    let createdId: number | undefined;
     try {
+      const created = await call('POST', '/users', {
+        token: session.accessToken,
+        body: { name: 'Live Check', email: newEmail, role: 'admin', password: newPassword },
+      });
+      expect(created.status).toBe(201);
+      const createdText = await created.text();
+      createdId = (JSON.parse(createdText) as { data?: { id?: number } }).data?.id;
+      // The raw body, not the parsed row: parsing drops keys it does not know, which would hide a leaked hash.
+      expect(createdText).not.toMatch(/password/i);
+      const row = unwrap(JSON.parse(createdText), userRowSchema);
+
       const listed = unwrap(await (await call('GET', '/users', { token: session.accessToken })).json(), userRowsSchema);
       expect(listed.map((user) => user.id)).toContain(row.id);
 
@@ -91,7 +95,7 @@ describe.skipIf(!base)('the running core service, sign-in and users', () => {
       const self = await call('DELETE', `/users/${session.user.id}`, { token: session.accessToken });
       expect(self.status).toBe(409);
     } finally {
-      await call('DELETE', `/users/${row.id}`, { token: session.accessToken });
+      if (createdId !== undefined) await call('DELETE', `/users/${createdId}`, { token: session.accessToken });
     }
 
     // Refresh rotates the cookie; logout revokes it, and a logged-out token is refused straight away.

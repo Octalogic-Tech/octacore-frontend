@@ -2,8 +2,9 @@ import { signInLive, type LiveSend } from '@/test/live-api';
 import { unwrap } from '@/lib/core-api';
 import { countriesSchema } from './schema';
 
-// Opt-in: this talks to the real FastAPI service, so it is skipped unless you ask for it. It only reads, but every
-// route needs a signed-in user, so it signs in with the admin that `make seed-admin` created.
+// Opt-in: this talks to the real FastAPI service, so it is skipped unless you ask for it. It reads countries, but
+// every route needs a signed-in user, so it signs in with the admin that `make seed-admin` created, and signing in
+// is not read-only: it writes that admin's `last_login_date` and a refresh-token row.
 //   (in octacore-backend)  make run
 //   (here)                 CORE_API_LIVE=1 CORE_API_TEST_EMAIL=<email> CORE_API_TEST_PASSWORD=<password> pnpm exec nx test core --skip-nx-cache
 const live = Boolean(process.env.CORE_API_LIVE);

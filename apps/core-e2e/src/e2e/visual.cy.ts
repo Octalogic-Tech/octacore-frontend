@@ -8,6 +8,7 @@ const pages = [
   ['categories', '/categories'],
   ['technologies', '/technologies'],
   ['countries', '/countries'],
+  ['users', '/users'],
 ] as const;
 
 const viewports = [
@@ -30,6 +31,21 @@ describe('visual captures', () => {
         cy.screenshot(`${name}-${width}`, { capture: 'fullPage' });
       });
     }
+  }
+});
+
+describe('visual captures: signed out', () => {
+  beforeEach(() => {
+    stubApi({ signedIn: false });
+  });
+
+  for (const [width, height] of viewports) {
+    it(`login at ${width}px`, () => {
+      cy.viewport(width, height);
+      cy.visit('/login');
+      cy.get('main h1').should('have.text', 'Sign in');
+      cy.screenshot(`login-${width}`, { capture: 'fullPage' });
+    });
   }
 });
 
