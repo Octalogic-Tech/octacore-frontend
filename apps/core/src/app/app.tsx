@@ -5,6 +5,7 @@ import { PageStub } from '@/app/page-stub';
 import { CategoriesPage } from '@/features/categories/categories-page';
 import { TechnologiesPage } from '@/features/technologies/technologies-page';
 import { ProjectsPage } from '@/features/projects/projects-page';
+import { BillsPage } from '@/features/bills/bills-page';
 
 export default function App() {
   return (
@@ -12,7 +13,7 @@ export default function App() {
       <Route element={<AppShell />}>
         <Route index element={<PageStub title="Overview" />} />
         <Route path="projects" element={<ProjectsPage />} />
-        <Route path="finance/receipts-bills" element={<PageStub title="Receipts and bills" />} />
+        <Route path="finance/receipts-bills" element={<BillsPage />} />
         <Route path="categories" element={<CategoriesPage />} />
         <Route path="technologies" element={<TechnologiesPage />} />
         <Route path="*" element={<NotFoundPage />} />
