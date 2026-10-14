@@ -5674,9 +5674,11 @@ describe('core', () => {
       cy.contains('button', 'Save').click();
     });
     cy.get('[role="dialog"]').should('not.exist');
+    // The new row is the eighth, so it sits on page two: find it with the search field.
+    cy.get('#category-search').type('Data');
     cy.contains('td', 'Data').should('be.visible');
 
-    cy.contains('button', 'Delete Data').click();
+    cy.get('button[aria-label="Delete Data"]').click();
     cy.get('[role="alertdialog"]').should('contain', 'This cannot be undone.');
     cy.get('[role="alertdialog"]').contains('button', 'Delete category').click();
     cy.contains('td', 'Data').should('not.exist');
