@@ -2,6 +2,7 @@ import { Route, Routes } from 'react-router-dom';
 import { AppShell } from '@/app/app-shell';
 import { NotFoundPage } from '@/app/not-found-page';
 import { CategoriesPage } from '@/features/categories/categories-page';
+import { ClientsPage } from '@/features/clients/clients-page';
 import { TechnologiesPage } from '@/features/technologies/technologies-page';
 import { ProjectsPage } from '@/features/projects/projects-page';
 import { BillsPage } from '@/features/bills/bills-page';
@@ -13,6 +14,7 @@ export default function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<OverviewPage />} />
+        <Route path="clients" element={<ClientsPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="finance/receipts-bills" element={<BillsPage />} />
         <Route path="categories" element={<CategoriesPage />} />

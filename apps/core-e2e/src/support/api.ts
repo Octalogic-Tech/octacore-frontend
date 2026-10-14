@@ -42,8 +42,9 @@ const bill = (id: number, billDate: string, approved: boolean, uploadedBy: strin
 });
 
 /**
- * Stubs every collection: categories, technologies and countries as the core service answers them, projects and
- * bills as the json-server mock does. `/categories` keeps state so an add or a delete shows up on the next read.
+ * Stubs every collection: categories, technologies, clients, client contacts and countries as the core service
+ * answers them, projects and bills as the json-server mock does. `/categories` keeps state so an add or a delete
+ * shows up on the next read.
  */
 export function stubApi() {
   let rows = categories();
@@ -69,6 +70,26 @@ export function stubApi() {
       record({ id: 1, name: 'React', description: 'A library for user interfaces.', categoryId: 1, category: categories()[0] }),
       record({ id: 2, name: 'Nest', description: 'A Node framework.', categoryId: null, category: null }),
       record({ id: 3, name: 'Express', description: null, categoryId: null, category: null }),
+    ]),
+  });
+
+  cy.intercept('GET', `${CORE_API}/clients`, {
+    body: envelope([
+      record({
+        id: 1,
+        name: 'Acme',
+        description: 'Anvils and rockets.',
+        countryId: 99,
+        city: 'Pune',
+        country: record({ id: 99, iso: 'IN', name: 'INDIA', nicename: 'India', iso3: 'IND', numcode: 356, phonecode: 91 }),
+      }),
+      record({ id: 2, name: 'Globex', description: null, countryId: null, city: null, country: null }),
+    ]),
+  });
+
+  cy.intercept('GET', `${CORE_API}/client-contacts`, {
+    body: envelope([
+      record({ id: 1, clientId: 1, name: 'Ada Lovelace', email: 'ada@example.com', phone: '+91 20 5550 0100' }),
     ]),
   });
 

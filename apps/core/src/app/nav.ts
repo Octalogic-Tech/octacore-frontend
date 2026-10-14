@@ -14,6 +14,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Work',
     items: [
       { label: 'Overview', to: '/', end: true },
+      { label: 'Clients', to: '/clients' },
       { label: 'Projects', to: '/projects' },
     ],
   },
