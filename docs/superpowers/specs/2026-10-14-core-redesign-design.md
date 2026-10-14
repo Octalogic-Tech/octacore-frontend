@@ -235,3 +235,19 @@ These are judgement calls where this spec differs from a literal port of what ex
 5. Remove the retired apps, libs and dependencies. Verify as in section 11. Run impeccable's `critique` and `audit` once, as one batched review of the screenshots and code, and fix the findings in one batch.
 
 An implementation plan with these steps broken into tasks is written after this spec is approved.
+
+## 15. Probe result
+
+Run on 2026-10-14. All six gates passed with Tailwind 4 and React 19, so the fallback in section 5.3 was not needed.
+
+| Package | Version |
+|---|---|
+| react, react-dom | 19.3.0, 19.3.0 |
+| tailwindcss, @tailwindcss/postcss | 4.3.3, 4.3.3 |
+| tailwindcss3 (portfolio alias) | 3.4.19 |
+| vite, @nx/vite, vitest | 4.3.9, 16.5.1, 0.32.4 |
+| @tanstack/react-query, react-hook-form, zod, @hookform/resolvers | 5.104.2, 7.90.0, 4.6.7, 5.9.1 |
+| @radix-ui/react-dialog, @radix-ui/react-alert-dialog | 1.3.1, 1.2.1 |
+| tailwind-merge, @testing-library/react | 3.7.0, 16.3.3 |
+
+Notes: Vitest 0.32 runs React 19 and Testing Library 16 without changes. `@nx/eslint-plugin` is pinned to 16.5.1 to match `nx`: the pnpm migration had resolved the caret range to 16.10.0, which crashes the `enforce-module-boundaries` lint rule under `nx@16.5.1`.
