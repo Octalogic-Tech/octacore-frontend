@@ -20,7 +20,10 @@ export function TechnologiesPage() {
   const [form, setForm] = useState<{ open: boolean; technology?: Technology }>({ open: false });
   const [toDelete, setToDelete] = useState<Technology | null>(null);
 
-  const filtered = useMemo(() => filterBy(data ?? [], search, ['name', 'category', 'description']), [data, search]);
+  const filtered = useMemo(
+    () => filterBy(data ?? [], search, ['name', 'categoryName', 'description']),
+    [data, search],
+  );
   const paging = usePagedRows(filtered);
 
   return (
@@ -73,7 +76,7 @@ export function TechnologiesPage() {
                   {paging.pageRows.map((technology) => (
                     <TableRow key={technology.id}>
                       <TableCell className="font-semibold">{technology.name}</TableCell>
-                      <TableCell>{technology.category || '—'}</TableCell>
+                      <TableCell>{technology.categoryName || '—'}</TableCell>
                       <TableCell className="min-w-[16rem]">{technology.description}</TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         <Button

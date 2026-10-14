@@ -1,9 +1,4 @@
-export interface Technology {
-  id: number;
-  name: string;
-  description: string;
-  category?: string;
-  /** Legacy MUI icon names. Kept in the data, no longer shown. */
-  iconType?: string;
-  iconName?: string;
-}
+import type { z } from 'zod';
+import type { technologyRowSchema } from './schema';
+
+export type Technology = z.infer<typeof technologyRowSchema>;
