@@ -2494,7 +2494,7 @@ export function QueryBoundary({ isLoading, isError, onRetry, isEmpty, empty, chi
     );
   }
   if (isEmpty) return <div className="p-6">{empty}</div>;
-  return <>{children}</>;
+  return children;
 }
 ```
 
