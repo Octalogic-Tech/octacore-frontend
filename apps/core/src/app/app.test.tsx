@@ -2,12 +2,25 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { coreApi } from '@/lib/core-api';
 import { AuthTestProvider } from '@/test/auth';
+import { envelope, fakeAdapter } from '@/test/fake-adapter';
 import App from './app';
 
 vi.mock('@/lib/api', () => ({
   api: { get: vi.fn().mockResolvedValue({ data: [] }), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
+
+const originalAdapter = coreApi.defaults.adapter;
+
+// The core-service pages (Clients, Categories, Technologies, Countries) use coreApi: answer it here so no request leaves the test.
+beforeEach(() => {
+  coreApi.defaults.adapter = fakeAdapter(() => ({ status: 200, data: envelope([]) }));
+});
+
+afterEach(() => {
+  coreApi.defaults.adapter = originalAdapter;
+});
 
 function renderAt(route: string) {
   return render(
