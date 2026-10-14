@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { useAuth } from '@/features/auth/auth-context';
 import { ChangePasswordDialog } from '@/features/auth/change-password-dialog';
 
@@ -8,6 +8,8 @@ const action = 'min-h-11 text-left text-body font-medium text-on-navy-muted tran
 export function AccountBlock() {
   const { user, signOut } = useAuth();
   const [passwordOpen, setPasswordOpen] = useState(false);
+  // The desktop sidebar and the phone menu can both render this block, so the id cannot be a fixed string.
+  const openerId = useId();
 
   if (!user) return null;
 
@@ -17,14 +19,14 @@ export function AccountBlock() {
       <p className="text-body font-semibold text-on-navy">{user.name}</p>
       <p className="break-all text-small text-on-navy-muted">{user.email}</p>
       <div className="mt-3 grid justify-items-start">
-        <button type="button" id="change-password-button" className={action} onClick={() => setPasswordOpen(true)}>
+        <button type="button" id={openerId} className={action} onClick={() => setPasswordOpen(true)}>
           Change password
         </button>
         <button type="button" className={action} onClick={() => void signOut()}>
           Sign out
         </button>
       </div>
-      <ChangePasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} />
+      <ChangePasswordDialog open={passwordOpen} onOpenChange={setPasswordOpen} openerId={openerId} />
     </section>
   );
 }

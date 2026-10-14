@@ -37,6 +37,19 @@ describe('AccountBlock', () => {
     expect(screen.queryByRole('region', { name: 'Account' })).not.toBeInTheDocument();
   });
 
+  it('gives each Change password button its own id, since the sidebar and the phone menu can both show one', () => {
+    render(
+      <AuthTestProvider>
+        <AccountBlock />
+        <AccountBlock />
+      </AuthTestProvider>,
+    );
+    const ids = screen.getAllByRole('button', { name: 'Change password' }).map((button) => button.id);
+    expect(ids).toHaveLength(2);
+    expect(ids[0]).toBeTruthy();
+    expect(ids[0]).not.toBe(ids[1]);
+  });
+
   it('signs out', async () => {
     const signOut = vi.fn(async () => undefined);
     const user = userEvent.setup();

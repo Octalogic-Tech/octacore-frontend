@@ -14,9 +14,11 @@ const emptyValues: ChangePasswordInput = { currentPassword: '', newPassword: '',
 interface ChangePasswordDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The id of the button that opens it, where focus goes back to when the dialog closes. */
+  openerId?: string;
 }
 
-export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialogProps) {
+export function ChangePasswordDialog({ open, onOpenChange, openerId }: ChangePasswordDialogProps) {
   const { changePassword } = useAuth();
   const [failure, setFailure] = useState<string | null>(null);
   const {
@@ -52,7 +54,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
         if (!isSubmitting) onOpenChange(next);
       }}
     >
-      <DialogContent fallbackFocusId="change-password-button">
+      <DialogContent fallbackFocusId={openerId}>
         <DialogTitle>Change password</DialogTitle>
         <DialogDescription>You stay signed in here. Your other devices are signed out.</DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6">

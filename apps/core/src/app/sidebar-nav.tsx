@@ -11,7 +11,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { user } = useAuth();
   const groups = NAV_GROUPS.filter((group) => !group.roles || (user !== null && group.roles.includes(user.role)));
   return (
-    <div className="flex min-h-full flex-1 flex-col px-6 py-8">
+    <div className="flex min-h-full flex-1 shrink-0 flex-col px-6 py-8">
       <nav aria-label="Main" className="flex flex-col gap-8">
         <Link to="/" onClick={onNavigate} aria-label="Octalogic Tech home" className="inline-flex min-h-11 items-center">
           <Logo height={30} />
