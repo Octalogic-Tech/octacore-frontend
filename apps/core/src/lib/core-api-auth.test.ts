@@ -1,7 +1,9 @@
 import { api } from '@/lib/api';
+import { AxiosError } from 'axios';
+import { userRows } from '@/test/fixtures/users';
 import { envelope, fakeAdapter, sessionEnvelope, type FakeAdapter } from '@/test/fake-adapter';
 import { coreApi, refreshSession } from './core-api';
-import { getAccessToken, onSessionEnded, setAccessToken } from './session';
+import { getAccessToken, onSessionEnded, onSessionUser, setAccessToken } from './session';
 
 const coreAdapter = coreApi.defaults.adapter;
 const mockAdapter = api.defaults.adapter;
@@ -48,6 +50,16 @@ describe('coreApi', () => {
     coreApi.defaults.adapter = adapter;
 
     await coreApi.get('/categories');
+
+    expect(adapter.calls[0].headers.get('Authorization')).toBeFalsy();
+  });
+
+  it('a request that carried a token before the session ended goes out without it', async () => {
+    const adapter = fakeAdapter(() => ({ status: 200, data: envelope([]) }));
+    coreApi.defaults.adapter = adapter;
+
+    // What a retry looks like: the same config, still holding the header stamped on its first attempt.
+    await coreApi.get('/categories', { headers: { Authorization: 'Bearer stale' } });
 
     expect(adapter.calls[0].headers.get('Authorization')).toBeFalsy();
   });
@@ -101,6 +113,8 @@ describe('coreApi', () => {
       '/auth/refresh',
       '/auth/change-password',
     ]);
+    // The retry replays the body it was first sent with.
+    expect(adapter.calls[2].data).toEqual(adapter.calls[0].data);
   });
 
   it('ends the session when the refresh itself fails, and rejects with the original 401', async () => {
@@ -113,6 +127,32 @@ describe('coreApi', () => {
 
     expect(ended).toHaveBeenCalledTimes(1);
     expect(getAccessToken()).toBeNull();
+    off();
+  });
+
+  it.each([
+    ['a 500', () => ({ status: 500, data: envelope(null, 500) })],
+    [
+      'a network error',
+      (config: Parameters<Parameters<typeof fakeAdapter>[0]>[0]) => {
+        throw new AxiosError('Network Error', 'ERR_NETWORK', config);
+      },
+    ],
+  ] as const)('keeps the session when the refresh fails with %s, and rejects with the original 401', async (_, refreshAnswer) => {
+    const ended = vi.fn();
+    const off = onSessionEnded(ended);
+    setAccessToken('old');
+    coreApi.defaults.adapter = fakeAdapter((config) =>
+      config.url === '/auth/refresh' ? refreshAnswer(config) : { status: 401, data: envelope(null, 401) },
+    );
+
+    await expect(coreApi.get('/categories')).rejects.toMatchObject({
+      config: { url: '/categories' },
+      response: { status: 401 },
+    });
+
+    expect(ended).not.toHaveBeenCalled();
+    expect(getAccessToken()).toBe('old');
     off();
   });
 
@@ -176,6 +216,28 @@ describe('refreshSession', () => {
     await expect(refreshSession()).rejects.toMatchObject({ response: { status: 401 } });
 
     expect(getAccessToken()).toBe('keep');
+  });
+
+  it('does not keep a token whose refresh finished after the session was dropped (a sign-out mid-refresh)', async () => {
+    setAccessToken('old');
+    coreApi.defaults.adapter = serverAcceptingNewToken();
+
+    const pending = refreshSession();
+    setAccessToken(null);
+
+    await expect(pending).rejects.toThrow('The session ended while it was being refreshed');
+    expect(getAccessToken()).toBeNull();
+  });
+
+  it('tells subscribers who the new session belongs to', async () => {
+    const listener = vi.fn();
+    const off = onSessionUser(listener);
+    coreApi.defaults.adapter = serverAcceptingNewToken();
+
+    await refreshSession();
+
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({ id: userRows[0].id, email: userRows[0].email }));
+    off();
   });
 
   it('rejects an answer that is not a session', async () => {

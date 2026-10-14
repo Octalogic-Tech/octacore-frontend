@@ -99,6 +99,43 @@ describe('the app behind sign-in', () => {
     expect(screen.getByText('at /clients?q=acme')).toBeInTheDocument();
   });
 
+  it('after a sign-out, the next person to sign in lands on the overview, not on the page the last one was on', async () => {
+    let signedIn = true;
+    coreApi.defaults.adapter = fakeAdapter((config) => {
+      if (config.url === '/auth/refresh') {
+        return signedIn ? { status: 200, data: sessionEnvelope('restored') } : { status: 401, data: envelope(null, 401) };
+      }
+      if (config.url === '/auth/logout') {
+        signedIn = false;
+        return { status: 200, data: envelope(null) };
+      }
+      if (config.url === '/auth/login') return { status: 200, data: sessionEnvelope('logged-in') };
+      return { status: 200, data: envelope([]) };
+    });
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={['/clients?q=acme']}>
+          <AuthProvider>
+            <App />
+            <Where />
+          </AuthProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByRole('heading', { level: 1, name: 'Clients' })).toBeInTheDocument();
+
+    // The desktop sidebar and the phone menu both hold an account block; either signs out.
+    await user.click(screen.getAllByRole('button', { name: 'Sign out' })[0]);
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Email'), 'grace@example.com');
+    await user.type(screen.getByLabelText('Password'), 'a long enough password');
+    await user.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Overview' })).toBeInTheDocument();
+    expect(screen.getByText('at /')).toBeInTheDocument();
+  });
+
   it('shows the Admin group and the Users page to an admin', async () => {
     renderWithContext('/users', {});
     expect(await screen.findByRole('heading', { level: 1, name: 'Users' })).toBeInTheDocument();

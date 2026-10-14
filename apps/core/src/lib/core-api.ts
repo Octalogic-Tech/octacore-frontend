@@ -1,7 +1,7 @@
 import axios, { type InternalAxiosRequestConfig } from 'axios';
 import { z } from 'zod';
 import { authSessionSchema, type AuthSession } from '@/lib/auth-schema';
-import { endSession, getAccessToken, setAccessToken } from '@/lib/session';
+import { endSession, getAccessToken, getSessionGeneration, notifySessionUser, setAccessToken } from '@/lib/session';
 
 /**
  * The FastAPI core service (octacore-backend): base path /api/v1, every response in the envelope
@@ -29,16 +29,27 @@ export function unwrap<S extends z.ZodType>(body: unknown, dataSchema: S): z.out
   return dataSchema.parse(envelopeSchema.parse(body).data);
 }
 
-/** Parses a login, refresh or change-password answer, keeps its access token, and returns the session. */
-export function adoptSession(body: unknown): AuthSession {
+/**
+ * Parses a login, refresh or change-password answer, keeps its access token, tells subscribers whose session it is,
+ * and returns the session. `startedIn` is the session generation the request was sent under: if the session was
+ * dropped since (a sign-out while a refresh was on the way), the answer belongs to a session that no longer exists,
+ * so nothing is kept and this throws instead.
+ */
+export function adoptSession(body: unknown, startedIn?: number): AuthSession {
   const session = unwrap(body, authSessionSchema);
+  if (startedIn !== undefined && startedIn !== getSessionGeneration()) {
+    throw new Error('The session ended while it was being refreshed');
+  }
   setAccessToken(session.accessToken);
+  notifySessionUser(session.user);
   return session;
 }
 
 coreApi.interceptors.request.use((config) => {
   const token = getAccessToken();
   if (token) config.headers.set('Authorization', `Bearer ${token}`);
+  // A retried request reuses its config: never let it carry the token of a session that has since ended.
+  else config.headers.delete('Authorization');
   return config;
 });
 
@@ -47,15 +58,19 @@ let refreshing: Promise<AuthSession> | null = null;
 /**
  * Asks the service for a new session using the refresh cookie. Callers that overlap (React StrictMode mounting
  * twice, several requests failing together) share one request: the service rotates the cookie on every use, so a
- * second request with the old cookie would look like a stolen token.
+ * second request with the old cookie would look like a stolen token. If the session is dropped while the request is
+ * on the way (a sign-out), it rejects and keeps no token.
  */
 export function refreshSession(): Promise<AuthSession> {
-  refreshing ??= coreApi
-    .post('/auth/refresh')
-    .then((response) => adoptSession(response.data))
-    .finally(() => {
-      refreshing = null;
-    });
+  if (!refreshing) {
+    const startedIn = getSessionGeneration();
+    refreshing = coreApi
+      .post('/auth/refresh')
+      .then((response) => adoptSession(response.data, startedIn))
+      .finally(() => {
+        refreshing = null;
+      });
+  }
   return refreshing;
 }
 
@@ -71,8 +86,11 @@ coreApi.interceptors.response.use(undefined, async (error: unknown) => {
   request.retriedAfterRefresh = true;
   try {
     await refreshSession();
-  } catch {
-    endSession();
+  } catch (refreshError) {
+    // Only the service refusing the cookie ends the session. A refresh that could not reach it (a network error, a
+    // 5xx) leaves the session alone: the page shows its Try again state and the next request refreshes again.
+    const status = statusOf(refreshError);
+    if (status === 401 || status === 403) endSession();
     throw error;
   }
   // The request interceptor stamps the new token on the retry.

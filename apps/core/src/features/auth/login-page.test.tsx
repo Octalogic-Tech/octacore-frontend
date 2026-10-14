@@ -43,6 +43,13 @@ describe('LoginPage', () => {
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
 
+  it('shows a neutral blank, and no form, while the session is being restored', () => {
+    const { container } = renderLogin({ status: 'loading' });
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sign in' })).not.toBeInTheDocument();
+    expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  });
+
   it('says what is missing and does not call the service', async () => {
     const signIn = vi.fn();
     const user = userEvent.setup();

@@ -1,8 +1,9 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import type { UserRow } from '@/lib/auth-schema';
 import { refreshSession } from '@/lib/core-api';
-import { onSessionEnded, setAccessToken } from '@/lib/session';
+import { endSession, onSessionEnded, onSessionUser, setAccessToken } from '@/lib/session';
 import { changePassword as requestPasswordChange, login, logout } from './api';
 import { clearPendingLogout, hasPendingLogout, markPendingLogout } from './pending-logout';
 
@@ -30,57 +31,101 @@ interface AuthState {
 }
 
 const SIGNED_OUT: AuthState = { status: 'anonymous', user: null };
+const LOADING: AuthState = { status: 'loading', user: null };
+
+/** Tabs of the app tell each other about a sign-out on this channel. */
+const CHANNEL = 'octacore-auth';
+const SIGNED_OUT_MESSAGE = 'signed-out';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
-  const [state, setState] = useState<AuthState>({ status: 'loading', user: null });
+  const navigate = useNavigate();
+  const [state, setState] = useState<AuthState>(LOADING);
+  // The latest state, for listeners and promises that outlive the render they were created in.
+  const current = useRef<AuthState>(LOADING);
+  const apply = useCallback((next: AuthState) => {
+    current.current = next;
+    setState(next);
+  }, []);
+  const channel = useRef<BroadcastChannel | null>(null);
 
   // Restore the session from the refresh cookie. `refreshSession` is single-flighted at module level, so
   // StrictMode's double mount in development makes one request, not two. If the last sign-out never reached the
   // service, finish it instead: the cookie still belongs to whoever signed out. The status stays `loading` until
   // that answer is in, so nobody can sign in while its cookie-clearing answer is still on the way. Logout is
   // idempotent, so StrictMode asking twice does no harm. The flag is cleared only once the service has said yes.
+  // Whatever comes back is ignored if something else (a sign-in, a session ended) has already settled the status.
   useEffect(() => {
     let active = true;
+    const settle = (next: AuthState) => {
+      if (active && current.current.status === 'loading') apply(next);
+    };
     if (hasPendingLogout()) {
       logout()
         .then(clearPendingLogout, () => undefined)
-        .then(() => {
-          if (active) setState(SIGNED_OUT);
-        });
-      return () => {
-        active = false;
-      };
+        .then(() => settle(SIGNED_OUT));
+    } else {
+      refreshSession().then(
+        (session) => settle({ status: 'authenticated', user: session.user }),
+        () => settle(SIGNED_OUT),
+      );
     }
-    refreshSession().then(
-      (session) => {
-        if (active) setState({ status: 'authenticated', user: session.user });
-      },
-      () => {
-        if (active) setState(SIGNED_OUT);
-      },
-    );
     return () => {
       active = false;
     };
-  }, []);
+  }, [apply]);
 
-  // A refresh that fails mid-use (the cookie expired, the user was deleted) ends the session here.
+  // The service refused the refresh cookie mid-use (it expired, the user was deleted), or another tab signed out.
   useEffect(
     () =>
       onSessionEnded(() => {
         queryClient.clear();
-        setState(SIGNED_OUT);
+        apply(SIGNED_OUT);
       }),
-    [queryClient],
+    [queryClient, apply],
   );
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const session = await login(email, password);
-    // The new cookie replaced the one a failed sign-out left behind.
-    clearPendingLogout();
-    setState({ status: 'authenticated', user: session.user });
+  // A refresh says whose session it is. Another person signing in in another tab replaces the shared cookie, so a
+  // refresh here can come back as them: drop everything the last person loaded and show who this is now. The same
+  // person with changed details (an admin edited their name) just updates what is shown.
+  useEffect(
+    () =>
+      onSessionUser((user) => {
+        const shown = current.current;
+        if (shown.status !== 'authenticated' || !shown.user) return;
+        if (shown.user.id !== user.id) {
+          queryClient.clear();
+          apply({ status: 'authenticated', user });
+        } else if (JSON.stringify(shown.user) !== JSON.stringify(user)) {
+          apply({ status: 'authenticated', user });
+        }
+      }),
+    [queryClient, apply],
+  );
+
+  // A sign-out in another tab ends the session here too, without asking the service again.
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return undefined;
+    const tabs = new BroadcastChannel(CHANNEL);
+    tabs.onmessage = (event: MessageEvent) => {
+      if (event.data === SIGNED_OUT_MESSAGE) endSession();
+    };
+    channel.current = tabs;
+    return () => {
+      if (channel.current === tabs) channel.current = null;
+      tabs.close();
+    };
   }, []);
+
+  const signIn = useCallback(
+    async (email: string, password: string) => {
+      const session = await login(email, password);
+      // The new cookie replaced the one a failed sign-out left behind.
+      clearPendingLogout();
+      apply({ status: 'authenticated', user: session.user });
+    },
+    [apply],
+  );
 
   const signOut = useCallback(async () => {
     try {
@@ -91,15 +136,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       markPendingLogout();
     }
     setAccessToken(null);
-    setState(SIGNED_OUT);
+    // Go to the login page first, with no page to return to: if the status flipped on this page, RequireAuth would
+    // record it, and the next person to sign in would land on it.
+    navigate('/login', { replace: true });
+    apply(SIGNED_OUT);
     // Someone else may sign in next on this browser: nothing the last person loaded may be shown to them.
     queryClient.clear();
-  }, [queryClient]);
+    channel.current?.postMessage(SIGNED_OUT_MESSAGE);
+  }, [queryClient, navigate, apply]);
 
-  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
-    const session = await requestPasswordChange(currentPassword, newPassword);
-    setState({ status: 'authenticated', user: session.user });
-  }, []);
+  const changePassword = useCallback(
+    async (currentPassword: string, newPassword: string) => {
+      const session = await requestPasswordChange(currentPassword, newPassword);
+      apply({ status: 'authenticated', user: session.user });
+    },
+    [apply],
+  );
 
   const value = useMemo(
     () => ({ ...state, signIn, signOut, changePassword }),

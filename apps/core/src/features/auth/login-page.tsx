@@ -28,6 +28,9 @@ export function LoginPage() {
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } });
 
+  // The same neutral blank RequireAuth shows: a reload here with a valid cookie does not flash the form, and the
+  // form cannot be sent before the restore has settled.
+  if (status === 'loading') return <div aria-busy="true" className="min-h-dvh" />;
   // Signing in flips the status, which brings the person back to the page they asked for.
   if (status === 'authenticated') return <Navigate to={savedPath(location.state)} replace />;
 
