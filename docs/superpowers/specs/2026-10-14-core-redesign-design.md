@@ -1,6 +1,6 @@
 # Core app redesign: design spec
 
-Status: draft for review
+Status: implemented on branch feature/core-redesign
 Date: 2026-10-14
 Repo: `octacore-frontend` (Nx 16.5.1 workspace, branch `develop`)
 

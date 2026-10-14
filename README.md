@@ -8,8 +8,14 @@ Monorepo for all octacore modules
 
 ## Start the app
 
-To start the development server run `nx serve core`. Open your browser and navigate to http://localhost:4200/. Happy coding!
+Two processes: the mock API and the app.
 
+```bash
+pnpm start:api       # json-server on http://localhost:3001 (json-server/db.json)
+pnpm nx serve core   # the app on http://localhost:4200
+```
+
+Set `VITE_API_URL` (see `apps/core/.env.example`) to point the app at another API.
 
 ## Generate code
 

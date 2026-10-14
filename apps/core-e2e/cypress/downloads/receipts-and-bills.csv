@@ -1,4 +1,0 @@
-﻿Bill date,Amount,Bill type,Reimbursement,Uploaded by,Submitted by,Approved,Approved by,Bill file
-2023-08-10,100,Regular,No,John Doe,John Doe,Yes,Manager,/path/to/bill/1
-2023-08-08,50,Regular,No,Michael Johnson,Michael Johnson,Yes,Manager,/path/to/bill/3
-2023-08-06,300,Regular,No,John Doe,John Doe,Yes,Manager,/path/to/bill/5
