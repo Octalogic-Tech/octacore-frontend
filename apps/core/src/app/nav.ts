@@ -37,4 +37,9 @@ export const NAV_GROUPS: NavGroup[] = [
     roles: ['admin'],
     items: [{ label: 'Users', to: '/users' }],
   },
+  {
+    label: 'Planned',
+    roles: ['admin'],
+    items: [{ label: 'Planned features', to: '/planned' }],
+  },
 ];
