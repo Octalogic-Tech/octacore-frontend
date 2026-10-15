@@ -34,6 +34,58 @@ const users = (): Row[] => [
   record({ id: 1, name: 'Ada Admin', email: 'ada@example.com', role: 'admin', lastLoginDate: stamp }),
 ];
 
+const acme = (): Row => record({ id: 1, name: 'Acme', description: 'Anvils and rockets.', countryId: 99, city: 'Pune' });
+
+const project = (fields: Row): Row =>
+  record({
+    description: null,
+    clientId: null,
+    client: null,
+    billingType: 'retainer',
+    projectType: 'product',
+    totalValue: 0,
+    totalOutstanding: 0,
+    ...fields,
+  });
+
+const projects = (): Row[] => [
+  project({
+    id: 1,
+    name: 'Website',
+    description: 'Marketing site.',
+    clientId: 1,
+    client: acme(),
+    projectType: 'resource_augmentation',
+    totalValue: 48000,
+    totalOutstanding: 12000,
+  }),
+  project({ id: 2, name: 'Mobile app', billingType: 'fixed_cost', totalValue: 32000 }),
+  project({ id: 3, name: 'Legacy portal', clientId: 1, client: acme(), projectType: null, billingType: null }),
+];
+
+const invoices = (): Row[] => [
+  record({
+    id: 1,
+    projectId: 1,
+    number: 'INV-001',
+    description: 'October retainer',
+    amount: 36000,
+    issueDate: '2026-10-01',
+    dueDate: '2026-10-31',
+    paidDate: '2026-10-12',
+  }),
+  record({
+    id: 2,
+    projectId: 1,
+    number: 'INV-002',
+    description: null,
+    amount: 12000,
+    issueDate: '2026-11-01',
+    dueDate: null,
+    paidDate: null,
+  }),
+];
+
 const bill = (id: number, billDate: string, approved: boolean, uploadedBy: string, amount: number): Row => ({
   id,
   billDate,
@@ -75,8 +127,8 @@ function stubCore(
 }
 
 /**
- * Stubs every collection: categories, technologies, clients, client contacts, countries and users as the core
- * service answers them, projects and bills as the json-server mock does, and the sign-in routes. `signedIn` says
+ * Stubs every collection: categories, technologies, clients, client contacts, projects, invoices, countries and
+ * users as the core service answers them, bills as the json-server mock does, and the sign-in routes. `signedIn` says
  * whether the refresh cookie is valid when the page loads; `POST /auth/login` accepts E2E_PASSWORD and signs in.
  * `/categories` and `/users` keep state so an add or a delete shows up on the next read.
  */
@@ -162,18 +214,10 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
     ]),
   }));
 
-  cy.intercept(
-    'GET',
-    `${API}/projects`,
-    Array.from({ length: 8 }, (_, index) => ({
-      id: index + 1,
-      name: `Project ${index + 1}`,
-      description: `anything project-${index + 1}`,
-      client: `Client ${String.fromCharCode(65 + (index % 5))}`,
-      totalValue: 20000 + index * 7000,
-      totalOutstanding: index % 3 === 1 ? 0 : 3000 + index * 2500,
-    })),
-  );
+  // `*` does not cross a `/`, and the invoices call carries a query string, hence the trailing `*` on that one.
+  stubCore('GET', '/projects', () => ({ body: envelope(projects()) }));
+  stubCore('GET', '/projects/*', () => ({ body: envelope(projects()[0]) }));
+  stubCore('GET', '/invoices*', () => ({ body: envelope(invoices()) }));
 
   cy.intercept('GET', `${API}/bills`, [
     bill(1, '2023-08-10', true, 'John Doe', 100),

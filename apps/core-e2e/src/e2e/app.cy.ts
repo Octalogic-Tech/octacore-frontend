@@ -30,6 +30,20 @@ describe('core', () => {
     cy.contains('td', 'Globex').should('be.visible');
   });
 
+  it('lists the projects and opens one with its invoices', () => {
+    cy.get(nav).contains('a', 'Projects').click();
+    cy.contains('td', 'Website').should('be.visible');
+    cy.contains('td', 'Resource augmentation').should('be.visible');
+    cy.contains('td', 'Legacy portal').should('be.visible');
+    cy.contains('a', 'Website').click();
+    cy.contains('h1', 'Website');
+    cy.contains('p', '$12,000 outstanding of $48,000 invoiced.').should('be.visible');
+    cy.contains('td', 'INV-001').should('be.visible');
+    cy.contains('Paid 12 Oct 2026').should('be.visible');
+    cy.contains('Unpaid').should('be.visible');
+    cy.get(`${nav} a[aria-current="page"]`).should('have.length', 1).and('contain', 'Projects');
+  });
+
   it('adds a category and deletes it through the confirmation', () => {
     cy.get(nav).contains('a', 'Categories').click();
     cy.contains('button', 'Add category').click();

@@ -4,6 +4,7 @@ const pages = [
   ['overview', '/'],
   ['clients', '/clients'],
   ['projects', '/projects'],
+  ['project', '/projects/1'],
   ['bills', '/finance/receipts-bills'],
   ['categories', '/categories'],
   ['technologies', '/technologies'],
