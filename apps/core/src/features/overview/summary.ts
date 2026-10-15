@@ -1,5 +1,5 @@
 import type { Bill } from '@/features/bills/types';
-import type { Project } from '@/features/projects/types';
+import type { ProjectRow } from '@/features/projects/schema';
 
 const LIST_LENGTH = 5;
 
@@ -8,7 +8,7 @@ export interface OverviewSummary {
   totalValue: number;
   totalOutstanding: number;
   /** Up to five projects, largest outstanding amount first. Settled projects are left out. */
-  topOutstanding: Project[];
+  topOutstanding: ProjectRow[];
   pendingCount: number;
   /** Up to five pending bills, newest first. */
   pendingBills: Bill[];
@@ -16,7 +16,7 @@ export interface OverviewSummary {
 
 const sum = (numbers: number[]) => numbers.reduce((total, value) => total + value, 0);
 
-export function summarize(projects: Project[], bills: Bill[]): OverviewSummary {
+export function summarize(projects: ProjectRow[], bills: Bill[]): OverviewSummary {
   const pending = bills.filter((bill) => !bill.approved);
   return {
     projectCount: projects.length,

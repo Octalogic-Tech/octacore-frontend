@@ -1,0 +1,376 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { AxiosError } from 'axios';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
+import { coreApi } from '@/lib/core-api';
+import { queryDefaults } from '@/lib/query-client';
+import { clientsEnvelope } from '@/test/fixtures/clients';
+import { invoiceRows, invoicesEnvelope, projectEnvelope, projectRows } from '@/test/fixtures/projects';
+import { renderWithProviders } from '@/test/utils';
+import { ProjectDetailPage } from './project-detail-page';
+
+vi.mock('@/lib/core-api', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/core-api')>()),
+  coreApi: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
+}));
+
+// A fixed "today", so Mark paid can be checked against an exact date.
+vi.mock('@/lib/format', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/format')>()),
+  localToday: () => '2026-11-20',
+}));
+
+const failure = (status: number) =>
+  new AxiosError('failed', 'ERR_BAD_REQUEST', undefined, null, {
+    status,
+    data: {},
+    statusText: String(status),
+    headers: {},
+    config: {} as never,
+  });
+
+/** What the service answers a write with; the page never reads it. */
+const saved = { data: { statusCode: 200, message: 'saved', data: {}, meta: null } };
+
+const serve = (opts: { project?: unknown; invoices?: unknown } = {}) =>
+  vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+    if (path === '/projects/1') return { data: opts.project ?? projectEnvelope() };
+    if (path === '/invoices') return { data: opts.invoices ?? invoicesEnvelope() };
+    if (path === '/clients') return { data: clientsEnvelope() };
+    throw new Error(`unexpected GET ${path}`);
+  }) as never);
+
+function renderAt(route: string) {
+  return renderWithProviders(
+    <Routes>
+      <Route path="/projects/:id" element={<ProjectDetailPage />} />
+      <Route path="/projects" element={<p>Projects list</p>} />
+    </Routes>,
+    { route },
+  );
+}
+
+const sentence = (expected: string) => (_: string, element: Element | null) =>
+  element?.tagName === 'P' && element.textContent === expected;
+
+const gets = (path: string) => vi.mocked(coreApi.get).mock.calls.filter(([called]) => called === path);
+
+beforeEach(() => {
+  serve();
+});
+
+afterEach(() => {
+  vi.resetAllMocks();
+});
+
+describe('ProjectDetailPage: reading', () => {
+  it('asks for the project and only its own invoices', async () => {
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    expect(coreApi.get).toHaveBeenCalledWith('/projects/1');
+    expect(coreApi.get).toHaveBeenCalledWith('/invoices', { params: { projectId: 1 } });
+  });
+
+  it('shows the project, its facts and the totals sentence', async () => {
+    renderAt('/projects/1');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Website' })).toBeInTheDocument();
+    expect(screen.getByText('Acme')).toBeInTheDocument();
+    expect(screen.getByText('Resource augmentation')).toBeInTheDocument();
+    expect(screen.getByText('Retainer')).toBeInTheDocument();
+    expect(screen.getByText('Marketing site.')).toBeInTheDocument();
+    expect(await screen.findByText(sentence('$12,000 outstanding of $48,000 invoiced.'))).toBeInTheDocument();
+  });
+
+  it('shows dashes for a project with no client or types', async () => {
+    const legacy = { ...projectRows[2], client: null };
+    serve({ project: projectEnvelope(legacy), invoices: invoicesEnvelope([]) });
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Legacy portal' });
+    expect(screen.getAllByText('—')).toHaveLength(3);
+  });
+
+  it('lists the invoices newest issue date first, each with its status', async () => {
+    renderAt('/projects/1');
+    const table = await screen.findByRole('table');
+    const rows = within(table).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(2);
+    const newest = within(rows[0]);
+    expect(newest.getByText('INV-002')).toBeInTheDocument();
+    expect(newest.getByText('1 Nov 2026')).toBeInTheDocument();
+    expect(newest.getByText('$12,000')).toBeInTheDocument();
+    expect(newest.getByText('Unpaid')).toBeInTheDocument();
+    const older = within(rows[1]);
+    expect(older.getByText('INV-001')).toBeInTheDocument();
+    expect(older.getByText('October retainer')).toBeInTheDocument();
+    expect(older.getByText('1 Oct 2026')).toBeInTheDocument();
+    expect(older.getByText('31 Oct 2026')).toBeInTheDocument();
+    expect(older.getByText('$36,000')).toBeInTheDocument();
+    expect(older.getByText('Paid 12 Oct 2026')).toBeInTheDocument();
+  });
+
+  it('says so, and offers the first invoice, when there are none', async () => {
+    serve({
+      project: projectEnvelope({ ...projectRows[0], totalValue: 0, totalOutstanding: 0 }),
+      invoices: invoicesEnvelope([]),
+    });
+    renderAt('/projects/1');
+    expect(await screen.findByText('No invoices yet.')).toBeInTheDocument();
+    expect(screen.getByText(sentence('Nothing is invoiced yet.'))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add the first invoice' })).toBeInTheDocument();
+  });
+
+  it('links back to the projects', async () => {
+    renderAt('/projects/1');
+    expect(await screen.findByRole('link', { name: 'Back to projects' })).toHaveAttribute('href', '/projects');
+  });
+});
+
+describe('ProjectDetailPage: when the project is not there', () => {
+  it('shows a not-found state when the service answers 404', async () => {
+    vi.mocked(coreApi.get).mockRejectedValue(failure(404));
+    renderAt('/projects/1');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Project not found' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to projects' })).toHaveAttribute('href', '/projects');
+  });
+
+  it.each(['abc', '0', '-1', '007', '1.5', '99999999999', '2147483648'])(
+    'shows the not-found state for /projects/%s without asking the service',
+    async (id) => {
+      renderAt(`/projects/${id}`);
+      expect(await screen.findByRole('heading', { level: 1, name: 'Project not found' })).toBeInTheDocument();
+      expect(coreApi.get).not.toHaveBeenCalled();
+    },
+  );
+
+  it('shows an error with a retry for any other failure', async () => {
+    vi.mocked(coreApi.get).mockRejectedValue(failure(500));
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+    serve();
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Website' })).toBeInTheDocument();
+  });
+
+  it('keeps the project on screen when only its invoices fail to load', async () => {
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/projects/1') return { data: projectEnvelope() };
+      throw new Error('down');
+    }) as never);
+    renderAt('/projects/1');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Website' })).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+  });
+});
+
+describe('ProjectDetailPage: invoices', () => {
+  it('marks an unpaid invoice paid with today’s local date, and refetches the totals', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Mark paid INV-002' }));
+    await waitFor(() => expect(coreApi.patch).toHaveBeenCalledWith('/invoices/2', { paidDate: '2026-11-20' }));
+    await waitFor(() => expect(gets('/projects/1')).toHaveLength(2));
+    expect(gets('/invoices')).toHaveLength(2);
+  });
+
+  it('marks a paid invoice unpaid by clearing its paid date', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Mark unpaid INV-001' }));
+    await waitFor(() => expect(coreApi.patch).toHaveBeenCalledWith('/invoices/1', { paidDate: null }));
+  });
+
+  it('sends one request however often Mark paid is clicked while it is saving', async () => {
+    let release: () => void = () => undefined;
+    vi.mocked(coreApi.patch).mockReturnValue(
+      new Promise((resolve) => {
+        release = () => resolve(saved);
+      }) as never,
+    );
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    const button = await screen.findByRole('button', { name: 'Mark paid INV-002' });
+    await user.click(button);
+    await waitFor(() => expect(button).toBeDisabled());
+    await user.click(button);
+    expect(screen.getByRole('button', { name: 'Mark unpaid INV-001' })).toBeDisabled();
+    release();
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(coreApi.patch).toHaveBeenCalledTimes(1);
+  });
+
+  it('says so when marking paid fails', async () => {
+    vi.mocked(coreApi.patch).mockRejectedValue(new Error('down'));
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Mark paid INV-002' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
+  });
+
+  it('opens the invoice dialog empty to add an invoice', async () => {
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Add invoice' }));
+    expect(screen.getByRole('dialog', { name: 'New invoice' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Number')).toHaveValue('');
+  });
+
+  it('opens the invoice dialog on an invoice', async () => {
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Edit INV-001' }));
+    expect(screen.getByRole('dialog', { name: 'Edit invoice' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Number')).toHaveValue('INV-001');
+  });
+
+  it('adds an invoice under this project', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Add invoice' }));
+    await user.type(screen.getByLabelText('Number'), 'INV-003');
+    await user.type(screen.getByLabelText('Amount'), '500');
+    await user.type(screen.getByLabelText('Issue date'), '2026-12-01');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() =>
+      expect(coreApi.post).toHaveBeenCalledWith('/invoices', expect.objectContaining({ projectId: 1, number: 'INV-003' })),
+    );
+  });
+
+  it('deletes an invoice only after the confirmation', async () => {
+    vi.mocked(coreApi.delete).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Delete INV-001' }));
+    expect(screen.getByText('Delete invoice “INV-001”?')).toBeInTheDocument();
+    expect(coreApi.delete).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Delete invoice' }));
+    await waitFor(() => expect(coreApi.delete).toHaveBeenCalledWith('/invoices/1'));
+    await waitFor(() => expect(gets('/projects/1')).toHaveLength(2));
+  });
+});
+
+describe('ProjectDetailPage: the project', () => {
+  it('opens the project dialog on this project', async () => {
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Edit project' }));
+    expect(screen.getByRole('dialog', { name: 'Edit project' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveValue('Website');
+  });
+
+  it('deletes the project after the confirmation and returns to the list without asking for it again', async () => {
+    vi.mocked(coreApi.delete).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Delete project' }));
+    expect(screen.getByText('Delete project “Website”?')).toBeInTheDocument();
+    expect(coreApi.delete).not.toHaveBeenCalled();
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete project' }));
+    await waitFor(() => expect(coreApi.delete).toHaveBeenCalledWith('/projects/1'));
+    expect(await screen.findByText('Projects list')).toBeInTheDocument();
+    expect(gets('/projects/1')).toHaveLength(1);
+  });
+});
+
+function Back() {
+  const navigate = useNavigate();
+  return <button onClick={() => navigate(-1)}>Go back</button>;
+}
+
+describe('ProjectDetailPage: things removed elsewhere', () => {
+  it('treats deleting an invoice that was already removed as done: the dialog closes and the table refetches', async () => {
+    vi.mocked(coreApi.delete).mockRejectedValue(failure(404));
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Delete INV-001' }));
+    await user.click(screen.getByRole('button', { name: 'Delete invoice' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(screen.queryByText('That did not work. Try again.')).not.toBeInTheDocument();
+    await waitFor(() => expect(gets('/invoices')).toHaveLength(2));
+  });
+
+  it('treats deleting a project that was already removed as done: it returns to the list', async () => {
+    vi.mocked(coreApi.delete).mockRejectedValue(failure(404));
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Delete project' }));
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete project' }));
+    expect(await screen.findByText('Projects list')).toBeInTheDocument();
+  });
+
+  it('still says so when a delete fails for any other reason', async () => {
+    vi.mocked(coreApi.delete).mockRejectedValue(failure(500));
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Delete INV-001' }));
+    await user.click(screen.getByRole('button', { name: 'Delete invoice' }));
+    expect(await screen.findByText('That did not work. Try again.')).toBeInTheDocument();
+  });
+
+  it('moves focus to Add invoice after the first invoice replaces the empty state that held the opener', async () => {
+    serve({
+      project: projectEnvelope({ ...projectRows[0], totalValue: 0, totalOutstanding: 0 }),
+      invoices: invoicesEnvelope([]),
+    });
+    vi.mocked(coreApi.post).mockImplementation((async () => {
+      serve();
+      return saved;
+    }) as never);
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Add the first invoice' }));
+    await user.type(screen.getByLabelText('Number'), 'INV-003');
+    await user.type(screen.getByLabelText('Amount'), '500');
+    await user.type(screen.getByLabelText('Issue date'), '2026-12-01');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add invoice' })).toHaveFocus());
+  });
+
+  it('moves focus to Add invoice after a delete removes the row that held the opener', async () => {
+    vi.mocked(coreApi.delete).mockImplementation((async () => {
+      serve({ invoices: invoicesEnvelope(invoiceRows.slice(1)) });
+      return saved;
+    }) as never);
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Delete INV-001' }));
+    await user.click(screen.getByRole('button', { name: 'Delete invoice' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add invoice' })).toHaveFocus());
+  });
+
+  it('does not show a deleted project from the cache when the person goes back to it', async () => {
+    vi.mocked(coreApi.delete).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    // The app's own cache settings: a fresh query is trusted for 30 seconds, which is how a deleted project lingers.
+    const client = new QueryClient({
+      defaultOptions: { queries: { ...queryDefaults.queries, retry: false }, mutations: queryDefaults.mutations },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/projects', '/projects/1']} initialIndex={1}>
+          <Routes>
+            <Route path="/projects/:id" element={<ProjectDetailPage />} />
+            <Route path="/projects" element={<p>Projects list</p>} />
+          </Routes>
+          <Back />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Delete project' }));
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete project' }));
+    expect(await screen.findByText('Projects list')).toBeInTheDocument();
+
+    // From now on the service no longer has the project, and its invoices went with it.
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/invoices') return { data: invoicesEnvelope([]) };
+      throw failure(404);
+    }) as never);
+    await user.click(screen.getByRole('button', { name: 'Go back' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Project not found' })).toBeInTheDocument();
+  });
+});

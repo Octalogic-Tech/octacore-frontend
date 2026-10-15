@@ -61,6 +61,13 @@ describe('App shell', () => {
     expect(within(nav).getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current');
   });
 
+  it('keeps Projects current on a project page', () => {
+    renderAt('/projects/1');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('heading', { level: 1, name: 'Project' })).toBeInTheDocument();
+  });
+
   it.each([
     ['/', 'Overview'],
     ['/clients', 'Clients'],

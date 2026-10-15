@@ -21,3 +21,10 @@ export function formatDate(iso: string): string {
 export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
   return `${count} ${count === 1 ? singular : plural}`;
 }
+
+/** Today as `YYYY-MM-DD` from the local date parts. `toISOString` would give the UTC day, which is the wrong day near midnight. */
+export function localToday(now: Date = new Date()): string {
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}

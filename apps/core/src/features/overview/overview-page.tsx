@@ -57,7 +57,7 @@ export function OverviewPage() {
                   <li key={project.id} className="flex items-baseline justify-between gap-4 border-b border-rule py-3">
                     <span>
                       <span className="block font-semibold">{project.name}</span>
-                      <span className="block text-small text-navy-80">{project.client}</span>
+                      <span className="block text-small text-navy-80">{project.clientName}</span>
                     </span>
                     <span className="tabular">{formatCurrency(project.totalOutstanding)}</span>
                   </li>
