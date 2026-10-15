@@ -47,6 +47,8 @@ const acme = (): Row => record({ id: 1, name: 'Acme', description: 'Anvils and r
 const project = (fields: Row): Row =>
   record({
     description: null,
+    key: null,
+    billingAddress: null,
     clientId: null,
     client: null,
     billingType: 'retainer',
@@ -61,6 +63,8 @@ const projects = (): Row[] => [
     id: 1,
     name: 'Website',
     description: 'Marketing site.',
+    key: 'WEB',
+    billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',
     clientId: 1,
     client: acme(),
     projectType: 'resource_augmentation',
@@ -72,7 +76,7 @@ const projects = (): Row[] => [
 ];
 
 const line = (id: number, invoiceId: number, description: string, quantity: number, rate: number): Row =>
-  record({ id, invoiceId, description, quantity, rate, amount: quantity * rate });
+  record({ id, invoiceId, description, headcount: 1, quantity, rate, amount: quantity * rate });
 
 const invoices = (): Row[] => [
   record({
@@ -84,6 +88,8 @@ const invoices = (): Row[] => [
     issueDate: '2026-10-01',
     dueDate: '2026-10-31',
     paidDate: '2026-10-12',
+    periodStart: '2026-09-01',
+    periodEnd: '2026-09-30',
     lineItems: [line(1, 1, 'Asha Rao — Mobile', 160, 150), line(2, 1, 'Ben Cho — Web', 160, 75)],
   }),
   record({
@@ -95,6 +101,8 @@ const invoices = (): Row[] => [
     issueDate: '2026-11-01',
     dueDate: null,
     paidDate: null,
+    periodStart: null,
+    periodEnd: null,
     lineItems: [line(3, 2, 'Ben Cho — Web', 160, 75)],
   }),
 ];
@@ -106,6 +114,7 @@ const resources = (): Row[] => [
     personId: 1,
     categoryId: 2,
     name: 'Asha Rao',
+    headcount: 1,
     rate: 150,
     category: { id: 2, name: 'Mobile' },
     person: { id: 1, name: 'Asha Rao' },
@@ -116,6 +125,7 @@ const resources = (): Row[] => [
     personId: null,
     categoryId: 1,
     name: 'Ben Cho',
+    headcount: 1,
     rate: 75,
     category: { id: 1, name: 'Web' },
     person: null,
@@ -164,7 +174,7 @@ function stubCore(
 
 /**
  * Stubs every collection: categories, technologies, clients, client contacts, projects, project resources, people,
- * invoices, countries and users as the core service answers them, bills as the json-server mock does, and the sign-in routes. `signedIn` says
+ * invoices (and each invoice's PDF, email draft and next number), countries and users as the core service answers them, bills as the json-server mock does, and the sign-in routes. `signedIn` says
  * whether the refresh cookie is valid when the page loads; `POST /auth/login` accepts E2E_PASSWORD and signs in.
  * `/categories` and `/users` keep state so an add or a delete shows up on the next read.
  */
@@ -259,8 +269,8 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
   stubCore('GET', '/projects/*/invoice-draft', () => ({
     body: envelope({
       lineItems: [
-        { description: 'Asha Rao — Mobile', quantity: 160, rate: 150 },
-        { description: 'Ben Cho — Web', quantity: 160, rate: 75 },
+        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rate: 150 },
+        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rate: 75 },
       ],
     }),
   }));
@@ -279,4 +289,15 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
     bill(5, '2023-08-06', true, 'John Doe', 300),
     bill(6, '2023-08-05', false, 'Jane Smith', 120),
   ]);
+
+  // `*` does not cross a `/`: each invoice document route and the next-number route needs its own stub.
+  stubCore('GET', '/invoices/*/pdf', () => ({ body: '%PDF-1.4\n%%EOF' }));
+  stubCore('GET', '/invoices/*/email-draft', () => ({
+    body: envelope({
+      to: ['michael@example.com'],
+      subject: 'Invoice INV-001 from Test Company LLP',
+      message: 'Hello Michael Jordan,\n\nPlease find attached invoice INV-001.\n\nRegards,\nTest Company LLP',
+    }),
+  }));
+  stubCore('GET', '/projects/*/next-invoice-number*', () => ({ body: envelope({ number: 'OCTA/26-27/WEB/001' }) }));
 }

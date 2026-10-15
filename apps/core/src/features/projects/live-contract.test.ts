@@ -79,8 +79,8 @@ describe.skipIf(!base)('the running core service, projects, their resources and 
 
       const draft = await readDraft(project.id);
       expect(draft.lineItems).toEqual([
-        { description: 'Wiring Person — Wiring check', quantity: 160, rate: 150 },
-        { description: 'Open role — Wiring check', quantity: 160, rate: 75 },
+        { description: 'Wiring Person', headcount: 1, quantity: 160, rate: 150 },
+        { description: 'Open role', headcount: 1, quantity: 160, rate: 75 },
       ]);
 
       const createdInvoice = await send('POST', '/invoices', {
@@ -215,6 +215,121 @@ describe.skipIf(!base)('the running core service, projects, their resources and 
       const response = await send(method, path);
       expect(response.status).toBe(404);
       expect(await response.json()).toMatchObject({ statusCode: 404, data: null });
+    }
+  });
+});
+
+describe.skipIf(!base)('numbering, billing period, Qty and the invoice document, on a service with no mail set up', () => {
+  // Run the scratch service with COMPANY_NAME and BANK_ACCOUNT_NUMBER set and SMTP_HOST blank: see the run notes.
+  beforeAll(async () => {
+    send = await signInLive(base as string);
+  });
+
+  it('numbers an invoice from the project key, prices Qty x hours x rate, keeps the period, and draws the PDF', async () => {
+    const category = unwrap(
+      await (await send('POST', '/categories', { name: 'Live docs', description: 'Made by the live test' })).json(),
+      createdSchema,
+    );
+    const created = await send('POST', '/projects', {
+      name: 'Live docs',
+      description: null,
+      clientId: null,
+      projectType: 'resource_augmentation',
+      billingType: 'retainer',
+      key: ' lv1 ',
+      billingAddress: 'Michael Jordan,\nVenice,\nCalifornia 90291, USA',
+    });
+    expect(created.status).toBe(201);
+    const project = unwrap(await created.json(), projectRowSchema);
+    expect(project).toMatchObject({ key: 'LV1', billingAddress: 'Michael Jordan,\nVenice,\nCalifornia 90291, USA' });
+
+    try {
+      const resource = await send('POST', '/project-resources', {
+        projectId: project.id,
+        name: 'Fullstack Developer',
+        personId: null,
+        categoryId: category.id,
+        headcount: 3,
+        rate: 27,
+      });
+      expect(resource.status).toBe(201);
+      const draft = await readDraft(project.id);
+      expect(draft.lineItems).toEqual([{ description: 'Fullstack Developer', headcount: 3, quantity: 160, rate: 27 }]);
+
+      const next = await send('GET', `/projects/${project.id}/next-invoice-number?issueDate=2026-10-01`);
+      expect(next.status).toBe(200);
+      expect(((await next.json()) as { data: { number: string } }).data.number).toMatch(/26-27\/LV1\/001$/);
+
+      const body = {
+        projectId: project.id,
+        description: null,
+        issueDate: '2026-10-01',
+        dueDate: '2027-01-01',
+        paidDate: null,
+        periodStart: '2026-09-01',
+        periodEnd: '2026-09-30',
+        lineItems: draft.lineItems,
+      };
+      const first = await send('POST', '/invoices', { ...body, number: null });
+      expect(first.status).toBe(201);
+      const invoice = unwrap(await first.json(), invoiceRowSchema);
+      expect(invoice.number).toMatch(/26-27\/LV1\/001$/);
+      expect(invoice).toMatchObject({ amount: 12_960, periodStart: '2026-09-01', periodEnd: '2026-09-30' });
+      expect(invoice.lineItems[0]).toMatchObject({ headcount: 3, quantity: 160, rate: 27, amount: 12_960 });
+
+      const second = unwrap(await (await send('POST', '/invoices', { ...body, number: null })).json(), invoiceRowSchema);
+      expect(second.number).toMatch(/26-27\/LV1\/002$/);
+
+      const pdf = await send('GET', `/invoices/${invoice.id}/pdf`);
+      expect(pdf.status).toBe(200);
+      expect(pdf.headers.get('content-type')).toBe('application/pdf');
+      expect(new TextDecoder().decode((await pdf.arrayBuffer()).slice(0, 4))).toBe('%PDF');
+
+      const email = await send('GET', `/invoices/${invoice.id}/email-draft`);
+      expect(email.status).toBe(200);
+      expect(((await email.json()) as { data: { subject: string } }).data.subject).toContain(invoice.number);
+
+      const sent = await send('POST', `/invoices/${invoice.id}/send`, {
+        to: ['someone@example.com'],
+        subject: 'Invoice',
+        message: 'Attached.',
+      });
+      expect(sent.status).toBe(503);
+      expect(await sent.json()).toMatchObject({ statusCode: 503, message: 'Email is not set up on the server' });
+    } finally {
+      expect((await send('DELETE', `/projects/${project.id}`)).status).toBe(200);
+      await send('DELETE', `/categories/${category.id}`);
+    }
+  });
+
+  it('refuses a key another project uses, a lopsided period and a numberless invoice on a project with no key', async () => {
+    const make = (extra: object) =>
+      send('POST', '/projects', { name: 'Live keys', projectType: 'product', billingType: 'fixed_cost', ...extra });
+    const first = unwrap(await (await make({ key: 'LK1' })).json(), projectRowSchema);
+    const keyless = unwrap(await (await make({})).json(), projectRowSchema);
+    try {
+      const twin = await make({ key: 'lk1' });
+      expect(twin.status).toBe(409);
+      expect(await twin.json()).toMatchObject({ message: 'Another project already uses the key "LK1"' });
+
+      const line = [{ description: 'Work', headcount: 1, quantity: 1, rate: 5 }];
+      const lopsided = await send('POST', '/invoices', {
+        projectId: first.id,
+        number: 'X-1',
+        issueDate: '2026-10-01',
+        periodStart: '2026-09-01',
+        lineItems: line,
+      });
+      expect(lopsided.status).toBe(422);
+
+      const numberless = await send('POST', '/invoices', { projectId: keyless.id, issueDate: '2026-10-01', lineItems: line });
+      expect(numberless.status).toBe(422);
+      expect(await numberless.json()).toMatchObject({
+        message: 'Give an invoice number, or add a key to the project so one can be generated',
+      });
+    } finally {
+      await send('DELETE', `/projects/${first.id}`);
+      await send('DELETE', `/projects/${keyless.id}`);
     }
   });
 });

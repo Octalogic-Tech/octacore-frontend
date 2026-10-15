@@ -44,10 +44,24 @@ describe('core', () => {
     cy.contains('h2', 'Resources').should('be.visible');
     cy.contains('td', 'Asha Rao').should('be.visible');
     cy.contains('td', '$150').should('be.visible');
+    cy.contains('th', 'Qty').should('be.visible');
     cy.contains('button', 'Add invoice').click();
+    cy.get('[role="dialog"]').invoke('outerWidth').should('be.gt', 1000);
     cy.get('[role="dialog"]').within(() => {
       cy.get('input[aria-label="Line 1 description"]').should('have.value', 'Asha Rao — Mobile');
       cy.contains('Total $36,000').should('be.visible');
+      cy.contains('button', 'Cancel').click();
+    });
+    cy.get('[role="dialog"]').should('not.exist');
+    cy.get('button[aria-label="Preview INV-001"]').click();
+    cy.get('[role="dialog"]').within(() => {
+      cy.get('iframe[title="Invoice INV-001"]').should('have.attr', 'src').and('match', /^blob:/);
+    });
+    cy.get('[role="dialog"]').find('button[aria-label="Close"]').click();
+    cy.get('[role="dialog"]').should('not.exist');
+    cy.get('button[aria-label="Email INV-001"]').click();
+    cy.get('[role="dialog"]').within(() => {
+      cy.get('#email-to').should('have.value', 'michael@example.com');
       cy.contains('button', 'Cancel').click();
     });
     cy.get('[role="dialog"]').should('not.exist');
