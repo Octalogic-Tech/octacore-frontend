@@ -4,7 +4,7 @@ import { AxiosError } from 'axios';
 import { Route, Routes } from 'react-router-dom';
 import { coreApi } from '@/lib/core-api';
 import { clientsEnvelope } from '@/test/fixtures/clients';
-import { invoiceRows, invoicesEnvelope, projectEnvelope, projectRows } from '@/test/fixtures/projects';
+import { invoicesEnvelope, projectEnvelope, projectRows } from '@/test/fixtures/projects';
 import { renderWithProviders } from '@/test/utils';
 import { ProjectDetailPage } from './project-detail-page';
 
