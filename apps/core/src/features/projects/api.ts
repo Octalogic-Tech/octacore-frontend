@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { coreApi, unwrap } from '@/lib/core-api';
-import { projectRowsSchema, type ProjectBody } from './schema';
+import { projectRowsSchema, type InvoiceBody, type ProjectBody } from './schema';
 
 // The list and a project's own page sit under one prefix, so a change refetches both.
 const PROJECTS = ['projects'] as const;
 const PROJECT_LIST = [...PROJECTS, 'list'] as const;
+const INVOICES = ['invoices'] as const;
 
 export function useProjects() {
   return useQuery({
@@ -39,5 +40,27 @@ export function useDeleteProject() {
       await coreApi.delete(`/projects/${id}`);
     },
     onSuccess: () => client.invalidateQueries({ queryKey: PROJECT_LIST, exact: true }),
+  });
+}
+
+/** An invoice change moves its project's totals, so the projects are refetched along with the invoices. */
+function useRefreshInvoicesAndProjects() {
+  const client = useQueryClient();
+  return () =>
+    Promise.all([
+      client.invalidateQueries({ queryKey: INVOICES }),
+      client.invalidateQueries({ queryKey: PROJECTS }),
+    ]);
+}
+
+/** Adds the invoice to the project (no id) or edits it. A create answer is not read, for the reason given above. */
+export function useSaveInvoice(projectId: number) {
+  const refresh = useRefreshInvoicesAndProjects();
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: number | undefined; body: InvoiceBody }) => {
+      if (id === undefined) await coreApi.post('/invoices', { projectId, ...body });
+      else await coreApi.patch(`/invoices/${id}`, body);
+    },
+    onSuccess: refresh,
   });
 }
