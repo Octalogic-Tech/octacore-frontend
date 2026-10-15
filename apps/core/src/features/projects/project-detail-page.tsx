@@ -147,6 +147,10 @@ function ProjectDetail({ projectId }: { projectId: number }) {
                 <dt className="text-small text-navy-80">Key</dt>
                 <dd className="font-semibold">{data.key || NONE}</dd>
               </div>
+              <div>
+                <dt className="text-small text-navy-80">Discount</dt>
+                <dd className="font-semibold">{data.discountPercent > 0 ? `${data.discountPercent}%` : NONE}</dd>
+              </div>
               <div className="sm:col-span-2">
                 <dt className="text-small text-navy-80">Billing address</dt>
                 <dd className="whitespace-pre-line font-semibold">{data.billingAddress || NONE}</dd>
@@ -283,6 +287,7 @@ function ProjectDetail({ projectId }: { projectId: number }) {
         invoice={invoiceForm.invoice}
         billingType={data?.billingType}
         projectKey={data?.key || undefined}
+        projectDiscountPercent={data?.discountPercent}
         fallbackFocusId="add-invoice"
       />
 

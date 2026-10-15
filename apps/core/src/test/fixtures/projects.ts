@@ -3,7 +3,9 @@
 // A project from before the type columns existed has null for both types. The totals are what the service
 // calculates from a project's live invoices: project 1's match the two invoices below, and project 2's invoices
 // are simply not listed here. An invoice carries its lines, whose amount is headcount x quantity x rate (INV-001:
-// 1 x 160 x 150 + 1 x 160 x 75), and, from the second invoice on, a billing period that may be null.
+// 1 x 160 x 150 + 1 x 160 x 75), and, from the second invoice on, a billing period that may be null. Nothing here
+// is discounted (discountPercent 0), so an invoice's amount equals its subtotal; tests that need a discount
+// override it on a copy.
 const stamp = '2026-10-15T09:30:00.000000Z';
 const audit = { status: 1, createdDate: stamp, updatedDate: stamp, deletedDate: null };
 
@@ -17,6 +19,7 @@ export const projectRows = [
     description: 'Marketing site.',
     key: 'WEB',
     billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',
+    discountPercent: 0,
     clientId: 1,
     client: acme,
     billingType: 'retainer',
@@ -31,6 +34,7 @@ export const projectRows = [
     description: null,
     key: null,
     billingAddress: null,
+    discountPercent: 0,
     clientId: null,
     client: null,
     billingType: 'fixed_cost',
@@ -45,6 +49,7 @@ export const projectRows = [
     description: 'Built before types.',
     key: null,
     billingAddress: null,
+    discountPercent: 0,
     clientId: 1,
     client: acme,
     billingType: null,
@@ -72,6 +77,8 @@ export const invoiceRows = [
     projectId: 1,
     number: 'INV-001',
     description: 'October retainer',
+    subtotal: 36000,
+    discountPercent: 0,
     amount: 36000,
     issueDate: '2026-10-01',
     dueDate: '2026-10-31',
@@ -86,6 +93,8 @@ export const invoiceRows = [
     projectId: 1,
     number: 'INV-002',
     description: null,
+    subtotal: 12000,
+    discountPercent: 0,
     amount: 12000,
     issueDate: '2026-11-01',
     dueDate: null,

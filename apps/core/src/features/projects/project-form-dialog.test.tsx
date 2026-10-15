@@ -58,6 +58,7 @@ describe('ProjectFormDialog: adding', () => {
       billingType: 'retainer',
       key: null,
       billingAddress: null,
+      discountPercent: 0,
     });
   });
 
@@ -78,6 +79,7 @@ describe('ProjectFormDialog: adding', () => {
       billingType: 'fixed_cost',
       key: null,
       billingAddress: null,
+      discountPercent: 0,
     });
   });
 
@@ -126,7 +128,7 @@ describe('ProjectFormDialog: editing', () => {
       projectType: 'resource_augmentation',
       billingType: 'retainer',
       key: 'WEB',
-      billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',
+      billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',      discountPercent: 0,
     });
   });
 
@@ -151,6 +153,7 @@ describe('ProjectFormDialog: editing', () => {
       billingType: 'fixed_cost',
       key: null,
       billingAddress: null,
+      discountPercent: 0,
     });
   });
 
@@ -236,7 +239,7 @@ describe('ProjectFormDialog: key and billing address', () => {
       projectType: 'product',
       billingType: 'retainer',
       key: 'TKO',
-      billingAddress: 'Michael Jordan,\nVenice',
+      billingAddress: 'Michael Jordan,\nVenice',      discountPercent: 0,
     });
   });
 
@@ -291,5 +294,83 @@ describe('ProjectFormDialog: key and billing address', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ key: null, billingAddress: null }));
+  });
+});
+
+describe('ProjectFormDialog: discount', () => {
+  async function fillRequired(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText('Name'), 'Hooli');
+    await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
+    await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
+  }
+
+  it('starts at 0 and says what it does', () => {
+    openDialog();
+
+    expect(screen.getByLabelText('Discount (%)')).toHaveValue('0');
+    expect(
+      screen.getByText('Taken off every invoice of this project, up to 50. Each invoice can change it.'),
+    ).toBeInTheDocument();
+  });
+
+  it.each([
+    ['7.5', 7.5],
+    ['12.25', 12.25],
+    ['50', 50],
+    ['', 0],
+  ])('sends %j as the number %s', async (typed, sent) => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog();
+    await fillRequired(user);
+    await user.clear(screen.getByLabelText('Discount (%)'));
+    if (typed !== '') await user.type(screen.getByLabelText('Discount (%)'), typed);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith('/projects', expect.objectContaining({ discountPercent: sent }));
+  });
+
+  it.each([
+    ['50.01', 'Discount must be from 0 to 50'],
+    ['75', 'Discount must be from 0 to 50'],
+    ['abc', 'Enter a percentage like 7.5'],
+    ['1.234', 'Enter a percentage like 7.5'],
+    ['10%', 'Enter a percentage like 7.5'],
+    ['-5', 'Enter a percentage like 7.5'],
+  ])('refuses %j with “%s” and sends nothing', async (typed, message) => {
+    const user = userEvent.setup();
+    openDialog();
+    await fillRequired(user);
+    await user.clear(screen.getByLabelText('Discount (%)'));
+    await user.type(screen.getByLabelText('Discount (%)'), typed);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(screen.getByLabelText('Discount (%)')).toHaveAttribute('aria-invalid', 'true');
+    expect(coreApi.post).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it('opens on the project’s discount and saves it unchanged', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    const [discounted] = projectRowsSchema.parse([{ ...projectRows[0], discountPercent: 12.25 }]);
+    openDialog({ project: discounted });
+    expect(screen.getByLabelText('Discount (%)')).toHaveValue('12.25');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ discountPercent: 12.25 }));
+  });
+
+  it('changes a project’s discount, and takes it back to none with 0', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    const [discounted] = projectRowsSchema.parse([{ ...projectRows[0], discountPercent: 10 }]);
+    openDialog({ project: discounted });
+    await user.clear(screen.getByLabelText('Discount (%)'));
+    await user.type(screen.getByLabelText('Discount (%)'), '0');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ discountPercent: 0 }));
   });
 });

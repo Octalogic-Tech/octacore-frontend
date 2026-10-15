@@ -5,6 +5,11 @@ const orNull = (text: string) => (text === '' ? null : text);
 
 const INT32_MAX = 2_147_483_647;
 
+const MAX_DISCOUNT_PERCENT = 50;
+// 0 to 50 with up to two decimals, as typed: "7.5", "12.25". A comma, a sign or a percent mark must be told what is
+// wrong, not dropped.
+const PERCENT_TEXT = /^\d+(\.\d{1,2})?$/;
+
 export const billingTypeSchema = z.enum(['retainer', 'fixed_cost']);
 export const projectTypeSchema = z.enum(['resource_augmentation', 'product']);
 
@@ -34,6 +39,8 @@ export const projectRowSchema = z
     // Null until set; the key numbers the project's invoices, the billing address prints under "Billed To".
     key: z.string().nullable().transform(nullToEmpty),
     billingAddress: z.string().nullable().transform(nullToEmpty),
+    // Percent off every invoice of the project; a new invoice starts from it.
+    discountPercent: z.number(),
     clientId: z.number().int().nullable(),
     client: z.object({ name: z.string() }).nullable(),
     projectType: projectTypeSchema.nullable(),
@@ -67,7 +74,10 @@ export const invoiceRowSchema = z.object({
   projectId: z.number().int(),
   number: z.string(),
   description: z.string().nullable().transform(nullToEmpty),
-  // Calculated by the service from the lines; never sent.
+  // Calculated by the service from the lines; never sent. `amount` is what the client pays: the subtotal less the
+  // invoice's own discount.
+  subtotal: z.number().int(),
+  discountPercent: z.number(),
   amount: z.number().int(),
   issueDate: z.iso.date(),
   dueDate: z.iso.date().nullable(),
@@ -87,6 +97,20 @@ export function sortInvoices(rows: readonly InvoiceRow[]): InvoiceRow[] {
   return [...rows].sort((a, b) => b.issueDate.localeCompare(a.issueDate) || b.id - a.id);
 }
 
+/** A percentage field, as text: empty means none, otherwise 0 to 50 with up to two decimals. */
+const discountField = z
+  .string()
+  .trim()
+  .superRefine((text, context) => {
+    if (text === '') return;
+    if (!PERCENT_TEXT.test(text)) context.addIssue({ code: 'custom', message: 'Enter a percentage like 7.5' });
+    else if (Number(text) > MAX_DISCOUNT_PERCENT)
+      context.addIssue({ code: 'custom', message: `Discount must be from 0 to ${MAX_DISCOUNT_PERCENT}` });
+  });
+
+/** The percentage a field holds, for a request body: empty is 0. */
+const percentOf = (text: string) => (text.trim() === '' ? 0 : Number(text));
+
 // Every field is text, so a blank field can be told from a typed one; `clientId` is '' for None.
 export const projectFormSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
@@ -94,6 +118,7 @@ export const projectFormSchema = z.object({
   // Capitals are applied as the person types and again on send; 2 to 10 letters or digits, or empty for none.
   key: z.string().trim().refine((value) => value === '' || /^[A-Za-z0-9]{2,10}$/.test(value), 'Use 2 to 10 letters or digits'),
   billingAddress: z.string().trim().max(1000, 'Keep the address under 1,000 characters'),
+  discountPercent: discountField,
   clientId: z.string(),
   projectType: z.string().refine((value) => projectTypeSchema.safeParse(value).success, 'Choose a project type'),
   billingType: z.string().refine((value) => billingTypeSchema.safeParse(value).success, 'Choose a billing type'),
@@ -106,6 +131,7 @@ export const emptyProjectForm: ProjectFormValues = {
   description: '',
   key: '',
   billingAddress: '',
+  discountPercent: '0',
   clientId: '',
   projectType: '',
   billingType: '',
@@ -118,6 +144,7 @@ export function toProjectFormValues(project?: ProjectRow): ProjectFormValues {
     description: project.description,
     key: project.key,
     billingAddress: project.billingAddress,
+    discountPercent: String(project.discountPercent),
     // A client the service no longer embeds comes back as null: the form opens on None, not on a stale id.
     clientId: project.clientId !== null && project.clientName !== '' ? String(project.clientId) : '',
     // A legacy project has no types yet: the selects open on "Choose" and saving asks for a pick.
@@ -134,6 +161,8 @@ export interface ProjectBody {
   billingType: BillingType;
   key: string | null;
   billingAddress: string | null;
+  /** 0 to 50; an empty field is 0. */
+  discountPercent: number;
 }
 
 /** Empty optional fields go as null: PATCH changes only what it is sent, and null clears. */
@@ -146,6 +175,7 @@ export function toProjectBody(values: ProjectFormValues): ProjectBody {
     billingType: billingTypeSchema.parse(values.billingType),
     key: values.key.trim() === '' ? null : values.key.trim().toUpperCase(),
     billingAddress: orNull(values.billingAddress.trim()),
+    discountPercent: percentOf(values.discountPercent),
   };
 }
 
@@ -169,6 +199,27 @@ export function lineAmount(line: LineFigures): number | null {
 
 export function linesTotal(lines: readonly LineFigures[]): number {
   return lines.reduce((sum, line) => sum + (lineAmount(line) ?? 0), 0);
+}
+
+/**
+ * The whole dollars a discount takes off a subtotal, half a dollar rounding up: the service's own rule, so the
+ * preview never differs from what is saved. Done in hundredths of a percent, as integers, because 12.25% as a
+ * float can land a half dollar on the wrong side. Text the form refuses (empty, not a percentage, above 50) takes
+ * nothing off; the form reports it on its own.
+ */
+export function discountAmount(subtotal: number, percent: string): number {
+  const text = percent.trim();
+  if (!PERCENT_TEXT.test(text) || Number(text) > MAX_DISCOUNT_PERCENT) return 0;
+  const [whole, fraction = ''] = text.split('.');
+  const hundredths = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
+  return Math.floor((subtotal * hundredths + 5000) / 10000);
+}
+
+/** What an invoice of these lines comes to: the subtotal, the discount and the total the client pays. */
+export function invoiceTotals(lines: readonly LineFigures[], percent: string) {
+  const subtotal = linesTotal(lines);
+  const discount = discountAmount(subtotal, percent);
+  return { subtotal, discount, total: subtotal - discount };
 }
 
 // Text, not number inputs: a comma, a currency sign or a decimal point must be told what is wrong, not dropped.
@@ -235,6 +286,7 @@ export function makeInvoiceFormSchema({ numberRequired }: { numberRequired: bool
       paidDate: z.string(),
       periodStart: z.string(),
       periodEnd: z.string(),
+      discountPercent: discountField,
       lines: z.array(lineFormSchema).min(1, 'Add at least one line'),
     })
     .superRefine((values, context) => {
@@ -264,11 +316,17 @@ export const emptyInvoiceForm: InvoiceFormValues = {
   paidDate: '',
   periodStart: '',
   periodEnd: '',
+  // The dialog replaces this with the project's discount when it adds an invoice.
+  discountPercent: '0',
   lines: [{ ...blankLine }],
 };
 
-export function toInvoiceFormValues(invoice?: InvoiceRow): InvoiceFormValues {
-  if (!invoice) return emptyInvoiceForm;
+/**
+ * A new invoice starts from its project's discount and can change it; a saved invoice keeps the one it was given,
+ * whatever its project has now.
+ */
+export function toInvoiceFormValues(invoice?: InvoiceRow, projectDiscountPercent = 0): InvoiceFormValues {
+  if (!invoice) return { ...emptyInvoiceForm, discountPercent: String(projectDiscountPercent) };
   return {
     number: invoice.number,
     description: invoice.description,
@@ -277,6 +335,7 @@ export function toInvoiceFormValues(invoice?: InvoiceRow): InvoiceFormValues {
     paidDate: invoice.paidDate ?? '',
     periodStart: invoice.periodStart ?? '',
     periodEnd: invoice.periodEnd ?? '',
+    discountPercent: String(invoice.discountPercent),
     lines:
       invoice.lineItems.length > 0
         ? invoice.lineItems.map((item) => ({
@@ -305,6 +364,8 @@ export interface InvoiceBody {
   paidDate: string | null;
   periodStart: string | null;
   periodEnd: string | null;
+  /** 0 to 50; an empty field is 0. Always sent, so the invoice keeps the figure shown, not its project's. */
+  discountPercent: number;
   /** The whole set: the service replaces the invoice's lines with these. */
   lineItems: LineItemBody[];
 }
@@ -319,6 +380,7 @@ export function toInvoiceBody(values: InvoiceFormValues): InvoiceBody {
     paidDate: orNull(values.paidDate),
     periodStart: orNull(values.periodStart),
     periodEnd: orNull(values.periodEnd),
+    discountPercent: percentOf(values.discountPercent),
     lineItems: values.lines.map((line) => ({
       description: line.description,
       headcount: Number(line.headcount),

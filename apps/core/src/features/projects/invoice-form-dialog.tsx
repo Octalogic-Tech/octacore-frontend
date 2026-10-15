@@ -12,7 +12,7 @@ import {
   blankLine,
   draftToLines,
   lineAmount,
-  linesTotal,
+  invoiceTotals,
   makeInvoiceFormSchema,
   toInvoiceBody,
   toInvoiceFormValues,
@@ -31,6 +31,8 @@ interface InvoiceFormDialogProps {
   billingType?: BillingType | null;
   /** The project's key. With one, a new invoice's number may be left empty for the server to fill in. */
   projectKey?: string;
+  /** The project's discount in percent. A new invoice starts from it; a saved one keeps its own. */
+  projectDiscountPercent?: number;
   /** Where focus goes on close if the element that opened the dialog is gone (the empty state it came from). */
   fallbackFocusId?: string;
 }
@@ -50,6 +52,7 @@ export function InvoiceFormDialog({
   invoice,
   billingType,
   projectKey,
+  projectDiscountPercent,
   fallbackFocusId,
 }: InvoiceFormDialogProps) {
   const [busy, setBusy] = useState(false);
@@ -72,6 +75,7 @@ export function InvoiceFormDialog({
           invoice={invoice}
           billingType={billingType}
           projectKey={projectKey}
+          projectDiscountPercent={projectDiscountPercent}
           onBusyChange={setBusy}
           onClose={() => onOpenChange(false)}
         />
@@ -85,11 +89,20 @@ interface InvoiceEditorProps {
   invoice?: InvoiceRow;
   billingType?: BillingType | null;
   projectKey?: string;
+  projectDiscountPercent?: number;
   onBusyChange: (busy: boolean) => void;
   onClose: () => void;
 }
 
-function InvoiceEditor({ projectId, invoice, billingType, projectKey, onBusyChange, onClose }: InvoiceEditorProps) {
+function InvoiceEditor({
+  projectId,
+  invoice,
+  billingType,
+  projectKey,
+  projectDiscountPercent,
+  onBusyChange,
+  onClose,
+}: InvoiceEditorProps) {
   const adding = invoice === undefined;
   // With a key the server can number a new invoice; when editing, or with no key, a number must be given.
   const numberRequired = !adding || !projectKey;
@@ -107,10 +120,11 @@ function InvoiceEditor({ projectId, invoice, billingType, projectKey, onBusyChan
     formState: { errors, isSubmitting },
   } = useForm<InvoiceFormValues>({
     resolver: zodResolver(makeInvoiceFormSchema({ numberRequired })),
-    defaultValues: toInvoiceFormValues(invoice),
+    defaultValues: toInvoiceFormValues(invoice, projectDiscountPercent),
   });
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'lines' });
   const lines = watch('lines');
+  const discountPercent = watch('discountPercent');
   const issueDate = watch('issueDate');
   const next = useNextInvoiceNumber(projectId, issueDate, !numberRequired && addMonths(issueDate, 0) !== '');
   const seeded = useRef(false);
@@ -173,6 +187,7 @@ function InvoiceEditor({ projectId, invoice, billingType, projectKey, onBusyChan
   const building = adding && draft.isLoading;
   const linesMessage = errors.lines?.root?.message ?? errors.lines?.message;
   const nextNumber = next.data?.number;
+  const totals = invoiceTotals(lines ?? [], discountPercent ?? '');
 
   return (
     <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
@@ -237,7 +252,7 @@ function InvoiceEditor({ projectId, invoice, billingType, projectKey, onBusyChan
         </Field>
       </div>
 
-      <div className={ROW_OF_TWO}>
+      <div className={ROW_OF_THREE}>
         <Field label="Due date" htmlFor="invoice-due-date" error={errors.dueDate?.message}>
           <Input {...fieldA11y('invoice-due-date', errors.dueDate?.message)} {...register('dueDate')} type="date" />
         </Field>
@@ -248,6 +263,19 @@ function InvoiceEditor({ projectId, invoice, billingType, projectKey, onBusyChan
           hint="Leave empty if the client has not paid."
         >
           <Input {...fieldA11y('invoice-paid-date', errors.paidDate?.message)} {...register('paidDate')} type="date" />
+        </Field>
+        <Field
+          label="Discount (%)"
+          htmlFor="invoice-discount"
+          error={errors.discountPercent?.message}
+          hint="Starts from the project’s discount. Change it for this invoice only."
+        >
+          <Input
+            {...fieldA11y('invoice-discount', errors.discountPercent?.message)}
+            {...register('discountPercent')}
+            inputMode="decimal"
+            autoComplete="off"
+          />
         </Field>
       </div>
 
@@ -345,7 +373,18 @@ function InvoiceEditor({ projectId, invoice, billingType, projectKey, onBusyChan
               <Button variant="quiet" onClick={() => append({ ...blankLine })}>
                 Add line
               </Button>
-              <p className="tabular font-semibold">Total {formatCurrency(linesTotal(lines ?? []))}</p>
+              <div className="grid justify-items-end gap-1">
+                {/* The discount's two lines only while it takes something off: otherwise the total is the sum. */}
+                {totals.discount > 0 ? (
+                  <>
+                    <p className="tabular text-small">Subtotal {formatCurrency(totals.subtotal)}</p>
+                    <p className="tabular text-small">
+                      Discount ({Number(discountPercent)}%) -{formatCurrency(totals.discount)}
+                    </p>
+                  </>
+                ) : null}
+                <p className="tabular font-semibold">Total {formatCurrency(totals.total)}</p>
+              </div>
             </div>
           </>
         )}

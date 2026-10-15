@@ -8,6 +8,7 @@ const project = (id: number, totalValue: number, totalOutstanding: number): Proj
   description: '',
   key: '',
   billingAddress: '',
+  discountPercent: 0,
   clientId: 1,
   clientName: 'Client A',
   projectType: 'product',

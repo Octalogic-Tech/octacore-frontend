@@ -2,12 +2,17 @@ import { z } from 'zod';
 import { unwrap } from '@/lib/core-api';
 import { signInLive, type LiveSend } from '@/test/live-api';
 import {
+  emptyInvoiceForm,
+  emptyProjectForm,
   invoiceDraftSchema,
   invoiceRowSchema,
   invoiceRowsSchema,
+  invoiceTotals,
   projectRowSchema,
   resourceRowSchema,
   resourceRowsSchema,
+  toInvoiceBody,
+  toProjectBody,
 } from './schema';
 
 // Opt-in: this talks to the real FastAPI service and WRITES to it (it adds a project, a category, a person, resources
@@ -330,6 +335,133 @@ describe.skipIf(!base)('numbering, billing period, Qty and the invoice document,
     } finally {
       await send('DELETE', `/projects/${first.id}`);
       await send('DELETE', `/projects/${keyless.id}`);
+    }
+  });
+});
+
+describe.skipIf(!base)('the discount, on a service with its migration applied', () => {
+  beforeAll(async () => {
+    send = await signInLive(base as string);
+  });
+
+  const lineFor = (rate: number) => ({ description: 'Work', headcount: '1', quantity: '1', rate: String(rate) });
+
+  it('takes a project’s discount to its invoices, off their amounts and the project’s totals, and lets one invoice differ', async () => {
+    // The bodies come from the form's own builders, so what the dialogs send is what the service is shown.
+    const created = await send(
+      'POST',
+      '/projects',
+      toProjectBody({
+        ...emptyProjectForm,
+        name: 'Live discount',
+        key: 'LD1',
+        projectType: 'product',
+        billingType: 'fixed_cost',
+        discountPercent: '7.5',
+      }),
+    );
+    expect(created.status).toBe(201);
+    const project = unwrap(await created.json(), projectRowSchema);
+    expect(project.discountPercent).toBe(7.5);
+
+    try {
+      const invoiceBody = (fields: object) => ({
+        projectId: project.id,
+        ...toInvoiceBody({ ...emptyInvoiceForm, issueDate: '2026-10-01', lines: [lineFor(1010)], ...fields }),
+      });
+
+      // The dialog opens on the project's 7.5 and sends it: 7.5% of 1,010 is 75.75, so 76 off and 934 to pay.
+      const inherited = unwrap(
+        await (await send('POST', '/invoices', invoiceBody({ number: 'LD-1', discountPercent: '7.5' }))).json(),
+        invoiceRowSchema,
+      );
+      expect(inherited).toMatchObject({ subtotal: 1010, discountPercent: 7.5, amount: 934 });
+
+      // One invoice taken off the contract's discount.
+      const own = unwrap(
+        await (await send('POST', '/invoices', invoiceBody({ number: 'LD-2', discountPercent: '0' }))).json(),
+        invoiceRowSchema,
+      );
+      expect(own).toMatchObject({ subtotal: 1010, discountPercent: 0, amount: 1010 });
+
+      // Totals add up what each client pays. 934 + 1,010, not the lines' 2,020.
+      expect(await readProject(project.id)).toMatchObject({ totalValue: 1944, totalOutstanding: 1944 });
+
+      // The project's discount changes for later invoices only.
+      const changed = await send('PATCH', `/projects/${project.id}`, toProjectBody({ ...emptyProjectForm, name: 'Live discount', key: 'LD1', projectType: 'product', billingType: 'fixed_cost', discountPercent: '50' }));
+      expect(changed.status).toBe(200);
+      const [again] = (await listedInvoices(project.id)).filter((row) => row.number === 'LD-1');
+      expect(again).toMatchObject({ discountPercent: 7.5, amount: 934 });
+
+      // Editing an invoice sends its own figure back and keeps it.
+      const edited = await send('PATCH', `/invoices/${inherited.id}`, toInvoiceBody({ ...emptyInvoiceForm, number: 'LD-1', issueDate: '2026-10-01', discountPercent: '12.25', lines: [lineFor(1010)] }));
+      expect(edited.status).toBe(200);
+      expect(unwrap(await edited.json(), invoiceRowSchema)).toMatchObject({ discountPercent: 12.25, amount: 886 });
+
+      const pdf = await send('GET', `/invoices/${inherited.id}/pdf`);
+      expect(pdf.status).toBe(200);
+      expect(new TextDecoder().decode((await pdf.arrayBuffer()).slice(0, 4))).toBe('%PDF');
+    } finally {
+      expect((await send('DELETE', `/projects/${project.id}`)).status).toBe(200);
+    }
+  });
+
+  it('saves the amount the dialog previews, to the dollar, whatever the rounding', async () => {
+    const created = await send(
+      'POST',
+      '/projects',
+      toProjectBody({ ...emptyProjectForm, name: 'Live rounding', key: 'LD2', projectType: 'product', billingType: 'fixed_cost' }),
+    );
+    const project = unwrap(await created.json(), projectRowSchema);
+    try {
+      for (const [rate, percent] of [
+        [1010, '7.5'],
+        [1005, '7.5'],
+        [5, '10'],
+        [15, '10'],
+        [25, '10'],
+        [1, '50'],
+        [99_999, '33.33'],
+        [21_600, '12.25'],
+      ] as const) {
+        const lines = [lineFor(rate)];
+        const saved = await send('POST', '/invoices', {
+          projectId: project.id,
+          ...toInvoiceBody({ ...emptyInvoiceForm, number: `R-${rate}-${percent}`, issueDate: '2026-10-01', discountPercent: percent, lines }),
+        });
+        expect(saved.status).toBe(201);
+        const row = unwrap(await saved.json(), invoiceRowSchema);
+        expect(row.amount, `${rate} at ${percent}%`).toBe(invoiceTotals(lines, percent).total);
+      }
+    } finally {
+      await send('DELETE', `/projects/${project.id}`);
+    }
+  });
+
+  it('refuses a discount above 50 or with a third decimal, on a project and on an invoice, with an error envelope', async () => {
+    const project = unwrap(
+      await (
+        await send('POST', '/projects', toProjectBody({ ...emptyProjectForm, name: 'Live limits', key: 'LD3', projectType: 'product', billingType: 'fixed_cost' }))
+      ).json(),
+      projectRowSchema,
+    );
+    try {
+      for (const bad of [50.01, 1.234, -1]) {
+        const onProject = await send('PATCH', `/projects/${project.id}`, { discountPercent: bad });
+        expect(onProject.status, `project ${bad}`).toBe(422);
+        expect(await onProject.json()).toMatchObject({ statusCode: 422 });
+        const onInvoice = await send('POST', '/invoices', {
+          projectId: project.id,
+          number: 'BAD-1',
+          issueDate: '2026-10-01',
+          discountPercent: bad,
+          lineItems: [{ description: 'Work', headcount: 1, quantity: 1, rate: 5 }],
+        });
+        expect(onInvoice.status, `invoice ${bad}`).toBe(422);
+      }
+      expect(await readProject(project.id)).toMatchObject({ discountPercent: 0 });
+    } finally {
+      await send('DELETE', `/projects/${project.id}`);
     }
   });
 });

@@ -38,9 +38,16 @@ describe('core', () => {
     cy.contains('a', 'Website').click();
     cy.contains('h1', 'Website');
     cy.contains('p', '$12,000 outstanding of $48,000 invoiced.').should('be.visible');
+    cy.contains('dt', 'Discount').next().should('have.text', '10%');
+    // The overview holds the facts and what is owed; the tables are one tab each, and the tab is in the address.
+    cy.contains('td', 'INV-001').should('not.exist');
+    cy.contains('[role="tab"]', 'Invoices').click();
+    cy.location('search').should('eq', '?tab=invoices');
     cy.contains('td', 'INV-001').should('be.visible');
     cy.contains('Paid 12 Oct 2026').should('be.visible');
     cy.contains('Unpaid').should('be.visible');
+    cy.contains('[role="tab"]', 'Resources').click();
+    cy.location('search').should('eq', '?tab=resources');
     cy.contains('h2', 'Resources').should('be.visible');
     cy.contains('td', 'Asha Rao').should('be.visible');
     cy.contains('td', '$150').should('be.visible');

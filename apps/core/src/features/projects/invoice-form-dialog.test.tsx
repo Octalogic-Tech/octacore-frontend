@@ -76,6 +76,7 @@ interface DialogProps {
   invoice?: InvoiceRow;
   billingType?: 'retainer' | 'fixed_cost' | null;
   projectKey?: string;
+  projectDiscountPercent?: number;
 }
 
 function openDialog(props: DialogProps = {}) {
@@ -110,7 +111,6 @@ describe('InvoiceFormDialog: size', () => {
   });
 });
 
-describe('InvoiceFormDialog: adding to a retainer project', () => {
 describe('InvoiceFormDialog: the header', () => {
   it('is three lines: number and description; issue date and billing period; due and paid dates', async () => {
     openDialog();
@@ -143,6 +143,7 @@ describe('InvoiceFormDialog: the header', () => {
   });
 });
 
+describe('InvoiceFormDialog: adding to a retainer project', () => {
   it('builds the lines from the draft and saves them with the header', async () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
@@ -173,6 +174,7 @@ describe('InvoiceFormDialog: the header', () => {
       paidDate: null,
       periodStart: null,
       periodEnd: null,
+      discountPercent: 0,
       lineItems: [
         { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rate: 150 },
         { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rate: 75 },
@@ -427,6 +429,7 @@ describe('InvoiceFormDialog: adding to a fixed cost project', () => {
       paidDate: null,
       periodStart: null,
       periodEnd: null,
+      discountPercent: 0,
       lineItems: [{ description: 'Milestone 1', headcount: 1, quantity: 1, rate: 5000 }],
     });
   });
@@ -664,6 +667,7 @@ describe('InvoiceFormDialog: editing', () => {
       paidDate: null,
       periodStart: '2026-09-01',
       periodEnd: '2026-09-30',
+      discountPercent: 0,
       lineItems: [
         { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rate: 150 },
         { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rate: 75 },
@@ -692,6 +696,7 @@ describe('InvoiceFormDialog: editing', () => {
       paidDate: '2026-10-12',
       periodStart: '2026-09-01',
       periodEnd: '2026-09-30',
+      discountPercent: 0,
       lineItems: [{ description: 'October retainer', headcount: 1, quantity: 1, rate: 36000 }],
     });
   });
@@ -747,5 +752,169 @@ describe('InvoiceFormDialog: failures', () => {
     vi.mocked(coreApi[method]).mockRejectedValue(failure(status));
     await submitFilledForm(invoice);
     expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
+  });
+});
+
+describe('InvoiceFormDialog: the discount', () => {
+  const discountField = () => screen.getByLabelText('Discount (%)');
+
+  async function openOnLines(props: DialogProps = {}) {
+    const view = openDialog(props);
+    await screen.findByRole('group', { name: 'Line 1' });
+    return view;
+  }
+
+  async function fillHeader(user: ReturnType<typeof userEvent.setup>) {
+    await user.type(screen.getByLabelText('Number'), 'INV-9');
+    await user.type(screen.getByLabelText('Issue date'), '2026-10-01');
+  }
+
+  it('starts from the project’s discount, and says it can be changed for this invoice only', async () => {
+    await openOnLines({ projectDiscountPercent: 10 });
+
+    expect(discountField()).toHaveValue('10');
+    expect(screen.getByText('Starts from the project’s discount. Change it for this invoice only.')).toBeInTheDocument();
+  });
+
+  it.each([
+    [7.5, '7.5'],
+    [12.25, '12.25'],
+    [0, '0'],
+    [undefined, '0'],
+  ])('starts at the project’s %s as %j', async (projectDiscountPercent, shown) => {
+    await openOnLines({ projectDiscountPercent });
+
+    expect(discountField()).toHaveValue(shown);
+  });
+
+  it('shows the subtotal, the discount and the total, and follows the discount as it is changed', async () => {
+    const user = userEvent.setup();
+    await openOnLines({ projectDiscountPercent: 10 });
+
+    expect(screen.getByText('Subtotal $36,000')).toBeInTheDocument();
+    expect(screen.getByText('Discount (10%) -$3,600')).toBeInTheDocument();
+    expect(screen.getByText('Total $32,400')).toBeInTheDocument();
+
+    await user.clear(discountField());
+    await user.type(discountField(), '7.5');
+    expect(screen.getByText('Discount (7.5%) -$2,700')).toBeInTheDocument();
+    expect(screen.getByText('Total $33,300')).toBeInTheDocument();
+
+    await user.clear(discountField());
+    await user.type(discountField(), '0');
+    expect(screen.queryByText(/^Subtotal/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Discount \(\d/)).not.toBeInTheDocument();
+    expect(screen.getByText('Total $36,000')).toBeInTheDocument();
+  });
+
+  it('follows the lines too, rounding the discount to whole dollars the way the service does', async () => {
+    const user = userEvent.setup();
+    serveDraft(draftEnvelope({ lineItems: [] }));
+    await openOnLines({ projectDiscountPercent: 7.5, billingType: 'fixed_cost' });
+    await user.type(screen.getByLabelText('Line 1 description'), 'Build');
+    await user.type(screen.getByLabelText('Line 1 units'), '1');
+    await user.type(screen.getByLabelText('Line 1 rate'), '1010');
+
+    // 7.5% of 1,010 is 75.75: 76 off, 934 to pay.
+    expect(screen.getByText('Subtotal $1,010')).toBeInTheDocument();
+    expect(screen.getByText('Discount (7.5%) -$76')).toBeInTheDocument();
+    expect(screen.getByText('Total $934')).toBeInTheDocument();
+  });
+
+  it('shows only the total when there is no discount', async () => {
+    await openOnLines({ projectDiscountPercent: 0 });
+
+    expect(screen.getByText('Total $36,000')).toBeInTheDocument();
+    expect(screen.queryByText(/^Subtotal/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/^Discount \(\d/)).not.toBeInTheDocument();
+  });
+
+  it('sends the project’s discount with the new invoice', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    await openOnLines({ projectDiscountPercent: 10 });
+    await fillHeader(user);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+
+    expect(coreApi.post).toHaveBeenCalledWith('/invoices', expect.objectContaining({ projectId: 1, discountPercent: 10 }));
+  });
+
+  it('sends the figure typed for this invoice, whatever the project has', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    await openOnLines({ projectDiscountPercent: 10 });
+    await fillHeader(user);
+    await user.clear(discountField());
+    await user.type(discountField(), '12.25');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+
+    expect(coreApi.post).toHaveBeenCalledWith('/invoices', expect.objectContaining({ discountPercent: 12.25 }));
+  });
+
+  it.each([['0'], ['']])('sends 0 when the discount is taken off with %j', async (typed) => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    await openOnLines({ projectDiscountPercent: 10 });
+    await fillHeader(user);
+    await user.clear(discountField());
+    if (typed !== '') await user.type(discountField(), typed);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+
+    expect(coreApi.post).toHaveBeenCalledWith('/invoices', expect.objectContaining({ discountPercent: 0 }));
+  });
+
+  it.each([
+    ['50.01', 'Discount must be from 0 to 50'],
+    ['60', 'Discount must be from 0 to 50'],
+    ['abc', 'Enter a percentage like 7.5'],
+    ['1.234', 'Enter a percentage like 7.5'],
+  ])('refuses %j with “%s” and sends nothing', async (typed, message) => {
+    const user = userEvent.setup();
+    await openOnLines({ projectDiscountPercent: 10 });
+    await fillHeader(user);
+    await user.clear(discountField());
+    await user.type(discountField(), typed);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(discountField()).toHaveAttribute('aria-invalid', 'true');
+    expect(coreApi.post).not.toHaveBeenCalled();
+  });
+
+  it('shows no preview of a discount it refuses', async () => {
+    const user = userEvent.setup();
+    await openOnLines({ projectDiscountPercent: 10 });
+    await user.clear(discountField());
+    await user.type(discountField(), '60');
+
+    expect(screen.queryByText(/^Discount \(\d/)).not.toBeInTheDocument();
+    expect(screen.getByText('Total $36,000')).toBeInTheDocument();
+  });
+
+  it('opens an invoice on its own discount, not its project’s, and keeps it when saved', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    const [discounted] = invoiceRowsSchema.parse([
+      { ...invoiceRows[0], subtotal: 36000, discountPercent: 7.5, amount: 33300 },
+    ]);
+    openDialog({ invoice: discounted, projectDiscountPercent: 10 });
+
+    expect(discountField()).toHaveValue('7.5');
+    expect(screen.getByText('Discount (7.5%) -$2,700')).toBeInTheDocument();
+    expect(screen.getByText('Total $33,300')).toBeInTheDocument();
+    expect(calls(DRAFT_PATH)).toHaveLength(0);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/invoices/1', expect.objectContaining({ discountPercent: 7.5 }));
+  });
+
+  it('opens an undiscounted invoice at 0 even when its project has a discount now', () => {
+    openDialog({ invoice: paid, projectDiscountPercent: 10 });
+
+    expect(discountField()).toHaveValue('0');
+    expect(screen.getByText('Total $36,000')).toBeInTheDocument();
   });
 });

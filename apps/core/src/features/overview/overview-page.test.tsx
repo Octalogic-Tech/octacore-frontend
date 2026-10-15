@@ -19,6 +19,7 @@ const project = (id: number, clientName: string, totalValue: number, totalOutsta
   description: null,
   key: null,
   billingAddress: null,
+  discountPercent: 0,
   clientId: id,
   client: { name: clientName },
   projectType: 'product',

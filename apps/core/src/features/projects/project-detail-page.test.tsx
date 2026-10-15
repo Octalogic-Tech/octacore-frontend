@@ -108,7 +108,8 @@ describe('ProjectDetailPage: reading', () => {
     serve({ project: projectEnvelope(legacy), invoices: invoicesEnvelope([]), resources: resourcesEnvelope([]) });
     renderAt('/projects/1');
     await screen.findByRole('heading', { level: 1, name: 'Legacy portal' });
-    expect(screen.getAllByText('—')).toHaveLength(5);
+    // Client, project type, billing type, key, discount and billing address.
+    expect(screen.getAllByText('—')).toHaveLength(6);
   });
 
   it('lists the invoices newest issue date first, each with its status', async () => {
@@ -500,5 +501,73 @@ describe('ProjectDetailPage: the invoice document', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(coreApi.post).toHaveBeenCalledWith('/invoices/1/send', expect.objectContaining({ to: ['michael@example.com'] }));
     expect(screen.getByRole('status')).toHaveTextContent('Invoice INV-001 sent to michael@example.com.');
+  });
+});
+
+describe('ProjectDetailPage: the discount', () => {
+  const discounted = (percent: number) => projectEnvelope({ ...projectRows[0], discountPercent: percent });
+
+  it('shows the project’s discount among its facts, and a dash when there is none', async () => {
+    serve({ project: discounted(7.5) });
+    const { unmount } = renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    expect(screen.getByText('Discount').parentElement).toHaveTextContent('Discount7.5%');
+    unmount();
+
+    serve();
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    expect(screen.getByText('Discount').parentElement).toHaveTextContent('Discount—');
+  });
+
+  it('starts a new invoice from the project’s discount', async () => {
+    serve({ project: discounted(10) });
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Add invoice' }));
+
+    expect(screen.getByLabelText('Discount (%)')).toHaveValue('10');
+    // The draft's lines come to $36,000 before the discount.
+    expect(await screen.findByText('Total $32,400')).toBeInTheDocument();
+  });
+
+  it('sends the project’s discount with the invoice it adds', async () => {
+    serve({ project: discounted(10) });
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Add invoice' }));
+    await user.type(screen.getByLabelText('Number'), 'INV-003');
+    await screen.findByLabelText('Line 1 description');
+    await user.type(screen.getByLabelText('Issue date'), '2026-12-01');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() =>
+      expect(coreApi.post).toHaveBeenCalledWith('/invoices', expect.objectContaining({ projectId: 1, discountPercent: 10 })),
+    );
+  });
+
+  it('opens an invoice on its own discount, not the project’s', async () => {
+    const own = invoicesEnvelope([
+      { ...invoiceRows[0], subtotal: 36000, discountPercent: 25, amount: 27000 },
+      invoiceRows[1],
+    ]);
+    serve({ project: discounted(10), invoices: own });
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Edit INV-001' }));
+
+    expect(screen.getByLabelText('Discount (%)')).toHaveValue('25');
+    expect(screen.getByText('Total $27,000')).toBeInTheDocument();
+  });
+
+  it('lists each invoice at what the client pays, after its discount', async () => {
+    const own = invoicesEnvelope([{ ...invoiceRows[0], subtotal: 36000, discountPercent: 25, amount: 27000 }]);
+    serve({ invoices: own });
+    renderAt('/projects/1');
+
+    const row = (await screen.findByText('INV-001')).closest('tr') as HTMLElement;
+    expect(within(row).getByText('$27,000')).toBeInTheDocument();
+    expect(within(row).queryByText('$36,000')).not.toBeInTheDocument();
   });
 });

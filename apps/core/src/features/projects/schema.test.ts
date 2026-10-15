@@ -1,6 +1,7 @@
 import { draftBody, emailDraftBody, invoiceRows, projectRows, resourceRows } from '@/test/fixtures/projects';
 import {
   blankLine,
+  discountAmount,
   draftToLines,
   emailFormSchema,
   emptyInvoiceForm,
@@ -9,6 +10,7 @@ import {
   invoiceDraftSchema,
   invoiceFormSchema,
   invoiceRowsSchema,
+  invoiceTotals,
   lineAmount,
   linesTotal,
   makeInvoiceFormSchema,
@@ -187,6 +189,7 @@ describe('toProjectBody', () => {
       billingType: 'retainer',
       key: null,
       billingAddress: null,
+      discountPercent: 0,
     });
     expect(toProjectBody(projectForm({ description: 'Marketing site.', clientId: '12' }))).toMatchObject({
       description: 'Marketing site.',
@@ -209,6 +212,7 @@ describe('toProjectFormValues', () => {
       clientId: '1',
       projectType: 'resource_augmentation',
       billingType: 'retainer',
+      discountPercent: '0',
     });
   });
 
@@ -308,6 +312,7 @@ describe('toInvoiceBody', () => {
       paidDate: null,
       periodStart: null,
       periodEnd: null,
+      discountPercent: 0,
       lineItems: [{ description: 'Backend work', headcount: 1, quantity: 160, rate: 150 }],
     });
   });
@@ -338,6 +343,7 @@ describe('toInvoiceFormValues', () => {
       paidDate: '2026-10-12',
       periodStart: '2026-09-01',
       periodEnd: '2026-09-30',
+      discountPercent: '0',
       lines: [
         { description: 'Asha Rao — Mobile', headcount: '1', quantity: '160', rate: '150' },
         { description: 'Ben Cho — Web', headcount: '1', quantity: '160', rate: '75' },
@@ -757,5 +763,169 @@ describe('email form schema', () => {
       message: emailDraftBody.message,
     });
     expect(toEmailFormValues({ to: [], subject: 's', message: 'm' }).to).toBe('');
+  });
+});
+
+describe('the discount: rows', () => {
+  it('reads a project’s discount and an invoice’s subtotal and discount', () => {
+    const [discounted] = projectRowsSchema.parse([{ ...projectRows[0], discountPercent: 7.5 }]);
+    const [invoice] = invoiceRowsSchema.parse([
+      { ...invoiceRows[0], subtotal: 40000, discountPercent: 10, amount: 36000 },
+    ]);
+
+    expect(discounted.discountPercent).toBe(7.5);
+    expect(invoice).toMatchObject({ subtotal: 40000, discountPercent: 10, amount: 36000 });
+  });
+
+  it('reads no discount as zero on the fixtures', () => {
+    expect(projects.map((project) => project.discountPercent)).toEqual([0, 0, 0]);
+    expect(invoices.map((invoice) => [invoice.subtotal, invoice.discountPercent])).toEqual([
+      [36000, 0],
+      [12000, 0],
+    ]);
+  });
+
+  it('rejects a project or an invoice row that has no discount', () => {
+    const { discountPercent: _project, ...bareProject } = projectRows[0];
+    const { discountPercent: _invoice, ...bareInvoice } = invoiceRows[0];
+
+    expect(projectRowsSchema.safeParse([bareProject]).success).toBe(false);
+    expect(invoiceRowsSchema.safeParse([bareInvoice]).success).toBe(false);
+  });
+});
+
+describe('discountAmount', () => {
+  // The same cases as the service's own table (octacore-backend tests/test_discount.py): the dialog's preview
+  // must never differ from the amount the service saves.
+  it.each([
+    [1000, '10', 100],
+    [1000, '7.5', 75],
+    [1005, '7.5', 75],
+    [1010, '7.5', 76],
+    [5, '10', 1],
+    [15, '10', 2],
+    [25, '10', 3],
+    [1, '50', 1],
+    [0, '50', 0],
+    [1000, '0', 0],
+    [21_600, '12.25', 2_646],
+    [2_147_483_647 * 200, '50', 214_748_364_700],
+  ])('takes %i at %s%% down by %i whole dollars, half a dollar rounding up', (subtotal, percent, expected) => {
+    expect(discountAmount(subtotal, percent)).toBe(expected);
+  });
+
+  it('takes nothing off for an empty or unreadable percentage, which the form reports on its own', () => {
+    expect(discountAmount(1000, '')).toBe(0);
+    expect(discountAmount(1000, '  ')).toBe(0);
+    expect(discountAmount(1000, 'abc')).toBe(0);
+    expect(discountAmount(1000, '1.234')).toBe(0);
+  });
+
+  it('reads spaces around the percentage and a trailing zero', () => {
+    expect(discountAmount(1000, ' 7.50 ')).toBe(75);
+  });
+});
+
+describe('invoiceTotals', () => {
+  it('gives the subtotal of the lines, the discount and the total payable', () => {
+    const lines = [lineForm({ quantity: '10', rate: '100' })];
+
+    expect(invoiceTotals(lines, '10')).toEqual({ subtotal: 1000, discount: 100, total: 900 });
+    expect(invoiceTotals(lines, '0')).toEqual({ subtotal: 1000, discount: 0, total: 1000 });
+  });
+
+  it('counts only the lines that have an amount', () => {
+    const lines = [lineForm({ quantity: '10', rate: '100' }), lineForm({ quantity: '', rate: '' })];
+
+    expect(invoiceTotals(lines, '50')).toEqual({ subtotal: 1000, discount: 500, total: 500 });
+  });
+});
+
+describe('the discount in the project form', () => {
+  it('starts at 0', () => {
+    expect(emptyProjectForm.discountPercent).toBe('0');
+  });
+
+  it.each(['', '0', '7.5', '12.25', '50', '50.00', ' 10 '])('accepts %j', (value) => {
+    expect(projectMessages(projectForm({ discountPercent: value }))).toEqual([]);
+  });
+
+  it.each(['50.01', '51', '100'])('refuses %j as above 50', (value) => {
+    expect(projectMessages(projectForm({ discountPercent: value }))).toEqual(['Discount must be from 0 to 50']);
+  });
+
+  it.each(['-1', '1.234', 'abc', '1,5', '10%', '.5', '5.', '1e1'])('refuses %j as not a percentage', (value) => {
+    expect(projectMessages(projectForm({ discountPercent: value }))).toEqual(['Enter a percentage like 7.5']);
+  });
+
+  it('sends the discount as a number, and an empty one as 0', () => {
+    expect(toProjectBody(projectForm({ discountPercent: '7.50' })).discountPercent).toBe(7.5);
+    expect(toProjectBody(projectForm({ discountPercent: ' 12.25 ' })).discountPercent).toBe(12.25);
+    expect(toProjectBody(projectForm({ discountPercent: '' })).discountPercent).toBe(0);
+  });
+
+  it('opens on a project’s discount as text', () => {
+    const [discounted] = projectRowsSchema.parse([{ ...projectRows[0], discountPercent: 12.25 }]);
+
+    expect(toProjectFormValues(discounted).discountPercent).toBe('12.25');
+    expect(toProjectFormValues(projects[0]).discountPercent).toBe('0');
+  });
+});
+
+describe('the discount in the invoice form', () => {
+  it('starts at 0', () => {
+    expect(emptyInvoiceForm.discountPercent).toBe('0');
+  });
+
+  it.each(['', '0', '7.5', '12.25', '50', '50.00'])('accepts %j', (value) => {
+    expect(invoiceMessages(invoiceForm({ discountPercent: value }))).toEqual([]);
+  });
+
+  it('refuses a figure above 50 and one that is not a percentage, each on its own field', () => {
+    expect(invoiceMessages(invoiceForm({ discountPercent: '50.01' }))).toEqual(['Discount must be from 0 to 50']);
+    expect(invoiceMessages(invoiceForm({ discountPercent: '1.234' }))).toEqual(['Enter a percentage like 7.5']);
+
+    const result = invoiceFormSchema.safeParse(invoiceForm({ discountPercent: '51' }));
+    expect(result.success ? [] : result.error.issues.map((issue) => issue.path)).toEqual([['discountPercent']]);
+  });
+
+  it('sends the discount as a number, and an empty one as 0', () => {
+    expect(toInvoiceBody(invoiceForm({ discountPercent: '7.5' })).discountPercent).toBe(7.5);
+    expect(toInvoiceBody(invoiceForm({ discountPercent: '' })).discountPercent).toBe(0);
+  });
+
+  it('opens on an invoice’s own discount, whatever its project has now', () => {
+    const [discounted] = invoiceRowsSchema.parse([{ ...invoiceRows[0], discountPercent: 7.5 }]);
+
+    expect(toInvoiceFormValues(discounted).discountPercent).toBe('7.5');
+  });
+
+  it('is still checked when the number may be left to the server', () => {
+    const schema = makeInvoiceFormSchema({ numberRequired: false });
+
+    expect(schema.safeParse(invoiceForm({ number: '', discountPercent: '60' })).success).toBe(false);
+    expect(schema.safeParse(invoiceForm({ number: '', discountPercent: '10' })).success).toBe(true);
+  });
+});
+
+describe('a new invoice and its project’s discount', () => {
+  it('opens on the project’s discount as text', () => {
+    expect(toInvoiceFormValues(undefined, 10).discountPercent).toBe('10');
+    expect(toInvoiceFormValues(undefined, 7.5).discountPercent).toBe('7.5');
+    expect(toInvoiceFormValues(undefined, 12.25).discountPercent).toBe('12.25');
+  });
+
+  it('opens on 0 when the project has none, or when it is not known', () => {
+    expect(toInvoiceFormValues(undefined, 0).discountPercent).toBe('0');
+    expect(toInvoiceFormValues().discountPercent).toBe('0');
+    expect(toInvoiceFormValues()).toEqual(emptyInvoiceForm);
+  });
+
+  it('leaves everything else of a new invoice as it was', () => {
+    expect(toInvoiceFormValues(undefined, 10)).toEqual({ ...emptyInvoiceForm, discountPercent: '10' });
+  });
+
+  it('ignores the project’s discount for an invoice already saved: it keeps its own', () => {
+    expect(toInvoiceFormValues(invoices[0], 10).discountPercent).toBe('0');
   });
 });

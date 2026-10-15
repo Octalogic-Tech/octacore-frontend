@@ -172,6 +172,19 @@ export function ProjectFormDialog({
               ))}
             </Select>
           </Field>
+          <Field
+            label="Discount (%)"
+            htmlFor="project-discount"
+            error={errors.discountPercent?.message}
+            hint="Taken off every invoice of this project, up to 50. Each invoice can change it."
+          >
+            <Input
+              {...fieldA11y('project-discount', errors.discountPercent?.message)}
+              {...register('discountPercent')}
+              inputMode="decimal"
+              autoComplete="off"
+            />
+          </Field>
           {failure === 'failed' ? (
             <p role="alert" className="text-small font-semibold text-foreground">
               That did not save. Try again.
