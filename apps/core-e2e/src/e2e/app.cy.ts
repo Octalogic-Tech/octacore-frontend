@@ -30,7 +30,7 @@ describe('core', () => {
     cy.contains('td', 'Globex').should('be.visible');
   });
 
-  it('lists the projects and opens one with its invoices', () => {
+  it('lists the projects and opens one with its resources and invoices', () => {
     cy.get(nav).contains('a', 'Projects').click();
     cy.contains('td', 'Website').should('be.visible');
     cy.contains('td', 'Resource augmentation').should('be.visible');
@@ -41,6 +41,16 @@ describe('core', () => {
     cy.contains('td', 'INV-001').should('be.visible');
     cy.contains('Paid 12 Oct 2026').should('be.visible');
     cy.contains('Unpaid').should('be.visible');
+    cy.contains('h2', 'Resources').should('be.visible');
+    cy.contains('td', 'Asha Rao').should('be.visible');
+    cy.contains('td', '$150').should('be.visible');
+    cy.contains('button', 'Add invoice').click();
+    cy.get('[role="dialog"]').within(() => {
+      cy.get('input[aria-label="Line 1 description"]').should('have.value', 'Asha Rao — Mobile');
+      cy.contains('Total $36,000').should('be.visible');
+      cy.contains('button', 'Cancel').click();
+    });
+    cy.get('[role="dialog"]').should('not.exist');
     cy.get(`${nav} a[aria-current="page"]`).should('have.length', 1).and('contain', 'Projects');
   });
 

@@ -71,6 +71,9 @@ const projects = (): Row[] => [
   project({ id: 3, name: 'Legacy portal', clientId: 1, client: acme(), projectType: null, billingType: null }),
 ];
 
+const line = (id: number, invoiceId: number, description: string, quantity: number, rate: number): Row =>
+  record({ id, invoiceId, description, quantity, rate, amount: quantity * rate });
+
 const invoices = (): Row[] => [
   record({
     id: 1,
@@ -81,6 +84,7 @@ const invoices = (): Row[] => [
     issueDate: '2026-10-01',
     dueDate: '2026-10-31',
     paidDate: '2026-10-12',
+    lineItems: [line(1, 1, 'Asha Rao — Mobile', 160, 150), line(2, 1, 'Ben Cho — Web', 160, 75)],
   }),
   record({
     id: 2,
@@ -91,6 +95,30 @@ const invoices = (): Row[] => [
     issueDate: '2026-11-01',
     dueDate: null,
     paidDate: null,
+    lineItems: [line(3, 2, 'Ben Cho — Web', 160, 75)],
+  }),
+];
+
+const resources = (): Row[] => [
+  record({
+    id: 1,
+    projectId: 1,
+    personId: 1,
+    categoryId: 2,
+    name: 'Asha Rao',
+    rate: 150,
+    category: { id: 2, name: 'Mobile' },
+    person: { id: 1, name: 'Asha Rao' },
+  }),
+  record({
+    id: 2,
+    projectId: 1,
+    personId: null,
+    categoryId: 1,
+    name: 'Ben Cho',
+    rate: 75,
+    category: { id: 1, name: 'Web' },
+    person: null,
   }),
 ];
 
@@ -135,8 +163,8 @@ function stubCore(
 }
 
 /**
- * Stubs every collection: categories, technologies, clients, client contacts, projects, invoices, countries and
- * users as the core service answers them, bills as the json-server mock does, and the sign-in routes. `signedIn` says
+ * Stubs every collection: categories, technologies, clients, client contacts, projects, project resources, people,
+ * invoices, countries and users as the core service answers them, bills as the json-server mock does, and the sign-in routes. `signedIn` says
  * whether the refresh cookie is valid when the page loads; `POST /auth/login` accepts E2E_PASSWORD and signs in.
  * `/categories` and `/users` keep state so an add or a delete shows up on the next read.
  */
@@ -226,6 +254,22 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
   stubCore('GET', '/projects', () => ({ body: envelope(projects()) }));
   stubCore('GET', '/projects/*', () => ({ body: envelope(projects()[0]) }));
   stubCore('GET', '/invoices*', () => ({ body: envelope(invoices()) }));
+  // `*` does not cross a `/`, so the draft (`/projects/1/invoice-draft`) needs its own stub; the resources call
+  // carries a query string.
+  stubCore('GET', '/projects/*/invoice-draft', () => ({
+    body: envelope({
+      lineItems: [
+        { description: 'Asha Rao — Mobile', quantity: 160, rate: 150 },
+        { description: 'Ben Cho — Web', quantity: 160, rate: 75 },
+      ],
+    }),
+  }));
+  stubCore('GET', '/project-resources*', () => ({ body: envelope(resources()) }));
+  stubCore('GET', '/people', () => ({
+    body: envelope([
+      record({ id: 1, name: 'Asha Rao', joinDate: null, leaveDate: null, email: null, phone: null, imageLink: null, contractLink: null }),
+    ]),
+  }));
 
   cy.intercept(xhr('GET', '/bills'), [
     bill(1, '2023-08-10', true, 'John Doe', 100),
