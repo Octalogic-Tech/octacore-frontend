@@ -54,7 +54,7 @@ Out of scope: the Nest API wiring, authentication, the People, Documents, Suppor
 
 ### 5.1 Workspace
 
-- `apps/core` is recreated as an `@nx/vite` app, modelled on `apps/external/portfolio`'s executors. It keeps the project name `core` and port 4200, so `nx serve core` still works.
+- `apps/core` is recreated as an `@nx/vite` app, modelled on `apps/external/portfolio`'s executors. It keeps the project name `core` and serves on port 3000 (the portfolio on 3001, the json-server mock on 3002), so `nx serve core` still works.
 - App code lives under `apps/core/src` with the alias `@/` pointing at it (shadcn convention). `components.json` is added by hand at `apps/core/components.json`.
 - The libs `constant`, `shared-ui` and `services/*` are deleted, not ported. After the old apps go, only the replaced `core` app used them.
 
@@ -172,7 +172,7 @@ All pages are built from the five routes in section 6.
 
 ### 9.1 Structure
 
-- `src/lib/api.ts` creates one axios instance with `baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:3001'`.
+- `src/lib/api.ts` creates one axios instance with `baseURL = import.meta.env.VITE_API_URL ?? 'http://localhost:3002'`.
 - Each feature folder (`categories`, `technologies`, `projects`, `bills`) owns its types, its axios calls and its TanStack Query hooks (list, create, update, delete). Mutations invalidate the list query.
 - Those feature files are the only place that knows the HTTP shape. Moving to the Nest API later means changing them and mapping the entity fields, not touching the pages.
 

@@ -1,9 +1,17 @@
 import { countriesBody } from './countries';
 
-export const API = 'http://localhost:3001';
+export const API = 'http://localhost:3002';
 export const CORE_API = 'http://localhost:5001/api/v1';
 /** The password the stubbed sign-in accepts. */
 export const E2E_PASSWORD = 'correct horse battery';
+
+// XHRs only. The dev server moves up a port when 3000 and 3001 are taken and can land on the API's own
+// port (3002); a plain URL match would then also swallow the page navigation to /categories or /projects.
+const xhr = (method: string, path: string, base = API) => ({
+  method,
+  url: `${base}${path}`,
+  resourceType: 'xhr' as const,
+});
 
 type Row = Record<string, unknown>;
 
@@ -119,7 +127,7 @@ function stubCore(
   path: string,
   answer: (request: { url: string; body: unknown }) => CoreAnswer,
 ) {
-  cy.intercept(method, `${CORE_API}${path}`, (req) => {
+  cy.intercept(xhr(method, path, CORE_API), (req) => {
     const { statusCode = 200, body } = answer({ url: req.url, body: req.body });
     // `body`: an object that holds `statusCode` would otherwise be read by Cypress as the response itself.
     req.reply({ statusCode, body, headers: corsHeaders(req.headers.origin) });
@@ -219,7 +227,7 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
   stubCore('GET', '/projects/*', () => ({ body: envelope(projects()[0]) }));
   stubCore('GET', '/invoices*', () => ({ body: envelope(invoices()) }));
 
-  cy.intercept('GET', `${API}/bills`, [
+  cy.intercept(xhr('GET', '/bills'), [
     bill(1, '2023-08-10', true, 'John Doe', 100),
     bill(2, '2023-08-09', false, 'Jane Smith', 200),
     bill(3, '2023-08-08', true, 'Michael Johnson', 50),

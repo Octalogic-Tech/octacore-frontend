@@ -11,8 +11,8 @@ Monorepo for all octacore modules
 Two processes: the mock API and the app.
 
 ```bash
-pnpm start:api       # json-server on http://localhost:3001 (json-server/db.json)
-pnpm nx serve core   # the app on http://localhost:4200
+pnpm start:api       # json-server on http://localhost:3002 (json-server/db.json)
+pnpm nx serve core   # the app on http://localhost:3000
 ```
 
 Set `VITE_API_URL` (see `apps/core/.env.example`) to point the app at another API.
@@ -32,9 +32,9 @@ make run       # the API on http://localhost:5001/api/v1
 
 `make seed-admin` creates the admin only if no live user has that email, and never changes an existing password. On a scratch database, put `DB_NAME=<scratch db>` in front of it (and of the `uvicorn` command that serves that database).
 
-Keep the app and the API on the same hostname, `localhost` for both: the app on `http://localhost:4200` (the default), the API on `http://localhost:5001`. The refresh cookie only travels between same-site addresses, so mixing `localhost` and `127.0.0.1` signs you out on every reload. The API allows credentialed calls only from the origins in its `CORS_ORIGINS` setting (by default `http://localhost:4200` and `http://localhost:3000`); if the app runs anywhere else, set `CORS_ORIGINS` on the API to the app's exact origin. Point the app at another API with `VITE_CORE_API_URL` (see `apps/core/.env.example`).
+Keep the app and the API on the same hostname, `localhost` for both: the app on `http://localhost:3000` (the default), the API on `http://localhost:5001`. The refresh cookie only travels between same-site addresses, so mixing `localhost` and `127.0.0.1` signs you out on every reload. The API allows credentialed calls only from the origins in its `CORS_ORIGINS` setting (by default `http://localhost:4200` and `http://localhost:3000`); if the app runs anywhere else, set `CORS_ORIGINS` on the API to the app's exact origin. Point the app at another API with `VITE_CORE_API_URL` (see `apps/core/.env.example`).
 
-To try sign-in by hand: start the API and the app as above, open `http://localhost:4200/users` and you land on the login page. Sign in with the seeded admin and you come back to the Users page. Reload: you stay signed in (the refresh cookie restores the session). Sign out from the foot of the sidebar: you are back on the login page, and signing in again lands on the overview.
+To try sign-in by hand: start the API and the app as above, open `http://localhost:3000/users` and you land on the login page. Sign in with the seeded admin and you come back to the Users page. Reload: you stay signed in (the refresh cookie restores the session). Sign out from the foot of the sidebar: you are back on the login page, and signing in again lands on the overview.
 
 `make run` serves the API on IPv4 only (`127.0.0.1`). Browsers fall back to it when `localhost` resolves to `::1` first, but Cypress's Electron does not. For a Cypress run against the real service, serve the API on `::1` instead, for example `.venv/bin/uvicorn app.main:create_app --factory --host ::1 --port 5001`, and keep `localhost` in `VITE_CORE_API_URL`. The stubbed Cypress specs intercept `http://localhost:5001` and need no service.
 
