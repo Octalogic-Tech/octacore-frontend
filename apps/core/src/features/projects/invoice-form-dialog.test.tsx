@@ -380,3 +380,38 @@ describe('InvoiceFormDialog: failures', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
   });
 });
+
+describe('InvoiceFormDialog: reading the lines grid', () => {
+  it('names the columns and each line’s amount, so a pre-filled line says which number is which', async () => {
+    openDialog();
+    await screen.findByRole('group', { name: 'Line 1' });
+    // Placeholders vanish once a value is there, so the columns carry their own headers.
+    expect(screen.getByText('Quantity')).toBeInTheDocument();
+    expect(screen.getByText('Rate')).toBeInTheDocument();
+    expect(screen.getByText('Amount')).toBeInTheDocument();
+    expect(screen.getAllByText('Description')).toHaveLength(2); // the invoice's own field, and the column
+    expect(within(line(1)).getByText('Line 1 amount')).toBeInTheDocument();
+    expect(within(line(2)).getByText('Line 2 amount')).toBeInTheDocument();
+  });
+
+  it('links each line error to the field it belongs to', async () => {
+    const user = userEvent.setup();
+    serveDraft(draftEnvelope({ lineItems: [] }));
+    openDialog({ billingType: 'fixed_cost' });
+    await screen.findByRole('group', { name: 'Line 1' });
+    await user.type(screen.getByLabelText('Number'), 'INV-9');
+    await user.type(screen.getByLabelText('Issue date'), '2026-10-01');
+    await user.type(screen.getByLabelText('Line 1 description'), 'Milestone');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('Quantity is required');
+
+    for (const [field, message] of [
+      ['quantity', 'Quantity is required'],
+      ['rate', 'Rate is required'],
+    ] as const) {
+      const describedBy = screen.getByLabelText(`Line 1 ${field}`).getAttribute('aria-describedby');
+      expect(describedBy).toBeTruthy();
+      expect(document.getElementById(describedBy as string)).toHaveTextContent(message);
+    }
+  });
+});

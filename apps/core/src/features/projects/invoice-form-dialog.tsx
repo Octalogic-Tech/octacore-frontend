@@ -178,19 +178,26 @@ function InvoiceEditor({ projectId, invoice, billingType, onBusyChange, onClose 
               </div>
             ) : null}
 
+            {/* Column names for the sighted: a placeholder vanishes once a value is there. The inputs carry
+                their own names for assistive technology, and below `sm` each row stacks. */}
+            <div
+              aria-hidden="true"
+              className="hidden gap-2 text-small font-semibold text-navy-80 sm:grid sm:grid-cols-[1fr_6rem_7rem_6rem_5.5rem]"
+            >
+              <span>Description</span>
+              <span>Quantity</span>
+              <span>Rate</span>
+              <span className="text-right">Amount</span>
+              <span />
+            </div>
+
             {fields.map((field, index) => {
               const number = index + 1;
               const rowErrors = errors.lines?.[index];
               const amount = lineAmount(lines?.[index] ?? blankLine);
-              // Every message the row has, so a blank quantity does not hide a blank rate.
-              const messages = [
-                rowErrors?.description?.message,
-                rowErrors?.quantity?.message,
-                rowErrors?.rate?.message,
-              ].filter((message): message is string => Boolean(message));
               return (
                 <div key={field.id} role="group" aria-label={`Line ${number}`} className="grid gap-1">
-                  <div className="grid items-start gap-2 sm:grid-cols-[1fr_6rem_7rem_6rem_auto]">
+                  <div className="grid items-start gap-2 sm:grid-cols-[1fr_6rem_7rem_6rem_5.5rem]">
                     <Input
                       {...fieldA11y(`line-${number}-description`, rowErrors?.description?.message)}
                       {...register(`lines.${index}.description`)}
@@ -214,7 +221,10 @@ function InvoiceEditor({ projectId, invoice, billingType, onBusyChange, onClose 
                       inputMode="numeric"
                       autoComplete="off"
                     />
-                    <p className="tabular py-3 text-right text-small">{amount === null ? NONE : formatCurrency(amount)}</p>
+                    <p className="tabular py-3 text-right text-small">
+                      <span className="sr-only">{`Line ${number} amount `}</span>
+                      {amount === null ? NONE : formatCurrency(amount)}
+                    </p>
                     <Button
                       variant="quiet"
                       aria-label={`Remove line ${number}`}
@@ -224,11 +234,16 @@ function InvoiceEditor({ projectId, invoice, billingType, onBusyChange, onClose 
                       Remove
                     </Button>
                   </div>
-                  {messages.map((message) => (
-                    <p key={message} role="alert" className="text-small text-foreground">
-                      {message}
-                    </p>
-                  ))}
+                  {/* Every message the row has (a blank quantity must not hide a blank rate), each with the id
+                      its input's aria-describedby points at. */}
+                  {(['description', 'quantity', 'rate'] as const).map((name) => {
+                    const message = rowErrors?.[name]?.message;
+                    return message ? (
+                      <p key={name} id={`line-${number}-${name}-error`} role="alert" className="text-small text-foreground">
+                        {message}
+                      </p>
+                    ) : null;
+                  })}
                 </div>
               );
             })}
