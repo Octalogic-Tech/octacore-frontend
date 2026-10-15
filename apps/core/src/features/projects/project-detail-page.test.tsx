@@ -5,8 +5,16 @@ import { AxiosError } from 'axios';
 import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { coreApi } from '@/lib/core-api';
 import { queryDefaults } from '@/lib/query-client';
+import { categoriesEnvelope } from '@/test/fixtures/categories';
 import { clientsEnvelope } from '@/test/fixtures/clients';
-import { invoiceRows, invoicesEnvelope, projectEnvelope, projectRows } from '@/test/fixtures/projects';
+import {
+  invoiceRows,
+  invoicesEnvelope,
+  peopleEnvelope,
+  projectEnvelope,
+  projectRows,
+  resourcesEnvelope,
+} from '@/test/fixtures/projects';
 import { renderWithProviders } from '@/test/utils';
 import { ProjectDetailPage } from './project-detail-page';
 
@@ -33,11 +41,14 @@ const failure = (status: number) =>
 /** What the service answers a write with; the page never reads it. */
 const saved = { data: { statusCode: 200, message: 'saved', data: {}, meta: null } };
 
-const serve = (opts: { project?: unknown; invoices?: unknown } = {}) =>
+const serve = (opts: { project?: unknown; invoices?: unknown; resources?: unknown } = {}) =>
   vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
     if (path === '/projects/1') return { data: opts.project ?? projectEnvelope() };
     if (path === '/invoices') return { data: opts.invoices ?? invoicesEnvelope() };
+    if (path === '/project-resources') return { data: opts.resources ?? resourcesEnvelope() };
     if (path === '/clients') return { data: clientsEnvelope() };
+    if (path === '/people') return { data: peopleEnvelope() };
+    if (path === '/categories') return { data: categoriesEnvelope() };
     throw new Error(`unexpected GET ${path}`);
   }) as never);
 
@@ -84,7 +95,7 @@ describe('ProjectDetailPage: reading', () => {
 
   it('shows dashes for a project with no client or types', async () => {
     const legacy = { ...projectRows[2], client: null };
-    serve({ project: projectEnvelope(legacy), invoices: invoicesEnvelope([]) });
+    serve({ project: projectEnvelope(legacy), invoices: invoicesEnvelope([]), resources: resourcesEnvelope([]) });
     renderAt('/projects/1');
     await screen.findByRole('heading', { level: 1, name: 'Legacy portal' });
     expect(screen.getAllByText('—')).toHaveLength(3);
@@ -92,7 +103,7 @@ describe('ProjectDetailPage: reading', () => {
 
   it('lists the invoices newest issue date first, each with its status', async () => {
     renderAt('/projects/1');
-    const table = await screen.findByRole('table');
+    const table = await screen.findByRole('table', { name: 'Invoices' });
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(2);
     const newest = within(rows[0]);
@@ -126,6 +137,36 @@ describe('ProjectDetailPage: reading', () => {
   });
 });
 
+describe('ProjectDetailPage: resources', () => {
+  it('asks for only this project’s resources and shows them above the invoices', async () => {
+    renderAt('/projects/1');
+    const resources = await screen.findByRole('heading', { level: 2, name: 'Resources' });
+    const invoices = screen.getByRole('heading', { level: 2, name: 'Invoices' });
+    expect(coreApi.get).toHaveBeenCalledWith('/project-resources', { params: { projectId: 1 } });
+    expect(resources.compareDocumentPosition(invoices) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const table = await screen.findByRole('table', { name: 'Resources' });
+    expect(within(table).getByText('Ben Cho')).toBeInTheDocument();
+  });
+
+  it('keeps the invoices usable when only the resources fail to load', async () => {
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/projects/1') return { data: projectEnvelope() };
+      if (path === '/invoices') return { data: invoicesEnvelope() };
+      throw new Error('down');
+    }) as never);
+    renderAt('/projects/1');
+    expect(await screen.findByRole('table', { name: 'Invoices' })).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+  });
+
+  it('opens the resource dialog from the panel', async () => {
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Add resource' }));
+    expect(screen.getByRole('dialog', { name: 'New resource' })).toBeInTheDocument();
+  });
+});
+
 describe('ProjectDetailPage: when the project is not there', () => {
   it('shows a not-found state when the service answers 404', async () => {
     vi.mocked(coreApi.get).mockRejectedValue(failure(404));
@@ -156,6 +197,7 @@ describe('ProjectDetailPage: when the project is not there', () => {
   it('keeps the project on screen when only its invoices fail to load', async () => {
     vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
       if (path === '/projects/1') return { data: projectEnvelope() };
+      if (path === '/project-resources') return { data: resourcesEnvelope() };
       throw new Error('down');
     }) as never);
     renderAt('/projects/1');

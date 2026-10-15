@@ -19,6 +19,7 @@ import {
 } from './api';
 import { InvoiceFormDialog } from './invoice-form-dialog';
 import { ProjectFormDialog } from './project-form-dialog';
+import { ResourcesPanel } from './resources-panel';
 import { sortInvoices, type InvoiceRow } from './schema';
 
 // The focus fallback for every dialog on this page: <main> is not focusable, and Add invoice is always there.
@@ -138,6 +139,10 @@ function ProjectDetail({ projectId }: { projectId: number }) {
               )}
             </p>
 
+            <ResourcesPanel projectId={projectId} billingType={data.billingType} />
+
+            <h2 className="mb-3 text-title font-semibold">Invoices</h2>
+
             {paidFailed ? (
               <p role="alert" className="mb-4 text-small font-semibold text-foreground">
                 That did not save. Try again.
@@ -159,7 +164,7 @@ function ProjectDetail({ projectId }: { projectId: number }) {
                   </div>
                 }
               >
-                <Table>
+                <Table aria-label="Invoices">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Number</TableHead>
