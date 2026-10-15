@@ -39,6 +39,8 @@ type Failure = 'failed' | 'changed-elsewhere' | null;
 
 const NONE = '—';
 const COLUMNS = 'sm:grid-cols-[1fr_4.5rem_6rem_7rem_6rem_5.5rem]';
+const ROW_OF_TWO = 'grid gap-6 sm:grid-cols-2 md:grid-cols-3';
+const ROW_OF_THREE = 'grid gap-6 md:grid-cols-3';
 const LINE_FIELDS = ['description', 'headcount', 'quantity', 'rate'] as const;
 
 export function InvoiceFormDialog({
@@ -174,7 +176,8 @@ function InvoiceEditor({ projectId, invoice, billingType, projectKey, onBusyChan
 
   return (
     <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
-      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Three lines, one grid column each from `md` up so they stay in line with each other. */}
+      <div className={ROW_OF_TWO}>
         <Field
           label="Number"
           htmlFor="invoice-number"
@@ -188,13 +191,21 @@ function InvoiceEditor({ projectId, invoice, billingType, projectKey, onBusyChan
             autoComplete="off"
           />
         </Field>
-        <Field label="Description" htmlFor="invoice-description" error={errors.description?.message}>
+        <Field
+          label="Description"
+          htmlFor="invoice-description"
+          error={errors.description?.message}
+          className="md:col-span-2"
+        >
           <Input
             {...fieldA11y('invoice-description', errors.description?.message)}
             {...register('description')}
             autoComplete="off"
           />
         </Field>
+      </div>
+
+      <div className={ROW_OF_THREE}>
         <Field label="Issue date" htmlFor="invoice-issue-date" error={errors.issueDate?.message}>
           <Input
             {...fieldA11y('invoice-issue-date', errors.issueDate?.message)}
@@ -205,17 +216,6 @@ function InvoiceEditor({ projectId, invoice, billingType, projectKey, onBusyChan
             }}
             type="date"
           />
-        </Field>
-        <Field label="Due date" htmlFor="invoice-due-date" error={errors.dueDate?.message}>
-          <Input {...fieldA11y('invoice-due-date', errors.dueDate?.message)} {...register('dueDate')} type="date" />
-        </Field>
-        <Field
-          label="Paid date"
-          htmlFor="invoice-paid-date"
-          error={errors.paidDate?.message}
-          hint="Leave empty if the client has not paid."
-        >
-          <Input {...fieldA11y('invoice-paid-date', errors.paidDate?.message)} {...register('paidDate')} type="date" />
         </Field>
         <Field label="Billing period start" htmlFor="invoice-period-start" error={errors.periodStart?.message}>
           <Input
@@ -234,6 +234,20 @@ function InvoiceEditor({ projectId, invoice, billingType, projectKey, onBusyChan
             {...register('periodEnd')}
             type="date"
           />
+        </Field>
+      </div>
+
+      <div className={ROW_OF_TWO}>
+        <Field label="Due date" htmlFor="invoice-due-date" error={errors.dueDate?.message}>
+          <Input {...fieldA11y('invoice-due-date', errors.dueDate?.message)} {...register('dueDate')} type="date" />
+        </Field>
+        <Field
+          label="Paid date"
+          htmlFor="invoice-paid-date"
+          error={errors.paidDate?.message}
+          hint="Leave empty if the client has not paid."
+        >
+          <Input {...fieldA11y('invoice-paid-date', errors.paidDate?.message)} {...register('paidDate')} type="date" />
         </Field>
       </div>
 

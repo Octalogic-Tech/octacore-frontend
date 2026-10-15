@@ -12,10 +12,14 @@ interface FieldProps {
   children: ReactNode;
 }
 
-/** A label, a control and its message. Errors are navy with an arm, never red. */
+/**
+ * A label, a control and its message. Errors are navy with an arm, never red.
+ * `content-start`: in a grid row a field is stretched to the tallest one, and without it the extra height (a
+ * neighbour's hint or error) would be spread between the label and the control, pushing them out of line.
+ */
 export function Field({ label, htmlFor, error, hint, className, children }: FieldProps) {
   return (
-    <div data-slot="field" className={cn('group/field grid gap-1', className)}>
+    <div data-slot="field" className={cn('group/field grid content-start gap-1', className)}>
       <Label htmlFor={htmlFor}>{label}</Label>
       {children}
       {error ? (

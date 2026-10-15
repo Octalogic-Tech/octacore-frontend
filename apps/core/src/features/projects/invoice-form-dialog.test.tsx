@@ -111,6 +111,38 @@ describe('InvoiceFormDialog: size', () => {
 });
 
 describe('InvoiceFormDialog: adding to a retainer project', () => {
+describe('InvoiceFormDialog: the header', () => {
+  it('is three lines: number and description; issue date and billing period; due and paid dates', async () => {
+    openDialog();
+    await screen.findByRole('group', { name: 'Line 1' });
+
+    const row = (label: string) => screen.getByLabelText(label).closest('[data-slot="field"]')?.parentElement;
+    expect(row('Number')).toBe(row('Description'));
+    expect(row('Issue date')).toBe(row('Billing period start'));
+    expect(row('Issue date')).toBe(row('Billing period end'));
+    expect(row('Due date')).toBe(row('Paid date'));
+    expect(new Set([row('Number'), row('Issue date'), row('Due date')]).size).toBe(3);
+  });
+
+  it('reads, and tabs, in that order', async () => {
+    openDialog();
+    await screen.findByRole('group', { name: 'Line 1' });
+
+    const order = [
+      'Number',
+      'Description',
+      'Issue date',
+      'Billing period start',
+      'Billing period end',
+      'Due date',
+      'Paid date',
+    ].map((label) => screen.getByLabelText(label));
+    order.slice(1).forEach((input, i) => {
+      expect(order[i].compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+  });
+});
+
   it('builds the lines from the draft and saves them with the header', async () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
