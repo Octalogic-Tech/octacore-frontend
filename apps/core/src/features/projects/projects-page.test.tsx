@@ -1,6 +1,7 @@
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { coreApi } from '@/lib/core-api';
+import { clientsEnvelope } from '@/test/fixtures/clients';
 import { projectRows, projectsEnvelope } from '@/test/fixtures/projects';
 import { renderWithProviders } from '@/test/utils';
 import { ProjectsPage } from './projects-page';
@@ -14,6 +15,7 @@ vi.mock('@/lib/core-api', async (importOriginal) => ({
 const serve = (projects: unknown = projectsEnvelope()) =>
   vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
     if (path === '/projects') return { data: projects };
+    if (path === '/clients') return { data: clientsEnvelope() };
     throw new Error(`unexpected GET ${path}`);
   }) as never);
 
@@ -128,5 +130,57 @@ describe('ProjectsPage', () => {
     serve(projectsEnvelope([{ ...projectRows[0], totalValue: undefined }]));
     renderWithProviders(<ProjectsPage />);
     expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+  });
+});
+
+/** What the service answers a delete with; the page does not read it. */
+const saved = { data: { statusCode: 200, message: 'saved', data: projectRows[0], meta: null } };
+
+describe('ProjectsPage: writing', () => {
+  it('offers to add the first project when there are none', async () => {
+    serve(projectsEnvelope([]));
+    renderWithProviders(<ProjectsPage />);
+    expect(await screen.findByText('No projects yet.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add the first project' })).toBeInTheDocument();
+  });
+
+  it('opens the dialog empty to add a project', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectsPage />);
+    await user.click(await screen.findByRole('button', { name: 'Add project' }));
+    expect(screen.getByRole('dialog', { name: 'New project' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveValue('');
+  });
+
+  it('opens the dialog on a project', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectsPage />);
+    await user.click(await screen.findByRole('button', { name: 'Edit Website' }));
+    expect(screen.getByRole('dialog', { name: 'Edit project' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Name')).toHaveValue('Website');
+  });
+
+  it('deletes only after the confirmation, and says the invoices go with it', async () => {
+    vi.mocked(coreApi.delete).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectsPage />);
+    await user.click(await screen.findByRole('button', { name: 'Delete Website' }));
+    expect(screen.getByText('Delete project “Website”?')).toBeInTheDocument();
+    expect(screen.getByText('Its invoices are deleted with it. This cannot be undone.')).toBeInTheDocument();
+    expect(coreApi.delete).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Delete project' }));
+    await waitFor(() => expect(coreApi.delete).toHaveBeenCalledWith('/projects/1'));
+    expect(coreApi.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it('refetches the list after a delete', async () => {
+    vi.mocked(coreApi.delete).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectsPage />);
+    await user.click(await screen.findByRole('button', { name: 'Delete Website' }));
+    await user.click(screen.getByRole('button', { name: 'Delete project' }));
+    await waitFor(() =>
+      expect(vi.mocked(coreApi.get).mock.calls.filter(([path]) => path === '/projects')).toHaveLength(2),
+    );
   });
 });
