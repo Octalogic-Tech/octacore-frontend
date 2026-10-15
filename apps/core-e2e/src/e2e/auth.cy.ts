@@ -40,6 +40,7 @@ describe('sign-in', () => {
     cy.get('[role="dialog"]').should('not.exist');
     cy.contains('td', 'linus@example.com').should('be.visible');
 
+    cy.get('[aria-label="Account"]').contains('button', 'Ada Admin').click();
     cy.contains('button', 'Sign out').click();
     cy.location('pathname').should('eq', '/login');
     cy.visit('/categories');

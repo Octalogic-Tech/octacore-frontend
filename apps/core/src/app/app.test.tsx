@@ -46,12 +46,14 @@ describe('App shell', () => {
     }
   });
 
-  it('shows who is signed in, with Change password and Sign out', () => {
+  it('shows who is signed in, with Change password and Sign out in a popover on the name', async () => {
+    const user = userEvent.setup();
     renderAt('/');
     const account = screen.getByRole('region', { name: 'Account' });
-    expect(within(account).getByText('Ada Admin')).toBeInTheDocument();
-    expect(within(account).getByRole('button', { name: 'Change password' })).toBeInTheDocument();
-    expect(within(account).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    await user.click(within(account).getByRole('button', { name: 'Ada Admin' }));
+    const menu = await screen.findByRole('dialog', { name: 'Account options' });
+    expect(within(menu).getByRole('button', { name: 'Change password' })).toBeInTheDocument();
+    expect(within(menu).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 
   it('marks only the current page', () => {

@@ -125,8 +125,9 @@ describe('the app behind sign-in', () => {
     );
     expect(await screen.findByRole('heading', { level: 1, name: 'Clients' })).toBeInTheDocument();
 
-    // The desktop sidebar and the phone menu both hold an account block; either signs out.
-    await user.click(screen.getAllByRole('button', { name: 'Sign out' })[0]);
+    // Signing out is in the popover that the name in the sidebar opens.
+    await user.click(within(screen.getByRole('region', { name: 'Account' })).getByRole('button'));
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeInTheDocument();
     await user.type(screen.getByLabelText('Email'), 'grace@example.com');
     await user.type(screen.getByLabelText('Password'), 'a long enough password');

@@ -100,6 +100,15 @@ components:
     backgroundColor: "{colors.grey}"
     textColor: "{colors.navy}"
     rounded: "{rounded.none}"
+  popover:
+    backgroundColor: "{colors.grey}"
+    textColor: "{colors.navy}"
+    rounded: "{rounded.none}"
+  avatar:
+    backgroundColor: "{colors.navy-deep}"
+    textColor: "{colors.on-navy}"
+    rounded: "{rounded.none}"
+    size: "36px"
   badge-solid:
     backgroundColor: "{colors.navy}"
     textColor: "{colors.on-navy}"
@@ -187,6 +196,9 @@ A label and a square arm cell, 52px tall; one primary per screen. Hover and keyb
 ### Navigation
 Logo, then three groups of text links (Work, Finance, Reference data). Group names are Small, uppercase and tracked, in Mist. The current page is white with a teal arm and `aria-current="page"`; other links are Mist with a Mist arm that lengthens and turns teal on hover.
 
+### Account
+At the foot of the sidebar and the menu sheet, a single 44px button: the person's initials in a square Night Navy tile (first letter of the first and last word of the name), the name, and a drawn chevron. It opens a popover upward, as wide as the button, with the email and then Change password and Sign out as quiet buttons. The popover is a grey object with a 1px navy frame: flat, no scrim, and it closes on Escape, an outside click or a choice. Change password closes it and opens its dialog, and focus comes back to the name button.
+
 ### Inputs
 Underline fields: no box, no fill. A 1px Muted Navy rule that turns navy on hover and firms to 3px navy on focus, with padding compensating so nothing moves. A drawn arm leads the label. Errors are a 2px navy rule and a navy arm before the message, announced with `role="alert"`; there is no red. Select is a native select with a drawn chevron; the Yes and No choice is a pair of native radio buttons styled as 44px chips, the chosen one a navy block.
 
@@ -217,7 +229,7 @@ Loading is five grey rows. A failed request is an inline message with a Try agai
 - **Don't** add an icon library (the design-contract test fails on one).
 - **Don't** put teal text on grey, or Muted Navy text on a hover fill.
 - **Don't** build metric tiles; put numbers inside a sentence on a ruled line.
-- **Don't** show a control until the thing behind it exists. Sign-in exists, so the login page and the account controls (Change password, Sign out) are shown; a user menu or settings control still waits for something real behind it.
+- **Don't** show a control until the thing behind it exists. Sign-in exists, so the login page and the account popover (Change password, Sign out) are shown; a settings control still waits for something real behind it.
 
 ## Differences from octa-website
 
@@ -226,6 +238,7 @@ Deliberate, so a later reader does not "fix" them back:
 - Dialogs use a clip-path cut; framed panels use the corner svg. The website uses the svg technique for panels only.
 - shadcn's `accent` token is the Soft Hairline hover fill, not teal; teal is the separate `signal` token. `destructive` is navy.
 - Text is never below 14px, so the website's 13px Label is not used; sidebar group names use Small.
-- Select and the Yes and No choice are native elements, not Radix components.
+- Select and the Yes and No choice are native elements, not Radix components. Dialogs, the menu sheet and the account popover are Radix.
+- The avatar is a square initials tile, not a circle: every corner is square, and there is no photo to show.
 - The resting colour of an arm on navy is Mist, as on the website. An earlier build used Navy Rule (1.52:1) and was corrected in review.
 - No scroll reveals or play-once motion: this is an operating tool.

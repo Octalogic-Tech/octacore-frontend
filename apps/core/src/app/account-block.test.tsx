@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { AxiosError, type AxiosResponse } from 'axios';
 import type { AuthContextValue } from '@/features/auth/auth-context';
 import { AuthTestProvider } from '@/test/auth';
+import { adminUser } from '@/test/fixtures/users';
 import { AccountBlock } from './account-block';
 
 const rejection = (status: number, message: string) =>
@@ -19,17 +20,42 @@ function renderBlock(value: Partial<AuthContextValue> = {}) {
   );
 }
 
-async function openDialog(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(screen.getByRole('button', { name: 'Change password' }));
+type User = ReturnType<typeof userEvent.setup>;
+
+const trigger = () => screen.getByRole('button', { name: 'Ada Admin' });
+
+async function openMenu(user: User) {
+  await user.click(trigger());
+  return screen.findByRole('dialog', { name: 'Account options' });
+}
+
+async function openDialog(user: User) {
+  const menu = await openMenu(user);
+  await user.click(within(menu).getByRole('button', { name: 'Change password' }));
   return screen.findByRole('dialog', { name: 'Change password' });
 }
 
 describe('AccountBlock', () => {
-  it('shows who is signed in', () => {
+  it('shows only the name and an initials avatar, with the email and the actions out of sight', () => {
     renderBlock();
     const account = screen.getByRole('region', { name: 'Account' });
     expect(within(account).getByText('Ada Admin')).toBeInTheDocument();
-    expect(within(account).getByText('ada@example.com')).toBeInTheDocument();
+    expect(within(account).getByText('AA')).toHaveAttribute('aria-hidden', 'true');
+    expect(within(account).queryByText('Signed in as')).not.toBeInTheDocument();
+    expect(screen.queryByText('ada@example.com')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Change password' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Sign out' })).not.toBeInTheDocument();
+    expect(trigger()).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it.each([
+    ['Ada Admin', 'AA'],
+    ['Grace Murray Hopper', 'GH'],
+    ['Madonna', 'M'],
+    ['  linus   torvalds ', 'LT'],
+  ])('draws the initials of %s as %s', (name, initials) => {
+    renderBlock({ user: { ...adminUser, name } });
+    expect(screen.getByText(initials)).toBeInTheDocument();
   });
 
   it('shows nothing when nobody is signed in', () => {
@@ -37,14 +63,34 @@ describe('AccountBlock', () => {
     expect(screen.queryByRole('region', { name: 'Account' })).not.toBeInTheDocument();
   });
 
-  it('gives each Change password button its own id, since the sidebar and the phone menu can both show one', () => {
+  it('opens a popover with the email, Change password and Sign out', async () => {
+    const user = userEvent.setup();
+    renderBlock();
+    const menu = await openMenu(user);
+    expect(trigger()).toHaveAttribute('aria-expanded', 'true');
+    expect(within(menu).getByText('ada@example.com')).toBeInTheDocument();
+    expect(within(menu).getByRole('button', { name: 'Change password' })).toBeInTheDocument();
+    expect(within(menu).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+
+  it('closes on Escape and puts focus back on the name', async () => {
+    const user = userEvent.setup();
+    renderBlock();
+    await openMenu(user);
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(trigger()).toHaveFocus();
+    expect(trigger()).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('gives each name button its own id, since the sidebar and the phone menu can both show one', () => {
     render(
       <AuthTestProvider>
         <AccountBlock />
         <AccountBlock />
       </AuthTestProvider>,
     );
-    const ids = screen.getAllByRole('button', { name: 'Change password' }).map((button) => button.id);
+    const ids = screen.getAllByRole('button', { name: 'Ada Admin' }).map((button) => button.id);
     expect(ids).toHaveLength(2);
     expect(ids[0]).toBeTruthy();
     expect(ids[0]).not.toBe(ids[1]);
@@ -54,8 +100,19 @@ describe('AccountBlock', () => {
     const signOut = vi.fn(async () => undefined);
     const user = userEvent.setup();
     renderBlock({ signOut });
-    await user.click(screen.getByRole('button', { name: 'Sign out' }));
+    const menu = await openMenu(user);
+    await user.click(within(menu).getByRole('button', { name: 'Sign out' }));
     expect(signOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('closes the popover when Change password opens its dialog, and returns focus to the name when that closes', async () => {
+    const user = userEvent.setup();
+    renderBlock();
+    const dialog = await openDialog(user);
+    expect(screen.queryByRole('dialog', { name: 'Account options' })).not.toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(trigger()).toHaveFocus();
   });
 
   it('opens a dialog with the three password fields', async () => {
