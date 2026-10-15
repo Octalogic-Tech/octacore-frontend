@@ -7,6 +7,7 @@ import { RequireRole } from '@/features/auth/require-role';
 import { CategoriesPage } from '@/features/categories/categories-page';
 import { ClientsPage } from '@/features/clients/clients-page';
 import { TechnologiesPage } from '@/features/technologies/technologies-page';
+import { ProjectDetailPage } from '@/features/projects/project-detail-page';
 import { ProjectsPage } from '@/features/projects/projects-page';
 import { BillsPage } from '@/features/bills/bills-page';
 import { CountriesPage } from '@/features/countries/countries-page';
@@ -22,6 +23,7 @@ export default function App() {
           <Route index element={<OverviewPage />} />
           <Route path="clients" element={<ClientsPage />} />
           <Route path="projects" element={<ProjectsPage />} />
+          <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="finance/receipts-bills" element={<BillsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="technologies" element={<TechnologiesPage />} />

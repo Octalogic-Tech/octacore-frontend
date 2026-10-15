@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { coreApi, unwrap } from '@/lib/core-api';
-import { projectRowsSchema, type InvoiceBody, type ProjectBody } from './schema';
+import { invoiceRowsSchema, projectRowSchema, projectRowsSchema, type InvoiceBody, type ProjectBody } from './schema';
 
 // The list and a project's own page sit under one prefix, so a change refetches both.
 const PROJECTS = ['projects'] as const;
@@ -11,6 +11,22 @@ export function useProjects() {
   return useQuery({
     queryKey: PROJECT_LIST,
     queryFn: async () => unwrap((await coreApi.get('/projects')).data, projectRowsSchema),
+  });
+}
+
+export function useProject(id: number) {
+  return useQuery({
+    queryKey: [...PROJECTS, 'detail', id] as const,
+    queryFn: async () => unwrap((await coreApi.get(`/projects/${id}`)).data, projectRowSchema),
+  });
+}
+
+/** Only this project's invoices: the service filters them, so the page never loads everyone else's. */
+export function useInvoices(projectId: number) {
+  return useQuery({
+    queryKey: [...INVOICES, { projectId }] as const,
+    queryFn: async () =>
+      unwrap((await coreApi.get('/invoices', { params: { projectId } })).data, invoiceRowsSchema),
   });
 }
 
@@ -60,6 +76,30 @@ export function useSaveInvoice(projectId: number) {
     mutationFn: async ({ id, body }: { id: number | undefined; body: InvoiceBody }) => {
       if (id === undefined) await coreApi.post('/invoices', { projectId, ...body });
       else await coreApi.patch(`/invoices/${id}`, body);
+    },
+    onSuccess: refresh,
+  });
+}
+
+/**
+ * Marks an invoice paid on a date, or unpaid with null. Refetches whether or not it worked: if the invoice was removed
+ * elsewhere, the failure should leave the table showing what is really there.
+ */
+export function useSetInvoicePaid() {
+  const refresh = useRefreshInvoicesAndProjects();
+  return useMutation({
+    mutationFn: async ({ id, paidDate }: { id: number; paidDate: string | null }) => {
+      await coreApi.patch(`/invoices/${id}`, { paidDate });
+    },
+    onSettled: refresh,
+  });
+}
+
+export function useDeleteInvoice() {
+  const refresh = useRefreshInvoicesAndProjects();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await coreApi.delete(`/invoices/${id}`);
     },
     onSuccess: refresh,
   });
