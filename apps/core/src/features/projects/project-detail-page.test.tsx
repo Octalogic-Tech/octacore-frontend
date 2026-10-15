@@ -11,6 +11,7 @@ import {
   draftEnvelope,
   invoiceRows,
   invoicesEnvelope,
+  nextNumberEnvelope,
   peopleEnvelope,
   projectEnvelope,
   projectRows,
@@ -51,6 +52,7 @@ const serve = (opts: { project?: unknown; invoices?: unknown; resources?: unknow
     if (path === '/people') return { data: peopleEnvelope() };
     if (path === '/categories') return { data: categoriesEnvelope() };
     if (path === '/projects/1/invoice-draft') return { data: draftEnvelope() };
+    if (path === '/projects/1/next-invoice-number') return { data: nextNumberEnvelope() };
     throw new Error(`unexpected GET ${path}`);
   }) as never);
 

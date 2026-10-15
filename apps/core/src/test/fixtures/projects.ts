@@ -153,3 +153,7 @@ export const resourcesEnvelope = (data: unknown = resourceRows) =>
 export const peopleEnvelope = (data: unknown = peopleRows) => envelope('Successfully fetched people', data);
 
 export const draftEnvelope = (data: unknown = draftBody) => envelope('Successfully built invoice draft', data);
+
+// GET /projects/1/next-invoice-number?issueDate=...: what the next invoice would be numbered, null with no key.
+export const nextNumberEnvelope = (number: string | null = 'OCTA/26-27/WEB/001') =>
+  envelope('Successfully built next invoice number', { number });

@@ -3,6 +3,7 @@ import { coreApi, statusOf, unwrap } from '@/lib/core-api';
 import {
   invoiceDraftSchema,
   invoiceRowsSchema,
+  nextNumberSchema,
   projectRowSchema,
   projectRowsSchema,
   resourceRowsSchema,
@@ -65,6 +66,22 @@ export function useInvoiceDraft(projectId: number, enabled: boolean) {
     refetchOnMount: 'always',
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
+  });
+}
+
+/** Informs the Number field of the invoice form; nothing is reserved. Asked again for every issue date. */
+export function useNextInvoiceNumber(projectId: number, issueDate: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['next-invoice-number', { projectId, issueDate }] as const,
+    queryFn: async () =>
+      unwrap(
+        (await coreApi.get(`/projects/${projectId}/next-invoice-number`, { params: { issueDate } })).data,
+        nextNumberSchema,
+      ),
+    enabled,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnWindowFocus: false,
   });
 }
 

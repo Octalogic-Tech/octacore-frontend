@@ -150,17 +150,24 @@ export function toProjectBody(values: ProjectFormValues): ProjectBody {
 }
 
 const MAX_QUANTITY = 100_000;
+const MAX_HEADCOUNT = 1_000;
 const WHOLE_NUMBER = /^\d+$/;
 
-/** A line's amount from its text fields: null until both are whole numbers. */
-export function lineAmount(line: { quantity: string; rate: string }): number | null {
-  const quantity = line.quantity.trim();
-  const rate = line.rate.trim();
-  if (!WHOLE_NUMBER.test(quantity) || !WHOLE_NUMBER.test(rate)) return null;
-  return Number(quantity) * Number(rate);
+interface LineFigures {
+  headcount: string;
+  quantity: string;
+  rate: string;
 }
 
-export function linesTotal(lines: readonly { quantity: string; rate: string }[]): number {
+/** A line's amount, Qty x hours x rate, from its text fields: null until all three are whole numbers. */
+export function lineAmount(line: LineFigures): number | null {
+  const figures = [line.headcount, line.quantity, line.rate].map((text) => text.trim());
+  if (!figures.every((text) => WHOLE_NUMBER.test(text))) return null;
+  const [headcount, quantity, rate] = figures.map(Number);
+  return headcount * quantity * rate;
+}
+
+export function linesTotal(lines: readonly LineFigures[]): number {
   return lines.reduce((sum, line) => sum + (lineAmount(line) ?? 0), 0);
 }
 
@@ -168,6 +175,15 @@ export function linesTotal(lines: readonly { quantity: string; rate: string }[])
 export const lineFormSchema = z
   .object({
     description: z.string().trim().min(1, 'Description is required'),
+    headcount: z
+      .string()
+      .trim()
+      .superRefine((text, context) => {
+        if (text === '') context.addIssue({ code: 'custom', message: 'Qty is required' });
+        else if (!WHOLE_NUMBER.test(text)) context.addIssue({ code: 'custom', message: 'Enter a whole number, like 3' });
+        else if (Number(text) < 1 || Number(text) > MAX_HEADCOUNT)
+          context.addIssue({ code: 'custom', message: 'Qty must be from 1 to 1,000' });
+      }),
     quantity: z
       .string()
       .trim()
@@ -189,11 +205,13 @@ export const lineFormSchema = z
   })
   .superRefine((line, context) => {
     // Each field can be in range while the line is not: the service refuses a line above its integer limit. Said
-    // only when each field is in range, so a rate that is already too large is not also reported as a large line.
+    // only when each field is in range, so a field already reported is not also reported as a large line.
     const amount = lineAmount(line);
+    const headcount = Number(line.headcount.trim());
     const quantity = Number(line.quantity.trim());
     const rate = Number(line.rate.trim());
-    const eachInRange = quantity >= 1 && quantity <= MAX_QUANTITY && rate <= INT32_MAX;
+    const eachInRange =
+      headcount >= 1 && headcount <= MAX_HEADCOUNT && quantity >= 1 && quantity <= MAX_QUANTITY && rate <= INT32_MAX;
     if (amount !== null && eachInRange && amount > INT32_MAX) {
       context.addIssue({ code: 'custom', path: ['rate'], message: 'This line is too large' });
     }
@@ -201,16 +219,40 @@ export const lineFormSchema = z
 
 export type LineFormValues = z.infer<typeof lineFormSchema>;
 
-export const blankLine: LineFormValues = { description: '', quantity: '', rate: '' };
+export const blankLine: LineFormValues = { description: '', headcount: '1', quantity: '', rate: '' };
 
-export const invoiceFormSchema = z.object({
-  number: z.string().trim().min(1, 'Number is required'),
-  description: z.string().trim(),
-  issueDate: z.string().min(1, 'Issue date is required'),
-  dueDate: z.string(),
-  paidDate: z.string(),
-  lines: z.array(lineFormSchema).min(1, 'Add at least one line'),
-});
+/**
+ * `numberRequired` is false only when adding to a project that has a key: then the server numbers an invoice left
+ * without one. When editing, or on a project with no key, a number must be given.
+ */
+export function makeInvoiceFormSchema({ numberRequired }: { numberRequired: boolean }) {
+  return z
+    .object({
+      number: numberRequired ? z.string().trim().min(1, 'Number is required') : z.string().trim(),
+      description: z.string().trim(),
+      issueDate: z.string().min(1, 'Issue date is required'),
+      dueDate: z.string(),
+      paidDate: z.string(),
+      periodStart: z.string(),
+      periodEnd: z.string(),
+      lines: z.array(lineFormSchema).min(1, 'Add at least one line'),
+    })
+    .superRefine((values, context) => {
+      const hasStart = values.periodStart !== '';
+      const hasEnd = values.periodEnd !== '';
+      if (hasStart !== hasEnd) {
+        context.addIssue({
+          code: 'custom',
+          path: [hasStart ? 'periodEnd' : 'periodStart'],
+          message: 'Give both dates, or neither',
+        });
+      } else if (hasStart && values.periodEnd < values.periodStart) {
+        context.addIssue({ code: 'custom', path: ['periodEnd'], message: 'The period must end on or after it starts' });
+      }
+    });
+}
+
+export const invoiceFormSchema = makeInvoiceFormSchema({ numberRequired: true });
 
 export type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
@@ -220,6 +262,8 @@ export const emptyInvoiceForm: InvoiceFormValues = {
   issueDate: '',
   dueDate: '',
   paidDate: '',
+  periodStart: '',
+  periodEnd: '',
   lines: [{ ...blankLine }],
 };
 
@@ -231,10 +275,13 @@ export function toInvoiceFormValues(invoice?: InvoiceRow): InvoiceFormValues {
     issueDate: invoice.issueDate,
     dueDate: invoice.dueDate ?? '',
     paidDate: invoice.paidDate ?? '',
+    periodStart: invoice.periodStart ?? '',
+    periodEnd: invoice.periodEnd ?? '',
     lines:
       invoice.lineItems.length > 0
         ? invoice.lineItems.map((item) => ({
             description: item.description,
+            headcount: String(item.headcount),
             quantity: String(item.quantity),
             rate: String(item.rate),
           }))
@@ -244,16 +291,20 @@ export function toInvoiceFormValues(invoice?: InvoiceRow): InvoiceFormValues {
 
 export interface LineItemBody {
   description: string;
+  headcount: number;
   quantity: number;
   rate: number;
 }
 
 export interface InvoiceBody {
-  number: string;
+  /** Null on a create lets the server number the invoice from its project's key. */
+  number: string | null;
   description: string | null;
   issueDate: string;
   dueDate: string | null;
   paidDate: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
   /** The whole set: the service replaces the invoice's lines with these. */
   lineItems: LineItemBody[];
 }
@@ -261,13 +312,16 @@ export interface InvoiceBody {
 /** An invoice cannot move to another project, so the body never carries one; a create adds `projectId`. */
 export function toInvoiceBody(values: InvoiceFormValues): InvoiceBody {
   return {
-    number: values.number,
+    number: orNull(values.number),
     description: orNull(values.description),
     issueDate: values.issueDate,
     dueDate: orNull(values.dueDate),
     paidDate: orNull(values.paidDate),
+    periodStart: orNull(values.periodStart),
+    periodEnd: orNull(values.periodEnd),
     lineItems: values.lines.map((line) => ({
       description: line.description,
+      headcount: Number(line.headcount),
       quantity: Number(line.quantity),
       rate: Number(line.rate),
     })),
@@ -277,12 +331,7 @@ export function toInvoiceBody(values: InvoiceFormValues): InvoiceBody {
 /** The lines a new invoice would start with (GET /projects/:id/invoice-draft). Quantity is hours on a retainer. */
 export const invoiceDraftSchema = z.object({
   lineItems: z.array(
-    z.object({
-      description: z.string(),
-      headcount: z.number().int(),
-      quantity: z.number().int(),
-      rate: z.number().int(),
-    }),
+    z.object({ description: z.string(), headcount: z.number().int(), quantity: z.number().int(), rate: z.number().int() }),
   ),
 });
 
@@ -292,6 +341,7 @@ export type InvoiceDraft = z.output<typeof invoiceDraftSchema>;
 export function draftToLines(draft: InvoiceDraft): LineFormValues[] {
   return draft.lineItems.map((item) => ({
     description: item.description,
+    headcount: String(item.headcount),
     quantity: String(item.quantity),
     rate: String(item.rate),
   }));
@@ -389,3 +439,6 @@ export function toResourceBody(values: ResourceFormValues): ResourceBody {
     rate: Number(values.rate),
   };
 }
+
+/** What the next invoice of a project would be numbered; null when the project has no key. */
+export const nextNumberSchema = z.object({ number: z.string().nullable() });

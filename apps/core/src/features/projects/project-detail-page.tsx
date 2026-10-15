@@ -244,6 +244,7 @@ function ProjectDetail({ projectId }: { projectId: number }) {
         projectId={projectId}
         invoice={invoiceForm.invoice}
         billingType={data?.billingType}
+        projectKey={data?.key || undefined}
         fallbackFocusId="add-invoice"
       />
 

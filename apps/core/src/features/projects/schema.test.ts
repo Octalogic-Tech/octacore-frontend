@@ -10,6 +10,7 @@ import {
   invoiceRowsSchema,
   lineAmount,
   linesTotal,
+  makeInvoiceFormSchema,
   projectFormSchema,
   projectRowsSchema,
   resourceFormSchema,
@@ -41,6 +42,7 @@ const projectForm = (over: Partial<ProjectFormValues> = {}): ProjectFormValues =
 
 const lineForm = (over: Partial<LineFormValues> = {}): LineFormValues => ({
   description: 'Backend work',
+  headcount: '1',
   quantity: '160',
   rate: '150',
   ...over,
@@ -217,9 +219,13 @@ describe('toProjectFormValues', () => {
 
 describe('line helpers', () => {
   it('multiplies whole numbers and gives null for anything else', () => {
-    expect(lineAmount({ quantity: '160', rate: '150' })).toBe(24000);
-    expect(lineAmount({ quantity: ' 2 ', rate: '0' })).toBe(0);
-    for (const bad of [{ quantity: '', rate: '5' }, { quantity: '1.5', rate: '5' }, { quantity: '3', rate: '$5' }]) {
+    expect(lineAmount({ headcount: '1', quantity: '160', rate: '150' })).toBe(24000);
+    expect(lineAmount({ headcount: '1', quantity: ' 2 ', rate: '0' })).toBe(0);
+    for (const bad of [
+      { headcount: '1', quantity: '', rate: '5' },
+      { headcount: '1', quantity: '1.5', rate: '5' },
+      { headcount: '1', quantity: '3', rate: '$5' },
+    ]) {
       expect(lineAmount(bad)).toBeNull();
     }
   });
@@ -232,8 +238,8 @@ describe('line helpers', () => {
 
   it('turns the draft into text fields', () => {
     expect(draftToLines(draftBody)).toEqual([
-      { description: 'Asha Rao — Mobile', quantity: '160', rate: '150' },
-      { description: 'Ben Cho — Web', quantity: '160', rate: '75' },
+      { description: 'Asha Rao — Mobile', headcount: '1', quantity: '160', rate: '150' },
+      { description: 'Ben Cho — Web', headcount: '1', quantity: '160', rate: '75' },
     ]);
   });
 });
@@ -295,13 +301,15 @@ describe('toInvoiceBody', () => {
       issueDate: '2026-10-01',
       dueDate: null,
       paidDate: null,
-      lineItems: [{ description: 'Backend work', quantity: 160, rate: 150 }],
+      periodStart: null,
+      periodEnd: null,
+      lineItems: [{ description: 'Backend work', headcount: 1, quantity: 160, rate: 150 }],
     });
   });
 
   it('reads leading zeros as the number they spell', () => {
     const body = toInvoiceBody(invoiceForm({ lines: [lineForm({ quantity: '007', rate: '085' })] }));
-    expect(body.lineItems).toEqual([{ description: 'Backend work', quantity: 7, rate: 85 }]);
+    expect(body.lineItems).toEqual([{ description: 'Backend work', headcount: 1, quantity: 7, rate: 85 }]);
   });
 
   it('carries the optional dates and description when they are filled', () => {
@@ -323,12 +331,20 @@ describe('toInvoiceFormValues', () => {
       issueDate: '2026-10-01',
       dueDate: '2026-10-31',
       paidDate: '2026-10-12',
+      periodStart: '2026-09-01',
+      periodEnd: '2026-09-30',
       lines: [
-        { description: 'Asha Rao — Mobile', quantity: '160', rate: '150' },
-        { description: 'Ben Cho — Web', quantity: '160', rate: '75' },
+        { description: 'Asha Rao — Mobile', headcount: '1', quantity: '160', rate: '150' },
+        { description: 'Ben Cho — Web', headcount: '1', quantity: '160', rate: '75' },
       ],
     });
-    expect(toInvoiceFormValues(invoices[1])).toMatchObject({ description: '', dueDate: '', paidDate: '' });
+    expect(toInvoiceFormValues(invoices[1])).toMatchObject({
+      description: '',
+      dueDate: '',
+      paidDate: '',
+      periodStart: '',
+      periodEnd: '',
+    });
   });
 });
 
@@ -564,5 +580,95 @@ describe('resource headcount in the form', () => {
   it('sends the headcount as a number and opens on a resource’s', () => {
     expect(toResourceBody(resourceForm({ headcount: '3' })).headcount).toBe(3);
     expect(toResourceFormValues(resources[0]).headcount).toBe('1');
+  });
+});
+
+describe('Qty on a line', () => {
+  it('multiplies Qty, hours and rate', () => {
+    expect(lineAmount({ headcount: '3', quantity: '160', rate: '27' })).toBe(12_960);
+    expect(lineAmount({ headcount: '', quantity: '160', rate: '27' })).toBeNull();
+  });
+
+  it('totals the owner’s sample', () => {
+    expect(
+      linesTotal([
+        { headcount: '3', quantity: '160', rate: '27' },
+        { headcount: '1', quantity: '160', rate: '54' },
+      ]),
+    ).toBe(21_600);
+  });
+
+  it.each(['1', '3', '1000'])('accepts a Qty of %s', (headcount) => {
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ headcount })] }))).toEqual([]);
+  });
+
+  it.each([
+    ['', 'Qty is required'],
+    ['0', 'Qty must be from 1 to 1,000'],
+    ['1001', 'Qty must be from 1 to 1,000'],
+    ['2.5', 'Enter a whole number, like 3'],
+    ['-1', 'Enter a whole number, like 3'],
+    ['many', 'Enter a whole number, like 3'],
+  ])('says a Qty of %j is wrong: %s', (headcount, message) => {
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ headcount })] }))).toEqual([message]);
+  });
+
+  it('counts the Qty in the line limit', () => {
+    const big = lineForm({ headcount: '1000', quantity: '100', rate: '21475' });
+    const fine = lineForm({ headcount: '1000', quantity: '100', rate: '21474' });
+
+    expect(invoiceMessages(invoiceForm({ lines: [big] }))).toEqual(['This line is too large']);
+    expect(invoiceMessages(invoiceForm({ lines: [fine] }))).toEqual([]);
+  });
+
+  it('sends the Qty as a number', () => {
+    const body = toInvoiceBody(invoiceForm({ lines: [lineForm({ headcount: '3' })] }));
+
+    expect(body.lineItems).toEqual([{ description: 'Backend work', headcount: 3, quantity: 160, rate: 150 }]);
+  });
+});
+
+describe('the billing period in the invoice form', () => {
+  it('accepts both dates, neither, and a one-day period', () => {
+    expect(invoiceMessages(invoiceForm({ periodStart: '2026-09-01', periodEnd: '2026-09-30' }))).toEqual([]);
+    expect(invoiceMessages(invoiceForm({ periodStart: '', periodEnd: '' }))).toEqual([]);
+    expect(invoiceMessages(invoiceForm({ periodStart: '2026-09-15', periodEnd: '2026-09-15' }))).toEqual([]);
+  });
+
+  it('wants both dates or neither', () => {
+    expect(invoiceMessages(invoiceForm({ periodStart: '2026-09-01', periodEnd: '' }))).toEqual(['Give both dates, or neither']);
+    expect(invoiceMessages(invoiceForm({ periodStart: '', periodEnd: '2026-09-30' }))).toEqual(['Give both dates, or neither']);
+  });
+
+  it('wants the end on or after the start', () => {
+    expect(invoiceMessages(invoiceForm({ periodStart: '2026-09-30', periodEnd: '2026-09-01' }))).toEqual([
+      'The period must end on or after it starts',
+    ]);
+  });
+
+  it('sends both dates, or null for both', () => {
+    expect(toInvoiceBody(invoiceForm({ periodStart: '2026-09-01', periodEnd: '2026-09-30' }))).toMatchObject({
+      periodStart: '2026-09-01',
+      periodEnd: '2026-09-30',
+    });
+    expect(toInvoiceBody(invoiceForm())).toMatchObject({ periodStart: null, periodEnd: null });
+  });
+});
+
+describe('the number in the invoice form', () => {
+  const withoutNumber = invoiceForm({ number: '' });
+
+  it('is required when the project has no key, or when editing', () => {
+    expect(makeInvoiceFormSchema({ numberRequired: true }).safeParse(withoutNumber).success).toBe(false);
+    expect(invoiceMessages(withoutNumber)).toEqual(['Number is required']);
+  });
+
+  it('may be empty when the server can number the invoice', () => {
+    expect(makeInvoiceFormSchema({ numberRequired: false }).safeParse(withoutNumber).success).toBe(true);
+  });
+
+  it('is sent as null when empty and as typed otherwise', () => {
+    expect(toInvoiceBody(withoutNumber).number).toBeNull();
+    expect(toInvoiceBody(invoiceForm({ number: 'INV-9' })).number).toBe('INV-9');
   });
 });

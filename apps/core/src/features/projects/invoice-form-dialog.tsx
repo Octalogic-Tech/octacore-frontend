@@ -6,14 +6,14 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { statusOf } from '@/lib/core-api';
-import { formatCurrency } from '@/lib/format';
-import { useInvoiceDraft, useSaveInvoice } from './api';
+import { addMonths, endOfMonth, formatCurrency } from '@/lib/format';
+import { useInvoiceDraft, useNextInvoiceNumber, useSaveInvoice } from './api';
 import {
   blankLine,
   draftToLines,
-  invoiceFormSchema,
   lineAmount,
   linesTotal,
+  makeInvoiceFormSchema,
   toInvoiceBody,
   toInvoiceFormValues,
   type BillingType,
@@ -27,8 +27,10 @@ interface InvoiceFormDialogProps {
   projectId: number;
   /** Present when editing, absent when adding. A snapshot taken when the dialog was opened. */
   invoice?: InvoiceRow;
-  /** Null on a project from before billing types. Only a retainer says what its lines are. */
+  /** Null on a project from before billing types. Only a retainer bills hours; any other project bills units. */
   billingType?: BillingType | null;
+  /** The project's key. With one, a new invoice's number may be left empty for the server to fill in. */
+  projectKey?: string;
   /** Where focus goes on close if the element that opened the dialog is gone (the empty state it came from). */
   fallbackFocusId?: string;
 }
@@ -36,6 +38,8 @@ interface InvoiceFormDialogProps {
 type Failure = 'failed' | 'changed-elsewhere' | null;
 
 const NONE = '—';
+const COLUMNS = 'sm:grid-cols-[1fr_4.5rem_6rem_7rem_6rem_5.5rem]';
+const LINE_FIELDS = ['description', 'headcount', 'quantity', 'rate'] as const;
 
 export function InvoiceFormDialog({
   open,
@@ -43,6 +47,7 @@ export function InvoiceFormDialog({
   projectId,
   invoice,
   billingType,
+  projectKey,
   fallbackFocusId,
 }: InvoiceFormDialogProps) {
   const [busy, setBusy] = useState(false);
@@ -54,7 +59,7 @@ export function InvoiceFormDialog({
         if (!busy) onOpenChange(next);
       }}
     >
-      <DialogContent fallbackFocusId={fallbackFocusId} className="max-w-3xl">
+      <DialogContent fallbackFocusId={fallbackFocusId} className="max-w-6xl">
         <DialogTitle>{invoice ? 'Edit invoice' : 'New invoice'}</DialogTitle>
         <DialogDescription>
           An invoice sent to the client, made of lines. Fill in the paid date once it has been paid.
@@ -64,6 +69,7 @@ export function InvoiceFormDialog({
           projectId={projectId}
           invoice={invoice}
           billingType={billingType}
+          projectKey={projectKey}
           onBusyChange={setBusy}
           onClose={() => onOpenChange(false)}
         />
@@ -76,12 +82,16 @@ interface InvoiceEditorProps {
   projectId: number;
   invoice?: InvoiceRow;
   billingType?: BillingType | null;
+  projectKey?: string;
   onBusyChange: (busy: boolean) => void;
   onClose: () => void;
 }
 
-function InvoiceEditor({ projectId, invoice, billingType, onBusyChange, onClose }: InvoiceEditorProps) {
+function InvoiceEditor({ projectId, invoice, billingType, projectKey, onBusyChange, onClose }: InvoiceEditorProps) {
   const adding = invoice === undefined;
+  // With a key the server can number a new invoice; when editing, or with no key, a number must be given.
+  const numberRequired = !adding || !projectKey;
+  const unit = billingType === 'retainer' ? 'Hours' : 'Units';
   const save = useSaveInvoice(projectId);
   const draft = useInvoiceDraft(projectId, adding);
   const [failure, setFailure] = useState<Failure>(null);
@@ -90,14 +100,24 @@ function InvoiceEditor({ projectId, invoice, billingType, onBusyChange, onClose 
     control,
     handleSubmit,
     watch,
+    getValues,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<InvoiceFormValues>({
-    resolver: zodResolver(invoiceFormSchema),
+    resolver: zodResolver(makeInvoiceFormSchema({ numberRequired })),
     defaultValues: toInvoiceFormValues(invoice),
   });
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'lines' });
   const lines = watch('lines');
+  const issueDate = watch('issueDate');
+  const next = useNextInvoiceNumber(projectId, issueDate, !numberRequired && addMonths(issueDate, 0) !== '');
   const seeded = useRef(false);
+  // The last value this form filled in by itself. A date is only ever replaced while it is empty or still exactly
+  // this: a date the person typed, or one already saved on an invoice, is never touched.
+  const autoDue = useRef('');
+  const autoEnd = useRef('');
+  const issueField = register('issueDate');
+  const startField = register('periodStart');
 
   useEffect(() => {
     onBusyChange(isSubmitting);
@@ -112,6 +132,26 @@ function InvoiceEditor({ projectId, invoice, billingType, onBusyChange, onClose 
     const seed = draftToLines(draft.data);
     if (seed.length > 0) replace(seed);
   }, [adding, draft.data, replace]);
+
+  function fillDueDate(issue: string) {
+    const due = addMonths(issue, 3);
+    if (due === '') return;
+    const current = getValues('dueDate');
+    if (current === '' || current === autoDue.current) {
+      setValue('dueDate', due, { shouldDirty: true });
+      autoDue.current = due;
+    }
+  }
+
+  function fillPeriodEnd(start: string) {
+    const end = endOfMonth(start);
+    if (end === '') return;
+    const current = getValues('periodEnd');
+    if (current === '' || current === autoEnd.current) {
+      setValue('periodEnd', end, { shouldDirty: true });
+      autoEnd.current = end;
+    }
+  }
 
   const submit = handleSubmit(async (values) => {
     setFailure(null);
@@ -130,12 +170,23 @@ function InvoiceEditor({ projectId, invoice, billingType, onBusyChange, onClose 
 
   const building = adding && draft.isLoading;
   const linesMessage = errors.lines?.root?.message ?? errors.lines?.message;
+  const nextNumber = next.data?.number;
 
   return (
     <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
-      <div className="grid gap-6 sm:grid-cols-2">
-        <Field label="Number" htmlFor="invoice-number" error={errors.number?.message}>
-          <Input {...fieldA11y('invoice-number', errors.number?.message)} {...register('number')} autoComplete="off" />
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <Field
+          label="Number"
+          htmlFor="invoice-number"
+          error={errors.number?.message}
+          hint={numberRequired ? undefined : 'Leave empty to use the next number.'}
+        >
+          <Input
+            {...fieldA11y('invoice-number', errors.number?.message)}
+            {...register('number')}
+            placeholder={!numberRequired && nextNumber ? `Next: ${nextNumber}` : undefined}
+            autoComplete="off"
+          />
         </Field>
         <Field label="Description" htmlFor="invoice-description" error={errors.description?.message}>
           <Input
@@ -145,7 +196,15 @@ function InvoiceEditor({ projectId, invoice, billingType, onBusyChange, onClose 
           />
         </Field>
         <Field label="Issue date" htmlFor="invoice-issue-date" error={errors.issueDate?.message}>
-          <Input {...fieldA11y('invoice-issue-date', errors.issueDate?.message)} {...register('issueDate')} type="date" />
+          <Input
+            {...fieldA11y('invoice-issue-date', errors.issueDate?.message)}
+            {...issueField}
+            onChange={(event) => {
+              void issueField.onChange(event);
+              fillDueDate(event.target.value);
+            }}
+            type="date"
+          />
         </Field>
         <Field label="Due date" htmlFor="invoice-due-date" error={errors.dueDate?.message}>
           <Input {...fieldA11y('invoice-due-date', errors.dueDate?.message)} {...register('dueDate')} type="date" />
@@ -157,6 +216,24 @@ function InvoiceEditor({ projectId, invoice, billingType, onBusyChange, onClose 
           hint="Leave empty if the client has not paid."
         >
           <Input {...fieldA11y('invoice-paid-date', errors.paidDate?.message)} {...register('paidDate')} type="date" />
+        </Field>
+        <Field label="Billing period start" htmlFor="invoice-period-start" error={errors.periodStart?.message}>
+          <Input
+            {...fieldA11y('invoice-period-start', errors.periodStart?.message)}
+            {...startField}
+            onChange={(event) => {
+              void startField.onChange(event);
+              fillPeriodEnd(event.target.value);
+            }}
+            type="date"
+          />
+        </Field>
+        <Field label="Billing period end" htmlFor="invoice-period-end" error={errors.periodEnd?.message}>
+          <Input
+            {...fieldA11y('invoice-period-end', errors.periodEnd?.message)}
+            {...register('periodEnd')}
+            type="date"
+          />
         </Field>
       </div>
 
@@ -182,10 +259,11 @@ function InvoiceEditor({ projectId, invoice, billingType, onBusyChange, onClose 
                 their own names for assistive technology, and below `sm` each row stacks. */}
             <div
               aria-hidden="true"
-              className="hidden gap-2 text-small font-semibold text-navy-80 sm:grid sm:grid-cols-[1fr_6rem_7rem_6rem_5.5rem]"
+              className={`hidden gap-2 text-small font-semibold text-navy-80 sm:grid ${COLUMNS}`}
             >
               <span>Description</span>
-              <span>Quantity</span>
+              <span>Qty</span>
+              <span>{unit}</span>
               <span>Rate</span>
               <span className="text-right">Amount</span>
               <span />
@@ -195,32 +273,27 @@ function InvoiceEditor({ projectId, invoice, billingType, onBusyChange, onClose 
               const number = index + 1;
               const rowErrors = errors.lines?.[index];
               const amount = lineAmount(lines?.[index] ?? blankLine);
+              const names = {
+                description: `Line ${number} description`,
+                headcount: `Line ${number} qty`,
+                quantity: `Line ${number} ${unit.toLowerCase()}`,
+                rate: `Line ${number} rate`,
+              };
+              const placeholders = { description: 'Description', headcount: 'Qty', quantity: unit, rate: 'Rate' };
               return (
                 <div key={field.id} role="group" aria-label={`Line ${number}`} className="grid gap-1">
-                  <div className="grid items-start gap-2 sm:grid-cols-[1fr_6rem_7rem_6rem_5.5rem]">
-                    <Input
-                      {...fieldA11y(`line-${number}-description`, rowErrors?.description?.message)}
-                      {...register(`lines.${index}.description`)}
-                      aria-label={`Line ${number} description`}
-                      placeholder="Description"
-                      autoComplete="off"
-                    />
-                    <Input
-                      {...fieldA11y(`line-${number}-quantity`, rowErrors?.quantity?.message)}
-                      {...register(`lines.${index}.quantity`)}
-                      aria-label={`Line ${number} quantity`}
-                      placeholder="Quantity"
-                      inputMode="numeric"
-                      autoComplete="off"
-                    />
-                    <Input
-                      {...fieldA11y(`line-${number}-rate`, rowErrors?.rate?.message)}
-                      {...register(`lines.${index}.rate`)}
-                      aria-label={`Line ${number} rate`}
-                      placeholder="Rate"
-                      inputMode="numeric"
-                      autoComplete="off"
-                    />
+                  <div className={`grid items-start gap-2 ${COLUMNS}`}>
+                    {LINE_FIELDS.map((name) => (
+                      <Input
+                        key={name}
+                        {...fieldA11y(`line-${number}-${name}`, rowErrors?.[name]?.message)}
+                        {...register(`lines.${index}.${name}`)}
+                        aria-label={names[name]}
+                        placeholder={placeholders[name]}
+                        inputMode={name === 'description' ? undefined : 'numeric'}
+                        autoComplete="off"
+                      />
+                    ))}
                     <p className="tabular py-3 text-right text-small">
                       <span className="sr-only">{`Line ${number} amount `}</span>
                       {amount === null ? NONE : formatCurrency(amount)}
@@ -234,9 +307,9 @@ function InvoiceEditor({ projectId, invoice, billingType, onBusyChange, onClose 
                       Remove
                     </Button>
                   </div>
-                  {/* Every message the row has (a blank quantity must not hide a blank rate), each with the id
-                      its input's aria-describedby points at. */}
-                  {(['description', 'quantity', 'rate'] as const).map((name) => {
+                  {/* Every message the row has (a blank hours must not hide a blank rate), each with the id its
+                      input's aria-describedby points at. */}
+                  {LINE_FIELDS.map((name) => {
                     const message = rowErrors?.[name]?.message;
                     return message ? (
                       <p key={name} id={`line-${number}-${name}-error`} role="alert" className="text-small text-foreground">
