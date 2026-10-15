@@ -1,12 +1,17 @@
 import type { Bill } from '@/features/bills/types';
-import type { Project } from '@/features/projects/types';
+import type { ProjectRow } from '@/features/projects/schema';
 import { summarize } from './summary';
 
-const project = (id: number, totalValue: number, totalOutstanding: number): Project => ({
+const project = (id: number, totalValue: number, totalOutstanding: number): ProjectRow => ({
   id,
   name: `Project ${id}`,
   description: '',
-  client: 'Client A',
+  clientId: 1,
+  clientName: 'Client A',
+  projectType: 'product',
+  billingType: 'retainer',
+  projectTypeLabel: 'Product',
+  billingTypeLabel: 'Retainer',
   totalValue,
   totalOutstanding,
 });

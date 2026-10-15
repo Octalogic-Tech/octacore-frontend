@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
 import { SearchField } from '@/components/search-field';
@@ -10,11 +11,17 @@ import { filterBy } from '@/lib/filter';
 import { formatCurrency } from '@/lib/format';
 import { useProjects } from './api';
 
+const NONE = '—';
+
 export function ProjectsPage() {
-  const { data, isLoading, isError, refetch } = useProjects();
+  const projects = useProjects();
   const [search, setSearch] = useState('');
 
-  const filtered = useMemo(() => filterBy(data ?? [], search, ['name', 'client', 'description']), [data, search]);
+  const rows = useMemo(() => projects.data ?? [], [projects.data]);
+  const filtered = useMemo(
+    () => filterBy(rows, search, ['name', 'description', 'clientName', 'projectTypeLabel', 'billingTypeLabel']),
+    [rows, search],
+  );
   const paging = usePagedRows(filtered);
 
   return (
@@ -35,10 +42,10 @@ export function ProjectsPage() {
 
       <Panel>
         <QueryBoundary
-          isLoading={isLoading}
-          isError={isError}
-          onRetry={() => void refetch()}
-          isEmpty={!data?.length}
+          isLoading={projects.isLoading}
+          isError={projects.isError}
+          onRetry={() => void projects.refetch()}
+          isEmpty={!projects.data?.length}
           empty={<p className="text-body">No projects yet.</p>}
         >
           {filtered.length === 0 ? (
@@ -50,6 +57,8 @@ export function ProjectsPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Client</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Billing</TableHead>
                     <TableHead className="text-right">Total value</TableHead>
                     <TableHead className="text-right">Outstanding</TableHead>
                   </TableRow>
@@ -57,8 +66,17 @@ export function ProjectsPage() {
                 <TableBody>
                   {paging.pageRows.map((project) => (
                     <TableRow key={project.id}>
-                      <TableCell className="font-semibold">{project.name}</TableCell>
-                      <TableCell>{project.client}</TableCell>
+                      <TableCell className="font-semibold">
+                        <Link
+                          to={`/projects/${project.id}`}
+                          className="inline-flex min-h-11 items-center decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline"
+                        >
+                          {project.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell>{project.clientName}</TableCell>
+                      <TableCell>{project.projectTypeLabel || NONE}</TableCell>
+                      <TableCell>{project.billingTypeLabel || NONE}</TableCell>
                       <TableCell className="tabular text-right">{formatCurrency(project.totalValue)}</TableCell>
                       <TableCell className="tabular text-right">{formatCurrency(project.totalOutstanding)}</TableCell>
                     </TableRow>

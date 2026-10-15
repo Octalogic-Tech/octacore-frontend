@@ -1,10 +1,14 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import type { Project } from './types';
+import { coreApi, unwrap } from '@/lib/core-api';
+import { projectRowsSchema } from './schema';
+
+// The list and a project's own page sit under one prefix, so a change refetches both.
+const PROJECTS = ['projects'] as const;
+const PROJECT_LIST = [...PROJECTS, 'list'] as const;
 
 export function useProjects() {
   return useQuery({
-    queryKey: ['projects'] as const,
-    queryFn: async () => (await api.get<Project[]>('/projects')).data,
+    queryKey: PROJECT_LIST,
+    queryFn: async () => unwrap((await coreApi.get('/projects')).data, projectRowsSchema),
   });
 }
