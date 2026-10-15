@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AxiosError } from 'axios';
 import { coreApi } from '@/lib/core-api';
 import { clientsEnvelope } from '@/test/fixtures/clients';
 import { projectRows, projectsEnvelope } from '@/test/fixtures/projects';
@@ -179,6 +180,29 @@ describe('ProjectsPage: writing', () => {
     renderWithProviders(<ProjectsPage />);
     await user.click(await screen.findByRole('button', { name: 'Delete Website' }));
     await user.click(screen.getByRole('button', { name: 'Delete project' }));
+    await waitFor(() =>
+      expect(vi.mocked(coreApi.get).mock.calls.filter(([path]) => path === '/projects')).toHaveLength(2),
+    );
+  });
+});
+
+describe('ProjectsPage: a project removed elsewhere', () => {
+  it('treats deleting a project that was already removed as done: the dialog closes and the list refetches', async () => {
+    vi.mocked(coreApi.delete).mockRejectedValue(
+      new AxiosError('gone', 'ERR_BAD_REQUEST', undefined, null, {
+        status: 404,
+        data: {},
+        statusText: '404',
+        headers: {},
+        config: {} as never,
+      }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectsPage />);
+    await user.click(await screen.findByRole('button', { name: 'Delete Website' }));
+    await user.click(screen.getByRole('button', { name: 'Delete project' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(screen.queryByText('That did not work. Try again.')).not.toBeInTheDocument();
     await waitFor(() =>
       expect(vi.mocked(coreApi.get).mock.calls.filter(([path]) => path === '/projects')).toHaveLength(2),
     );

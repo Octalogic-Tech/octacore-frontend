@@ -1,5 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { AxiosError } from 'axios';
 import { coreApi } from '@/lib/core-api';
 import { clientsEnvelope } from '@/test/fixtures/clients';
 import { projectRows } from '@/test/fixtures/projects';
@@ -163,5 +164,46 @@ describe('ProjectFormDialog: editing', () => {
     expect(await screen.findByText('Clients could not be loaded.')).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Acme' })).toBeInTheDocument();
     expect(screen.getByLabelText('Client')).toHaveValue('1');
+  });
+});
+
+const failure = (status: number) =>
+  new AxiosError('failed', 'ERR_BAD_REQUEST', undefined, null, {
+    status,
+    data: {},
+    statusText: String(status),
+    headers: {},
+    config: {} as never,
+  });
+
+const REMOVED_ELSEWHERE =
+  'This project was removed elsewhere, so it cannot be saved. Close this dialog and go back to Projects.';
+
+describe('ProjectFormDialog: a project removed elsewhere', () => {
+  async function submit(project?: ProjectRow) {
+    const user = userEvent.setup();
+    openDialog({ project });
+    if (!project) {
+      await user.type(screen.getByLabelText('Name'), 'Hooli');
+      await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
+      await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
+    }
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+  }
+
+  it('does not offer a retry that cannot work when the project is gone (404 on edit)', async () => {
+    vi.mocked(coreApi.patch).mockRejectedValue(failure(404));
+    await submit(website);
+    expect(await screen.findByRole('alert')).toHaveTextContent(REMOVED_ELSEWHERE);
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it.each([
+    ['a 500 on edit', 'patch', website, 500],
+    ['a 404 on add', 'post', undefined, 404],
+  ] as const)('still offers a retry for %s', async (_label, method, project, status) => {
+    vi.mocked(coreApi[method]).mockRejectedValue(failure(status));
+    await submit(project);
+    expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
   });
 });

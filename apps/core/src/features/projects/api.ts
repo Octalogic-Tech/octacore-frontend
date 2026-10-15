@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { coreApi, unwrap } from '@/lib/core-api';
+import { coreApi, statusOf, unwrap } from '@/lib/core-api';
 import { invoiceRowsSchema, projectRowSchema, projectRowsSchema, type InvoiceBody, type ProjectBody } from './schema';
 
 // The list and a project's own page sit under one prefix, so a change refetches both.
@@ -30,6 +30,15 @@ export function useInvoices(projectId: number) {
   });
 }
 
+/** A delete that finds the record already gone has reached the state the person asked for, so it is not a failure. */
+async function deleteRecord(path: string) {
+  try {
+    await coreApi.delete(path);
+  } catch (error) {
+    if (statusOf(error) !== 404) throw error;
+  }
+}
+
 /**
  * Adds the project (no id) or edits it. A create answer is not read: nothing here needs the new id, and a schema
  * mismatch on a saved row must never look like a failed save (a retry would add the project twice).
@@ -46,16 +55,21 @@ export function useSaveProject() {
 }
 
 /**
- * The service soft-deletes the project's invoices with it, so only the project is deleted from here. Only the list is
- * refetched: the deleted project's own page would answer 404, and nothing shows it any more.
+ * The service soft-deletes the project's invoices with it, so only the project is deleted from here. The list is
+ * refetched. The project's own page and its invoices are only marked stale, without a refetch: the page showing them is
+ * about to go and would be told 404, but going back to it later must ask again instead of showing the deleted project
+ * from the cache.
  */
 export function useDeleteProject() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async (id: number) => {
-      await coreApi.delete(`/projects/${id}`);
-    },
-    onSuccess: () => client.invalidateQueries({ queryKey: PROJECT_LIST, exact: true }),
+    mutationFn: (id: number) => deleteRecord(`/projects/${id}`),
+    onSuccess: (_data, id) =>
+      Promise.all([
+        client.invalidateQueries({ queryKey: PROJECT_LIST, exact: true }),
+        client.invalidateQueries({ queryKey: [...PROJECTS, 'detail', id], refetchType: 'none' }),
+        client.invalidateQueries({ queryKey: [...INVOICES, { projectId: id }], refetchType: 'none' }),
+      ]),
   });
 }
 
@@ -98,9 +112,7 @@ export function useSetInvoicePaid() {
 export function useDeleteInvoice() {
   const refresh = useRefreshInvoicesAndProjects();
   return useMutation({
-    mutationFn: async (id: number) => {
-      await coreApi.delete(`/invoices/${id}`);
-    },
+    mutationFn: (id: number) => deleteRecord(`/invoices/${id}`),
     onSuccess: refresh,
   });
 }

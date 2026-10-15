@@ -22,11 +22,13 @@ interface InvoiceFormDialogProps {
   projectId: number;
   /** Present when editing, absent when adding. A snapshot taken when the dialog was opened. */
   invoice?: InvoiceRow;
+  /** Where focus goes on close if the element that opened the dialog is gone (the empty state it came from). */
+  fallbackFocusId?: string;
 }
 
 type Failure = 'failed' | 'changed-elsewhere' | null;
 
-export function InvoiceFormDialog({ open, onOpenChange, projectId, invoice }: InvoiceFormDialogProps) {
+export function InvoiceFormDialog({ open, onOpenChange, projectId, invoice, fallbackFocusId }: InvoiceFormDialogProps) {
   const save = useSaveInvoice(projectId);
   const [failure, setFailure] = useState<Failure>(null);
   const {
@@ -66,7 +68,7 @@ export function InvoiceFormDialog({ open, onOpenChange, projectId, invoice }: In
         if (!isSubmitting) onOpenChange(next);
       }}
     >
-      <DialogContent>
+      <DialogContent fallbackFocusId={fallbackFocusId}>
         <DialogTitle>{invoice ? 'Edit invoice' : 'New invoice'}</DialogTitle>
         <DialogDescription>An invoice sent to the client. Fill in the paid date once it has been paid.</DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6">

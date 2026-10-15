@@ -1,10 +1,12 @@
-import { screen, waitFor, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
-import { Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
 import { coreApi } from '@/lib/core-api';
+import { queryDefaults } from '@/lib/query-client';
 import { clientsEnvelope } from '@/test/fixtures/clients';
-import { invoicesEnvelope, projectEnvelope, projectRows } from '@/test/fixtures/projects';
+import { invoiceRows, invoicesEnvelope, projectEnvelope, projectRows } from '@/test/fixtures/projects';
 import { renderWithProviders } from '@/test/utils';
 import { ProjectDetailPage } from './project-detail-page';
 
@@ -271,5 +273,104 @@ describe('ProjectDetailPage: the project', () => {
     await waitFor(() => expect(coreApi.delete).toHaveBeenCalledWith('/projects/1'));
     expect(await screen.findByText('Projects list')).toBeInTheDocument();
     expect(gets('/projects/1')).toHaveLength(1);
+  });
+});
+
+function Back() {
+  const navigate = useNavigate();
+  return <button onClick={() => navigate(-1)}>Go back</button>;
+}
+
+describe('ProjectDetailPage: things removed elsewhere', () => {
+  it('treats deleting an invoice that was already removed as done: the dialog closes and the table refetches', async () => {
+    vi.mocked(coreApi.delete).mockRejectedValue(failure(404));
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Delete INV-001' }));
+    await user.click(screen.getByRole('button', { name: 'Delete invoice' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(screen.queryByText('That did not work. Try again.')).not.toBeInTheDocument();
+    await waitFor(() => expect(gets('/invoices')).toHaveLength(2));
+  });
+
+  it('treats deleting a project that was already removed as done: it returns to the list', async () => {
+    vi.mocked(coreApi.delete).mockRejectedValue(failure(404));
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Delete project' }));
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete project' }));
+    expect(await screen.findByText('Projects list')).toBeInTheDocument();
+  });
+
+  it('still says so when a delete fails for any other reason', async () => {
+    vi.mocked(coreApi.delete).mockRejectedValue(failure(500));
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Delete INV-001' }));
+    await user.click(screen.getByRole('button', { name: 'Delete invoice' }));
+    expect(await screen.findByText('That did not work. Try again.')).toBeInTheDocument();
+  });
+
+  it('moves focus to Add invoice after the first invoice replaces the empty state that held the opener', async () => {
+    serve({
+      project: projectEnvelope({ ...projectRows[0], totalValue: 0, totalOutstanding: 0 }),
+      invoices: invoicesEnvelope([]),
+    });
+    vi.mocked(coreApi.post).mockImplementation((async () => {
+      serve();
+      return saved;
+    }) as never);
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Add the first invoice' }));
+    await user.type(screen.getByLabelText('Number'), 'INV-003');
+    await user.type(screen.getByLabelText('Amount'), '500');
+    await user.type(screen.getByLabelText('Issue date'), '2026-12-01');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add invoice' })).toHaveFocus());
+  });
+
+  it('moves focus to Add invoice after a delete removes the row that held the opener', async () => {
+    vi.mocked(coreApi.delete).mockImplementation((async () => {
+      serve({ invoices: invoicesEnvelope(invoiceRows.slice(1)) });
+      return saved;
+    }) as never);
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('button', { name: 'Delete INV-001' }));
+    await user.click(screen.getByRole('button', { name: 'Delete invoice' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add invoice' })).toHaveFocus());
+  });
+
+  it('does not show a deleted project from the cache when the person goes back to it', async () => {
+    vi.mocked(coreApi.delete).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    // The app's own cache settings: a fresh query is trusted for 30 seconds, which is how a deleted project lingers.
+    const client = new QueryClient({
+      defaultOptions: { queries: { ...queryDefaults.queries, retry: false }, mutations: queryDefaults.mutations },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/projects', '/projects/1']} initialIndex={1}>
+          <Routes>
+            <Route path="/projects/:id" element={<ProjectDetailPage />} />
+            <Route path="/projects" element={<p>Projects list</p>} />
+          </Routes>
+          <Back />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Delete project' }));
+    await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete project' }));
+    expect(await screen.findByText('Projects list')).toBeInTheDocument();
+
+    // From now on the service no longer has the project, and its invoices went with it.
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/invoices') return { data: invoicesEnvelope([]) };
+      throw failure(404);
+    }) as never);
+    await user.click(screen.getByRole('button', { name: 'Go back' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Project not found' })).toBeInTheDocument();
   });
 });

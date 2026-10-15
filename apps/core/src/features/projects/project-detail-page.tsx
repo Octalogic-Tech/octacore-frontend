@@ -21,6 +21,7 @@ import { InvoiceFormDialog } from './invoice-form-dialog';
 import { ProjectFormDialog } from './project-form-dialog';
 import { sortInvoices, type InvoiceRow } from './schema';
 
+// The focus fallback for every dialog on this page: <main> is not focusable, and Add invoice is always there.
 const NONE = '—';
 const INT32_MAX = 2_147_483_647;
 
@@ -91,7 +92,9 @@ function ProjectDetail({ projectId }: { projectId: number }) {
             <Button variant="quiet" onClick={() => setDeletingProject(true)}>
               Delete project
             </Button>
-            <Button onClick={() => setInvoiceForm({ open: true })}>Add invoice</Button>
+            <Button id="add-invoice" onClick={() => setInvoiceForm({ open: true })}>
+              Add invoice
+            </Button>
           </>
         ) : null}
       </PageHeader>
@@ -220,13 +223,14 @@ function ProjectDetail({ projectId }: { projectId: number }) {
         ) : null}
       </QueryBoundary>
 
-      <ProjectFormDialog open={projectForm} onOpenChange={setProjectForm} project={data} fallbackFocusId="main" />
+      <ProjectFormDialog open={projectForm} onOpenChange={setProjectForm} project={data} fallbackFocusId="add-invoice" />
 
       <InvoiceFormDialog
         open={invoiceForm.open}
         onOpenChange={(open) => setInvoiceForm((current) => ({ ...current, open }))}
         projectId={projectId}
         invoice={invoiceForm.invoice}
+        fallbackFocusId="add-invoice"
       />
 
       <ConfirmDialog
@@ -235,7 +239,7 @@ function ProjectDetail({ projectId }: { projectId: number }) {
         title={`Delete project “${data?.name ?? ''}”?`}
         description="Its invoices are deleted with it. This cannot be undone."
         confirmLabel="Delete project"
-        fallbackFocusId="main"
+        fallbackFocusId="add-invoice"
         onConfirm={async () => {
           await removeProject.mutateAsync(projectId);
           navigate('/projects');
@@ -250,7 +254,7 @@ function ProjectDetail({ projectId }: { projectId: number }) {
         title={`Delete invoice “${invoiceToDelete?.number ?? ''}”?`}
         description="This cannot be undone."
         confirmLabel="Delete invoice"
-        fallbackFocusId="main"
+        fallbackFocusId="add-invoice"
         onConfirm={async () => {
           if (invoiceToDelete) await removeInvoice.mutateAsync(invoiceToDelete.id);
         }}

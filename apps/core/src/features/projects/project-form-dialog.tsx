@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useClients } from '@/features/clients/api';
+import { statusOf } from '@/lib/core-api';
 import { useSaveProject } from './api';
 import {
   billingOptions,
@@ -37,7 +38,7 @@ export function ProjectFormDialog({
 }: ProjectFormDialogProps) {
   const clients = useClients();
   const save = useSaveProject();
-  const [failed, setFailed] = useState(false);
+  const [failure, setFailure] = useState<'failed' | 'removed' | null>(null);
   const {
     register,
     handleSubmit,
@@ -48,7 +49,7 @@ export function ProjectFormDialog({
   useEffect(() => {
     if (open) {
       reset(toProjectFormValues(project));
-      setFailed(false);
+      setFailure(null);
     }
   }, [open, project, reset]);
 
@@ -65,11 +66,13 @@ export function ProjectFormDialog({
   }, [clients.data, project]);
 
   const submit = handleSubmit(async (values) => {
-    setFailed(false);
+    setFailure(null);
     try {
       await save.mutateAsync({ id: project?.id, body: toProjectBody(values) });
-    } catch {
-      setFailed(true);
+    } catch (error) {
+      // Saving again would repeat an edit that cannot succeed once the project is gone (404). Anything else may be a
+      // passing fault, so it says to try again.
+      setFailure(project !== undefined && statusOf(error) === 404 ? 'removed' : 'failed');
       return;
     }
     onOpenChange(false);
@@ -131,9 +134,14 @@ export function ProjectFormDialog({
               ))}
             </Select>
           </Field>
-          {failed ? (
+          {failure === 'failed' ? (
             <p role="alert" className="text-small font-semibold text-foreground">
               That did not save. Try again.
+            </p>
+          ) : null}
+          {failure === 'removed' ? (
+            <p role="alert" className="text-small font-semibold text-foreground">
+              This project was removed elsewhere, so it cannot be saved. Close this dialog and go back to Projects.
             </p>
           ) : null}
           <div className="flex flex-wrap items-center gap-3">
