@@ -141,7 +141,7 @@ export function ProjectsPage() {
           if (!open) setToDelete(null);
         }}
         title={`Delete project “${toDelete?.name ?? ''}”?`}
-        description="Its invoices are deleted with it. This cannot be undone."
+        description="Its resources and invoices are deleted with it. This cannot be undone."
         confirmLabel="Delete project"
         fallbackFocusId="project-search"
         onConfirm={async () => {

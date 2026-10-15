@@ -313,6 +313,9 @@ describe('ProjectDetailPage: the project', () => {
     renderAt('/projects/1');
     await user.click(await screen.findByRole('button', { name: 'Delete project' }));
     expect(screen.getByText('Delete project “Website”?')).toBeInTheDocument();
+    expect(
+      screen.getByText('Its resources and invoices are deleted with it. This cannot be undone.'),
+    ).toBeInTheDocument();
     expect(coreApi.delete).not.toHaveBeenCalled();
     await user.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Delete project' }));
     await waitFor(() => expect(coreApi.delete).toHaveBeenCalledWith('/projects/1'));

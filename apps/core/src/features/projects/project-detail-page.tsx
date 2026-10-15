@@ -243,7 +243,7 @@ function ProjectDetail({ projectId }: { projectId: number }) {
         open={deletingProject}
         onOpenChange={setDeletingProject}
         title={`Delete project “${data?.name ?? ''}”?`}
-        description="Its invoices are deleted with it. This cannot be undone."
+        description="Its resources and invoices are deleted with it. This cannot be undone."
         confirmLabel="Delete project"
         fallbackFocusId="add-invoice"
         onConfirm={async () => {
