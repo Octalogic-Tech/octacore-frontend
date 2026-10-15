@@ -141,7 +141,7 @@ The visual world was set by the brief ("based off the octa-website") and is take
 - Hairline rules at 0 degrees; framed panels with one 45 degree cut at the bottom right.
 - Square corners everywhere. No shadows (one 1px seam inside the primary button), no gradients, no red.
 - Underline fields; a drawn arm leads each label and turns teal while the field has focus.
-- No icon set: every mark (the arm, the arm-arrow, the tick, chevron, close) is drawn.
+- One icon set, for table row actions only: Lucide through `react-icons/lu`. Every other mark (the arm, the arm-arrow, the tick, chevron, close) is drawn.
 
 ## Colors
 
@@ -149,7 +149,7 @@ Exactly the website's palette; no other colour enters the app.
 
 - **Octalogic Navy** (navy): ink on grey, the sidebar, primary buttons, solid badges, the frame of panels.
 - **Night Navy** (navy-deep): the resting arm cell of a primary button.
-- **Arm Teal** (teal): action and current state only: the current nav arm, the button cell on hover and focus, the label arm while a field has focus, the underline under a hovered quiet button. It never carries text on grey (1.39:1).
+- **Arm Teal** (teal): action and current state only: the current nav arm, the button cell on hover and focus, the label arm while a field has focus, the underline under a hovered quiet button or icon button. It never carries text on grey (1.39:1).
 - **Paper Grey** (grey): the page, panels and dialogs. There is no white surface; white is only text on navy.
 - **Slate Navy** (navy-80): secondary text, table headings, descriptions. **Muted Navy** (navy-72): placeholders, hints and the resting rule of a field.
 - **Hairline** (rule) and **Soft Hairline** (rule-soft): row dividers and the hover fill of a row.
@@ -191,7 +191,7 @@ Every corner is square (radius 0). The one non-rectangular silhouette is the 45 
 ## Components
 
 ### Buttons
-A label and a square arm cell, 52px tall; one primary per screen. Hover and keyboard focus fill the cell teal and swing the arm into an arrow (220ms and 320ms). The quiet variant is plain text, 44px tall, with a teal underline on hover and focus; it is used for Edit, Delete, Cancel, Previous and Next.
+A label and a square arm cell, 52px tall; one primary per screen. Hover and keyboard focus fill the cell teal and swing the arm into an arrow (220ms and 320ms). The quiet variant is plain text, 44px tall, with a teal underline on hover and focus; it is used for Cancel, Previous and Next. A table row's actions (Edit, Delete, Preview and the like) are icon buttons instead: one Lucide mark in a 44px square with no text, named by its `aria-label` and tooltip ("Edit Acme"), and a teal bar under the mark on hover and focus.
 
 ### Navigation
 Logo, then three groups of text links (Work, Finance, Reference data). Group names are Small, uppercase and tracked, in Mist. The current page is white with a teal arm and `aria-current="page"`; other links are Mist with a Mist arm that lengthens and turns teal on hover.
@@ -218,7 +218,7 @@ Loading is five grey rows. A failed request is an inline message with a Try agai
 
 ### Do:
 - **Do** keep teal a signal and every corner square.
-- **Do** draw marks (arm, tick, chevron, close) rather than importing an icon set.
+- **Do** draw marks (arm, tick, chevron, close) rather than importing an icon set, and give a row action an icon button with a label that names the row.
 - **Do** put amounts and dates in tabular figures and keep every target at least 44px.
 - **Do** say what is true in loading, empty and error states.
 - **Do** keep motion to hover and focus, and respect `prefers-reduced-motion`.
@@ -226,7 +226,7 @@ Loading is five grey rows. A failed request is an inline message with a Try agai
 ### Don't:
 - **Don't** use red, gradients, glows or shadows; delete is a confirmation, not a colour.
 - **Don't** round a corner.
-- **Don't** add an icon library (the design-contract test fails on one).
+- **Don't** add an icon set other than Lucide (the design-contract test fails on one), or use icons outside table row actions.
 - **Don't** put teal text on grey, or Muted Navy text on a hover fill.
 - **Don't** build metric tiles; put numbers inside a sentence on a ruled line.
 - **Don't** show a control until the thing behind it exists. Sign-in exists, so the login page and the account popover (Change password, Sign out) are shown; a settings control still waits for something real behind it.

@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
+import { LuCircleCheck, LuDownload, LuEye, LuMail, LuPencil, LuTrash2, LuUndo2 } from 'react-icons/lu';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { IconButton } from '@/components/ui/icon-button';
 import { LinkArrow } from '@/components/ui/link-arrow';
 import { Panel } from '@/components/ui/panel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -224,55 +226,43 @@ function ProjectDetail({ projectId }: { projectId: number }) {
                           )}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-right">
-                          <Button
-                            variant="quiet"
-                            aria-label={`Preview ${invoice.number}`}
+                          <IconButton
+                            label={`Preview ${invoice.number}`}
+                            icon={LuEye}
                             onClick={() => {
                               setNotice(null);
                               setPreviewing(invoice);
                             }}
-                          >
-                            Preview
-                          </Button>
-                          <Button
-                            variant="quiet"
-                            aria-label={`Download ${invoice.number}`}
+                          />
+                          <IconButton
+                            label={`Download ${invoice.number}`}
+                            icon={LuDownload}
                             onClick={() => void download(invoice)}
-                          >
-                            Download
-                          </Button>
-                          <Button
-                            variant="quiet"
-                            aria-label={`Email ${invoice.number}`}
+                          />
+                          <IconButton
+                            label={`Email ${invoice.number}`}
+                            icon={LuMail}
                             onClick={() => {
                               setNotice(null);
                               setEmailing(invoice);
                             }}
-                          >
-                            Email
-                          </Button>
-                          <Button
-                            variant="quiet"
-                            aria-label={`${invoice.paidDate ? 'Mark unpaid' : 'Mark paid'} ${invoice.number}`}
+                          />
+                          <IconButton
+                            label={`${invoice.paidDate ? 'Mark unpaid' : 'Mark paid'} ${invoice.number}`}
+                            icon={invoice.paidDate ? LuUndo2 : LuCircleCheck}
                             disabled={setPaid.isPending}
                             onClick={() => void togglePaid(invoice)}
-                          >
-                            {invoice.paidDate ? 'Mark unpaid' : 'Mark paid'}
-                          </Button>
-                          <Button
-                            variant="quiet"
-                            aria-label={`Edit ${invoice.number}`}
+                          />
+                          <IconButton
+                            label={`Edit ${invoice.number}`}
+                            icon={LuPencil}
                             onClick={() => setInvoiceForm({ open: true, invoice })}
-                          >
-                            Edit
-                          </Button>
-                          <Button
-                            variant="quiet"
-                            aria-label={`Delete ${invoice.number}`}
+                          />
+                          <IconButton
+                            label={`Delete ${invoice.number}`}
+                            icon={LuTrash2}
                             onClick={() => setInvoiceToDelete(invoice)}
-                          >
-                            Delete
-                          </Button>
+                          />
                         </TableCell>
                       </TableRow>
                     ))}

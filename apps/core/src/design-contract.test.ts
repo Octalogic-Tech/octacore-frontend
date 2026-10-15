@@ -21,8 +21,11 @@ const code = files.filter((f) => /\.tsx?$/.test(f.path));
 const css = files.filter((f) => f.path.endsWith('.css'));
 
 describe('design contract', () => {
-  it('uses no icon or legacy UI libraries', () => {
-    const banned = /from ['"](lucide-react|@mui\/[^'"]*|@emotion\/[^'"]*|styled-components|formik|yup)['"]/;
+  it('uses no icon set but Lucide (react-icons/lu), and no legacy UI libraries', () => {
+    const banned =
+      /from ['"](lucide-react|react-icons\/(?!lu['"/])[^'"]*|@mui\/[^'"]*|@emotion\/[^'"]*|styled-components|formik|yup)['"]/;
+    expect(banned.test("from 'react-icons/fa'")).toBe(true);
+    expect(banned.test("from 'react-icons/lu'")).toBe(false);
     expect(code.filter((f) => banned.test(f.text)).map((f) => f.path)).toEqual([]);
   });
 

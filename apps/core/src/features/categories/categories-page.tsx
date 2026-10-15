@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
+import { LuPencil, LuTrash2 } from 'react-icons/lu';
 import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
 import { SearchField } from '@/components/search-field';
 import { TablePager } from '@/components/table-pager';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
@@ -77,16 +79,16 @@ export function CategoriesPage() {
                       <TableCell className="tabular">{formatDate(category.createdDate)}</TableCell>
                       <TableCell className="tabular">{formatDate(category.updatedDate)}</TableCell>
                       <TableCell className="whitespace-nowrap text-right">
-                        <Button
-                          variant="quiet"
-                          aria-label={`Edit ${category.name}`}
+                        <IconButton
+                          label={`Edit ${category.name}`}
+                          icon={LuPencil}
                           onClick={() => setForm({ open: true, category })}
-                        >
-                          Edit
-                        </Button>
-                        <Button variant="quiet" aria-label={`Delete ${category.name}`} onClick={() => setToDelete(category)}>
-                          Delete
-                        </Button>
+                        />
+                        <IconButton
+                          label={`Delete ${category.name}`}
+                          icon={LuTrash2}
+                          onClick={() => setToDelete(category)}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

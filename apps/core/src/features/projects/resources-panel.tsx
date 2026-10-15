@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import { LuPencil, LuTrash2 } from 'react-icons/lu';
 import { QueryBoundary } from '@/components/query-boundary';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatCurrency } from '@/lib/format';
@@ -74,16 +76,16 @@ export function ResourcesPanel({ projectId, billingType }: ResourcesPanelProps) 
                   <TableCell className="tabular text-right">{resource.headcount}</TableCell>
                   <TableCell className="tabular text-right">{formatCurrency(resource.rate)}</TableCell>
                   <TableCell className="whitespace-nowrap text-right">
-                    <Button
-                      variant="quiet"
-                      aria-label={`Edit ${resource.name}`}
+                    <IconButton
+                      label={`Edit ${resource.name}`}
+                      icon={LuPencil}
                       onClick={() => setForm({ open: true, resource })}
-                    >
-                      Edit
-                    </Button>
-                    <Button variant="quiet" aria-label={`Delete ${resource.name}`} onClick={() => setToDelete(resource)}>
-                      Delete
-                    </Button>
+                    />
+                    <IconButton
+                      label={`Delete ${resource.name}`}
+                      icon={LuTrash2}
+                      onClick={() => setToDelete(resource)}
+                    />
                   </TableCell>
                 </TableRow>
               ))}
