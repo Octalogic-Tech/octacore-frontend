@@ -96,6 +96,15 @@ describe('ResourcesPanel: reading', () => {
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByRole('table', { name: 'Resources' })).toBeInTheDocument();
   });
+
+  it('shows how many people a row stands for, in a Qty column', async () => {
+    serve(resourcesEnvelope([{ ...resourceRows[0], name: 'Fullstack Developer', headcount: 3 }]));
+    renderPanel();
+    const table = await screen.findByRole('table', { name: 'Resources' });
+    expect(within(table).getByRole('columnheader', { name: 'Qty' })).toBeInTheDocument();
+    const row = within(table).getAllByRole('row')[1];
+    expect(within(row).getByText('3')).toBeInTheDocument();
+  });
 });
 
 describe('ResourcesPanel: changing', () => {

@@ -71,6 +71,7 @@ describe('ResourceFormDialog: adding', () => {
       name: 'Zoë Müller',
       personId: null,
       categoryId: 2,
+      headcount: 1,
       rate: 85,
     });
   });
@@ -90,6 +91,7 @@ describe('ResourceFormDialog: adding', () => {
       name: 'Ben Cho',
       personId: 2,
       categoryId: 1,
+      headcount: 1,
       rate: 75,
     });
   });
@@ -167,6 +169,7 @@ describe('ResourceFormDialog: editing', () => {
       name: 'Asha Rao',
       personId: null,
       categoryId: 2,
+      headcount: 1,
       rate: 150,
     });
   });
@@ -230,5 +233,50 @@ describe('ResourceFormDialog: failures', () => {
     vi.mocked(coreApi[method]).mockRejectedValue(failure(status));
     await submitFilledForm(resource);
     expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
+  });
+});
+
+describe('ResourceFormDialog: number of people', () => {
+  it('starts at 1, with a hint, and sends the number typed', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog();
+    await screen.findByRole('option', { name: 'Mobile' });
+    expect(screen.getByLabelText('Number of people')).toHaveValue('1');
+    expect(screen.getByText('How many people this row stands for.')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Name'), 'Fullstack Developer');
+    await user.selectOptions(screen.getByLabelText('Category'), 'Mobile');
+    await user.clear(screen.getByLabelText('Number of people'));
+    await user.type(screen.getByLabelText('Number of people'), '3');
+    await user.type(screen.getByLabelText('Rate per hour'), '27');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith('/project-resources', {
+      projectId: 1,
+      name: 'Fullstack Developer',
+      personId: null,
+      categoryId: 2,
+      headcount: 3,
+      rate: 27,
+    });
+  });
+
+  it.each(['0', '1001', '2.5', ''])('refuses %j people and sends nothing', async (people) => {
+    const user = userEvent.setup();
+    openDialog();
+    await screen.findByRole('option', { name: 'Mobile' });
+    await user.type(screen.getByLabelText('Name'), 'Zoë');
+    await user.selectOptions(screen.getByLabelText('Category'), 'Mobile');
+    await user.type(screen.getByLabelText('Rate per hour'), '85');
+    await user.clear(screen.getByLabelText('Number of people'));
+    if (people) await user.type(screen.getByLabelText('Number of people'), people);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(/Number of people is required|Enter a whole number from 1 to 1,000/)).toBeInTheDocument();
+    expect(coreApi.post).not.toHaveBeenCalled();
+  });
+
+  it('opens on the resource’s headcount', async () => {
+    openDialog({ resource: asha });
+    expect(screen.getByLabelText('Number of people')).toHaveValue('1');
   });
 });

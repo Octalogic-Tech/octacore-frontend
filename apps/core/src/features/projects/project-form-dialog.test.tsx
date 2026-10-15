@@ -56,6 +56,8 @@ describe('ProjectFormDialog: adding', () => {
       clientId: 1,
       projectType: 'product',
       billingType: 'retainer',
+      key: null,
+      billingAddress: null,
     });
   });
 
@@ -74,6 +76,8 @@ describe('ProjectFormDialog: adding', () => {
       clientId: null,
       projectType: 'resource_augmentation',
       billingType: 'fixed_cost',
+      key: null,
+      billingAddress: null,
     });
   });
 
@@ -121,6 +125,8 @@ describe('ProjectFormDialog: editing', () => {
       clientId: 1,
       projectType: 'resource_augmentation',
       billingType: 'retainer',
+      key: 'WEB',
+      billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',
     });
   });
 
@@ -143,6 +149,8 @@ describe('ProjectFormDialog: editing', () => {
       clientId: 1,
       projectType: 'product',
       billingType: 'fixed_cost',
+      key: null,
+      billingAddress: null,
     });
   });
 
@@ -205,5 +213,83 @@ describe('ProjectFormDialog: a project removed elsewhere', () => {
     vi.mocked(coreApi[method]).mockRejectedValue(failure(status));
     await submit(project);
     expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
+  });
+});
+
+describe('ProjectFormDialog: key and billing address', () => {
+  it('shows the key in capitals as it is typed and sends it, with the address and its line breaks', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog();
+    await user.type(screen.getByLabelText('Name'), 'Hooli');
+    await user.type(screen.getByLabelText('Key'), 'tko');
+    expect(screen.getByLabelText('Key')).toHaveValue('TKO');
+    await user.type(screen.getByLabelText('Billing address'), 'Michael Jordan,{enter}Venice');
+    await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
+    await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith('/projects', {
+      name: 'Hooli',
+      description: null,
+      clientId: null,
+      projectType: 'product',
+      billingType: 'retainer',
+      key: 'TKO',
+      billingAddress: 'Michael Jordan,\nVenice',
+    });
+  });
+
+  it('explains the key and the address', () => {
+    openDialog();
+
+    expect(screen.getByText('A short code used to number invoices, like TKO. Leave empty to type invoice numbers by hand.')).toBeInTheDocument();
+    expect(screen.getByText('Printed under “Billed to” on the invoice.')).toBeInTheDocument();
+  });
+
+  it.each(['T', 'ABCDEFGHIJK', 'T-K', 'T K'])('refuses a key of %j and sends nothing', async (key) => {
+    const user = userEvent.setup();
+    openDialog();
+    await user.type(screen.getByLabelText('Name'), 'Hooli');
+    await user.type(screen.getByLabelText('Key'), key);
+    await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
+    await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Use 2 to 10 letters or digits')).toBeInTheDocument();
+    expect(coreApi.post).not.toHaveBeenCalled();
+  });
+
+  it('says so on the key field, and stays open, when another project already uses it', async () => {
+    const taken = new AxiosError('failed', 'ERR_BAD_REQUEST', undefined, null, {
+      status: 409,
+      data: { statusCode: 409, message: 'Another project already uses the key "TKO"', data: null },
+      statusText: '409',
+      headers: {},
+      config: {} as never,
+    });
+    vi.mocked(coreApi.post).mockRejectedValue(taken);
+    const user = userEvent.setup();
+    openDialog();
+    await user.type(screen.getByLabelText('Name'), 'Hooli');
+    await user.type(screen.getByLabelText('Key'), 'TKO');
+    await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
+    await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('Another project already uses that key.')).toBeInTheDocument();
+    expect(screen.queryByText('That did not save. Try again.')).not.toBeInTheDocument();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it('opens on the key and address of the project and clears both with null', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ project: website });
+    expect(screen.getByLabelText('Key')).toHaveValue('WEB');
+    expect(screen.getByLabelText('Billing address')).toHaveValue('Acme Corporation\n1 Anvil Road\nPune, India');
+    await user.clear(screen.getByLabelText('Key'));
+    await user.clear(screen.getByLabelText('Billing address'));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ key: null, billingAddress: null }));
   });
 });

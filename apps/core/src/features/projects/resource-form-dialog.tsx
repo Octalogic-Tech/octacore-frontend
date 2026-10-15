@@ -161,6 +161,19 @@ export function ResourceFormDialog({
               ))}
             </Select>
           </Field>
+          <Field
+            label="Number of people"
+            htmlFor="resource-headcount"
+            error={errors.headcount?.message}
+            hint="How many people this row stands for."
+          >
+            <Input
+              {...fieldA11y('resource-headcount', errors.headcount?.message)}
+              {...register('headcount')}
+              inputMode="numeric"
+              autoComplete="off"
+            />
+          </Field>
           <Field label="Rate per hour" htmlFor="resource-rate" error={errors.rate?.message} hint="Whole dollars.">
             <Input
               {...fieldA11y('resource-rate', errors.rate?.message)}

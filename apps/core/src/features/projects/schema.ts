@@ -91,6 +91,9 @@ export function sortInvoices(rows: readonly InvoiceRow[]): InvoiceRow[] {
 export const projectFormSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
   description: z.string().trim(),
+  // Capitals are applied as the person types and again on send; 2 to 10 letters or digits, or empty for none.
+  key: z.string().trim().refine((value) => value === '' || /^[A-Za-z0-9]{2,10}$/.test(value), 'Use 2 to 10 letters or digits'),
+  billingAddress: z.string().trim().max(1000, 'Keep the address under 1,000 characters'),
   clientId: z.string(),
   projectType: z.string().refine((value) => projectTypeSchema.safeParse(value).success, 'Choose a project type'),
   billingType: z.string().refine((value) => billingTypeSchema.safeParse(value).success, 'Choose a billing type'),
@@ -101,6 +104,8 @@ export type ProjectFormValues = z.infer<typeof projectFormSchema>;
 export const emptyProjectForm: ProjectFormValues = {
   name: '',
   description: '',
+  key: '',
+  billingAddress: '',
   clientId: '',
   projectType: '',
   billingType: '',
@@ -111,6 +116,8 @@ export function toProjectFormValues(project?: ProjectRow): ProjectFormValues {
   return {
     name: project.name,
     description: project.description,
+    key: project.key,
+    billingAddress: project.billingAddress,
     // A client the service no longer embeds comes back as null: the form opens on None, not on a stale id.
     clientId: project.clientId !== null && project.clientName !== '' ? String(project.clientId) : '',
     // A legacy project has no types yet: the selects open on "Choose" and saving asks for a pick.
@@ -125,6 +132,8 @@ export interface ProjectBody {
   clientId: number | null;
   projectType: ProjectType;
   billingType: BillingType;
+  key: string | null;
+  billingAddress: string | null;
 }
 
 /** Empty optional fields go as null: PATCH changes only what it is sent, and null clears. */
@@ -135,6 +144,8 @@ export function toProjectBody(values: ProjectFormValues): ProjectBody {
     clientId: values.clientId === '' ? null : Number(values.clientId),
     projectType: projectTypeSchema.parse(values.projectType),
     billingType: billingTypeSchema.parse(values.billingType),
+    key: values.key.trim() === '' ? null : values.key.trim().toUpperCase(),
+    billingAddress: orNull(values.billingAddress.trim()),
   };
 }
 
@@ -317,6 +328,15 @@ export const resourceFormSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
   personId: z.string(),
   categoryId: z.string().min(1, 'Choose a category'),
+  // Text, like the rate. How many people the row stands for.
+  headcount: z
+    .string()
+    .trim()
+    .superRefine((text, context) => {
+      if (text === '') context.addIssue({ code: 'custom', message: 'Number of people is required' });
+      else if (!/^\d+$/.test(text) || Number(text) < 1 || Number(text) > 1000)
+        context.addIssue({ code: 'custom', message: 'Enter a whole number from 1 to 1,000' });
+    }),
   // Text, not a number input: a comma, a currency sign or a decimal point must be told what is wrong, not dropped.
   rate: z
     .string()
@@ -330,7 +350,13 @@ export const resourceFormSchema = z.object({
 
 export type ResourceFormValues = z.infer<typeof resourceFormSchema>;
 
-export const emptyResourceForm: ResourceFormValues = { name: '', personId: '', categoryId: '', rate: '' };
+export const emptyResourceForm: ResourceFormValues = {
+  name: '',
+  personId: '',
+  categoryId: '',
+  headcount: '1',
+  rate: '',
+};
 
 export function toResourceFormValues(resource?: ResourceRow): ResourceFormValues {
   if (!resource) return emptyResourceForm;
@@ -340,6 +366,7 @@ export function toResourceFormValues(resource?: ResourceRow): ResourceFormValues
     // "Choose", not on a stale id.
     personId: resource.personId !== null && resource.personName !== '' ? String(resource.personId) : '',
     categoryId: resource.categoryName !== '' ? String(resource.categoryId) : '',
+    headcount: String(resource.headcount),
     rate: String(resource.rate),
   };
 }
@@ -348,6 +375,7 @@ export interface ResourceBody {
   name: string;
   personId: number | null;
   categoryId: number;
+  headcount: number;
   rate: number;
 }
 
@@ -357,6 +385,7 @@ export function toResourceBody(values: ResourceFormValues): ResourceBody {
     name: values.name,
     personId: values.personId === '' ? null : Number(values.personId),
     categoryId: Number(values.categoryId),
+    headcount: Number(values.headcount),
     rate: Number(values.rate),
   };
 }

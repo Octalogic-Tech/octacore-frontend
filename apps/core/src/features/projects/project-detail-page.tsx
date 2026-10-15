@@ -125,6 +125,14 @@ function ProjectDetail({ projectId }: { projectId: number }) {
                 <dt className="text-small text-navy-80">Billing type</dt>
                 <dd className="font-semibold">{data.billingTypeLabel || NONE}</dd>
               </div>
+              <div>
+                <dt className="text-small text-navy-80">Key</dt>
+                <dd className="font-semibold">{data.key || NONE}</dd>
+              </div>
+              <div className="sm:col-span-2">
+                <dt className="text-small text-navy-80">Billing address</dt>
+                <dd className="whitespace-pre-line font-semibold">{data.billingAddress || NONE}</dd>
+              </div>
             </dl>
             {data.description ? <p className="mb-6 max-w-[64ch] text-body">{data.description}</p> : null}
 

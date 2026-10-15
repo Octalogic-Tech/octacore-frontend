@@ -92,6 +92,9 @@ describe('ProjectDetailPage: reading', () => {
     expect(screen.getByText('Resource augmentation')).toBeInTheDocument();
     expect(screen.getByText('Retainer')).toBeInTheDocument();
     expect(screen.getByText('Marketing site.')).toBeInTheDocument();
+    expect(screen.getByText('WEB')).toBeInTheDocument();
+    expect(screen.getByText(/Acme Corporation/)).toBeInTheDocument();
+    expect(screen.getByText(/1 Anvil Road/)).toBeInTheDocument();
     expect(await screen.findByText(sentence('$12,000 outstanding of $48,000 invoiced.'))).toBeInTheDocument();
   });
 
@@ -100,7 +103,7 @@ describe('ProjectDetailPage: reading', () => {
     serve({ project: projectEnvelope(legacy), invoices: invoicesEnvelope([]), resources: resourcesEnvelope([]) });
     renderAt('/projects/1');
     await screen.findByRole('heading', { level: 1, name: 'Legacy portal' });
-    expect(screen.getAllByText('—')).toHaveLength(3);
+    expect(screen.getAllByText('—')).toHaveLength(5);
   });
 
   it('lists the invoices newest issue date first, each with its status', async () => {

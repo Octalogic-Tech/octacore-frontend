@@ -178,6 +178,8 @@ describe('toProjectBody', () => {
       clientId: null,
       projectType: 'product',
       billingType: 'retainer',
+      key: null,
+      billingAddress: null,
     });
     expect(toProjectBody(projectForm({ description: 'Marketing site.', clientId: '12' }))).toMatchObject({
       description: 'Marketing site.',
@@ -195,6 +197,8 @@ describe('toProjectFormValues', () => {
     expect(toProjectFormValues(projects[0])).toEqual({
       name: 'Website',
       description: 'Marketing site.',
+      key: 'WEB',
+      billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',
       clientId: '1',
       projectType: 'resource_augmentation',
       billingType: 'retainer',
@@ -441,7 +445,13 @@ describe('resource form schema', () => {
 
 describe('toResourceBody', () => {
   it('sends an empty person as null and the ids and rate as numbers', () => {
-    expect(toResourceBody(resourceForm())).toEqual({ name: 'Asha Rao', personId: null, categoryId: 2, rate: 150 });
+    expect(toResourceBody(resourceForm())).toEqual({
+      name: 'Asha Rao',
+      personId: null,
+      categoryId: 2,
+      headcount: 1,
+      rate: 150,
+    });
     expect(toResourceBody(resourceForm({ personId: '7' }))).toMatchObject({ personId: 7 });
   });
 
@@ -460,6 +470,7 @@ describe('toResourceFormValues', () => {
       name: 'Asha Rao',
       personId: '1',
       categoryId: '2',
+      headcount: '1',
       rate: '150',
     });
     expect(toResourceFormValues(resources[1])).toMatchObject({ personId: '' });
@@ -500,5 +511,58 @@ describe('the new fields the pages read', () => {
         ? resourceRowsSchema
         : invoiceRowsSchema;
     expect(schema.safeParse([row]).success).toBe(false);
+  });
+});
+
+describe('project key and billing address in the form', () => {
+  const form = (over: Partial<ProjectFormValues> = {}) => projectForm(over);
+
+  it('accepts no key, a key of 2 to 10 letters or digits in any case, and spaces around it', () => {
+    for (const key of ['', 'tk', 'TKO', 'a1', 'ABCDEFGHIJ', '  tko  ']) {
+      expect(projectMessages(form({ key }))).toEqual([]);
+    }
+  });
+
+  it.each(['T', 'ABCDEFGHIJK', 'T-K', 'T K', 'TK!', 'É1'])('says a key of %j is not 2 to 10 letters or digits', (key) => {
+    expect(projectMessages(form({ key }))).toEqual(['Use 2 to 10 letters or digits']);
+  });
+
+  it('sends the key trimmed and in capitals, and null when empty', () => {
+    expect(toProjectBody(form({ key: '  tko ' })).key).toBe('TKO');
+    expect(toProjectBody(form({ key: '' })).key).toBeNull();
+  });
+
+  it('sends the billing address with its line breaks, and null when empty', () => {
+    expect(toProjectBody(form({ billingAddress: 'Michael Jordan,\nVenice' })).billingAddress).toBe('Michael Jordan,\nVenice');
+    expect(toProjectBody(form({ billingAddress: '   ' })).billingAddress).toBeNull();
+  });
+
+  it('refuses an address over 1,000 characters', () => {
+    expect(projectMessages(form({ billingAddress: 'x'.repeat(1001) }))).toEqual(['Keep the address under 1,000 characters']);
+    expect(projectMessages(form({ billingAddress: 'x'.repeat(1000) }))).toEqual([]);
+  });
+
+  it('opens on a project’s key and address', () => {
+    expect(toProjectFormValues(projects[0])).toMatchObject({ key: 'WEB', billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India' });
+    expect(toProjectFormValues(projects[2])).toMatchObject({ key: '', billingAddress: '' });
+  });
+});
+
+describe('resource headcount in the form', () => {
+  it('starts at one person', () => {
+    expect(emptyResourceForm.headcount).toBe('1');
+  });
+
+  it.each(['1', '3', '1000', ' 7 '])('accepts %j people', (headcount) => {
+    expect(resourceMessages(resourceForm({ headcount }))).toEqual([]);
+  });
+
+  it.each(['', '0', '1001', '2.5', '-1', 'many', '1,000'])('refuses %j people', (headcount) => {
+    expect(resourceMessages(resourceForm({ headcount }))).toHaveLength(1);
+  });
+
+  it('sends the headcount as a number and opens on a resource’s', () => {
+    expect(toResourceBody(resourceForm({ headcount: '3' })).headcount).toBe(3);
+    expect(toResourceFormValues(resources[0]).headcount).toBe('1');
   });
 });

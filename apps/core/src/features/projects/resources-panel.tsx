@@ -60,6 +60,7 @@ export function ResourcesPanel({ projectId, billingType }: ResourcesPanelProps) 
                 <TableHead>Name</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead>Person</TableHead>
+                <TableHead className="text-right">Qty</TableHead>
                 <TableHead className="text-right">Rate per hour</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -70,6 +71,7 @@ export function ResourcesPanel({ projectId, billingType }: ResourcesPanelProps) 
                   <TableCell className="font-semibold">{resource.name}</TableCell>
                   <TableCell>{resource.categoryName || NONE}</TableCell>
                   <TableCell>{resource.personName || NONE}</TableCell>
+                  <TableCell className="tabular text-right">{resource.headcount}</TableCell>
                   <TableCell className="tabular text-right">{formatCurrency(resource.rate)}</TableCell>
                   <TableCell className="whitespace-nowrap text-right">
                     <Button
