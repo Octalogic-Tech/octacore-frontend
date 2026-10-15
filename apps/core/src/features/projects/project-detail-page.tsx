@@ -235,6 +235,7 @@ function ProjectDetail({ projectId }: { projectId: number }) {
         onOpenChange={(open) => setInvoiceForm((current) => ({ ...current, open }))}
         projectId={projectId}
         invoice={invoiceForm.invoice}
+        billingType={data?.billingType}
         fallbackFocusId="add-invoice"
       />
 

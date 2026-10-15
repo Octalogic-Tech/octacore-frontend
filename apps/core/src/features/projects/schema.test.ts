@@ -1,11 +1,15 @@
 import { draftBody, invoiceRows, projectRows, resourceRows } from '@/test/fixtures/projects';
 import {
+  blankLine,
+  draftToLines,
   emptyInvoiceForm,
   emptyProjectForm,
   emptyResourceForm,
   invoiceDraftSchema,
   invoiceFormSchema,
   invoiceRowsSchema,
+  lineAmount,
+  linesTotal,
   projectFormSchema,
   projectRowsSchema,
   resourceFormSchema,
@@ -18,6 +22,7 @@ import {
   toResourceBody,
   toResourceFormValues,
   type InvoiceFormValues,
+  type LineFormValues,
   type ProjectFormValues,
   type ResourceFormValues,
 } from './schema';
@@ -34,11 +39,18 @@ const projectForm = (over: Partial<ProjectFormValues> = {}): ProjectFormValues =
   ...over,
 });
 
+const lineForm = (over: Partial<LineFormValues> = {}): LineFormValues => ({
+  description: 'Backend work',
+  quantity: '160',
+  rate: '150',
+  ...over,
+});
+
 const invoiceForm = (over: Partial<InvoiceFormValues> = {}): InvoiceFormValues => ({
   ...emptyInvoiceForm,
   number: 'INV-001',
-  amount: '1200',
   issueDate: '2026-10-01',
+  lines: [lineForm()],
   ...over,
 });
 
@@ -199,52 +211,93 @@ describe('toProjectFormValues', () => {
   });
 });
 
+describe('line helpers', () => {
+  it('multiplies whole numbers and gives null for anything else', () => {
+    expect(lineAmount({ quantity: '160', rate: '150' })).toBe(24000);
+    expect(lineAmount({ quantity: ' 2 ', rate: '0' })).toBe(0);
+    for (const bad of [{ quantity: '', rate: '5' }, { quantity: '1.5', rate: '5' }, { quantity: '3', rate: '$5' }]) {
+      expect(lineAmount(bad)).toBeNull();
+    }
+  });
+
+  it('totals only the lines that have an amount', () => {
+    expect(linesTotal([lineForm(), lineForm({ quantity: '', rate: '' }), lineForm({ quantity: '1', rate: '5' })])).toBe(
+      24005,
+    );
+  });
+
+  it('turns the draft into text fields', () => {
+    expect(draftToLines(draftBody)).toEqual([
+      { description: 'Asha Rao — Mobile', quantity: '160', rate: '150' },
+      { description: 'Ben Cho — Web', quantity: '160', rate: '75' },
+    ]);
+  });
+});
+
 describe('invoice form schema', () => {
-  it('accepts the three required fields', () => {
+  it('accepts a number, an issue date and one complete line', () => {
     expect(invoiceMessages(invoiceForm())).toEqual([]);
   });
 
-  it('asks for a number, an amount and an issue date', () => {
+  it('asks for a number, an issue date and, on the blank line, a description, quantity and rate', () => {
     expect(invoiceMessages(emptyInvoiceForm)).toEqual([
       'Number is required',
-      'Amount is required',
       'Issue date is required',
+      'Description is required',
+      'Quantity is required',
+      'Rate is required',
     ]);
   });
 
-  it('refuses a number of only spaces', () => {
+  it('refuses a number of only spaces and an invoice with no lines', () => {
     expect(invoiceMessages(invoiceForm({ number: '   ' }))).toEqual(['Number is required']);
+    expect(invoiceMessages(invoiceForm({ lines: [] }))).toEqual(['Add at least one line']);
   });
 
-  it.each(['1,000', '$1000', '12.5', '-5', '1e3', 'lots', '١٢٣'])(
-    'says an amount of %s is not a whole number',
-    (amount) => {
-      expect(invoiceMessages(invoiceForm({ amount }))).toEqual(['Enter a whole number, like 1200']);
-    },
-  );
+  it.each(['1,000', '12.5', '-5', '1e3', 'lots', '١٢٣'])('says a quantity of %s is not a whole number', (quantity) => {
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity })] }))).toEqual(['Enter a whole number, like 160']);
+  });
 
-  it('accepts the smallest and the largest amount, and refuses one past the limit', () => {
-    expect(invoiceMessages(invoiceForm({ amount: '0' }))).toEqual([]);
-    expect(invoiceMessages(invoiceForm({ amount: '2147483647' }))).toEqual([]);
-    expect(invoiceMessages(invoiceForm({ amount: '2147483648' }))).toEqual(['Amount is too large']);
-    expect(invoiceMessages(invoiceForm({ amount: '99999999999999999999' }))).toEqual(['Amount is too large']);
+  it.each(['1,200', '$85', '42.50', '-5', '1e3', 'lots'])('says a rate of %s is not a whole number', (rate) => {
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ rate })] }))).toEqual(['Enter a whole number, like 85']);
+  });
+
+  it('keeps the quantity from 1 to 100,000 and the rate to the service’s limit', () => {
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '1', rate: '0' })] }))).toEqual([]);
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '0' })] }))).toEqual([
+      'Quantity must be from 1 to 100,000',
+    ]);
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '100001' })] }))).toEqual([
+      'Quantity must be from 1 to 100,000',
+    ]);
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '1', rate: '2147483647' })] }))).toEqual([]);
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '1', rate: '2147483648' })] }))).toEqual([
+      'Rate is too large',
+    ]);
+  });
+
+  it('refuses a line whose amount would pass the limit, though each field is in range', () => {
+    const line = lineForm({ quantity: '100000', rate: '21475' });
+    expect(invoiceMessages(invoiceForm({ lines: [line] }))).toEqual(['This line is too large']);
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '100000', rate: '21474' })] }))).toEqual([]);
   });
 });
 
 describe('toInvoiceBody', () => {
-  it('sends the amount as a number and empty optional fields as null', () => {
+  it('sends the lines as numbers, empty optional fields as null, and no amount', () => {
     expect(toInvoiceBody(invoiceForm())).toEqual({
       number: 'INV-001',
       description: null,
-      amount: 1200,
       issueDate: '2026-10-01',
       dueDate: null,
       paidDate: null,
+      lineItems: [{ description: 'Backend work', quantity: 160, rate: 150 }],
     });
   });
 
   it('reads leading zeros as the number they spell', () => {
-    expect(toInvoiceBody(invoiceForm({ amount: '007' })).amount).toBe(7);
+    const body = toInvoiceBody(invoiceForm({ lines: [lineForm({ quantity: '007', rate: '085' })] }));
+    expect(body.lineItems).toEqual([{ description: 'Backend work', quantity: 7, rate: 85 }]);
   });
 
   it('carries the optional dates and description when they are filled', () => {
@@ -254,18 +307,22 @@ describe('toInvoiceBody', () => {
 });
 
 describe('toInvoiceFormValues', () => {
-  it('opens empty for a new invoice', () => {
+  it('opens empty, with one blank line, for a new invoice', () => {
     expect(toInvoiceFormValues()).toEqual(emptyInvoiceForm);
+    expect(emptyInvoiceForm.lines).toEqual([blankLine]);
   });
 
-  it('opens on an invoice as text', () => {
+  it('opens on an invoice and its lines as text', () => {
     expect(toInvoiceFormValues(invoices[0])).toEqual({
       number: 'INV-001',
       description: 'October retainer',
-      amount: '36000',
       issueDate: '2026-10-01',
       dueDate: '2026-10-31',
       paidDate: '2026-10-12',
+      lines: [
+        { description: 'Asha Rao — Mobile', quantity: '160', rate: '150' },
+        { description: 'Ben Cho — Web', quantity: '160', rate: '75' },
+      ],
     });
     expect(toInvoiceFormValues(invoices[1])).toMatchObject({ description: '', dueDate: '', paidDate: '' });
   });

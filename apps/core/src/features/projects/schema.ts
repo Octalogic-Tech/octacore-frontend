@@ -131,21 +131,67 @@ export function toProjectBody(values: ProjectFormValues): ProjectBody {
   };
 }
 
+const MAX_QUANTITY = 100_000;
+const WHOLE_NUMBER = /^\d+$/;
+
+/** A line's amount from its text fields: null until both are whole numbers. */
+export function lineAmount(line: { quantity: string; rate: string }): number | null {
+  const quantity = line.quantity.trim();
+  const rate = line.rate.trim();
+  if (!WHOLE_NUMBER.test(quantity) || !WHOLE_NUMBER.test(rate)) return null;
+  return Number(quantity) * Number(rate);
+}
+
+export function linesTotal(lines: readonly { quantity: string; rate: string }[]): number {
+  return lines.reduce((sum, line) => sum + (lineAmount(line) ?? 0), 0);
+}
+
+// Text, not number inputs: a comma, a currency sign or a decimal point must be told what is wrong, not dropped.
+export const lineFormSchema = z
+  .object({
+    description: z.string().trim().min(1, 'Description is required'),
+    quantity: z
+      .string()
+      .trim()
+      .superRefine((text, context) => {
+        if (text === '') context.addIssue({ code: 'custom', message: 'Quantity is required' });
+        else if (!WHOLE_NUMBER.test(text))
+          context.addIssue({ code: 'custom', message: 'Enter a whole number, like 160' });
+        else if (Number(text) < 1 || Number(text) > MAX_QUANTITY)
+          context.addIssue({ code: 'custom', message: 'Quantity must be from 1 to 100,000' });
+      }),
+    rate: z
+      .string()
+      .trim()
+      .superRefine((text, context) => {
+        if (text === '') context.addIssue({ code: 'custom', message: 'Rate is required' });
+        else if (!WHOLE_NUMBER.test(text)) context.addIssue({ code: 'custom', message: 'Enter a whole number, like 85' });
+        else if (Number(text) > INT32_MAX) context.addIssue({ code: 'custom', message: 'Rate is too large' });
+      }),
+  })
+  .superRefine((line, context) => {
+    // Each field can be in range while the line is not: the service refuses a line above its integer limit. Said
+    // only when each field is in range, so a rate that is already too large is not also reported as a large line.
+    const amount = lineAmount(line);
+    const quantity = Number(line.quantity.trim());
+    const rate = Number(line.rate.trim());
+    const eachInRange = quantity >= 1 && quantity <= MAX_QUANTITY && rate <= INT32_MAX;
+    if (amount !== null && eachInRange && amount > INT32_MAX) {
+      context.addIssue({ code: 'custom', path: ['rate'], message: 'This line is too large' });
+    }
+  });
+
+export type LineFormValues = z.infer<typeof lineFormSchema>;
+
+export const blankLine: LineFormValues = { description: '', quantity: '', rate: '' };
+
 export const invoiceFormSchema = z.object({
   number: z.string().trim().min(1, 'Number is required'),
   description: z.string().trim(),
-  // Text, not a number input: a comma, a currency sign or a decimal point must be told what is wrong, not dropped.
-  amount: z
-    .string()
-    .trim()
-    .superRefine((text, context) => {
-      if (text === '') context.addIssue({ code: 'custom', message: 'Amount is required' });
-      else if (!/^\d+$/.test(text)) context.addIssue({ code: 'custom', message: 'Enter a whole number, like 1200' });
-      else if (Number(text) > INT32_MAX) context.addIssue({ code: 'custom', message: 'Amount is too large' });
-    }),
   issueDate: z.string().min(1, 'Issue date is required'),
   dueDate: z.string(),
   paidDate: z.string(),
+  lines: z.array(lineFormSchema).min(1, 'Add at least one line'),
 });
 
 export type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
@@ -153,10 +199,10 @@ export type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 export const emptyInvoiceForm: InvoiceFormValues = {
   number: '',
   description: '',
-  amount: '',
   issueDate: '',
   dueDate: '',
   paidDate: '',
+  lines: [{ ...blankLine }],
 };
 
 export function toInvoiceFormValues(invoice?: InvoiceRow): InvoiceFormValues {
@@ -164,20 +210,34 @@ export function toInvoiceFormValues(invoice?: InvoiceRow): InvoiceFormValues {
   return {
     number: invoice.number,
     description: invoice.description,
-    amount: String(invoice.amount),
     issueDate: invoice.issueDate,
     dueDate: invoice.dueDate ?? '',
     paidDate: invoice.paidDate ?? '',
+    lines:
+      invoice.lineItems.length > 0
+        ? invoice.lineItems.map((item) => ({
+            description: item.description,
+            quantity: String(item.quantity),
+            rate: String(item.rate),
+          }))
+        : [{ ...blankLine }],
   };
+}
+
+export interface LineItemBody {
+  description: string;
+  quantity: number;
+  rate: number;
 }
 
 export interface InvoiceBody {
   number: string;
   description: string | null;
-  amount: number;
   issueDate: string;
   dueDate: string | null;
   paidDate: string | null;
+  /** The whole set: the service replaces the invoice's lines with these. */
+  lineItems: LineItemBody[];
 }
 
 /** An invoice cannot move to another project, so the body never carries one; a create adds `projectId`. */
@@ -185,10 +245,14 @@ export function toInvoiceBody(values: InvoiceFormValues): InvoiceBody {
   return {
     number: values.number,
     description: orNull(values.description),
-    amount: Number(values.amount),
     issueDate: values.issueDate,
     dueDate: orNull(values.dueDate),
     paidDate: orNull(values.paidDate),
+    lineItems: values.lines.map((line) => ({
+      description: line.description,
+      quantity: Number(line.quantity),
+      rate: Number(line.rate),
+    })),
   };
 }
 
@@ -198,6 +262,15 @@ export const invoiceDraftSchema = z.object({
 });
 
 export type InvoiceDraft = z.output<typeof invoiceDraftSchema>;
+
+/** The draft as text fields, the way the editor holds lines. */
+export function draftToLines(draft: InvoiceDraft): LineFormValues[] {
+  return draft.lineItems.map((item) => ({
+    description: item.description,
+    quantity: String(item.quantity),
+    rate: String(item.rate),
+  }));
+}
 
 const MAX_RESOURCE_RATE = 1_000_000;
 

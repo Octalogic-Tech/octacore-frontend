@@ -8,6 +8,7 @@ import { queryDefaults } from '@/lib/query-client';
 import { categoriesEnvelope } from '@/test/fixtures/categories';
 import { clientsEnvelope } from '@/test/fixtures/clients';
 import {
+  draftEnvelope,
   invoiceRows,
   invoicesEnvelope,
   peopleEnvelope,
@@ -49,6 +50,7 @@ const serve = (opts: { project?: unknown; invoices?: unknown; resources?: unknow
     if (path === '/clients') return { data: clientsEnvelope() };
     if (path === '/people') return { data: peopleEnvelope() };
     if (path === '/categories') return { data: categoriesEnvelope() };
+    if (path === '/projects/1/invoice-draft') return { data: draftEnvelope() };
     throw new Error(`unexpected GET ${path}`);
   }) as never);
 
@@ -258,6 +260,7 @@ describe('ProjectDetailPage: invoices', () => {
     await user.click(await screen.findByRole('button', { name: 'Add invoice' }));
     expect(screen.getByRole('dialog', { name: 'New invoice' })).toBeInTheDocument();
     expect(screen.getByLabelText('Number')).toHaveValue('');
+    expect(await screen.findByLabelText('Line 1 description')).toHaveValue('Asha Rao — Mobile');
   });
 
   it('opens the invoice dialog on an invoice', async () => {
@@ -274,7 +277,7 @@ describe('ProjectDetailPage: invoices', () => {
     renderAt('/projects/1');
     await user.click(await screen.findByRole('button', { name: 'Add invoice' }));
     await user.type(screen.getByLabelText('Number'), 'INV-003');
-    await user.type(screen.getByLabelText('Amount'), '500');
+    await screen.findByLabelText('Line 1 description');
     await user.type(screen.getByLabelText('Issue date'), '2026-12-01');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
@@ -366,7 +369,7 @@ describe('ProjectDetailPage: things removed elsewhere', () => {
     renderAt('/projects/1');
     await user.click(await screen.findByRole('button', { name: 'Add the first invoice' }));
     await user.type(screen.getByLabelText('Number'), 'INV-003');
-    await user.type(screen.getByLabelText('Amount'), '500');
+    await screen.findByLabelText('Line 1 description');
     await user.type(screen.getByLabelText('Issue date'), '2026-12-01');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add invoice' })).toHaveFocus());
