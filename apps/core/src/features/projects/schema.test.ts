@@ -1,22 +1,30 @@
-import { invoiceRows, projectRows } from '@/test/fixtures/projects';
+import { draftBody, invoiceRows, projectRows, resourceRows } from '@/test/fixtures/projects';
 import {
   emptyInvoiceForm,
   emptyProjectForm,
+  emptyResourceForm,
+  invoiceDraftSchema,
   invoiceFormSchema,
   invoiceRowsSchema,
   projectFormSchema,
   projectRowsSchema,
+  resourceFormSchema,
+  resourceRowsSchema,
   sortInvoices,
   toInvoiceBody,
   toInvoiceFormValues,
   toProjectBody,
   toProjectFormValues,
+  toResourceBody,
+  toResourceFormValues,
   type InvoiceFormValues,
   type ProjectFormValues,
+  type ResourceFormValues,
 } from './schema';
 
 const projects = projectRowsSchema.parse(projectRows);
 const invoices = invoiceRowsSchema.parse(invoiceRows);
+const resources = resourceRowsSchema.parse(resourceRows);
 
 const projectForm = (over: Partial<ProjectFormValues> = {}): ProjectFormValues => ({
   ...emptyProjectForm,
@@ -260,5 +268,148 @@ describe('toInvoiceFormValues', () => {
       paidDate: '2026-10-12',
     });
     expect(toInvoiceFormValues(invoices[1])).toMatchObject({ description: '', dueDate: '', paidDate: '' });
+  });
+});
+
+describe('invoice rows with their lines', () => {
+  it('keeps the lines and the calculated amount', () => {
+    expect(invoices[0].lineItems).toHaveLength(2);
+    expect(invoices[0].lineItems[0]).toMatchObject({ description: 'Asha Rao — Mobile', quantity: 160, rate: 150, amount: 24000 });
+    expect(invoices[0].amount).toBe(36000);
+  });
+
+  it('rejects an invoice row without its lines', () => {
+    expect(invoiceRowsSchema.safeParse([{ ...invoiceRows[0], lineItems: undefined }]).success).toBe(false);
+  });
+
+  it('rejects a line without a rate', () => {
+    const line = { ...invoiceRows[0].lineItems[0], rate: undefined };
+    expect(invoiceRowsSchema.safeParse([{ ...invoiceRows[0], lineItems: [line] }]).success).toBe(false);
+  });
+});
+
+describe('invoice draft schema', () => {
+  it('reads the lines a new invoice would start with', () => {
+    expect(invoiceDraftSchema.parse(draftBody)).toEqual(draftBody);
+  });
+
+  it('accepts an empty draft', () => {
+    expect(invoiceDraftSchema.parse({ lineItems: [] })).toEqual({ lineItems: [] });
+  });
+
+  it('rejects a bare array and a line with a text quantity', () => {
+    expect(invoiceDraftSchema.safeParse([]).success).toBe(false);
+    expect(invoiceDraftSchema.safeParse({ lineItems: [{ description: 'x', quantity: '160', rate: 1 }] }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe('resource row schema', () => {
+  it('flattens the embedded person and category to their names', () => {
+    expect(resources[0]).toMatchObject({
+      id: 1,
+      projectId: 1,
+      personId: 1,
+      categoryId: 2,
+      name: 'Asha Rao',
+      rate: 150,
+      personName: 'Asha Rao',
+      categoryName: 'Mobile',
+    });
+    expect(resources[0]).not.toHaveProperty('person');
+    expect(resources[0]).not.toHaveProperty('category');
+  });
+
+  it('uses empty text for a resource with no person, keeping the null id', () => {
+    expect(resources[1]).toMatchObject({ personId: null, personName: '', categoryName: 'Web' });
+  });
+
+  it('keeps the ids of a person and a category the service no longer embeds', () => {
+    const [row] = resourceRowsSchema.parse([{ ...resourceRows[0], person: null, category: null }]);
+    expect(row).toMatchObject({ personId: 1, personName: '', categoryId: 2, categoryName: '' });
+  });
+
+  it.each([
+    ['an id', { ...resourceRows[0], id: undefined }],
+    ['a name', { ...resourceRows[0], name: undefined }],
+    ['a rate', { ...resourceRows[0], rate: undefined }],
+    ['a whole-number rate', { ...resourceRows[0], rate: 42.5 }],
+    ['a category id', { ...resourceRows[0], categoryId: undefined }],
+  ])('rejects a resource row without %s', (_label, row) => {
+    expect(resourceRowsSchema.safeParse([row]).success).toBe(false);
+  });
+});
+
+const resourceForm = (over: Partial<ResourceFormValues> = {}): ResourceFormValues => ({
+  ...emptyResourceForm,
+  name: 'Asha Rao',
+  categoryId: '2',
+  rate: '150',
+  ...over,
+});
+
+const resourceMessages = (values: ResourceFormValues) => {
+  const result = resourceFormSchema.safeParse(values);
+  return result.success ? [] : result.error.issues.map((issue) => issue.message);
+};
+
+describe('resource form schema', () => {
+  it('accepts a name, a category and a rate, with no person', () => {
+    expect(resourceMessages(resourceForm())).toEqual([]);
+  });
+
+  it('asks for a name, a category and a rate', () => {
+    expect(resourceMessages(emptyResourceForm)).toEqual([
+      'Name is required',
+      'Choose a category',
+      'Rate is required',
+    ]);
+  });
+
+  it('refuses a name of only spaces', () => {
+    expect(resourceMessages(resourceForm({ name: '   ' }))).toEqual(['Name is required']);
+  });
+
+  it.each(['1,200', '$85', '42.50', '-5', '1e3', 'lots', '١٢٣'])('says a rate of %s is not a whole number', (rate) => {
+    expect(resourceMessages(resourceForm({ rate }))).toEqual(['Enter a whole number, like 85']);
+  });
+
+  it('accepts a rate of 0 and 1,000,000 and refuses one above', () => {
+    expect(resourceMessages(resourceForm({ rate: '0' }))).toEqual([]);
+    expect(resourceMessages(resourceForm({ rate: '1000000' }))).toEqual([]);
+    expect(resourceMessages(resourceForm({ rate: '1000001' }))).toEqual(['Rate is too large']);
+  });
+});
+
+describe('toResourceBody', () => {
+  it('sends an empty person as null and the ids and rate as numbers', () => {
+    expect(toResourceBody(resourceForm())).toEqual({ name: 'Asha Rao', personId: null, categoryId: 2, rate: 150 });
+    expect(toResourceBody(resourceForm({ personId: '7' }))).toMatchObject({ personId: 7 });
+  });
+
+  it('reads leading zeros as the number they spell', () => {
+    expect(toResourceBody(resourceForm({ rate: '085' })).rate).toBe(85);
+  });
+});
+
+describe('toResourceFormValues', () => {
+  it('opens empty for a new resource', () => {
+    expect(toResourceFormValues()).toEqual(emptyResourceForm);
+  });
+
+  it('opens on a resource as text', () => {
+    expect(toResourceFormValues(resources[0])).toEqual({
+      name: 'Asha Rao',
+      personId: '1',
+      categoryId: '2',
+      rate: '150',
+    });
+    expect(toResourceFormValues(resources[1])).toMatchObject({ personId: '' });
+  });
+
+  it('opens on None and Choose for a person and a category the service no longer embeds', () => {
+    const [orphan] = resourceRowsSchema.parse([{ ...resourceRows[0], person: null, category: null }]);
+    expect(toResourceFormValues(orphan)).toMatchObject({ personId: '', categoryId: '' });
   });
 });

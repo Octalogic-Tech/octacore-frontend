@@ -50,15 +50,25 @@ export const projectRowsSchema = z.array(projectRowSchema);
 
 export type ProjectRow = z.output<typeof projectRowSchema>;
 
+export const lineItemRowSchema = z.object({
+  id: z.number().int(),
+  description: z.string(),
+  quantity: z.number().int(),
+  rate: z.number().int(),
+  amount: z.number().int(),
+});
+
 export const invoiceRowSchema = z.object({
   id: z.number().int(),
   projectId: z.number().int(),
   number: z.string(),
   description: z.string().nullable().transform(nullToEmpty),
+  // Calculated by the service from the lines; never sent.
   amount: z.number().int(),
   issueDate: z.iso.date(),
   dueDate: z.iso.date().nullable(),
   paidDate: z.iso.date().nullable(),
+  lineItems: z.array(lineItemRowSchema),
 });
 
 export const invoiceRowsSchema = z.array(invoiceRowSchema);
@@ -179,5 +189,86 @@ export function toInvoiceBody(values: InvoiceFormValues): InvoiceBody {
     issueDate: values.issueDate,
     dueDate: orNull(values.dueDate),
     paidDate: orNull(values.paidDate),
+  };
+}
+
+/** The lines a new invoice would start with (GET /projects/:id/invoice-draft). Quantity is hours on a retainer. */
+export const invoiceDraftSchema = z.object({
+  lineItems: z.array(z.object({ description: z.string(), quantity: z.number().int(), rate: z.number().int() })),
+});
+
+export type InvoiceDraft = z.output<typeof invoiceDraftSchema>;
+
+const MAX_RESOURCE_RATE = 1_000_000;
+
+// `person` and `category` are null with none, or with a soft-deleted one while the id is still set. Only the names
+// are read; the ids stay so a form can tell "no person" from "a person who has gone".
+export const resourceRowSchema = z
+  .object({
+    id: z.number().int(),
+    projectId: z.number().int(),
+    personId: z.number().int().nullable(),
+    categoryId: z.number().int(),
+    name: z.string(),
+    rate: z.number().int(),
+    person: z.object({ name: z.string() }).nullable(),
+    category: z.object({ name: z.string() }).nullable(),
+  })
+  .transform(({ person, category, ...row }) => ({
+    ...row,
+    personName: person?.name ?? '',
+    categoryName: category?.name ?? '',
+  }));
+
+export const resourceRowsSchema = z.array(resourceRowSchema);
+
+export type ResourceRow = z.output<typeof resourceRowSchema>;
+
+// Every field is text, so a blank field can be told from a typed one; `personId` is '' for None.
+export const resourceFormSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required'),
+  personId: z.string(),
+  categoryId: z.string().min(1, 'Choose a category'),
+  // Text, not a number input: a comma, a currency sign or a decimal point must be told what is wrong, not dropped.
+  rate: z
+    .string()
+    .trim()
+    .superRefine((text, context) => {
+      if (text === '') context.addIssue({ code: 'custom', message: 'Rate is required' });
+      else if (!/^\d+$/.test(text)) context.addIssue({ code: 'custom', message: 'Enter a whole number, like 85' });
+      else if (Number(text) > MAX_RESOURCE_RATE) context.addIssue({ code: 'custom', message: 'Rate is too large' });
+    }),
+});
+
+export type ResourceFormValues = z.infer<typeof resourceFormSchema>;
+
+export const emptyResourceForm: ResourceFormValues = { name: '', personId: '', categoryId: '', rate: '' };
+
+export function toResourceFormValues(resource?: ResourceRow): ResourceFormValues {
+  if (!resource) return emptyResourceForm;
+  return {
+    name: resource.name,
+    // A person or a category the service no longer embeds comes back as null: the form opens on None, or on
+    // "Choose", not on a stale id.
+    personId: resource.personId !== null && resource.personName !== '' ? String(resource.personId) : '',
+    categoryId: resource.categoryName !== '' ? String(resource.categoryId) : '',
+    rate: String(resource.rate),
+  };
+}
+
+export interface ResourceBody {
+  name: string;
+  personId: number | null;
+  categoryId: number;
+  rate: number;
+}
+
+/** A resource cannot move to another project, so the body never carries one; a create adds `projectId`. */
+export function toResourceBody(values: ResourceFormValues): ResourceBody {
+  return {
+    name: values.name,
+    personId: values.personId === '' ? null : Number(values.personId),
+    categoryId: Number(values.categoryId),
+    rate: Number(values.rate),
   };
 }

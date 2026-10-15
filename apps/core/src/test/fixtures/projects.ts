@@ -2,7 +2,8 @@
 // service's own envelope; the values are made up. A project embeds its client's own columns (no country) or null.
 // A project from before the type columns existed has null for both types. The totals are what the service
 // calculates from a project's live invoices: project 1's match the two invoices below, and project 2's invoices
-// are simply not listed here.
+// are simply not listed here. An invoice carries its lines; its amount is the sum of quantity x rate over them
+// (INV-001: 160 x 150 + 160 x 75).
 const stamp = '2026-10-15T09:30:00.000000Z';
 const audit = { status: 1, createdDate: stamp, updatedDate: stamp, deletedDate: null };
 
@@ -47,6 +48,16 @@ export const projectRows = [
   },
 ];
 
+const line = (id: number, invoiceId: number, description: string, quantity: number, rate: number) => ({
+  ...audit,
+  id,
+  invoiceId,
+  description,
+  quantity,
+  rate,
+  amount: quantity * rate,
+});
+
 export const invoiceRows = [
   {
     ...audit,
@@ -58,6 +69,7 @@ export const invoiceRows = [
     issueDate: '2026-10-01',
     dueDate: '2026-10-31',
     paidDate: '2026-10-12',
+    lineItems: [line(1, 1, 'Asha Rao — Mobile', 160, 150), line(2, 1, 'Ben Cho — Web', 160, 75)],
   },
   {
     ...audit,
@@ -69,8 +81,50 @@ export const invoiceRows = [
     issueDate: '2026-11-01',
     dueDate: null,
     paidDate: null,
+    lineItems: [line(3, 2, 'Ben Cho — Web', 160, 75)],
   },
 ];
+
+// Project 1's resources, shaped like GET /project-resources?projectId=1: a person and a category embedded as
+// { id, name }, or null (a resource with no person; or a person or category deleted since it was saved).
+export const resourceRows = [
+  {
+    ...audit,
+    id: 1,
+    projectId: 1,
+    personId: 1,
+    categoryId: 2,
+    name: 'Asha Rao',
+    rate: 150,
+    category: { id: 2, name: 'Mobile' },
+    person: { id: 1, name: 'Asha Rao' },
+  },
+  {
+    ...audit,
+    id: 2,
+    projectId: 1,
+    personId: null,
+    categoryId: 1,
+    name: 'Ben Cho',
+    rate: 75,
+    category: { id: 1, name: 'Web' },
+    person: null,
+  },
+];
+
+// GET /people: every column of the person; the pages read only the id and the name.
+export const peopleRows = [
+  { ...audit, id: 1, name: 'Asha Rao', joinDate: null, leaveDate: null, email: 'asha@example.com', phone: null, imageLink: null, contractLink: null },
+  { ...audit, id: 2, name: 'Ben Cho', joinDate: '2026-01-05', leaveDate: null, email: null, phone: '+91 20 5550 0101', imageLink: null, contractLink: null },
+];
+
+// GET /projects/1/invoice-draft for a retainer project: one line per resource, 160 hours at its rate.
+export const draftBody = {
+  lineItems: [
+    { description: 'Asha Rao — Mobile', quantity: 160, rate: 150 },
+    { description: 'Ben Cho — Web', quantity: 160, rate: 75 },
+  ],
+};
 
 const envelope = (message: string, data: unknown) => ({ statusCode: 200, message, data, meta: null });
 
@@ -79,3 +133,10 @@ export const projectsEnvelope = (data: unknown = projectRows) => envelope('Succe
 export const projectEnvelope = (data: unknown = projectRows[0]) => envelope('Successfully fetched project', data);
 
 export const invoicesEnvelope = (data: unknown = invoiceRows) => envelope('Successfully fetched invoices', data);
+
+export const resourcesEnvelope = (data: unknown = resourceRows) =>
+  envelope('Successfully fetched project resources', data);
+
+export const peopleEnvelope = (data: unknown = peopleRows) => envelope('Successfully fetched people', data);
+
+export const draftEnvelope = (data: unknown = draftBody) => envelope('Successfully built invoice draft', data);
