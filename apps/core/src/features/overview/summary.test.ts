@@ -6,6 +6,8 @@ const project = (id: number, totalValue: number, totalOutstanding: number): Proj
   id,
   name: `Project ${id}`,
   description: '',
+  key: '',
+  billingAddress: '',
   clientId: 1,
   clientName: 'Client A',
   projectType: 'product',

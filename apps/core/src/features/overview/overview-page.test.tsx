@@ -17,6 +17,8 @@ const project = (id: number, clientName: string, totalValue: number, totalOutsta
   id,
   name: `Project ${id}`,
   description: null,
+  key: null,
+  billingAddress: null,
   clientId: id,
   client: { name: clientName },
   projectType: 'product',
