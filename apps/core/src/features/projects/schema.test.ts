@@ -1,7 +1,8 @@
-import { draftBody, invoiceRows, projectRows, resourceRows } from '@/test/fixtures/projects';
+import { draftBody, emailDraftBody, invoiceRows, projectRows, resourceRows } from '@/test/fixtures/projects';
 import {
   blankLine,
   draftToLines,
+  emailFormSchema,
   emptyInvoiceForm,
   emptyProjectForm,
   emptyResourceForm,
@@ -11,17 +12,21 @@ import {
   lineAmount,
   linesTotal,
   makeInvoiceFormSchema,
+  parseRecipients,
   projectFormSchema,
   projectRowsSchema,
   resourceFormSchema,
   resourceRowsSchema,
   sortInvoices,
   toInvoiceBody,
+  toEmailFormValues,
   toInvoiceFormValues,
   toProjectBody,
   toProjectFormValues,
   toResourceBody,
   toResourceFormValues,
+  toSendBody,
+  type EmailFormValues,
   type InvoiceFormValues,
   type LineFormValues,
   type ProjectFormValues,
@@ -670,5 +675,87 @@ describe('the number in the invoice form', () => {
   it('is sent as null when empty and as typed otherwise', () => {
     expect(toInvoiceBody(withoutNumber).number).toBeNull();
     expect(toInvoiceBody(invoiceForm({ number: 'INV-9' })).number).toBe('INV-9');
+  });
+});
+
+describe('parseRecipients', () => {
+  it('splits on commas, semicolons, spaces and line breaks, and trims', () => {
+    expect(parseRecipients(' a@x.com; b@y.com ,  c@z.com\nd@w.com\t e@v.com ')).toEqual([
+      'a@x.com',
+      'b@y.com',
+      'c@z.com',
+      'd@w.com',
+      'e@v.com',
+    ]);
+  });
+
+  it('drops repeats whatever their case, keeping the first spelling', () => {
+    expect(parseRecipients('A@x.com, a@X.com, b@y.com, B@y.com')).toEqual(['A@x.com', 'b@y.com']);
+  });
+
+  it('gives nothing for blanks and separators alone', () => {
+    expect(parseRecipients('')).toEqual([]);
+    expect(parseRecipients(' ; , \n ')).toEqual([]);
+  });
+});
+
+describe('email form schema', () => {
+  const form = (over: Partial<EmailFormValues> = {}): EmailFormValues => ({
+    to: 'a@x.com',
+    subject: 'Invoice INV-001',
+    message: 'Please find it attached.',
+    ...over,
+  });
+  const messages = (values: EmailFormValues) => {
+    const result = emailFormSchema.safeParse(values);
+    return result.success ? [] : result.error.issues.map((issue) => issue.message);
+  };
+
+  it('accepts one address, several, and an empty message', () => {
+    expect(messages(form())).toEqual([]);
+    expect(messages(form({ to: 'a@x.com; b@y.com, c@z.com' }))).toEqual([]);
+    expect(messages(form({ message: '' }))).toEqual([]);
+  });
+
+  it('wants at least one address', () => {
+    expect(messages(form({ to: '' }))).toEqual(['Enter at least one email address']);
+    expect(messages(form({ to: ' ; , ' }))).toEqual(['Enter at least one email address']);
+  });
+
+  it('names the first address that does not look right', () => {
+    expect(messages(form({ to: 'a@x.com, oops, b@y.com' }))).toEqual([
+      'That does not look like an email address: oops',
+    ]);
+    expect(messages(form({ to: 'a@@x.com' }))).toEqual(['That does not look like an email address: a@@x.com']);
+  });
+
+  it('allows ten addresses and not eleven', () => {
+    const ten = Array.from({ length: 10 }, (_, i) => `p${i}@x.com`).join(', ');
+    expect(messages(form({ to: ten }))).toEqual([]);
+    expect(messages(form({ to: `${ten}, p10@x.com` }))).toEqual(['Send to 10 addresses or fewer']);
+  });
+
+  it('wants a subject of 1 to 200 characters and a message of at most 10,000', () => {
+    expect(messages(form({ subject: '   ' }))).toEqual(['Subject is required']);
+    expect(messages(form({ subject: 's'.repeat(201) }))).toEqual(['Keep the subject under 200 characters']);
+    expect(messages(form({ subject: 's'.repeat(200) }))).toEqual([]);
+    expect(messages(form({ message: 'm'.repeat(10_001) }))).toEqual(['Keep the message under 10,000 characters']);
+  });
+
+  it('sends the cleaned list, the trimmed subject and the message as typed', () => {
+    expect(toSendBody(form({ to: ' A@x.com; a@x.com ,b@y.com ', subject: '  Invoice  ' }))).toEqual({
+      to: ['A@x.com', 'b@y.com'],
+      subject: 'Invoice',
+      message: 'Please find it attached.',
+    });
+  });
+
+  it('opens on the draft, the addresses joined with commas', () => {
+    expect(toEmailFormValues(emailDraftBody)).toEqual({
+      to: 'michael@example.com',
+      subject: 'Invoice INV-001 from Test Company LLP',
+      message: emailDraftBody.message,
+    });
+    expect(toEmailFormValues({ to: [], subject: 's', message: 'm' }).to).toBe('');
   });
 });

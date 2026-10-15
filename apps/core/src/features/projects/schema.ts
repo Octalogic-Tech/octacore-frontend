@@ -442,3 +442,59 @@ export function toResourceBody(values: ResourceFormValues): ResourceBody {
 
 /** What the next invoice of a project would be numbered; null when the project has no key. */
 export const nextNumberSchema = z.object({ number: z.string().nullable() });
+
+// --- emailing an invoice ---------------------------------------------------------------------------------------
+
+/** What the email dialog opens with (GET /invoices/:id/email-draft); the person edits all of it. */
+export const emailDraftSchema = z.object({
+  to: z.array(z.string()),
+  subject: z.string(),
+  message: z.string(),
+});
+
+export type EmailDraft = z.output<typeof emailDraftSchema>;
+
+const EMAIL_ADDRESS = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** The addresses in a box that takes commas, semicolons, spaces and line breaks between them. Repeats are dropped. */
+export function parseRecipients(text: string): string[] {
+  const seen = new Set<string>();
+  const addresses: string[] = [];
+  for (const part of text.split(/[\s,;]+/)) {
+    const address = part.trim();
+    if (address !== '' && !seen.has(address.toLowerCase())) {
+      seen.add(address.toLowerCase());
+      addresses.push(address);
+    }
+  }
+  return addresses;
+}
+
+export const emailFormSchema = z.object({
+  to: z.string().superRefine((text, context) => {
+    const addresses = parseRecipients(text);
+    const bad = addresses.find((address) => !EMAIL_ADDRESS.test(address));
+    if (addresses.length === 0) context.addIssue({ code: 'custom', message: 'Enter at least one email address' });
+    else if (bad !== undefined)
+      context.addIssue({ code: 'custom', message: `That does not look like an email address: ${bad}` });
+    else if (addresses.length > 10) context.addIssue({ code: 'custom', message: 'Send to 10 addresses or fewer' });
+  }),
+  subject: z.string().trim().min(1, 'Subject is required').max(200, 'Keep the subject under 200 characters'),
+  message: z.string().max(10_000, 'Keep the message under 10,000 characters'),
+});
+
+export type EmailFormValues = z.infer<typeof emailFormSchema>;
+
+export interface SendBody {
+  to: string[];
+  subject: string;
+  message: string;
+}
+
+export function toSendBody(values: EmailFormValues): SendBody {
+  return { to: parseRecipients(values.to), subject: values.subject.trim(), message: values.message };
+}
+
+export function toEmailFormValues(draft: EmailDraft): EmailFormValues {
+  return { to: draft.to.join(', '), subject: draft.subject, message: draft.message };
+}

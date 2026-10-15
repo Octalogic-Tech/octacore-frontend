@@ -157,3 +157,13 @@ export const draftEnvelope = (data: unknown = draftBody) => envelope('Successful
 // GET /projects/1/next-invoice-number?issueDate=...: what the next invoice would be numbered, null with no key.
 export const nextNumberEnvelope = (number: string | null = 'OCTA/26-27/WEB/001') =>
   envelope('Successfully built next invoice number', { number });
+
+// GET /invoices/1/email-draft: the client contact's email, a subject and a message to start from.
+export const emailDraftBody = {
+  to: ['michael@example.com'],
+  subject: 'Invoice INV-001 from Test Company LLP',
+  message:
+    'Hello Michael Jordan,\n\nPlease find attached invoice INV-001 for the period 1 Sep – 30 Sep 2026, for $36,000.\n\nPayment details are on the invoice.\n\nRegards,\nTest Company LLP',
+};
+
+export const emailDraftEnvelope = (data: unknown = emailDraftBody) => envelope('Successfully built email draft', data);

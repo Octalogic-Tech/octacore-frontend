@@ -17,7 +17,10 @@ import {
   useProject,
   useSetInvoicePaid,
 } from './api';
+import { InvoiceEmailDialog } from './invoice-email-dialog';
 import { InvoiceFormDialog } from './invoice-form-dialog';
+import { downloadInvoicePdf, notSetUpMessage } from './invoice-pdf';
+import { InvoicePreviewDialog } from './invoice-preview-dialog';
 import { ProjectFormDialog } from './project-form-dialog';
 import { ResourcesPanel } from './resources-panel';
 import { sortInvoices, type InvoiceRow } from './schema';
@@ -63,6 +66,10 @@ function ProjectDetail({ projectId }: { projectId: number }) {
   const [deletingProject, setDeletingProject] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState<InvoiceRow | null>(null);
   const [paidFailed, setPaidFailed] = useState(false);
+  const [previewing, setPreviewing] = useState<InvoiceRow | null>(null);
+  const [emailing, setEmailing] = useState<InvoiceRow | null>(null);
+  // The page's one line about a document action: a download that failed, or an email that went out.
+  const [notice, setNotice] = useState<{ kind: 'sent' | 'failed'; text: string } | null>(null);
 
   const rows = useMemo(() => sortInvoices(invoices.data ?? []), [invoices.data]);
 
@@ -76,6 +83,15 @@ function ProjectDetail({ projectId }: { projectId: number }) {
       await setPaid.mutateAsync({ id: invoice.id, paidDate: invoice.paidDate ? null : localToday() });
     } catch {
       setPaidFailed(true);
+    }
+  }
+
+  async function download(invoice: InvoiceRow) {
+    setNotice(null);
+    try {
+      await downloadInvoicePdf(invoice);
+    } catch (error) {
+      setNotice({ kind: 'failed', text: notSetUpMessage(error) ?? 'That did not download. Try again.' });
     }
   }
 
@@ -156,6 +172,11 @@ function ProjectDetail({ projectId }: { projectId: number }) {
                 That did not save. Try again.
               </p>
             ) : null}
+            {notice ? (
+              <p role={notice.kind === 'failed' ? 'alert' : 'status'} className="mb-4 text-small font-semibold text-foreground">
+                {notice.text}
+              </p>
+            ) : null}
 
             <Panel>
               <QueryBoundary
@@ -203,6 +224,33 @@ function ProjectDetail({ projectId }: { projectId: number }) {
                           )}
                         </TableCell>
                         <TableCell className="whitespace-nowrap text-right">
+                          <Button
+                            variant="quiet"
+                            aria-label={`Preview ${invoice.number}`}
+                            onClick={() => {
+                              setNotice(null);
+                              setPreviewing(invoice);
+                            }}
+                          >
+                            Preview
+                          </Button>
+                          <Button
+                            variant="quiet"
+                            aria-label={`Download ${invoice.number}`}
+                            onClick={() => void download(invoice)}
+                          >
+                            Download
+                          </Button>
+                          <Button
+                            variant="quiet"
+                            aria-label={`Email ${invoice.number}`}
+                            onClick={() => {
+                              setNotice(null);
+                              setEmailing(invoice);
+                            }}
+                          >
+                            Email
+                          </Button>
                           <Button
                             variant="quiet"
                             aria-label={`${invoice.paidDate ? 'Mark unpaid' : 'Mark paid'} ${invoice.number}`}
@@ -273,6 +321,25 @@ function ProjectDetail({ projectId }: { projectId: number }) {
         onConfirm={async () => {
           if (invoiceToDelete) await removeInvoice.mutateAsync(invoiceToDelete.id);
         }}
+      />
+
+      <InvoicePreviewDialog
+        open={previewing !== null}
+        onOpenChange={(open) => {
+          if (!open) setPreviewing(null);
+        }}
+        invoice={previewing}
+        fallbackFocusId="add-invoice"
+      />
+
+      <InvoiceEmailDialog
+        open={emailing !== null}
+        onOpenChange={(open) => {
+          if (!open) setEmailing(null);
+        }}
+        invoice={emailing}
+        onSent={(text) => setNotice({ kind: 'sent', text })}
+        fallbackFocusId="add-invoice"
       />
     </>
   );

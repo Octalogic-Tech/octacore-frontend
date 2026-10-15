@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { coreApi, statusOf, unwrap } from '@/lib/core-api';
 import {
+  emailDraftSchema,
   invoiceDraftSchema,
   invoiceRowsSchema,
   nextNumberSchema,
@@ -10,6 +11,7 @@ import {
   type InvoiceBody,
   type ProjectBody,
   type ResourceBody,
+  type SendBody,
 } from './schema';
 
 // The list and a project's own page sit under one prefix, so a change refetches both.
@@ -191,5 +193,35 @@ export function useDeleteInvoice() {
   return useMutation({
     mutationFn: (id: number) => deleteRecord(`/invoices/${id}`),
     onSuccess: refresh,
+  });
+}
+
+/** The PDF the service draws for an invoice, as a blob: a plain link would carry no sign-in token. */
+export async function fetchInvoicePdf(id: number): Promise<Blob> {
+  const response = await coreApi.get(`/invoices/${id}/pdf`, { responseType: 'blob' });
+  return response.data as Blob;
+}
+
+/** The email the dialog starts from. Never kept, so reopening asks again. */
+export function useEmailDraft(invoiceId: number) {
+  return useQuery({
+    queryKey: ['email-draft', invoiceId] as const,
+    queryFn: async () => unwrap((await coreApi.get(`/invoices/${invoiceId}/email-draft`)).data, emailDraftSchema),
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+  });
+}
+
+/**
+ * Sends the invoice's PDF. The answer is not read: once the email has gone, a schema mismatch must never look like a
+ * failed send (a retry would send it twice).
+ */
+export function useSendInvoice() {
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: number; body: SendBody }) => {
+      await coreApi.post(`/invoices/${id}/send`, body);
+    },
   });
 }

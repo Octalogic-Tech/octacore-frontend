@@ -9,6 +9,7 @@ import { categoriesEnvelope } from '@/test/fixtures/categories';
 import { clientsEnvelope } from '@/test/fixtures/clients';
 import {
   draftEnvelope,
+  emailDraftEnvelope,
   invoiceRows,
   invoicesEnvelope,
   nextNumberEnvelope,
@@ -53,6 +54,8 @@ const serve = (opts: { project?: unknown; invoices?: unknown; resources?: unknow
     if (path === '/categories') return { data: categoriesEnvelope() };
     if (path === '/projects/1/invoice-draft') return { data: draftEnvelope() };
     if (path === '/projects/1/next-invoice-number') return { data: nextNumberEnvelope() };
+    if (path === '/invoices/1/pdf') return { data: new Blob(['%PDF-1.4 test'], { type: 'application/pdf' }) };
+    if (path === '/invoices/1/email-draft') return { data: emailDraftEnvelope() };
     throw new Error(`unexpected GET ${path}`);
   }) as never);
 
@@ -425,5 +428,77 @@ describe('ProjectDetailPage: things removed elsewhere', () => {
     await user.click(screen.getByRole('button', { name: 'Go back' }));
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Project not found' })).toBeInTheDocument();
+  });
+});
+
+describe('ProjectDetailPage: the invoice document', () => {
+  beforeEach(() => {
+    vi.mocked(URL.createObjectURL).mockReturnValue('blob:page-preview');
+  });
+
+  it('offers Preview, Download and Email on every invoice', async () => {
+    renderAt('/projects/1');
+
+    for (const number of ['INV-001', 'INV-002']) {
+      for (const action of ['Preview', 'Download', 'Email']) {
+        expect(await screen.findByRole('button', { name: `${action} ${number}` })).toBeInTheDocument();
+      }
+    }
+  });
+
+  it('previews the saved invoice in a dialog', async () => {
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+
+    await user.click(await screen.findByRole('button', { name: 'Preview INV-001' }));
+
+    expect(screen.getByRole('dialog', { name: 'Preview INV-001' })).toBeInTheDocument();
+    expect(await screen.findByTitle('Invoice INV-001')).toHaveAttribute('src', 'blob:page-preview');
+    expect(coreApi.get).toHaveBeenCalledWith('/invoices/1/pdf', { responseType: 'blob' });
+  });
+
+  it('downloads the invoice as a file named for its number', async () => {
+    const names: string[] = [];
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+      names.push(this.download);
+    });
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+
+    await user.click(await screen.findByRole('button', { name: 'Download INV-001' }));
+
+    await waitFor(() => expect(names).toEqual(['INV-001.pdf']));
+  });
+
+  it('says so when a download fails, and clears the message on the next action', async () => {
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    const download = await screen.findByRole('button', { name: 'Download INV-001' });
+    const original = vi.mocked(coreApi.get).getMockImplementation();
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/invoices/1/pdf') throw failure(500);
+      return (original as (path: string) => Promise<unknown>)(path);
+    }) as never);
+
+    await user.click(download);
+    expect(await screen.findByRole('alert')).toHaveTextContent('That did not download. Try again.');
+
+    await user.click(screen.getByRole('button', { name: 'Email INV-001' }));
+    expect(screen.queryByText('That did not download. Try again.')).not.toBeInTheDocument();
+  });
+
+  it('opens the email dialog on the draft, and says who the invoice was sent to', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+
+    await user.click(await screen.findByRole('button', { name: 'Email INV-001' }));
+    expect(screen.getByRole('dialog', { name: 'Email INV-001' })).toBeInTheDocument();
+    expect(await screen.findByLabelText('To')).toHaveValue('michael@example.com');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(coreApi.post).toHaveBeenCalledWith('/invoices/1/send', expect.objectContaining({ to: ['michael@example.com'] }));
+    expect(screen.getByRole('status')).toHaveTextContent('Invoice INV-001 sent to michael@example.com.');
   });
 });
