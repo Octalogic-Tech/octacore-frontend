@@ -470,3 +470,35 @@ describe('toResourceFormValues', () => {
     expect(toResourceFormValues(orphan)).toMatchObject({ personId: '', categoryId: '' });
   });
 });
+
+describe('the new fields the pages read', () => {
+  it('reads a project key and billing address, empty text when there are none', () => {
+    expect(projects[0]).toMatchObject({ key: 'WEB', billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India' });
+    expect(projects[1]).toMatchObject({ key: '', billingAddress: '' });
+  });
+
+  it('reads a resource headcount and each line headcount', () => {
+    expect(resources[0].headcount).toBe(1);
+    expect(invoices[0].lineItems.map((line) => line.headcount)).toEqual([1, 1]);
+  });
+
+  it('reads an invoice billing period, null for both when it has none', () => {
+    expect(invoices[0]).toMatchObject({ periodStart: '2026-09-01', periodEnd: '2026-09-30' });
+    expect(invoices[1]).toMatchObject({ periodStart: null, periodEnd: null });
+  });
+
+  it.each([
+    ['a project without its key field', { ...projectRows[0], key: undefined }],
+    ['a project without its billing address field', { ...projectRows[0], billingAddress: undefined }],
+    ['a resource without its headcount', { ...resourceRows[0], headcount: undefined }],
+    ['an invoice without its period fields', { ...invoiceRows[0], periodStart: undefined }],
+    ['a line without its headcount', { ...invoiceRows[0], lineItems: [{ ...invoiceRows[0].lineItems[0], headcount: undefined }] }],
+  ])('rejects %s', (_label, row) => {
+    const schema = _label.startsWith('a project')
+      ? projectRowsSchema
+      : _label.startsWith('a resource')
+        ? resourceRowsSchema
+        : invoiceRowsSchema;
+    expect(schema.safeParse([row]).success).toBe(false);
+  });
+});

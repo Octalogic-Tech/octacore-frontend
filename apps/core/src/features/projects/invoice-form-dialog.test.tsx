@@ -184,7 +184,7 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
-    serveDraft(draftEnvelope({ lineItems: [{ description: 'Cara Diaz — Web', quantity: 160, rate: 90 }] }));
+    serveDraft(draftEnvelope({ lineItems: [{ description: 'Cara Diaz — Web', headcount: 1, quantity: 160, rate: 90 }] }));
     await user.click(screen.getByRole('button', { name: 'Open it' }));
 
     expect(await screen.findByDisplayValue('Cara Diaz — Web')).toBeInTheDocument();

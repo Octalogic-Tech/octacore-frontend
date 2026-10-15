@@ -31,6 +31,9 @@ export const projectRowSchema = z
     id: z.number().int(),
     name: z.string(),
     description: z.string().nullable().transform(nullToEmpty),
+    // Null until set; the key numbers the project's invoices, the billing address prints under "Billed To".
+    key: z.string().nullable().transform(nullToEmpty),
+    billingAddress: z.string().nullable().transform(nullToEmpty),
     clientId: z.number().int().nullable(),
     client: z.object({ name: z.string() }).nullable(),
     projectType: projectTypeSchema.nullable(),
@@ -53,6 +56,7 @@ export type ProjectRow = z.output<typeof projectRowSchema>;
 export const lineItemRowSchema = z.object({
   id: z.number().int(),
   description: z.string(),
+  headcount: z.number().int(),
   quantity: z.number().int(),
   rate: z.number().int(),
   amount: z.number().int(),
@@ -68,6 +72,9 @@ export const invoiceRowSchema = z.object({
   issueDate: z.iso.date(),
   dueDate: z.iso.date().nullable(),
   paidDate: z.iso.date().nullable(),
+  // The billing period the invoice covers; null on an invoice saved before periods existed.
+  periodStart: z.iso.date().nullable(),
+  periodEnd: z.iso.date().nullable(),
   lineItems: z.array(lineItemRowSchema),
 });
 
@@ -258,7 +265,14 @@ export function toInvoiceBody(values: InvoiceFormValues): InvoiceBody {
 
 /** The lines a new invoice would start with (GET /projects/:id/invoice-draft). Quantity is hours on a retainer. */
 export const invoiceDraftSchema = z.object({
-  lineItems: z.array(z.object({ description: z.string(), quantity: z.number().int(), rate: z.number().int() })),
+  lineItems: z.array(
+    z.object({
+      description: z.string(),
+      headcount: z.number().int(),
+      quantity: z.number().int(),
+      rate: z.number().int(),
+    }),
+  ),
 });
 
 export type InvoiceDraft = z.output<typeof invoiceDraftSchema>;
@@ -283,6 +297,7 @@ export const resourceRowSchema = z
     personId: z.number().int().nullable(),
     categoryId: z.number().int(),
     name: z.string(),
+    headcount: z.number().int(),
     rate: z.number().int(),
     person: z.object({ name: z.string() }).nullable(),
     category: z.object({ name: z.string() }).nullable(),

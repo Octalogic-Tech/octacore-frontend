@@ -2,8 +2,8 @@
 // service's own envelope; the values are made up. A project embeds its client's own columns (no country) or null.
 // A project from before the type columns existed has null for both types. The totals are what the service
 // calculates from a project's live invoices: project 1's match the two invoices below, and project 2's invoices
-// are simply not listed here. An invoice carries its lines; its amount is the sum of quantity x rate over them
-// (INV-001: 160 x 150 + 160 x 75).
+// are simply not listed here. An invoice carries its lines, whose amount is headcount x quantity x rate (INV-001:
+// 1 x 160 x 150 + 1 x 160 x 75), and, from the second invoice on, a billing period that may be null.
 const stamp = '2026-10-15T09:30:00.000000Z';
 const audit = { status: 1, createdDate: stamp, updatedDate: stamp, deletedDate: null };
 
@@ -15,6 +15,8 @@ export const projectRows = [
     id: 1,
     name: 'Website',
     description: 'Marketing site.',
+    key: 'WEB',
+    billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',
     clientId: 1,
     client: acme,
     billingType: 'retainer',
@@ -27,6 +29,8 @@ export const projectRows = [
     id: 2,
     name: 'Mobile app',
     description: null,
+    key: null,
+    billingAddress: null,
     clientId: null,
     client: null,
     billingType: 'fixed_cost',
@@ -39,6 +43,8 @@ export const projectRows = [
     id: 3,
     name: 'Legacy portal',
     description: 'Built before types.',
+    key: null,
+    billingAddress: null,
     clientId: 1,
     client: acme,
     billingType: null,
@@ -53,6 +59,7 @@ const line = (id: number, invoiceId: number, description: string, quantity: numb
   id,
   invoiceId,
   description,
+  headcount: 1,
   quantity,
   rate,
   amount: quantity * rate,
@@ -69,6 +76,8 @@ export const invoiceRows = [
     issueDate: '2026-10-01',
     dueDate: '2026-10-31',
     paidDate: '2026-10-12',
+    periodStart: '2026-09-01',
+    periodEnd: '2026-09-30',
     lineItems: [line(1, 1, 'Asha Rao — Mobile', 160, 150), line(2, 1, 'Ben Cho — Web', 160, 75)],
   },
   {
@@ -81,6 +90,8 @@ export const invoiceRows = [
     issueDate: '2026-11-01',
     dueDate: null,
     paidDate: null,
+    periodStart: null,
+    periodEnd: null,
     lineItems: [line(3, 2, 'Ben Cho — Web', 160, 75)],
   },
 ];
@@ -95,6 +106,7 @@ export const resourceRows = [
     personId: 1,
     categoryId: 2,
     name: 'Asha Rao',
+    headcount: 1,
     rate: 150,
     category: { id: 2, name: 'Mobile' },
     person: { id: 1, name: 'Asha Rao' },
@@ -106,6 +118,7 @@ export const resourceRows = [
     personId: null,
     categoryId: 1,
     name: 'Ben Cho',
+    headcount: 1,
     rate: 75,
     category: { id: 1, name: 'Web' },
     person: null,
@@ -121,8 +134,8 @@ export const peopleRows = [
 // GET /projects/1/invoice-draft for a retainer project: one line per resource, 160 hours at its rate.
 export const draftBody = {
   lineItems: [
-    { description: 'Asha Rao — Mobile', quantity: 160, rate: 150 },
-    { description: 'Ben Cho — Web', quantity: 160, rate: 75 },
+    { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rate: 150 },
+    { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rate: 75 },
   ],
 };
 
