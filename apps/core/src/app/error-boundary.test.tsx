@@ -3,6 +3,9 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { api } from '@/lib/api';
+import { coreApi } from '@/lib/core-api';
+import { AuthTestProvider } from '@/test/auth';
+import { envelope, fakeAdapter } from '@/test/fake-adapter';
 import App from './app';
 
 vi.mock('@/lib/api', () => ({ api: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() } }));
@@ -13,22 +16,29 @@ const malformed = [
   { id: 2, amount: 20, approved: false },
 ];
 
+const originalAdapter = coreApi.defaults.adapter;
+
 function renderAt(route: string) {
   return render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter initialEntries={[route]}>
-        <App />
-      </MemoryRouter>
+      <AuthTestProvider>
+        <MemoryRouter initialEntries={[route]}>
+          <App />
+        </MemoryRouter>
+      </AuthTestProvider>
     </QueryClientProvider>,
   );
 }
 
 beforeEach(() => {
+  // Categories uses coreApi: answer it here so no request leaves the test.
+  coreApi.defaults.adapter = fakeAdapter(() => ({ status: 200, data: envelope([]) }));
   vi.mocked(api.get).mockImplementation((async (url: string) => ({ data: url === '/bills' ? malformed : [] })) as never);
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 });
 
 afterEach(() => {
+  coreApi.defaults.adapter = originalAdapter;
   vi.restoreAllMocks();
 });
 

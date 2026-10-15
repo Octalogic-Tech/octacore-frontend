@@ -1,24 +1,24 @@
 import { unwrap } from '@/lib/core-api';
 import { clientRowSchema, clientRowsSchema, contactRowSchema, contactRowsSchema } from './schema';
+import { signInLive, type LiveSend } from '@/test/live-api';
 
 // Opt-in: this talks to the real FastAPI service and WRITES to it (it adds a client and a contact, edits the
 // contact and deletes the client again; deletes are soft, so rows stay in the tables). It only runs when
 // CORE_API_WRITE_URL names a service on a scratch database, never one you care about.
 //   (in octacore-backend)  DB_NAME=<scratch db> .venv/bin/uvicorn app.main:create_app --factory --port 5003
-//   (here)                 CORE_API_WRITE_URL=http://127.0.0.1:5003/api/v1 pnpm nx test core --skip-nx-cache
+//   (here)                 CORE_API_WRITE_URL=http://127.0.0.1:5003/api/v1 CORE_API_TEST_EMAIL=<email> CORE_API_TEST_PASSWORD=<password> pnpm exec nx test core --skip-nx-cache
 const base = process.env.CORE_API_WRITE_URL;
 
-const send = (method: string, path: string, body?: unknown) =>
-  fetch(`${base}${path}`, {
-    method,
-    headers: { 'content-type': 'application/json' },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+let send: LiveSend;
 
 const listedClients = async () => unwrap(await (await send('GET', '/clients')).json(), clientRowsSchema);
 const listedContacts = async () => unwrap(await (await send('GET', '/client-contacts')).json(), contactRowsSchema);
 
 describe.skipIf(!base)('the running core service, clients and their contacts', () => {
+  beforeAll(async () => {
+    send = await signInLive(base as string);
+  });
+
   it('takes the bodies the page sends, holds one contact per client, and removes it with the client', async () => {
     const createdClient = await send('POST', '/clients', {
       name: 'Wiring check',

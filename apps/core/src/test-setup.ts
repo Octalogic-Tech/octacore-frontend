@@ -1,8 +1,25 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
+import { threadId } from 'node:worker_threads';
 import { afterEach } from 'vitest';
 
 afterEach(() => cleanup());
+
+// Multi-step flows (sign in, sign out, sign in again) can take over a second when the machine is busy; the 1000 ms
+// default made findBy*/waitFor flaky under CPU load. 4 s of headroom, well inside Vitest's 5 s test timeout.
+configure({ asyncUtilTimeout: 4000 });
+
+// Vitest runs test files in worker threads of one process, and Node's BroadcastChannel delivers across threads: a
+// sign-out in one file would sign out a provider in another file running at the same time. Scope every channel to
+// its worker, so tabs are simulated only within one test file.
+const NativeBroadcastChannel = globalThis.BroadcastChannel;
+if (NativeBroadcastChannel) {
+  globalThis.BroadcastChannel = class extends NativeBroadcastChannel {
+    constructor(name: string) {
+      super(`${name}#${threadId}`);
+    }
+  };
+}
 
 // jsdom lacks these browser APIs. Radix and the form controls call them, so tests get inert stand-ins.
 class ResizeObserverStub {

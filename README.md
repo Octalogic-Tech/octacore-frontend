@@ -17,25 +17,52 @@ pnpm nx serve core   # the app on http://localhost:4200
 
 Set `VITE_API_URL` (see `apps/core/.env.example`) to point the app at another API.
 
-### Categories, Technologies, Clients, Countries and the FastAPI core service
+### The FastAPI core service and sign-in
 
-The Categories, Technologies, Clients and Countries pages are wired to the real backend, the FastAPI service in `octacore-backend`. Adding, editing and deleting a category, a technology or a client writes to it (Countries is read-only). A client has one primary contact (name, email and phone), kept in the service's `client_contact` table and saved by the same dialog; deleting a client deletes its contact. Start it once with `make setup` and then `make run` (port 5001, base path `/api/v1`). Point the app at another address with `VITE_CORE_API_URL`. If the service is down, the page shows an error with a Try again button; Projects and Receipts and bills keep working on the mock.
+The Categories, Technologies, Clients, Countries and Users pages, and sign-in itself, are wired to the real backend, the FastAPI service in `octacore-backend`. Adding, editing and deleting a category, a technology, a client or a user writes to it (Countries is read-only). A client has one primary contact (name, email and phone), kept in the service's `client_contact` table and saved by the same dialog; deleting a client deletes its contact. A technology can have one category (optional). If the service is down, a page shows an error with a Try again button; Projects and Receipts and bills keep working on the mock.
 
-A technology can have one category (optional). The Technologies dialog offers the categories the service holds, and the table shows the one chosen.
-
-The service listens on IPv4 only (`127.0.0.1`). Browsers fall back to it when `localhost` resolves to `::1` first, but tools that do not (Cypress's proxy, for one) need `VITE_CORE_API_URL=http://127.0.0.1:5001/api/v1`.
-
-To check the app's expectations against the running service (opt-in, skipped otherwise):
+Every page needs a signed-in person. The service keeps the accounts; there is no sign-up, so create the first admin on the backend:
 
 ```bash
-CORE_API_LIVE=1 pnpm nx test core --skip-nx-cache
+# in octacore-backend: once, then whenever you need it
+make setup     # database, migrations, a JWT_SECRET in .env
+ADMIN_EMAIL=you@example.com ADMIN_PASSWORD='at least ten characters' ADMIN_NAME='Your Name' make seed-admin
+make run       # the API on http://localhost:5001/api/v1
 ```
 
-The Categories, Technologies and Clients checks add a record, edit it and delete it, so they run only when `CORE_API_WRITE_URL` names a service on a scratch database (start one with `DB_NAME=<scratch db> .venv/bin/uvicorn app.main:create_app --factory --port 5002` in `octacore-backend`):
+`make seed-admin` creates the admin only if no live user has that email, and never changes an existing password. On a scratch database, put `DB_NAME=<scratch db>` in front of it (and of the `uvicorn` command that serves that database).
+
+Keep the app and the API on the same hostname, `localhost` for both: the app on `http://localhost:4200` (the default), the API on `http://localhost:5001`. The refresh cookie only travels between same-site addresses, so mixing `localhost` and `127.0.0.1` signs you out on every reload. The API allows credentialed calls only from the origins in its `CORS_ORIGINS` setting (by default `http://localhost:4200` and `http://localhost:3000`); if the app runs anywhere else, set `CORS_ORIGINS` on the API to the app's exact origin. Point the app at another API with `VITE_CORE_API_URL` (see `apps/core/.env.example`).
+
+To try sign-in by hand: start the API and the app as above, open `http://localhost:4200/users` and you land on the login page. Sign in with the seeded admin and you come back to the Users page. Reload: you stay signed in (the refresh cookie restores the session). Sign out from the foot of the sidebar: you are back on the login page, and signing in again lands on the overview.
+
+`make run` serves the API on IPv4 only (`127.0.0.1`). Browsers fall back to it when `localhost` resolves to `::1` first, but Cypress's Electron does not. For a Cypress run against the real service, serve the API on `::1` instead, for example `.venv/bin/uvicorn app.main:create_app --factory --host ::1 --port 5001`, and keep `localhost` in `VITE_CORE_API_URL`. The stubbed Cypress specs intercept `http://localhost:5001` and need no service.
+
+To check the app's expectations against the running service (opt-in, skipped otherwise), sign the checks in with the admin you seeded:
 
 ```bash
-CORE_API_WRITE_URL=http://127.0.0.1:5002/api/v1 pnpm nx test core --skip-nx-cache
+CORE_API_LIVE=1 CORE_API_URL=http://127.0.0.1:5001/api/v1 \
+  CORE_API_TEST_EMAIL=you@example.com CORE_API_TEST_PASSWORD='at least ten characters' \
+  pnpm exec nx test core --skip-nx-cache
 ```
+
+`CORE_API_URL` names the service (default `http://localhost:5001/api/v1`). Signing in writes `last_login_date` and a refresh-token row, so even the read-only checks are not entirely read-only.
+
+The Categories, Technologies, Clients and Users checks add records, edit them and delete them, so they run only when `CORE_API_WRITE_URL` names a service on a scratch database. Seed an admin there and start a second service on it (in `octacore-backend`):
+
+```bash
+DB_NAME=<scratch db> ADMIN_EMAIL=smoke@example.com ADMIN_PASSWORD='smoke test passphrase' ADMIN_NAME=Smoke make seed-admin
+DB_NAME=<scratch db> .venv/bin/uvicorn app.main:create_app --factory --port 5002
+```
+
+then, here:
+
+```bash
+CORE_API_WRITE_URL=http://127.0.0.1:5002/api/v1 CORE_API_TEST_EMAIL=smoke@example.com \
+  CORE_API_TEST_PASSWORD='smoke test passphrase' pnpm exec nx test core --skip-nx-cache
+```
+
+The live checks run in Node and carry the refresh cookie by hand, so the same-site rule above does not apply to them, and `127.0.0.1` reaches the IPv4-only service directly.
 
 ## Generate code
 

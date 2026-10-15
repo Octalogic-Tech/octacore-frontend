@@ -2,32 +2,56 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { coreApi } from '@/lib/core-api';
+import { AuthTestProvider } from '@/test/auth';
+import { envelope, fakeAdapter } from '@/test/fake-adapter';
 import App from './app';
 
 vi.mock('@/lib/api', () => ({
   api: { get: vi.fn().mockResolvedValue({ data: [] }), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
+const originalAdapter = coreApi.defaults.adapter;
+
+// The core-service pages (Clients, Categories, Technologies, Countries) use coreApi: answer it here so no request leaves the test.
+beforeEach(() => {
+  coreApi.defaults.adapter = fakeAdapter(() => ({ status: 200, data: envelope([]) }));
+});
+
+afterEach(() => {
+  coreApi.defaults.adapter = originalAdapter;
+});
+
 function renderAt(route: string) {
   return render(
     <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <MemoryRouter initialEntries={[route]}>
-        <App />
-      </MemoryRouter>
+      <AuthTestProvider>
+        <MemoryRouter initialEntries={[route]}>
+          <App />
+        </MemoryRouter>
+      </AuthTestProvider>
     </QueryClientProvider>,
   );
 }
 
 describe('App shell', () => {
-  it('lists every page in three groups', () => {
+  it('lists every page in four groups', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    for (const label of ['Overview', 'Clients', 'Projects', 'Receipts and bills', 'Categories', 'Technologies', 'Countries']) {
+    for (const label of ['Overview', 'Clients', 'Projects', 'Receipts and bills', 'Categories', 'Technologies', 'Countries', 'Users']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
-    for (const group of ['Work', 'Finance', 'Reference data']) {
+    for (const group of ['Work', 'Finance', 'Reference data', 'Admin']) {
       expect(within(nav).getByText(group)).toBeInTheDocument();
     }
+  });
+
+  it('shows who is signed in, with Change password and Sign out', () => {
+    renderAt('/');
+    const account = screen.getByRole('region', { name: 'Account' });
+    expect(within(account).getByText('Ada Admin')).toBeInTheDocument();
+    expect(within(account).getByRole('button', { name: 'Change password' })).toBeInTheDocument();
+    expect(within(account).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 
   it('marks only the current page', () => {
@@ -45,6 +69,7 @@ describe('App shell', () => {
     ['/categories', 'Categories'],
     ['/technologies', 'Technologies'],
     ['/countries', 'Countries'],
+    ['/users', 'Users'],
   ])('shows the page title for %s', (route, title) => {
     renderAt(route);
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();

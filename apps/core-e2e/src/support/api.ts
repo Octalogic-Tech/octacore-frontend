@@ -2,6 +2,8 @@ import { countriesBody } from './countries';
 
 export const API = 'http://localhost:3001';
 export const CORE_API = 'http://localhost:5001/api/v1';
+/** The password the stubbed sign-in accepts. */
+export const E2E_PASSWORD = 'correct horse battery';
 
 type Row = Record<string, unknown>;
 
@@ -28,6 +30,10 @@ const categories = (): Row[] =>
     }),
   );
 
+const users = (): Row[] => [
+  record({ id: 1, name: 'Ada Admin', email: 'ada@example.com', role: 'admin', lastLoginDate: stamp }),
+];
+
 const bill = (id: number, billDate: string, approved: boolean, uploadedBy: string, amount: number): Row => ({
   id,
   billDate,
@@ -42,38 +48,101 @@ const bill = (id: number, billDate: string, approved: boolean, uploadedBy: strin
 });
 
 /**
- * Stubs every collection: categories, technologies, clients, client contacts and countries as the core service
- * answers them, projects and bills as the json-server mock does. `/categories` keeps state so an add or a delete
- * shows up on the next read.
+ * The core service sends credentials (the refresh cookie), and a browser only accepts a credentialed cross-origin
+ * answer that names the page's own origin and allows credentials.
  */
-export function stubApi() {
-  let rows = categories();
+const corsHeaders = (origin: unknown) => ({
+  'access-control-allow-origin': typeof origin === 'string' ? origin : 'http://localhost:3000',
+  'access-control-allow-credentials': 'true',
+});
 
-  // `body`: an object that holds `statusCode` would otherwise be read by Cypress as the response itself.
-  cy.intercept('GET', `${CORE_API}/categories`, (req) => req.reply({ body: envelope(rows) }));
-  cy.intercept('POST', `${CORE_API}/categories`, (req) => {
-    const created = record({ id: 100, ...req.body });
-    rows = [...rows, created];
-    req.reply({ statusCode: 201, body: envelope(created, 201) });
+interface CoreAnswer {
+  statusCode?: number;
+  body: unknown;
+}
+
+/** A stub for one core-service route. Every answer carries the CORS headers a credentialed request needs. */
+function stubCore(
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  path: string,
+  answer: (request: { url: string; body: unknown }) => CoreAnswer,
+) {
+  cy.intercept(method, `${CORE_API}${path}`, (req) => {
+    const { statusCode = 200, body } = answer({ url: req.url, body: req.body });
+    // `body`: an object that holds `statusCode` would otherwise be read by Cypress as the response itself.
+    req.reply({ statusCode, body, headers: corsHeaders(req.headers.origin) });
   });
-  cy.intercept('DELETE', `${CORE_API}/categories/*`, (req) => {
-    const id = Number(req.url.split('/').pop());
+}
+
+/**
+ * Stubs every collection: categories, technologies, clients, client contacts, countries and users as the core
+ * service answers them, projects and bills as the json-server mock does, and the sign-in routes. `signedIn` says
+ * whether the refresh cookie is valid when the page loads; `POST /auth/login` accepts E2E_PASSWORD and signs in.
+ * `/categories` and `/users` keep state so an add or a delete shows up on the next read.
+ */
+export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
+  let rows = categories();
+  let userRows = users();
+  let session = signedIn;
+
+  // The preflight a credentialed request with an Authorization header sends first.
+  cy.intercept('OPTIONS', `${CORE_API}/**`, (req) => {
+    req.reply({
+      statusCode: 204,
+      headers: {
+        ...corsHeaders(req.headers.origin),
+        'access-control-allow-methods': 'GET, POST, PATCH, DELETE',
+        'access-control-allow-headers': 'authorization, content-type',
+      },
+    });
+  });
+
+  const sessionBody = () => envelope({ accessToken: 'e2e-access-token', expiresIn: 900, user: users()[0] });
+  const unauthorized = (): CoreAnswer => ({ statusCode: 401, body: envelope(null, 401) });
+  stubCore('POST', '/auth/refresh', () => (session ? { body: sessionBody() } : unauthorized()));
+  stubCore('POST', '/auth/login', ({ body }) => {
+    if ((body as Row).password !== E2E_PASSWORD) return unauthorized();
+    session = true;
+    return { body: sessionBody() };
+  });
+  stubCore('POST', '/auth/logout', () => {
+    session = false;
+    return { body: envelope(null) };
+  });
+
+  stubCore('GET', '/users', () => ({ body: envelope(userRows) }));
+  stubCore('POST', '/users', ({ body }) => {
+    const { password, ...fields } = body as Row;
+    void password; // never echoed back, like the real service
+    const created = record({ id: 100, lastLoginDate: null, ...fields });
+    userRows = [...userRows, created];
+    return { statusCode: 201, body: envelope(created, 201) };
+  });
+
+  stubCore('GET', '/categories', () => ({ body: envelope(rows) }));
+  stubCore('POST', '/categories', ({ body }) => {
+    const created = record({ id: 100, ...(body as Row) });
+    rows = [...rows, created];
+    return { statusCode: 201, body: envelope(created, 201) };
+  });
+  stubCore('DELETE', '/categories/*', ({ url }) => {
+    const id = Number(url.split('/').pop());
     const removed = rows.find((row) => row.id === id);
     rows = rows.filter((row) => row.id !== id);
-    req.reply({ body: envelope(removed) });
+    return { body: envelope(removed) };
   });
 
-  cy.intercept('GET', `${CORE_API}/countries`, { body: countriesBody });
+  stubCore('GET', '/countries', () => ({ body: countriesBody }));
 
-  cy.intercept('GET', `${CORE_API}/technologies`, {
+  stubCore('GET', '/technologies', () => ({
     body: envelope([
       record({ id: 1, name: 'React', description: 'A library for user interfaces.', categoryId: 1, category: categories()[0] }),
       record({ id: 2, name: 'Nest', description: 'A Node framework.', categoryId: null, category: null }),
       record({ id: 3, name: 'Express', description: null, categoryId: null, category: null }),
     ]),
-  });
+  }));
 
-  cy.intercept('GET', `${CORE_API}/clients`, {
+  stubCore('GET', '/clients', () => ({
     body: envelope([
       record({
         id: 1,
@@ -85,13 +154,13 @@ export function stubApi() {
       }),
       record({ id: 2, name: 'Globex', description: null, countryId: null, city: null, country: null }),
     ]),
-  });
+  }));
 
-  cy.intercept('GET', `${CORE_API}/client-contacts`, {
+  stubCore('GET', '/client-contacts', () => ({
     body: envelope([
       record({ id: 1, clientId: 1, name: 'Ada Lovelace', email: 'ada@example.com', phone: '+91 20 5550 0100' }),
     ]),
-  });
+  }));
 
   cy.intercept(
     'GET',
