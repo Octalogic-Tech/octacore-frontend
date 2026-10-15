@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Vite 4.3 and React 19 in the Nx 16.5 workspace `octacore-frontend`. Tailwind 4, shadcn-structured components (Radix for dialogs), TanStack Query 5, react-hook-form with zod, react-router 6. Data comes from a json-server mock on `http://localhost:3001` (`json-server/db.json`, bills only); the FastAPI core service in `octacore-backend` is wired in for sign-in and for Categories, Technologies, Clients, Projects, Countries and Users. Versions are recorded in `docs/superpowers/specs/2026-10-14-core-redesign-design.md`, section 15. Hosting is undecided.
+Vite 4.3 and React 19 in the Nx 16.5 workspace `octacore-frontend`. Tailwind 4, shadcn-structured components (Radix for dialogs), TanStack Query 5, react-hook-form with zod, react-router 6. Data comes from a json-server mock on `http://localhost:3002` (`json-server/db.json`, bills only); the FastAPI core service in `octacore-backend` is wired in for sign-in and for Categories, Technologies, Clients, Projects, Countries and Users. Versions are recorded in `docs/superpowers/specs/2026-10-14-core-redesign-design.md`, section 15. Hosting is undecided.
 
 ## Users
 

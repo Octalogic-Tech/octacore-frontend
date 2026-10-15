@@ -7,7 +7,7 @@ export default defineConfig({
   cacheDir: '../../../node_modules/.vite/external--portfolio',
 
   server: {
-    port: 4001,
+    port: 3001,
     host: 'localhost',
   },
 

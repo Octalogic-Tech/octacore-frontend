@@ -5,7 +5,7 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   cacheDir: '../../node_modules/.vite/core',
-  server: { port: 4200, host: 'localhost' },
+  server: { port: 3000, host: 'localhost' },
   preview: { port: 4300, host: 'localhost' },
   plugins: [react()],
   resolve: { alias: { '@': path.resolve(__dirname, 'src') } },
