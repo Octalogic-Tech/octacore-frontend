@@ -68,6 +68,13 @@ describe('the app behind sign-in', () => {
     expect(screen.getByText('at /finance/invoices')).toBeInTheDocument();
   });
 
+  it('sends a signed-in person who follows the old Recurring link to the Recurring tab of Expenses', async () => {
+    renderWithContext('/finance/recurring', {});
+    expect(await screen.findByRole('heading', { level: 1, name: 'Expenses' })).toBeInTheDocument();
+    expect(screen.getByText('at /finance/expenses?tab=recurring')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Recurring' })).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('sends a signed-in person away from the login page to the overview', async () => {
     renderWithContext('/login', {});
     expect(await screen.findByRole('heading', { level: 1, name: 'Overview' })).toBeInTheDocument();

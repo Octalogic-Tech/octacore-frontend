@@ -46,21 +46,15 @@ export function stubExpenses() {
   stubCore('GET', '/currencies', () => ({ body: envelope([dollars, rupees]) }));
   stubCore('GET', '/recurring-expenses', () => ({ body: envelope(recurring) }));
   // `*` does not cross a `/`, and the list carries a query string, hence the trailing `*`.
-  stubCore('GET', '/expenses*', () => ({ body: envelope(expenses) }));
-  stubCore('GET', '/expenses/summary*', () => {
-    const total = expenses.reduce((sum, expense) => sum + (expense.amountCents as number), 0);
-    return {
-      body: envelope({
-        totalCents: total,
-        count: expenses.length,
-        byType: expenses.length
-          ? [{ expenseTypeId: 1, name: 'Software subscription', totalCents: total, count: expenses.length }]
-          : [],
-        byMonth: [],
-      }),
-    };
+  stubCore('GET', '/expenses*', ({ url }) => {
+    // The real service filters; this stub honours `recurring` so the One-time tab shows only one-time expenses.
+    const recurringOnly = new URL(url).searchParams.get('recurring');
+    const shown =
+      recurringOnly === null
+        ? expenses
+        : expenses.filter((expense) => (expense.recurringExpenseId !== null) === (recurringOnly === 'true'));
+    return { body: envelope(shown) };
   });
-
   stubCore('POST', '/recurring-expenses', ({ body }) => {
     const fields = body as Row;
     const created = record({
@@ -68,6 +62,8 @@ export function stubExpenses() {
       notes: null,
       projectId: null,
       project: null,
+      personId: null,
+      person: null,
       endDate: null,
       state: 'active',
       nextChargeDate: '2026-11-01',
@@ -89,6 +85,8 @@ export function stubExpenses() {
         expenseType: { id: 1, name: 'Software subscription' },
         projectId: null,
         project: null,
+        personId: null,
+        person: null,
         chargeDate,
         amountCents: fields.amount,
         originalCurrency: null,

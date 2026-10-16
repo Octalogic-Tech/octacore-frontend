@@ -16,6 +16,9 @@ export const expenseRowSchema = z.object({
   expenseType: refSchema,
   projectId: z.number().int().nullable(),
   project: refSchema.nullable(),
+  // The person the expense is for; kept by name even after the person is deleted.
+  personId: z.number().int().nullable(),
+  person: refSchema.nullable(),
   chargeDate: z.iso.date(),
   // US cents: what every total adds up.
   amountCents: z.number().int(),
@@ -73,6 +76,9 @@ export const recurringRowSchema = z.object({
   expenseType: refSchema,
   projectId: z.number().int().nullable(),
   project: refSchema.nullable(),
+  // The person the expense is for; kept by name even after the person is deleted.
+  personId: z.number().int().nullable(),
+  person: refSchema.nullable(),
   currencyId: z.number().int(),
   currency: currencyRefSchema,
   // One charge in the currency's own minor units.
@@ -100,6 +106,7 @@ export const expenseFormSchema = z
     name: z.string().trim().min(1, 'Name is required'),
     expenseTypeId: z.string().min(1, 'Choose a type'),
     projectId: z.string(),
+    personId: z.string(),
     chargeDate: z.string().min(1, 'Charge date is required'),
     currencyId: z.string().min(1, 'Choose a currency'),
     amount: z.string(),
@@ -116,6 +123,7 @@ export const emptyExpenseForm: ExpenseFormValues = {
   name: '',
   expenseTypeId: '',
   projectId: '',
+  personId: '',
   chargeDate: '',
   currencyId: '',
   amount: '',
@@ -132,6 +140,7 @@ export function toExpenseFormValues(expense: ExpenseRow | undefined, today: stri
     name: expense.name,
     expenseTypeId: String(expense.expenseTypeId),
     projectId: expense.projectId === null ? '' : String(expense.projectId),
+    personId: expense.personId === null ? '' : String(expense.personId),
     chargeDate: expense.chargeDate,
     currencyId: expense.originalCurrency ? String(expense.originalCurrency.id) : '',
     amount: toAmountText(expense.originalAmount ?? expense.amountCents),
@@ -154,6 +163,7 @@ export interface ExpenseBody {
   notes: string | null;
   expenseTypeId: number;
   projectId: number | null;
+  personId: number | null;
   chargeDate: string;
   currencyId?: number;
   amount?: number;
@@ -175,6 +185,7 @@ export function toExpenseBody(
     notes: orNull(values.notes.trim()),
     expenseTypeId: Number(values.expenseTypeId),
     projectId: values.projectId === '' ? null : Number(values.projectId),
+    personId: values.personId === '' ? null : Number(values.personId),
     chargeDate: values.chargeDate,
   };
   if (!shown || shown.currencyId !== currencyId || shown.amount !== amount) {
@@ -199,6 +210,7 @@ export const recurringFormSchema = z
     name: z.string().trim().min(1, 'Name is required'),
     expenseTypeId: z.string().min(1, 'Choose a type'),
     projectId: z.string(),
+    personId: z.string(),
     frequency: z.string().min(1, 'Choose how often it is charged'),
     startDate: z.string().min(1, 'Start date is required'),
     endDate: z.string(),
@@ -225,6 +237,7 @@ export const emptyRecurringForm: RecurringFormValues = {
   name: '',
   expenseTypeId: '',
   projectId: '',
+  personId: '',
   frequency: 'monthly',
   startDate: '',
   endDate: '',
@@ -239,6 +252,7 @@ export function toRecurringFormValues(row: RecurringRow | undefined, today: stri
     name: row.name,
     expenseTypeId: String(row.expenseTypeId),
     projectId: row.projectId === null ? '' : String(row.projectId),
+    personId: row.personId === null ? '' : String(row.personId),
     frequency: row.frequency,
     startDate: row.startDate,
     endDate: row.endDate ?? '',
@@ -253,6 +267,7 @@ export interface RecurringBody {
   notes: string | null;
   expenseTypeId: number;
   projectId: number | null;
+  personId: number | null;
   currencyId: number;
   amount: number;
   frequency: Frequency;
@@ -267,6 +282,7 @@ export function toRecurringBody(values: RecurringFormValues): RecurringBody {
     notes: orNull(values.notes.trim()),
     expenseTypeId: Number(values.expenseTypeId),
     projectId: values.projectId === '' ? null : Number(values.projectId),
+    personId: values.personId === '' ? null : Number(values.personId),
     currencyId: Number(values.currencyId),
     amount: parseAmount(values.amount),
     frequency: frequencySchema.parse(values.frequency),

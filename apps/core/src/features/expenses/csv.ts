@@ -13,6 +13,7 @@ const HEADERS = [
   'Original currency',
   'Rate',
   'Notes',
+  'Person',
 ];
 
 /**
@@ -33,6 +34,7 @@ export function expensesToCsv(expenses: readonly ExpenseRow[]): string {
       expense.originalCurrency?.code ?? '',
       expense.exchangeRate === null ? '' : String(expense.exchangeRate),
       neutraliseFormula(expense.notes),
+      neutraliseFormula(expense.person?.name ?? ''),
     ]),
   );
 }

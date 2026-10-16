@@ -9,6 +9,7 @@ import {
   recurringRows,
   rejection,
 } from '@/test/fixtures/expenses';
+import { personRows } from '@/test/fixtures/people';
 import { projectRows } from '@/test/fixtures/projects';
 import { renderWithProviders } from '@/test/utils';
 import { RecurringFormDialog } from './recurring-form-dialog';
@@ -28,7 +29,12 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
   vi.setSystemTime(new Date(2026, 9, 16, 12));
   vi.mocked(coreApi.get).mockImplementation(
-    answering({ '/expense-types': expenseTypeRows, '/projects': projectRows, '/currencies': currencyRows }),
+    answering({
+      '/expense-types': expenseTypeRows,
+      '/projects': projectRows,
+      '/currencies': currencyRows,
+      '/people': personRows,
+    }),
   );
 });
 
@@ -67,6 +73,7 @@ describe('RecurringFormDialog: adding', () => {
       notes: null,
       expenseTypeId: 1,
       projectId: null,
+      personId: null,
       currencyId: 1,
       amount: 1500,
       frequency: 'monthly',
@@ -142,6 +149,7 @@ describe('RecurringFormDialog: editing', () => {
     expect(screen.getByRole('dialog', { name: 'Edit recurring expense' })).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Co-working desk');
     expect(screen.getByLabelText('Currency')).toHaveValue('2');
+    expect(screen.getByLabelText('Person')).toHaveValue('1');
     expect(screen.getByLabelText('Amount')).toHaveValue('8825.00');
     expect(screen.getByLabelText('Frequency')).toHaveValue('monthly');
     expect(screen.getByLabelText('Start date')).toHaveValue('2026-08-15');
@@ -171,6 +179,7 @@ describe('RecurringFormDialog: editing', () => {
       notes: null,
       expenseTypeId: 1,
       projectId: null,
+      personId: null,
       currencyId: 1,
       amount: 1500,
       frequency: 'monthly',
@@ -189,5 +198,37 @@ describe('RecurringFormDialog: editing', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(coreApi.patch).toHaveBeenCalled());
     expect(coreApi.patch).toHaveBeenCalledWith('/recurring-expenses/7', expect.objectContaining({ endDate: null }));
+  });
+});
+
+describe('RecurringFormDialog: the person', () => {
+  it('lists the people to choose from, none being the starting choice', async () => {
+    await openDialog();
+    expect(await screen.findByRole('option', { name: 'Ada Lovelace' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Person')).toHaveValue('');
+  });
+
+  it('sends the person chosen, and the service gives it to every charge', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(created(1));
+    const user = userEvent.setup();
+    await openDialog();
+    await screen.findByRole('option', { name: 'Ada Lovelace' });
+    await user.type(screen.getByLabelText('Name'), 'Figma seat');
+    await user.selectOptions(screen.getByLabelText('Type'), '1');
+    await user.selectOptions(screen.getByLabelText('Person'), '1');
+    await user.type(screen.getByLabelText('Amount'), '15');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(coreApi.post).toHaveBeenCalled());
+    expect(coreApi.post).toHaveBeenCalledWith('/recurring-expenses', expect.objectContaining({ personId: 1 }));
+  });
+
+  it('clears the person by choosing none', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue({ data: expensesEnvelope({}) });
+    const user = userEvent.setup();
+    await openDialog(desk);
+    await user.selectOptions(screen.getByLabelText('Person'), '');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(coreApi.patch).toHaveBeenCalled());
+    expect(coreApi.patch).toHaveBeenCalledWith('/recurring-expenses/8', expect.objectContaining({ personId: null }));
   });
 });

@@ -9,9 +9,10 @@ import {
   recurringRows,
   rejection,
 } from '@/test/fixtures/expenses';
+import { personRows } from '@/test/fixtures/people';
 import { projectRows } from '@/test/fixtures/projects';
 import { renderWithProviders } from '@/test/utils';
-import { RecurringPage } from './recurring-page';
+import { RecurringTab } from './recurring-tab';
 
 vi.mock('@/lib/core-api', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/core-api')>()),
@@ -23,6 +24,7 @@ const answers = {
   '/expense-types': expenseTypeRows,
   '/projects': projectRows,
   '/currencies': currencyRows,
+  '/people': personRows,
 };
 const saved = { data: expensesEnvelope({}) };
 
@@ -39,15 +41,15 @@ afterEach(() => {
 
 const rowOf = async (name: string) => (await screen.findByText(name)).closest('tr') as HTMLElement;
 
-describe('RecurringPage', () => {
+describe('RecurringTab', () => {
   it('asks the core service for the recurring expenses', async () => {
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     await screen.findByText('Figma');
     expect(coreApi.get).toHaveBeenCalledWith('/recurring-expenses');
   });
 
   it('lists the active ones first, then the paused, then the cancelled', async () => {
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     await screen.findByText('Figma');
     const names = screen
       .getAllByRole('row')
@@ -57,12 +59,12 @@ describe('RecurringPage', () => {
   });
 
   it('shows what the active ones cost per month and per year', async () => {
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     expect(await screen.findByText('Active: $15.00 per month · $180.00 per year')).toBeInTheDocument();
   });
 
   it('shows each charge in its own currency, a rupee one with its dollar equivalent', async () => {
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     const figma = await rowOf('Figma');
     expect(within(figma).getByText('$15.00')).toBeInTheDocument();
     expect(within(figma).getByText('Monthly')).toBeInTheDocument();
@@ -73,8 +75,16 @@ describe('RecurringPage', () => {
     expect(within(vpn).getByText('Quarterly')).toBeInTheDocument();
   });
 
+  it('shows who a recurring expense is for, and a dash when it is for no one', async () => {
+    renderWithProviders(<RecurringTab />);
+    const desk = await rowOf('Co-working desk');
+    expect(within(desk).getByText('Ada Lovelace')).toBeInTheDocument();
+    const figma = await rowOf('Figma');
+    expect(within(figma).getByText('—')).toBeInTheDocument();
+  });
+
   it('shows the next charge and the state, and Ended for a cancelled one', async () => {
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     const figma = await rowOf('Figma');
     expect(within(figma).getByText('1 Nov 2026')).toBeInTheDocument();
     expect(within(figma).getByText('Active')).toBeInTheDocument();
@@ -85,7 +95,7 @@ describe('RecurringPage', () => {
   });
 
   it('offers only the actions that fit the state', async () => {
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     await screen.findByText('Figma');
     expect(screen.getByRole('button', { name: 'Pause Figma' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel Figma' })).toBeInTheDocument();
@@ -99,7 +109,7 @@ describe('RecurringPage', () => {
   it('pauses after the confirmation', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     await user.click(await screen.findByRole('button', { name: 'Pause Figma' }));
     expect(screen.getByRole('alertdialog')).toHaveTextContent('the charges it missed are not created');
     await user.click(screen.getByRole('button', { name: 'Pause' }));
@@ -109,7 +119,7 @@ describe('RecurringPage', () => {
   it('resumes and reactivates after the confirmation', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     await user.click(await screen.findByRole('button', { name: 'Resume Co-working desk' }));
     await user.click(screen.getByRole('button', { name: 'Resume' }));
     await waitFor(() => expect(coreApi.patch).toHaveBeenCalledWith('/recurring-expenses/8', { state: 'active' }));
@@ -121,7 +131,7 @@ describe('RecurringPage', () => {
   it('cancels after the confirmation', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     await user.click(await screen.findByRole('button', { name: 'Cancel Figma' }));
     expect(screen.getByRole('alertdialog')).toHaveTextContent('It stops creating charges.');
     await user.click(screen.getByRole('button', { name: 'Cancel recurring expense' }));
@@ -131,7 +141,7 @@ describe('RecurringPage', () => {
   it('shows the service’s reason on the page when it refuses a resume', async () => {
     vi.mocked(coreApi.patch).mockRejectedValue(rejection(422, 'The end date has passed: change or clear it first'));
     const user = userEvent.setup();
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     await user.click(await screen.findByRole('button', { name: 'Reactivate Old VPN' }));
     await user.click(screen.getByRole('button', { name: 'Resume' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('The end date has passed: change or clear it first');
@@ -141,7 +151,7 @@ describe('RecurringPage', () => {
   it('deletes after the confirmation, saying the charges stay', async () => {
     vi.mocked(coreApi.delete).mockResolvedValue(saved);
     const user = userEvent.setup();
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     await user.click(await screen.findByRole('button', { name: 'Delete Old VPN' }));
     expect(screen.getByRole('alertdialog')).toHaveTextContent('The charges it made stay in the ledger.');
     await user.click(screen.getByRole('button', { name: 'Delete recurring expense' }));
@@ -150,7 +160,7 @@ describe('RecurringPage', () => {
 
   it('opens an expense to edit', async () => {
     const user = userEvent.setup();
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     await user.click(await screen.findByRole('button', { name: 'Edit Figma' }));
     expect(screen.getByRole('dialog', { name: 'Edit recurring expense' })).toBeInTheDocument();
   });
@@ -158,7 +168,7 @@ describe('RecurringPage', () => {
   it('says how many charges a new expense made, or that none is due yet', async () => {
     vi.mocked(coreApi.post).mockResolvedValueOnce({ data: expensesEnvelope({ generatedCount: 3 }) });
     const user = userEvent.setup();
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     const add = async (name: string) => {
       await user.click(await screen.findByRole('button', { name: 'Add recurring expense' }));
       await user.type(screen.getByLabelText('Name'), name);
@@ -177,7 +187,7 @@ describe('RecurringPage', () => {
   it('says one charge, not "1 charges"', async () => {
     vi.mocked(coreApi.post).mockResolvedValue({ data: expensesEnvelope({ generatedCount: 1 }) });
     const user = userEvent.setup();
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     await user.click(await screen.findByRole('button', { name: 'Add recurring expense' }));
     await user.type(screen.getByLabelText('Name'), 'Linear');
     await user.selectOptions(screen.getByLabelText('Type'), '1');
@@ -188,13 +198,13 @@ describe('RecurringPage', () => {
 
   it('invites the first recurring expense when there are none', async () => {
     vi.mocked(coreApi.get).mockImplementation(answering({ ...answers, '/recurring-expenses': [] }));
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     expect(await screen.findByText('No recurring expenses yet.')).toBeInTheDocument();
   });
 
   it('offers a way to try again when the service is down', async () => {
     vi.mocked(coreApi.get).mockRejectedValue(new Error('down'));
-    renderWithProviders(<RecurringPage />);
+    renderWithProviders(<RecurringTab />);
     expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument();
   });
 });

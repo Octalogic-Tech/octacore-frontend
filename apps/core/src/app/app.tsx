@@ -13,7 +13,6 @@ import { CountriesPage } from '@/features/countries/countries-page';
 import { CurrenciesPage } from '@/features/currencies/currencies-page';
 import { ExpenseTypesPage } from '@/features/expense-types/expense-types-page';
 import { ExpensesPage } from '@/features/expenses/expenses-page';
-import { RecurringPage } from '@/features/expenses/recurring-page';
 import { InvoicesPage } from '@/features/invoices/invoices-page';
 import { OverviewPage } from '@/features/overview/overview-page';
 import { PeoplePage } from '@/features/people/people-page';
@@ -42,7 +41,8 @@ export default function App() {
           <Route path="people" element={<PeoplePage />} />
           <Route path="finance/invoices" element={<InvoicesPage />} />
           <Route path="finance/expenses" element={<ExpensesPage />} />
-          <Route path="finance/recurring" element={<RecurringPage />} />
+          {/* Recurring expenses are now a tab of Expenses: a saved link still lands on it. */}
+          <Route path="finance/recurring" element={<Navigate to="/finance/expenses?tab=recurring" replace />} />
           {/* The page used to be Receipts and bills: a saved link still lands on the right page. */}
           <Route path="finance/receipts-bills" element={<Navigate to="/finance/invoices" replace />} />
           <Route path="categories" element={<CategoriesPage />} />
