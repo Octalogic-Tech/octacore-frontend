@@ -10,6 +10,8 @@ import { TechnologiesPage } from '@/features/technologies/technologies-page';
 import { ProjectDetailPage } from '@/features/projects/project-detail-page';
 import { ProjectsPage } from '@/features/projects/projects-page';
 import { CountriesPage } from '@/features/countries/countries-page';
+import { CurrenciesPage } from '@/features/currencies/currencies-page';
+import { ExpenseTypesPage } from '@/features/expense-types/expense-types-page';
 import { InvoicesPage } from '@/features/invoices/invoices-page';
 import { OverviewPage } from '@/features/overview/overview-page';
 import { PeoplePage } from '@/features/people/people-page';
@@ -42,6 +44,8 @@ export default function App() {
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="technologies" element={<TechnologiesPage />} />
           <Route path="countries" element={<CountriesPage />} />
+          <Route path="expense-types" element={<ExpenseTypesPage />} />
+          <Route path="currencies" element={<CurrenciesPage />} />
           <Route
             path="users"
             element={
