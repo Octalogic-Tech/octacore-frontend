@@ -65,6 +65,10 @@ export function ProjectOverview({ project, invoices }: ProjectOverviewProps) {
           <dt className="text-small text-navy-80">Billing address</dt>
           <dd className="whitespace-pre-line font-semibold">{project.billingAddress || NONE}</dd>
         </div>
+        <div className="sm:col-span-3">
+          <dt className="text-small text-navy-80">Technologies</dt>
+          <dd className="font-semibold">{project.technologies.map((technology) => technology.name).join(', ') || NONE}</dd>
+        </div>
       </dl>
       {project.description ? <p className="max-w-[64ch] text-body">{project.description}</p> : null}
     </>

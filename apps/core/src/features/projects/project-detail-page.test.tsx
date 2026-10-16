@@ -745,3 +745,18 @@ describe('ProjectDetailPage: status and dates', () => {
     expect(fact('End')).toHaveTextContent(/^30 Sept? 2025$/);
   });
 });
+
+describe('ProjectDetailPage: technologies', () => {
+  it('lists the technologies in the order the service sends them', async () => {
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    expect(fact('Technologies')).toHaveTextContent('Nest, React');
+  });
+
+  it('shows a dash for a project that uses none', async () => {
+    serve({ project: projectEnvelope(projectRows[1]), invoices: invoicesEnvelope([]), resources: resourcesEnvelope([]) });
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Mobile app' });
+    expect(fact('Technologies')).toHaveTextContent('—');
+  });
+});
