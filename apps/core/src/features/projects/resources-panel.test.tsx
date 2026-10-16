@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { coreApi } from '@/lib/core-api';
 import { categoriesEnvelope } from '@/test/fixtures/categories';
-import { peopleEnvelope, resourceRows, resourcesEnvelope } from '@/test/fixtures/projects';
+import { peopleEnvelope, peopleRows, resourceRows, resourcesEnvelope } from '@/test/fixtures/projects';
 import { renderWithProviders } from '@/test/utils';
 import { ResourcesPanel } from './resources-panel';
 
@@ -23,10 +23,10 @@ const failure = (status: number) =>
 
 const saved = { data: { statusCode: 200, message: 'saved', data: {}, meta: null } };
 
-const serve = (resources: unknown = resourcesEnvelope()) =>
+const serve = (resources: unknown = resourcesEnvelope(), people: unknown = peopleEnvelope()) =>
   vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
     if (path === '/project-resources') return { data: resources };
-    if (path === '/people') return { data: peopleEnvelope() };
+    if (path === '/people') return { data: people };
     if (path === '/categories') return { data: categoriesEnvelope() };
     throw new Error(`unexpected GET ${path}`);
   }) as never);
@@ -146,5 +146,105 @@ describe('ResourcesPanel: changing', () => {
     await user.click(await screen.findByRole('button', { name: 'Delete Asha Rao' }));
     await user.click(screen.getByRole('button', { name: 'Delete resource' }));
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+  });
+});
+
+describe('ResourcesPanel: team cost against billing', () => {
+  const resourceOf = (over: Record<string, unknown>) => ({ ...resourceRows[0], ...over });
+  const personOf = (id: number, monthlySalary: number | null) => ({ ...peopleRows[0], id, monthlySalary });
+  const sentence = (expected: string) => (_: string, element: Element | null) =>
+    element?.tagName === 'P' && element.textContent === expected;
+
+  it('says what the counted resources bill a month against their salaries, and how many it counted', async () => {
+    serve(
+      resourcesEnvelope([
+        resourceOf({ id: 1, personId: 1, rate: 50 }),
+        resourceOf({ id: 2, personId: 2, rate: 40, name: 'Ben Cho', person: { id: 2, name: 'Ben Cho' } }),
+        resourceOf({ id: 3, personId: null, person: null, name: 'Open role', rate: 90 }),
+      ]),
+      peopleEnvelope([personOf(1, 5000), personOf(2, 4800)]),
+    );
+    renderPanel();
+    // billed (50 + 40) x 160 = 14,400; cost 9,800; margin 4,600 (32%); 2 of the 3 resources are counted.
+    expect(
+      await screen.findByText(
+        sentence('At current salaries, 2 of 3 resources bill $14,400 a month against $9,800 in salary: a margin of $4,600 (32%).'),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('says bills for one resource, and shortfall when the salary is more than the billing', async () => {
+    serve(resourcesEnvelope([resourceOf({ id: 1, personId: 1, rate: 5 })]), peopleEnvelope([personOf(1, 900)]));
+    renderPanel();
+    // billed 5 x 160 = 800; cost 900; a shortfall of 100, 12.5% of 800, shown as 13%.
+    expect(
+      await screen.findByText(
+        sentence('At current salaries, 1 of 1 resource bills $800 a month against $900 in salary: a shortfall of $100 (13%).'),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('leaves the percentage out when the counted rates are all 0', async () => {
+    serve(resourcesEnvelope([resourceOf({ id: 1, personId: 1, rate: 0 })]), peopleEnvelope([personOf(1, 5000)]));
+    renderPanel();
+    expect(
+      await screen.findByText(
+        sentence('At current salaries, 1 of 1 resource bills $0 a month against $5,000 in salary: a shortfall of $5,000.'),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('says there is no margin yet when no resource has a person with a salary', async () => {
+    renderPanel();
+    expect(
+      await screen.findByText('No margin yet: none of these resources has a person with a salary and a Qty of 1.'),
+    ).toBeInTheDocument();
+  });
+
+  it('carries the caveat, and shows the total salary but no individual’s', async () => {
+    serve(
+      resourcesEnvelope([
+        resourceOf({ id: 1, personId: 1, rate: 50 }),
+        resourceOf({ id: 2, personId: 2, rate: 40, name: 'Ben Cho', person: { id: 2, name: 'Ben Cho' } }),
+      ]),
+      peopleEnvelope([personOf(1, 5000), personOf(2, 4800)]),
+    );
+    renderPanel();
+    await screen.findByText(/At current salaries/);
+    expect(
+      screen.getByText(
+        'Salary is today’s figure, not what was paid. Resources with no person, no salary or a Qty above 1 are left out.',
+      ),
+    ).toBeInTheDocument();
+    // The two salaries are 5,000 and 4,800; only their total, 9,800, may appear.
+    expect(screen.getByText('$9,800')).toBeInTheDocument();
+    expect(screen.queryByText(/\$5,000/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\$4,800/)).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['a fixed cost project', 'fixed_cost' as const],
+    ['a project with no billing type', null],
+  ])('shows nothing for %s', async (_name, billingType) => {
+    renderPanel(billingType);
+    await screen.findByRole('table', { name: 'Resources' });
+    expect(screen.queryByText(/At current salaries|No margin yet|Salary is today/)).not.toBeInTheDocument();
+  });
+
+  it('shows nothing for a retainer with no resources', async () => {
+    serve(resourcesEnvelope([]));
+    renderPanel();
+    expect(await screen.findByText('No resources yet.')).toBeInTheDocument();
+    expect(screen.queryByText(/At current salaries|No margin yet|Salary is today/)).not.toBeInTheDocument();
+  });
+
+  it('says the salaries could not be loaded, and does not say there is no margin, when the people list fails', async () => {
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/project-resources') return { data: resourcesEnvelope() };
+      throw new Error('down');
+    }) as never);
+    renderPanel();
+    expect(await screen.findByText('Salaries could not be loaded.')).toBeInTheDocument();
+    expect(screen.queryByText(/No margin yet/)).not.toBeInTheDocument();
   });
 });

@@ -10,6 +10,7 @@ import { formatCurrency } from '@/lib/format';
 import { useDeleteResource, useProjectResources } from './api';
 import { ResourceFormDialog } from './resource-form-dialog';
 import type { BillingType, ResourceRow } from './schema';
+import { TeamMarginNote } from './team-margin-note';
 
 const NONE = '—';
 
@@ -93,6 +94,8 @@ export function ResourcesPanel({ projectId, billingType }: ResourcesPanelProps) 
           </Table>
         </QueryBoundary>
       </Panel>
+
+      {billingType === 'retainer' && rows.length > 0 ? <TeamMarginNote resources={rows} /> : null}
 
       <ResourceFormDialog
         open={form.open}
