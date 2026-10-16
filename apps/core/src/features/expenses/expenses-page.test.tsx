@@ -142,6 +142,21 @@ describe('ExpensesPage', () => {
     expect(await screen.findByRole('heading', { level: 2, name: 'October 2026' })).toBeInTheDocument();
   });
 
+  it('does not show the previous month’s expenses under the new month while it loads', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    const figures = await screen.findByLabelText('Spend in October 2026');
+    await waitFor(() => expect(within(figures).getByText('Total').nextSibling).toHaveTextContent('$115.00'));
+    vi.mocked(coreApi.get).mockImplementation(() => new Promise(() => undefined)); // September never arrives
+    await user.click(screen.getByRole('button', { name: 'Previous month' }));
+    expect(await screen.findByRole('heading', { level: 2, name: 'September 2026' })).toBeInTheDocument();
+    expect(screen.queryByText('Figma')).not.toBeInTheDocument();
+    expect(screen.queryByText('Co-working desk')).not.toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument();
+    const september = screen.getByLabelText('Spend in September 2026');
+    expect(within(september).getByText('Total').nextSibling).toHaveTextContent('—');
+  });
+
   it('leaves the month behind when another tab is chosen', async () => {
     const user = userEvent.setup();
     renderPage('/finance/expenses?month=2026-09');

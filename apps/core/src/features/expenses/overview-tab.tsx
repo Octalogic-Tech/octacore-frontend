@@ -41,9 +41,11 @@ export function OverviewTab({ month, thisMonth, onMonthChange }: OverviewTabProp
   const projects = useProjects();
   const people = usePeople();
 
-  const rows = useMemo(() => expenses.data ?? [], [expenses.data]);
+  // While another month (or filter) loads, the data of the one before is still on hand. It is not shown: figures
+  // and rows under a heading that names a different month would be wrong.
+  const loaded = expenses.data !== undefined && !expenses.isPlaceholderData;
+  const rows = useMemo(() => (loaded ? (expenses.data ?? []) : []), [loaded, expenses.data]);
   const figures = useMemo(() => monthFigures(rows), [rows]);
-  const loaded = expenses.data !== undefined;
   const filtered = hasOverviewFilters(filters);
   const label = monthLabel(month);
 
@@ -143,7 +145,7 @@ export function OverviewTab({ month, thisMonth, onMonthChange }: OverviewTabProp
 
       <Panel>
         <QueryBoundary
-          isLoading={expenses.isLoading}
+          isLoading={expenses.isLoading || expenses.isPlaceholderData}
           isError={expenses.isError}
           onRetry={() => void expenses.refetch()}
           isEmpty={rows.length === 0 && !filtered}
