@@ -5,7 +5,10 @@ const pages = [
   ['clients', '/clients'],
   ['projects', '/projects'],
   ['project', '/projects/1'],
-  ['bills', '/finance/receipts-bills'],
+  ['project-invoices', '/projects/1?tab=invoices'],
+  ['project-resources', '/projects/1?tab=resources'],
+  ['people', '/people'],
+  ['invoices', '/finance/invoices'],
   ['categories', '/categories'],
   ['technologies', '/technologies'],
   ['countries', '/countries'],
@@ -61,23 +64,6 @@ describe('visual captures: overlays', () => {
     cy.get('button[aria-label="Open menu"]').click();
     cy.get('[role="dialog"]').should('be.visible');
     cy.screenshot('menu-390', { capture: 'viewport' });
-  });
-
-  it('the add bill dialog at 1440px', () => {
-    cy.viewport(1440, 900);
-    cy.visit('/finance/receipts-bills');
-    cy.contains('button', 'Add bill').click();
-    cy.get('[role="dialog"]').should('be.visible');
-    cy.screenshot('add-bill-1440', { capture: 'viewport' });
-  });
-
-  it('the add bill dialog with its errors showing at 1440px', () => {
-    cy.viewport(1440, 900);
-    cy.visit('/finance/receipts-bills');
-    cy.contains('button', 'Add bill').click();
-    cy.get('[role="dialog"]').contains('button', 'Save').click();
-    cy.get('[role="dialog"]').contains('Date is required').should('be.visible');
-    cy.screenshot('add-bill-errors-1440', { capture: 'viewport' });
   });
 
   it('the delete confirmation at 1440px', () => {

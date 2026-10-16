@@ -130,7 +130,7 @@ components:
 
 **Creative North Star: "The Asterisk, at Work"**
 
-Octacore is the octa-website's system doing a different job. The website persuades; this app is operated by the four partners to see what is owed, record bills and keep reference data straight. So the identity is the same and the volume is lower. The page is Paper Grey with navy ink, rules are hairlines, every corner is square, and the logo's offset arm is the one recurring device: it marks the current page, leads every field label and sits in every primary button. Nothing floats, glows or rounds.
+Octacore is the octa-website's system doing a different job. The website persuades; this app is operated by the four partners to see what is owed, follow invoices and keep reference data straight. So the identity is the same and the volume is lower. The page is Paper Grey with navy ink, rules are hairlines, every corner is square, and the logo's offset arm is the one recurring device: it marks the current page, leads every field label and sits in every primary button. Nothing floats, glows or rounds.
 
 The app speaks in numbers inside sentences ("$55,000 outstanding across 8 projects"), not in tiles, and gets out of the way: no onboarding, no marketing language, no motion beyond hover and focus.
 
@@ -212,7 +212,7 @@ A framed panel (grey, 1px navy frame, one cut corner) holds a table: a navy rule
 A grey object on the scrim with the cut corner, the title at Title size, a description, a 44px close button and the form below. A destructive action asks in an alert dialog with explicit wording ("Delete category “Web”? This cannot be undone.") and a navy button, never red.
 
 ### Badges
-Status is a word, not a colour: navy filled for Approved, outlined for Pending.
+Status is a word, not a colour: navy filled while money is still owed (Unpaid, Overdue), outlined for Paid.
 
 ### States
 Loading is five grey rows. A failed request is an inline message with a Try again button. An empty table says what is missing and offers the add action. A search with no match says so.

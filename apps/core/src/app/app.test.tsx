@@ -7,10 +7,6 @@ import { AuthTestProvider } from '@/test/auth';
 import { envelope, fakeAdapter } from '@/test/fake-adapter';
 import App from './app';
 
-vi.mock('@/lib/api', () => ({
-  api: { get: vi.fn().mockResolvedValue({ data: [] }), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
-}));
-
 const originalAdapter = coreApi.defaults.adapter;
 
 // The core-service pages (Clients, Categories, Technologies, Countries) use coreApi: answer it here so no request leaves the test.
@@ -38,7 +34,7 @@ describe('App shell', () => {
   it('lists every page in four groups', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    for (const label of ['Overview', 'Clients', 'Projects', 'People', 'Receipts and bills', 'Categories', 'Technologies', 'Countries', 'Users']) {
+    for (const label of ['Overview', 'Clients', 'Projects', 'People', 'Invoices', 'Categories', 'Technologies', 'Countries', 'Users']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
     for (const group of ['Work', 'Finance', 'Reference data', 'Admin']) {
@@ -75,7 +71,7 @@ describe('App shell', () => {
     ['/clients', 'Clients'],
     ['/projects', 'Projects'],
     ['/people', 'People'],
-    ['/finance/receipts-bills', 'Receipts and bills'],
+    ['/finance/invoices', 'Invoices'],
     ['/categories', 'Categories'],
     ['/technologies', 'Technologies'],
     ['/countries', 'Countries'],

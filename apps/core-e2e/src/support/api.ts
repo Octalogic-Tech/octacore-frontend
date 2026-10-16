@@ -1,13 +1,11 @@
 import { countriesBody } from './countries';
 
-export const API = 'http://localhost:3002';
 export const CORE_API = 'http://localhost:5001/api/v1';
 /** The password the stubbed sign-in accepts. */
 export const E2E_PASSWORD = 'correct horse battery';
 
-// XHRs only. The dev server moves up a port when 3000 and 3001 are taken and can land on the API's own
-// port (3002); a plain URL match would then also swallow the page navigation to /categories or /projects.
-const xhr = (method: string, path: string, base = API) => ({
+// XHRs only: a plain URL match would also swallow a page navigation to the same address.
+const xhr = (method: string, path: string, base: string) => ({
   method,
   url: `${base}${path}`,
   resourceType: 'xhr' as const,
@@ -139,19 +137,6 @@ const resources = (): Row[] => [
   }),
 ];
 
-const bill = (id: number, billDate: string, approved: boolean, uploadedBy: string, amount: number): Row => ({
-  id,
-  billDate,
-  amount,
-  billType: id % 2 ? 'Regular' : 'Bonus',
-  actualExpense: id % 2 === 0,
-  billPath: `/path/to/bill/${id}`,
-  uploadedBy,
-  submittedBy: uploadedBy,
-  approved,
-  approvedBy: approved ? 'Manager' : '',
-});
-
 /**
  * The core service sends credentials (the refresh cookie), and a browser only accepts a credentialed cross-origin
  * answer that names the page's own origin and allows credentials.
@@ -181,7 +166,7 @@ function stubCore(
 
 /**
  * Stubs every collection: categories, technologies, clients, client contacts, projects, project resources, people,
- * invoices (and each invoice's PDF, email draft and next number), countries and users as the core service answers them, bills as the json-server mock does, and the sign-in routes. `signedIn` says
+ * invoices (and each invoice's PDF, email draft and next number), countries and users as the core service answers them, and the sign-in routes. `signedIn` says
  * whether the refresh cookie is valid when the page loads; `POST /auth/login` accepts E2E_PASSWORD and signs in.
  * `/categories` and `/users` keep state so an add or a delete shows up on the next read.
  */
@@ -284,18 +269,30 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
   stubCore('GET', '/project-resources*', () => ({ body: envelope(resources()) }));
   stubCore('GET', '/people', () => ({
     body: envelope([
-      record({ id: 1, name: 'Asha Rao', joinDate: null, leaveDate: null, email: null, phone: null, imageLink: null, contractLink: null }),
+      record({
+        id: 1,
+        name: 'Asha Rao',
+        joinDate: '2024-01-15',
+        leaveDate: null,
+        email: 'asha@example.com',
+        phone: null,
+        imageLink: null,
+        contractLink: null,
+        monthlySalary: 5600,
+      }),
+      record({
+        id: 2,
+        name: 'Ben Cho',
+        joinDate: null,
+        leaveDate: null,
+        email: null,
+        phone: '+91 20 5550 0101',
+        imageLink: null,
+        contractLink: null,
+        monthlySalary: null,
+      }),
     ]),
   }));
-
-  cy.intercept(xhr('GET', '/bills'), [
-    bill(1, '2023-08-10', true, 'John Doe', 100),
-    bill(2, '2023-08-09', false, 'Jane Smith', 200),
-    bill(3, '2023-08-08', true, 'Michael Johnson', 50),
-    bill(4, '2023-08-07', false, 'Priya Nair', 75.5),
-    bill(5, '2023-08-06', true, 'John Doe', 300),
-    bill(6, '2023-08-05', false, 'Jane Smith', 120),
-  ]);
 
   // `*` does not cross a `/`: each invoice document route and the next-number route needs its own stub.
   stubCore('GET', '/invoices/*/pdf', () => ({ body: '%PDF-1.4\n%%EOF' }));

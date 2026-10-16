@@ -2,25 +2,24 @@ import { useMemo } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
 import { LinkArrow } from '@/components/ui/link-arrow';
-import { useBills } from '@/features/bills/api';
-import { useProjects } from '@/features/projects/api';
+import { useAllInvoices, useProjects } from '@/features/projects/api';
 import { formatCurrency, formatDate, pluralize } from '@/lib/format';
 import { summarize } from './summary';
 
 export function OverviewPage() {
   const projects = useProjects();
-  const bills = useBills();
-  const summary = useMemo(() => summarize(projects.data ?? [], bills.data ?? []), [projects.data, bills.data]);
+  const invoices = useAllInvoices();
+  const summary = useMemo(() => summarize(projects.data ?? [], invoices.data ?? []), [projects.data, invoices.data]);
 
   return (
     <>
       <PageHeader title="Overview" />
       <QueryBoundary
-        isLoading={projects.isLoading || bills.isLoading}
-        isError={projects.isError || bills.isError}
+        isLoading={projects.isLoading || invoices.isLoading}
+        isError={projects.isError || invoices.isError}
         onRetry={() => {
           void projects.refetch();
-          void bills.refetch();
+          void invoices.refetch();
         }}
         isEmpty={false}
         empty={null}
@@ -36,11 +35,11 @@ export function OverviewPage() {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-b border-rule py-5">
             <p className="max-w-[64ch] text-statement">
-              {summary.pendingCount === 0
-                ? 'No bills are waiting for approval.'
-                : `${pluralize(summary.pendingCount, 'bill')} ${summary.pendingCount === 1 ? 'is' : 'are'} waiting for approval.`}
+              {summary.unpaidCount === 0
+                ? 'No invoices are unpaid.'
+                : `${pluralize(summary.unpaidCount, 'invoice')} ${summary.unpaidCount === 1 ? 'is' : 'are'} unpaid.`}
             </p>
-            <LinkArrow to="/finance/receipts-bills">Review bills</LinkArrow>
+            <LinkArrow to="/finance/invoices">Review invoices</LinkArrow>
           </div>
         </div>
 
@@ -66,23 +65,25 @@ export function OverviewPage() {
             )}
           </section>
 
-          <section aria-labelledby="awaiting-approval">
-            <h2 id="awaiting-approval" className="text-title font-semibold">
-              Awaiting approval
+          <section aria-labelledby="unpaid-invoices">
+            <h2 id="unpaid-invoices" className="text-title font-semibold">
+              Unpaid invoices
             </h2>
-            {summary.pendingBills.length === 0 ? (
-              <p className="mt-3 border-t border-navy pt-3 text-body text-navy-80">Nothing is waiting.</p>
+            {summary.unpaidInvoices.length === 0 ? (
+              <p className="mt-3 border-t border-navy pt-3 text-body text-navy-80">Nothing is unpaid.</p>
             ) : (
               <ul className="mt-3 border-t border-navy">
-                {summary.pendingBills.map((bill) => (
-                  <li key={bill.id} className="flex items-baseline justify-between gap-4 border-b border-rule py-3">
+                {summary.unpaidInvoices.map((invoice) => (
+                  <li key={invoice.id} className="flex items-baseline justify-between gap-4 border-b border-rule py-3">
                     <span>
-                      <span className="tabular block font-semibold">{formatDate(bill.billDate)}</span>
+                      <span className="block font-semibold">{invoice.number}</span>
                       <span className="block text-small text-navy-80">
-                        {bill.billType}, {bill.uploadedBy}
+                        {[invoice.projectName, invoice.dueDate ? `due ${formatDate(invoice.dueDate)}` : 'no due date']
+                          .filter(Boolean)
+                          .join(', ')}
                       </span>
                     </span>
-                    <span className="tabular">{formatCurrency(bill.amount)}</span>
+                    <span className="tabular">{formatCurrency(invoice.amount)}</span>
                   </li>
                 ))}
               </ul>

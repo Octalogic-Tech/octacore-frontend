@@ -1,4 +1,4 @@
-import { Outlet, Route, Routes } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import { AppShell } from '@/app/app-shell';
 import { NotFoundPage } from '@/app/not-found-page';
 import { LoginPage } from '@/features/auth/login-page';
@@ -9,8 +9,8 @@ import { ClientsPage } from '@/features/clients/clients-page';
 import { TechnologiesPage } from '@/features/technologies/technologies-page';
 import { ProjectDetailPage } from '@/features/projects/project-detail-page';
 import { ProjectsPage } from '@/features/projects/projects-page';
-import { BillsPage } from '@/features/bills/bills-page';
 import { CountriesPage } from '@/features/countries/countries-page';
+import { InvoicesPage } from '@/features/invoices/invoices-page';
 import { OverviewPage } from '@/features/overview/overview-page';
 import { PeoplePage } from '@/features/people/people-page';
 import { AllocationPage } from '@/features/allocation/allocation-page';
@@ -36,7 +36,9 @@ export default function App() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="people" element={<PeoplePage />} />
-          <Route path="finance/receipts-bills" element={<BillsPage />} />
+          <Route path="finance/invoices" element={<InvoicesPage />} />
+          {/* The page used to be Receipts and bills: a saved link still lands on the right page. */}
+          <Route path="finance/receipts-bills" element={<Navigate to="/finance/invoices" replace />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="technologies" element={<TechnologiesPage />} />
           <Route path="countries" element={<CountriesPage />} />

@@ -23,7 +23,7 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: 'Finance',
-    items: [{ label: 'Receipts and bills', to: '/finance/receipts-bills' }],
+    items: [{ label: 'Invoices', to: '/finance/invoices' }],
   },
   {
     label: 'Reference data',

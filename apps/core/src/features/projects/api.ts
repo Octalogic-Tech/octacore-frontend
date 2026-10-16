@@ -44,6 +44,17 @@ export function useInvoices(projectId: number) {
   });
 }
 
+/**
+ * Every project's invoices, for the Invoices page. Under the same prefix as one project's, so a change to any invoice
+ * refetches both lists.
+ */
+export function useAllInvoices() {
+  return useQuery({
+    queryKey: [...INVOICES, 'all'] as const,
+    queryFn: async () => unwrap((await coreApi.get('/invoices')).data, invoiceRowsSchema),
+  });
+}
+
 /** Only this project's resources: the service filters them. */
 export function useProjectResources(projectId: number) {
   return useQuery({
@@ -136,7 +147,7 @@ export function useDeleteResource() {
  * The service soft-deletes the project's invoices and resources with it, so only the project is deleted from here. The list is
  * refetched. The project's own page and its invoices are only marked stale, without a refetch: the page showing them is
  * about to go and would be told 404, but going back to it later must ask again instead of showing the deleted project
- * from the cache.
+ * from the cache. The Invoices page's list holds the deleted invoices too, and is marked the same way.
  */
 export function useDeleteProject() {
   const client = useQueryClient();
@@ -147,6 +158,7 @@ export function useDeleteProject() {
         client.invalidateQueries({ queryKey: PROJECT_LIST, exact: true }),
         client.invalidateQueries({ queryKey: [...PROJECTS, 'detail', id], refetchType: 'none' }),
         client.invalidateQueries({ queryKey: [...INVOICES, { projectId: id }], refetchType: 'none' }),
+        client.invalidateQueries({ queryKey: [...INVOICES, 'all'], refetchType: 'none' }),
         client.invalidateQueries({ queryKey: [...RESOURCES, { projectId: id }], refetchType: 'none' }),
       ]),
   });

@@ -1,5 +1,4 @@
-import type { Bill } from '@/features/bills/types';
-import type { ProjectRow } from '@/features/projects/schema';
+import type { InvoiceRow, ProjectRow } from '@/features/projects/schema';
 import { summarize } from './summary';
 
 const project = (id: number, totalValue: number, totalOutstanding: number): ProjectRow => ({
@@ -19,18 +18,24 @@ const project = (id: number, totalValue: number, totalOutstanding: number): Proj
   totalOutstanding,
 });
 
-const bill = (id: number, billDate: string, approved: boolean): Bill => ({
+const invoice = (id: number, fields: Partial<InvoiceRow> = {}): InvoiceRow => ({
   id,
-  billDate,
+  projectId: 1,
+  number: `INV-${id}`,
+  description: '',
+  subtotal: 10,
+  discountPercent: 0,
   amount: 10,
-  billType: 'Regular',
-  actualExpense: false,
-  billPath: '',
-  uploadedBy: 'Asha',
-  submittedBy: 'Asha',
-  approved,
-  approvedBy: '',
+  issueDate: '2026-10-01',
+  dueDate: null,
+  paidDate: null,
+  periodStart: null,
+  periodEnd: null,
+  lineItems: [],
+  ...fields,
 });
+
+const ids = (list: { id: number }[]) => list.map((item) => item.id);
 
 describe('summarize', () => {
   it('totals value and outstanding across projects', () => {
@@ -46,11 +51,49 @@ describe('summarize', () => {
     expect(summary.topOutstanding.map((item) => item.id)).toEqual([3, 5, 6, 4, 7]);
   });
 
-  it('counts every pending bill but lists only the five newest', () => {
-    const pending = Array.from({ length: 7 }, (_, index) => bill(index + 1, `2023-08-0${index + 1}`, false));
-    const summary = summarize([], [...pending, bill(8, '2023-09-01', true), bill(9, '2023-09-02', true)]);
-    expect(summary.pendingCount).toBe(7);
-    expect(summary.pendingBills.map((item) => item.id)).toEqual([7, 6, 5, 4, 3]);
+  it('counts every unpaid invoice but lists only the five due soonest', () => {
+    // Entered in reverse of their due dates, so the order shown is the sort and not the order given.
+    const unpaid = Array.from({ length: 7 }, (_, index) => invoice(index + 1, { dueDate: `2026-11-0${7 - index}` }));
+    const paid = [invoice(8, { dueDate: '2026-10-01', paidDate: '2026-10-02' }), invoice(9, { paidDate: '2026-10-03' })];
+    const summary = summarize([], [...unpaid, ...paid]);
+    expect(summary.unpaidCount).toBe(7);
+    expect(ids(summary.unpaidInvoices)).toEqual([7, 6, 5, 4, 3]);
+  });
+
+  it('puts an invoice with no due date after the dated ones, the older issue first', () => {
+    const summary = summarize(
+      [],
+      [
+        invoice(1, { issueDate: '2026-10-01' }),
+        invoice(2, { issueDate: '2026-09-01' }),
+        invoice(3, { dueDate: '2026-12-31' }),
+      ],
+    );
+    expect(ids(summary.unpaidInvoices)).toEqual([3, 2, 1]);
+  });
+
+  it('breaks a tie on the due date by the older issue, then the earlier entry', () => {
+    const due = '2026-11-15';
+    const summary = summarize(
+      [],
+      [
+        invoice(3, { dueDate: due, issueDate: '2026-10-05' }),
+        invoice(2, { dueDate: due, issueDate: '2026-10-05' }),
+        invoice(1, { dueDate: due, issueDate: '2026-10-09' }),
+      ],
+    );
+    expect(ids(summary.unpaidInvoices)).toEqual([2, 3, 1]);
+  });
+
+  it("names each unpaid invoice's project", () => {
+    const summary = summarize([project(1, 0, 0), project(2, 0, 0)], [invoice(1, { projectId: 2 })]);
+    expect(summary.unpaidInvoices[0]).toMatchObject({ projectName: 'Project 2' });
+  });
+
+  it('leaves the invoices it is given in their order', () => {
+    const given = [invoice(1, { dueDate: '2026-12-01' }), invoice(2, { dueDate: '2026-11-01' })];
+    summarize([], given);
+    expect(ids(given)).toEqual([1, 2]);
   });
 
   it('copes with no data at all', () => {
@@ -59,8 +102,8 @@ describe('summarize', () => {
       totalValue: 0,
       totalOutstanding: 0,
       topOutstanding: [],
-      pendingCount: 0,
-      pendingBills: [],
+      unpaidCount: 0,
+      unpaidInvoices: [],
     });
   });
 });
