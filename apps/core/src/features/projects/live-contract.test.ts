@@ -15,6 +15,7 @@ import {
   toInvoiceBody,
   toProjectBody,
 } from './schema';
+import { RETAINER_HOURS } from './team-margin';
 
 // Opt-in: this talks to the real FastAPI service and WRITES to it (it adds a project, a category, a person, resources
 // and invoices, changes them, and deletes the project again; deletes are soft, so rows stay in the tables). It only
@@ -570,6 +571,38 @@ describe.skipIf(!base)('the discount, on a service with its migration applied', 
     } finally {
       await send('DELETE', `/projects/${project.id}`);
       await send('DELETE', `/clients/${client.id}`); // the service soft-deletes the client's contact with it
+    }
+  });
+
+  it('drafts a retainer resource for the same hours a month that the margin sentence uses', async () => {
+    const category = unwrap(
+      await (await send('POST', '/categories', { name: 'Hours check', description: 'Made by the live test' })).json(),
+      createdSchema,
+    );
+    const created = await send('POST', '/projects', {
+      name: 'Hours check',
+      description: null,
+      clientId: null,
+      projectType: 'resource_augmentation',
+      billingType: 'retainer',
+    });
+    expect(created.status).toBe(201);
+    const project = unwrap(await created.json(), projectRowSchema);
+    try {
+      const resource = await send('POST', '/project-resources', {
+        projectId: project.id,
+        name: 'Hours check',
+        personId: null,
+        categoryId: category.id,
+        rate: 50,
+      });
+      expect(resource.status).toBe(201);
+      const draft = await readDraft(project.id);
+      expect(draft.lineItems).toHaveLength(1);
+      expect(draft.lineItems[0].quantity).toBe(RETAINER_HOURS);
+    } finally {
+      await send('DELETE', `/projects/${project.id}`);
+      await send('DELETE', `/categories/${category.id}`);
     }
   });
 });

@@ -35,7 +35,7 @@ export function teamMargin(resources: readonly ResourceRow[], people: readonly P
     cost += salary;
   }
   const margin = billed - cost;
-  // 100 x |margin| / billed, rounded half up, in integers so no float can put a half on the wrong side.
+  // 100 x |margin| / billed, with a half going up, in integers so no float can put a half on the wrong side.
   const percent = billed === 0 ? null : Math.floor((Math.abs(margin) * 200 + billed) / (2 * billed));
   return { counted, total: resources.length, billed, cost, margin, percent };
 }
