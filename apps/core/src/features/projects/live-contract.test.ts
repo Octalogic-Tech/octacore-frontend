@@ -500,4 +500,36 @@ describe.skipIf(!base)('the discount, on a service with its migration applied', 
       await send('DELETE', `/projects/${project.id}`);
     }
   });
+
+  it('saves a project with technologies, replaces them, and loses one that was deleted', async () => {
+    const react = unwrap(await (await send('POST', '/technologies', { name: 'Live React' })).json(), createdSchema);
+    const nest = unwrap(await (await send('POST', '/technologies', { name: 'Live Nest' })).json(), createdSchema);
+    const created = await send('POST', '/projects', {
+      name: 'Technology check',
+      description: null,
+      clientId: null,
+      projectType: 'product',
+      billingType: 'fixed_cost',
+      technologyIds: [react.id, nest.id],
+    });
+    expect(created.status).toBe(201);
+    const project = unwrap(await created.json(), projectRowSchema);
+    try {
+      expect(project.technologies.map((technology) => technology.name)).toEqual(['Live Nest', 'Live React']);
+
+      const unknown = await send('PATCH', `/projects/${project.id}`, { technologyIds: [999_999] });
+      expect(unknown.status).toBe(409);
+
+      const replaced = await send('PATCH', `/projects/${project.id}`, { technologyIds: [nest.id] });
+      expect(replaced.status).toBe(200);
+      expect((await readProject(project.id)).technologies).toEqual([{ id: nest.id, name: 'Live Nest' }]);
+
+      await send('DELETE', `/technologies/${nest.id}`);
+      expect((await readProject(project.id)).technologies).toEqual([]);
+    } finally {
+      await send('DELETE', `/projects/${project.id}`);
+      await send('DELETE', `/technologies/${react.id}`);
+      await send('DELETE', `/technologies/${nest.id}`);
+    }
+  });
 });
