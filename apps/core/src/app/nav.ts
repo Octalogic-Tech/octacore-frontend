@@ -23,7 +23,11 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: 'Finance',
-    items: [{ label: 'Invoices', to: '/finance/invoices' }],
+    items: [
+      { label: 'Invoices', to: '/finance/invoices' },
+      { label: 'Expenses', to: '/finance/expenses' },
+      { label: 'Recurring', to: '/finance/recurring' },
+    ],
   },
   {
     label: 'Reference data',
@@ -31,6 +35,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Categories', to: '/categories' },
       { label: 'Technologies', to: '/technologies' },
       { label: 'Countries', to: '/countries' },
+      { label: 'Expense types', to: '/expense-types' },
+      { label: 'Currencies', to: '/currencies' },
     ],
   },
   {

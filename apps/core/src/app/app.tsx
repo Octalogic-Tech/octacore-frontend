@@ -10,6 +10,10 @@ import { TechnologiesPage } from '@/features/technologies/technologies-page';
 import { ProjectDetailPage } from '@/features/projects/project-detail-page';
 import { ProjectsPage } from '@/features/projects/projects-page';
 import { CountriesPage } from '@/features/countries/countries-page';
+import { CurrenciesPage } from '@/features/currencies/currencies-page';
+import { ExpenseTypesPage } from '@/features/expense-types/expense-types-page';
+import { ExpensesPage } from '@/features/expenses/expenses-page';
+import { RecurringPage } from '@/features/expenses/recurring-page';
 import { InvoicesPage } from '@/features/invoices/invoices-page';
 import { OverviewPage } from '@/features/overview/overview-page';
 import { PeoplePage } from '@/features/people/people-page';
@@ -37,11 +41,15 @@ export default function App() {
           <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="people" element={<PeoplePage />} />
           <Route path="finance/invoices" element={<InvoicesPage />} />
+          <Route path="finance/expenses" element={<ExpensesPage />} />
+          <Route path="finance/recurring" element={<RecurringPage />} />
           {/* The page used to be Receipts and bills: a saved link still lands on the right page. */}
           <Route path="finance/receipts-bills" element={<Navigate to="/finance/invoices" replace />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="technologies" element={<TechnologiesPage />} />
           <Route path="countries" element={<CountriesPage />} />
+          <Route path="expense-types" element={<ExpenseTypesPage />} />
+          <Route path="currencies" element={<CurrenciesPage />} />
           <Route
             path="users"
             element={
