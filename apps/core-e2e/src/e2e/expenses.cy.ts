@@ -31,7 +31,8 @@ describe('expenses', () => {
     cy.get(nav).contains('a', 'Expenses').click();
     cy.contains('h1', 'Expenses');
     cy.contains('td', '1 Aug 2026').should('be.visible');
-    cy.contains('td', '1 Sep 2026').should('be.visible');
+    // en-GB abbreviates September as "Sept" in newer browsers and "Sep" in older ones.
+    cy.contains('td', /^1 Sept? 2026$/).should('be.visible');
     cy.contains('td', '1 Oct 2026').should('be.visible');
     // The first table is the ledger; the second, further down, is the by-type breakdown.
     cy.get('table').first().find('tbody tr').should('have.length', 3);
