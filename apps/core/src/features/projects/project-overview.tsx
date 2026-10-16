@@ -1,7 +1,20 @@
+import type { ReactNode } from 'react';
+import { useClientDetails, type ListState } from '@/features/clients/api';
 import { formatCurrency, formatDate, localToday } from '@/lib/format';
 import { overdueTotal, type InvoiceRow, type ProjectRow } from './schema';
 
 const NONE = '—';
+const UNAVAILABLE = 'Unavailable';
+
+const mailLink =
+  'inline-flex min-h-11 items-center decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline';
+
+/** What a fact reads while its list loads (empty), after it failed (Unavailable) and once it is known (the value or a dash). */
+function known(state: ListState, value: ReactNode): ReactNode {
+  if (state === 'loading') return null;
+  if (state === 'failed') return UNAVAILABLE;
+  return value || NONE;
+}
 
 interface ProjectOverviewProps {
   project: ProjectRow;
@@ -12,6 +25,11 @@ interface ProjectOverviewProps {
 /** What is owed, said first, then who the project is for and how it is billed. */
 export function ProjectOverview({ project, invoices }: ProjectOverviewProps) {
   const overdue = invoices ? overdueTotal(invoices, localToday()) : 0;
+  // A client the service no longer embeds comes back as null while `clientId` is still set: nothing is shown for it.
+  const hasClient = project.clientId !== null && project.clientName !== '';
+  const details = useClientDetails(hasClient ? project.clientId : null);
+  const location = [details.client?.city, details.client?.countryName].filter(Boolean).join(', ');
+  const clientFact = (state: ListState, value: ReactNode) => (hasClient ? known(state, value) : NONE);
 
   return (
     <>
@@ -36,6 +54,31 @@ export function ProjectOverview({ project, invoices }: ProjectOverviewProps) {
         <div>
           <dt className="text-small text-navy-80">Client</dt>
           <dd className="font-semibold">{project.clientName || NONE}</dd>
+        </div>
+        <div>
+          <dt className="text-small text-navy-80">Location</dt>
+          <dd className="font-semibold">{clientFact(details.clientsState, location)}</dd>
+        </div>
+        <div>
+          <dt className="text-small text-navy-80">Contact</dt>
+          <dd className="font-semibold">{clientFact(details.contactsState, details.contact?.name)}</dd>
+        </div>
+        <div>
+          <dt className="text-small text-navy-80">Email</dt>
+          <dd className="font-semibold">
+            {clientFact(
+              details.contactsState,
+              details.contact?.email ? (
+                <a href={`mailto:${details.contact.email}`} className={mailLink}>
+                  {details.contact.email}
+                </a>
+              ) : null,
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt className="text-small text-navy-80">Phone</dt>
+          <dd className="font-semibold">{clientFact(details.contactsState, details.contact?.phone)}</dd>
         </div>
         <div>
           <dt className="text-small text-navy-80">Project type</dt>

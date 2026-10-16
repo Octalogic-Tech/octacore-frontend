@@ -6,7 +6,7 @@ import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-rou
 import { coreApi } from '@/lib/core-api';
 import { queryDefaults } from '@/lib/query-client';
 import { categoriesEnvelope } from '@/test/fixtures/categories';
-import { clientsEnvelope } from '@/test/fixtures/clients';
+import { clientRows, clientsEnvelope, contactsEnvelope } from '@/test/fixtures/clients';
 import {
   draftEnvelope,
   emailDraftEnvelope,
@@ -44,12 +44,21 @@ const failure = (status: number) =>
 /** What the service answers a write with; the page never reads it. */
 const saved = { data: { statusCode: 200, message: 'saved', data: {}, meta: null } };
 
-const serve = (opts: { project?: unknown; invoices?: unknown; resources?: unknown } = {}) =>
+const serve = (
+  opts: { project?: unknown; invoices?: unknown; resources?: unknown; clients?: unknown; contacts?: unknown } = {},
+) =>
   vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
     if (path === '/projects/1') return { data: opts.project ?? projectEnvelope() };
     if (path === '/invoices') return { data: opts.invoices ?? invoicesEnvelope() };
     if (path === '/project-resources') return { data: opts.resources ?? resourcesEnvelope() };
-    if (path === '/clients') return { data: clientsEnvelope() };
+    if (path === '/clients') {
+      if (opts.clients === 'fail') throw new Error('down');
+      return { data: opts.clients ?? clientsEnvelope() };
+    }
+    if (path === '/client-contacts') {
+      if (opts.contacts === 'fail') throw new Error('down');
+      return { data: opts.contacts ?? contactsEnvelope() };
+    }
     if (path === '/people') return { data: peopleEnvelope() };
     if (path === '/categories') return { data: categoriesEnvelope() };
     if (path === '/projects/1/invoice-draft') return { data: draftEnvelope() };
@@ -758,5 +767,81 @@ describe('ProjectDetailPage: technologies', () => {
     renderAt('/projects/1');
     await screen.findByRole('heading', { level: 1, name: 'Mobile app' });
     expect(fact('Technologies')).toHaveTextContent('—');
+  });
+});
+
+describe('ProjectDetailPage: the client’s contact and location', () => {
+  it('shows where the client is and who to talk to', async () => {
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    await waitFor(() => expect(fact('Location')).toHaveTextContent('Pune, India'));
+    expect(fact('Contact')).toHaveTextContent('Ada Lovelace');
+    expect(within(fact('Email')).getByRole('link', { name: 'ada@example.com' })).toHaveAttribute(
+      'href',
+      'mailto:ada@example.com',
+    );
+    expect(fact('Phone')).toHaveTextContent('+91 20 5550 0100');
+  });
+
+  it.each([
+    ['a city and no country', { countryId: null, country: null }, 'Pune'],
+    ['a country and no city', { city: null }, 'India'],
+  ])('shows just the part of the location there is: %s', async (_name, change, expected) => {
+    serve({ clients: clientsEnvelope([{ ...clientRows[0], ...change }]) });
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    await waitFor(() => expect(fact('Location')).toHaveTextContent(expected));
+    expect(fact('Location')).not.toHaveTextContent(',');
+  });
+
+  it('shows dashes for a client with no city, country or contact', async () => {
+    serve({ project: projectEnvelope({ ...projectRows[0], clientId: 2, client: clientRows[1] }) });
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    await waitFor(() => expect(fact('Location')).toHaveTextContent('—'));
+    for (const label of ['Contact', 'Email', 'Phone']) expect(fact(label)).toHaveTextContent('—');
+  });
+
+  it('shows a dash, not an empty link, for a contact with no email', async () => {
+    serve({ project: projectEnvelope({ ...projectRows[0], clientId: 3, client: clientRows[2] }) });
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    await waitFor(() => expect(fact('Contact')).toHaveTextContent('Grace Hopper'));
+    expect(fact('Email')).toHaveTextContent('—');
+    expect(within(fact('Email')).queryByRole('link')).not.toBeInTheDocument();
+    expect(fact('Phone')).toHaveTextContent('+44 20 7946 0001');
+  });
+
+  it('shows dashes for a project with no client, at once, whatever the lists hold', async () => {
+    serve({ project: projectEnvelope({ ...projectRows[0], clientId: null, client: null }) });
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    for (const label of ['Location', 'Contact', 'Email', 'Phone']) expect(fact(label)).toHaveTextContent('—');
+  });
+
+  it('shows dashes, not the old client’s contact, when the client was deleted since', async () => {
+    serve({ project: projectEnvelope({ ...projectRows[0], clientId: 1, client: null }) });
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    await waitFor(() => expect(coreApi.get).toHaveBeenCalledWith('/client-contacts'));
+    for (const label of ['Location', 'Contact', 'Email', 'Phone']) expect(fact(label)).toHaveTextContent('—');
+  });
+
+  it('says Unavailable for the contact when its list fails, and still shows the location', async () => {
+    serve({ contacts: 'fail' });
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    await waitFor(() => expect(fact('Contact')).toHaveTextContent('Unavailable'));
+    expect(fact('Email')).toHaveTextContent('Unavailable');
+    expect(fact('Phone')).toHaveTextContent('Unavailable');
+    await waitFor(() => expect(fact('Location')).toHaveTextContent('Pune, India'));
+  });
+
+  it('says Unavailable for the location when the clients list fails, and still shows the contact', async () => {
+    serve({ clients: 'fail' });
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    await waitFor(() => expect(fact('Location')).toHaveTextContent('Unavailable'));
+    await waitFor(() => expect(fact('Contact')).toHaveTextContent('Ada Lovelace'));
   });
 });
