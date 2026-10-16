@@ -1,5 +1,6 @@
 import { currencyRowSchema, currencyRowsSchema } from '@/features/currencies/schema';
 import { expenseTypeRowSchema } from '@/features/expense-types/schema';
+import { personRowSchema } from '@/features/people/schema';
 import { unwrap } from '@/lib/core-api';
 import { signInLive, type LiveSend } from '@/test/live-api';
 import { expenseRowSchema, expenseRowsSchema, expenseSummarySchema, recurringRowSchema, recurringRowsSchema } from './schema';
@@ -48,6 +49,10 @@ describe.skipIf(!base)('the running core service, expenses', () => {
       await json(await send('POST', '/currencies', { code, name: 'Live check currency', symbol: '¤', rate: 88.25 })),
       currencyRowSchema,
     );
+    const person = unwrap(
+      await json(await send('POST', '/people', { name: `Live check person ${randomCode()}` })),
+      personRowSchema,
+    );
     let expenseId: number | undefined;
     try {
       const created = await send('POST', '/expenses', {
@@ -55,6 +60,7 @@ describe.skipIf(!base)('the running core service, expenses', () => {
         notes: null,
         expenseTypeId: type.id,
         projectId: null,
+        personId: person.id,
         chargeDate: '2026-10-01',
         currencyId: currency.id,
         amount: 882500,
@@ -64,6 +70,11 @@ describe.skipIf(!base)('the running core service, expenses', () => {
       expenseId = row.id;
       expect(row).toMatchObject({ amountCents: 10000, originalAmount: 882500, exchangeRate: 88.25 });
       expect(row.originalCurrency).toMatchObject({ id: currency.id, code });
+      expect(row.person).toEqual({ id: person.id, name: person.name });
+
+      // Filtered by the person, the expense is found; for a person nobody has, it is not.
+      const byPerson = unwrap(await json(await send('GET', `/expenses?personId=${person.id}`)), expenseRowsSchema);
+      expect(byPerson.map((expense) => expense.id)).toEqual([row.id]);
 
       const listed = unwrap(
         await json(await send('GET', '/expenses?from=2026-10-01&to=2026-10-01&q=Live%20check%20desk')),
@@ -102,6 +113,7 @@ describe.skipIf(!base)('the running core service, expenses', () => {
       ).toBe(422);
     } finally {
       if (expenseId !== undefined) expect((await send('DELETE', `/expenses/${expenseId}`)).status).toBe(200);
+      expect((await send('DELETE', `/people/${person.id}`)).status).toBe(200);
       expect((await send('DELETE', `/currencies/${currency.id}`)).status).toBe(200);
       expect((await send('DELETE', `/expense-types/${type.id}`)).status).toBe(200);
     }

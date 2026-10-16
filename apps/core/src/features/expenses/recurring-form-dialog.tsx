@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCurrencies } from '@/features/currencies/api';
 import { PRIMARY_CURRENCY } from '@/features/currencies/schema';
 import { useExpenseTypes } from '@/features/expense-types/api';
+import { usePeople } from '@/features/people/api';
 import { useProjects } from '@/features/projects/api';
 import { serviceMessage } from '@/lib/core-api';
 import { localToday } from '@/lib/format';
@@ -39,6 +40,7 @@ export function RecurringFormDialog({ open, onOpenChange, expense, onSaved }: Re
   const types = useExpenseTypes();
   const currencies = useCurrencies();
   const projects = useProjects();
+  const people = usePeople();
   const save = useSaveRecurring();
   const [failure, setFailure] = useState<string | null>(null);
   const {
@@ -82,6 +84,15 @@ export function RecurringFormDialog({ open, onOpenChange, expense, onSaved }: Re
         expense?.project ? { id: expense.project.id, label: expense.project.name } : undefined,
       ),
     [projects.data, expense],
+  );
+
+  const personOptions = useMemo(
+    () =>
+      withCurrent(
+        (people.data ?? []).map((person) => ({ id: person.id, label: person.name })),
+        expense?.person ? { id: expense.person.id, label: expense.person.name } : undefined,
+      ),
+    [people.data, expense],
   );
 
   const submit = handleSubmit(async (values) => {
@@ -190,6 +201,21 @@ export function RecurringFormDialog({ open, onOpenChange, expense, onSaved }: Re
             <Select {...fieldA11y('recurring-project', errors.projectId?.message)} {...register('projectId')}>
               <option value="">None</option>
               {projectOptions.map((option) => (
+                <option key={option.id} value={String(option.id)}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field
+            label="Person"
+            htmlFor="recurring-person"
+            error={errors.personId?.message}
+            hint={people.isError ? 'People could not be loaded.' : undefined}
+          >
+            <Select {...fieldA11y('recurring-person', errors.personId?.message)} {...register('personId')}>
+              <option value="">None</option>
+              {personOptions.map((option) => (
                 <option key={option.id} value={String(option.id)}>
                   {option.label}
                 </option>

@@ -9,9 +9,22 @@ describe('expenses', () => {
     cy.visit('/');
   });
 
-  it('adds a recurring expense and finds its charges in the ledger', () => {
-    cy.get(nav).contains('a', 'Recurring').click();
-    cy.contains('h1', 'Recurring expenses');
+  it('keeps one Expenses page with three tabs, the Overview first', () => {
+    cy.get(nav).contains('a', 'Expenses').click();
+    cy.contains('h1', 'Expenses');
+    cy.get('[role="tab"]').then((tabs) => {
+      expect([...tabs].map((tab) => tab.textContent)).to.deep.equal(['Overview', 'One-time', 'Recurring']);
+    });
+    cy.contains('[role="tab"]', 'Overview').should('have.attr', 'aria-selected', 'true');
+    cy.location('search').should('eq', '');
+    // Recurring expenses are a tab, not a page of their own.
+    cy.get(nav).contains('a', 'Recurring').should('not.exist');
+  });
+
+  it('adds a recurring expense and finds its charges on the Overview', () => {
+    cy.get(nav).contains('a', 'Expenses').click();
+    cy.contains('[role="tab"]', 'Recurring').click();
+    cy.location('search').should('eq', '?tab=recurring');
     cy.contains('No recurring expenses yet.').should('be.visible');
 
     cy.contains('button', 'Add recurring expense').click();
@@ -28,23 +41,44 @@ describe('expenses', () => {
     cy.contains('td', 'Figma').should('be.visible');
     cy.contains('Active: $15.00 per month').should('be.visible');
 
-    cy.get(nav).contains('a', 'Expenses').click();
-    cy.contains('h1', 'Expenses');
-    cy.contains('td', '1 Aug 2026').should('be.visible');
-    // en-GB abbreviates September as "Sept" in newer browsers and "Sep" in older ones.
-    cy.contains('td', /^1 Sept? 2026$/).should('be.visible');
-    cy.contains('td', '1 Oct 2026').should('be.visible');
-    // The first table is the ledger; the second, further down, is the by-type breakdown.
+    // The charges are expenses: the Overview lists them, tagged, and adds them up.
+    cy.contains('[role="tab"]', 'Overview').click();
+    cy.location('search').should('eq', '');
     cy.get('table').first().find('tbody tr').should('have.length', 3);
-    cy.contains('3 expenses · $45.00').should('be.visible');
     cy.get('table').first().contains('Recurring').should('be.visible');
+    cy.get('dl[aria-label^="Spend in"]').within(() => {
+      cy.contains('dt', 'Total').next().should('have.text', '$45.00');
+      cy.contains('dt', 'Recurring').next().should('have.text', '$45.00');
+      cy.contains('dt', 'One-time').next().should('have.text', '$0.00');
+    });
+
+    // They were not typed by hand, so the One-time tab has none.
+    cy.contains('[role="tab"]', 'One-time').click();
+    cy.location('search').should('eq', '?tab=one-time');
+    cy.contains('No one-time expenses yet.').should('be.visible');
   });
 
-  it('shows the new expense dialog with US dollars chosen', () => {
+  it('moves between months on the Overview, keeping the month in the address', () => {
+    cy.get(nav).contains('a', 'Expenses').click();
+    cy.contains('button', 'Previous month').click();
+    cy.location('search').should('match', /^\?month=\d{4}-\d{2}$/);
+    cy.contains('button', 'This month').click();
+    cy.location('search').should('eq', '');
+  });
+
+  it('sends the old Recurring link to the Recurring tab', () => {
+    cy.visit('/finance/recurring');
+    cy.location('pathname').should('eq', '/finance/expenses');
+    cy.location('search').should('eq', '?tab=recurring');
+    cy.contains('[role="tab"]', 'Recurring').should('have.attr', 'aria-selected', 'true');
+  });
+
+  it('shows the new expense dialog with US dollars chosen and a person to pick', () => {
     cy.get(nav).contains('a', 'Expenses').click();
     cy.contains('button', 'Add expense').click();
     cy.get('[role="dialog"]').within(() => {
       cy.get('#expense-currency').should('have.value', '1');
+      cy.get('#expense-person').select('Asha Rao');
       cy.get('#expense-currency').select('2');
       cy.get('#expense-amount').type('8825');
       cy.contains('About $100.00 at 88.25 INR per $1.').should('be.visible');

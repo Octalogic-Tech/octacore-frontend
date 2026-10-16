@@ -2,7 +2,6 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { coreApi, unwrap } from '@/lib/core-api';
 import {
   expenseRowsSchema,
-  expenseSummarySchema,
   recurringRowsSchema,
   type ExpenseBody,
   type RecurringBody,
@@ -17,6 +16,7 @@ export const RECURRING_KEY = ['recurring-expenses'] as const;
 export interface ExpenseQuery {
   expenseTypeId?: number;
   projectId?: number;
+  personId?: number;
   from?: string;
   to?: string;
   recurring?: boolean;
@@ -28,15 +28,6 @@ export function useExpenses(query: ExpenseQuery) {
   return useQuery({
     queryKey: [...EXPENSES_KEY, 'list', query] as const,
     queryFn: async () => unwrap((await coreApi.get('/expenses', { params: query })).data, expenseRowsSchema),
-    placeholderData: keepPreviousData,
-  });
-}
-
-/** The total, and the totals by type and by month, for the same filters. */
-export function useExpenseSummary(query: ExpenseQuery) {
-  return useQuery({
-    queryKey: [...EXPENSES_KEY, 'summary', query] as const,
-    queryFn: async () => unwrap((await coreApi.get('/expenses/summary', { params: query })).data, expenseSummarySchema),
     placeholderData: keepPreviousData,
   });
 }

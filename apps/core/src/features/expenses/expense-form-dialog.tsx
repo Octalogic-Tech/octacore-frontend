@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCurrencies } from '@/features/currencies/api';
 import { PRIMARY_CURRENCY } from '@/features/currencies/schema';
 import { useExpenseTypes } from '@/features/expense-types/api';
+import { usePeople } from '@/features/people/api';
 import { useProjects } from '@/features/projects/api';
 import { serviceMessage } from '@/lib/core-api';
 import { localToday } from '@/lib/format';
@@ -31,12 +32,20 @@ interface ExpenseFormDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Present when editing, absent when adding. A snapshot taken when the dialog was opened. */
   expense?: ExpenseRow;
+  /** Where focus goes on close if the element that opened the dialog is gone (a deleted row). */
+  fallbackFocusId?: string;
 }
 
-export function ExpenseFormDialog({ open, onOpenChange, expense }: ExpenseFormDialogProps) {
+export function ExpenseFormDialog({
+  open,
+  onOpenChange,
+  expense,
+  fallbackFocusId = 'expense-search',
+}: ExpenseFormDialogProps) {
   const types = useExpenseTypes();
   const currencies = useCurrencies();
   const projects = useProjects();
+  const people = usePeople();
   const save = useSaveExpense();
   const [failure, setFailure] = useState<string | null>(null);
   const {
@@ -81,6 +90,15 @@ export function ExpenseFormDialog({ open, onOpenChange, expense }: ExpenseFormDi
     [projects.data, expense],
   );
 
+  const personOptions = useMemo(
+    () =>
+      withCurrent(
+        (people.data ?? []).map((person) => ({ id: person.id, label: person.name })),
+        expense?.person ? { id: expense.person.id, label: expense.person.name } : undefined,
+      ),
+    [people.data, expense],
+  );
+
   const submit = handleSubmit(async (values) => {
     setFailure(null);
     try {
@@ -102,7 +120,7 @@ export function ExpenseFormDialog({ open, onOpenChange, expense }: ExpenseFormDi
         if (!isSubmitting) onOpenChange(next);
       }}
     >
-      <DialogContent fallbackFocusId="expense-search">
+      <DialogContent fallbackFocusId={fallbackFocusId}>
         <DialogTitle>{expense ? 'Edit expense' : 'New expense'}</DialogTitle>
         <DialogDescription>
           One charge. For something that repeats, add a recurring expense and its charges are created for you.
@@ -150,6 +168,21 @@ export function ExpenseFormDialog({ open, onOpenChange, expense }: ExpenseFormDi
             <Select {...fieldA11y('expense-project', errors.projectId?.message)} {...register('projectId')}>
               <option value="">None</option>
               {projectOptions.map((option) => (
+                <option key={option.id} value={String(option.id)}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field
+            label="Person"
+            htmlFor="expense-person"
+            error={errors.personId?.message}
+            hint={people.isError ? 'People could not be loaded.' : undefined}
+          >
+            <Select {...fieldA11y('expense-person', errors.personId?.message)} {...register('personId')}>
+              <option value="">None</option>
+              {personOptions.map((option) => (
                 <option key={option.id} value={String(option.id)}>
                   {option.label}
                 </option>

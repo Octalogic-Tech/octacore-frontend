@@ -23,6 +23,7 @@ const valid: ExpenseFormValues = {
   name: 'Figma',
   expenseTypeId: '1',
   projectId: '',
+  personId: '',
   chargeDate: '2026-10-01',
   currencyId: '1',
   amount: '15.00',
@@ -57,16 +58,22 @@ describe('the expense body', () => {
       notes: 'Seats',
       expenseTypeId: 1,
       projectId: 3,
+      personId: null,
       chargeDate: '2026-10-01',
       currencyId: 1,
       amount: 1500,
     });
   });
 
-  it('sends a blank note and project as null', () => {
+  it('sends a blank note, project and person as null', () => {
     const body = toExpenseBody(valid);
     expect(body.notes).toBeNull();
     expect(body.projectId).toBeNull();
+    expect(body.personId).toBeNull();
+  });
+
+  it('sends the person chosen', () => {
+    expect(toExpenseBody({ ...valid, personId: '2' }).personId).toBe(2);
   });
 
   // The service converts again, at today's rate, whenever it is sent a currency and an amount.
@@ -124,6 +131,7 @@ describe('the expense form values', () => {
       currencyId: '2',
       amount: '8825.00',
       projectId: '1',
+      personId: '1',
       notes: 'Pune',
     });
   });
@@ -137,6 +145,7 @@ const validRecurring: RecurringFormValues = {
   name: 'Figma',
   expenseTypeId: '1',
   projectId: '',
+  personId: '',
   frequency: 'monthly',
   startDate: '2026-07-01',
   endDate: '',
@@ -172,12 +181,17 @@ describe('the recurring form', () => {
       notes: 'Seats',
       expenseTypeId: 1,
       projectId: 3,
+      personId: null,
       currencyId: 1,
       amount: 1500,
       frequency: 'monthly',
       startDate: '2026-07-01',
       endDate: null,
     });
+  });
+
+  it('sends the person chosen on a recurring expense', () => {
+    expect(toRecurringBody({ ...validRecurring, personId: '2' }).personId).toBe(2);
   });
 
   it('starts from monthly and today on a new expense, and from the row on an edit', () => {

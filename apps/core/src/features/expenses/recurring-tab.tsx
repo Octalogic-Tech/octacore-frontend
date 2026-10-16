@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { LuBan, LuPause, LuPencil, LuPlay, LuTrash2 } from 'react-icons/lu';
-import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
 import { TablePager } from '@/components/table-pager';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +16,8 @@ import { formatMoney, formatUsd } from './money';
 import { RecurringFormDialog } from './recurring-form-dialog';
 import { costTotals, sortRecurring } from './recurring';
 import { FREQUENCY_LABELS, STATE_LABELS, type RecurringRow, type RecurringState } from './schema';
+
+const NONE = '—';
 
 interface StateAction {
   title: (name: string) => string;
@@ -47,7 +48,8 @@ function StateBadge({ state }: { state: RecurringState }) {
   return <Badge variant={state === 'active' ? 'solid' : 'outline'}>{STATE_LABELS[state]}</Badge>;
 }
 
-export function RecurringPage() {
+/** The recurring expenses, and what the active ones cost: add one, change it, pause it, resume it, end it. */
+export function RecurringTab() {
   const recurring = useRecurringExpenses();
   const changeState = useChangeRecurringState();
   const remove = useDeleteRecurring();
@@ -69,17 +71,18 @@ export function RecurringPage() {
 
   return (
     <>
-      <PageHeader title="Recurring expenses">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        {recurring.data ? (
+          <p className="tabular text-body font-semibold">
+            Active: {formatUsd(totals.monthly)} per month · {formatUsd(totals.yearly)} per year
+          </p>
+        ) : (
+          <span />
+        )}
         <Button id="recurring-add" onClick={() => setForm({ open: true })}>
           Add recurring expense
         </Button>
-      </PageHeader>
-
-      {recurring.data ? (
-        <p className="tabular mb-6 text-body font-semibold">
-          Active: {formatUsd(totals.monthly)} per month · {formatUsd(totals.yearly)} per year
-        </p>
-      ) : null}
+      </div>
 
       {notice ? (
         <p role="status" className="mb-4 text-small font-semibold text-foreground">
@@ -112,6 +115,7 @@ export function RecurringPage() {
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Person</TableHead>
                 <TableHead className="text-right">Charge</TableHead>
                 <TableHead>Frequency</TableHead>
                 <TableHead>Next charge</TableHead>
@@ -127,6 +131,7 @@ export function RecurringPage() {
                     {expense.notes ? <div className="text-small text-navy-72">{expense.notes}</div> : null}
                   </TableCell>
                   <TableCell>{expense.expenseType.name}</TableCell>
+                  <TableCell>{expense.person?.name ?? NONE}</TableCell>
                   <TableCell className="tabular text-right">
                     {expense.currency.code === 'USD' ? (
                       formatUsd(expense.amountCents)
