@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { clientRowsSchema, contactRowsSchema } from '@/features/clients/schema';
 import { unwrap } from '@/lib/core-api';
 import { signInLive, type LiveSend } from '@/test/live-api';
 import {
@@ -530,6 +531,45 @@ describe.skipIf(!base)('the discount, on a service with its migration applied', 
       await send('DELETE', `/projects/${project.id}`);
       await send('DELETE', `/technologies/${react.id}`);
       await send('DELETE', `/technologies/${nest.id}`);
+    }
+  });
+
+  it('lets a project find its client’s city and contact in the two lists the Overview reads', async () => {
+    const client = unwrap(
+      await (await send('POST', '/clients', { name: 'Contact check client', city: 'Pune' })).json(),
+      createdSchema,
+    );
+    const contact = unwrap(
+      await (
+        await send('POST', '/client-contacts', {
+          clientId: client.id,
+          name: 'Contact check person',
+          email: 'live@example.com',
+          phone: '+91 20 5550 0000',
+        })
+      ).json(),
+      createdSchema,
+    );
+    const created = await send('POST', '/projects', {
+      name: 'Contact check',
+      description: null,
+      clientId: client.id,
+      projectType: 'product',
+      billingType: 'fixed_cost',
+    });
+    expect(created.status).toBe(201);
+    const project = unwrap(await created.json(), projectRowSchema);
+    try {
+      expect(project).toMatchObject({ clientId: client.id, clientName: 'Contact check client' });
+      const clients = unwrap(await (await send('GET', '/clients')).json(), clientRowsSchema);
+      const contacts = unwrap(await (await send('GET', '/client-contacts')).json(), contactRowsSchema);
+      expect(clients.find((row) => row.id === project.clientId)).toMatchObject({ city: 'Pune', countryName: '' });
+      expect(contacts.filter((row) => row.clientId === project.clientId)).toMatchObject([
+        { id: contact.id, name: 'Contact check person', email: 'live@example.com', phone: '+91 20 5550 0000' },
+      ]);
+    } finally {
+      await send('DELETE', `/projects/${project.id}`);
+      await send('DELETE', `/clients/${client.id}`); // the service soft-deletes the client's contact with it
     }
   });
 });
