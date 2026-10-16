@@ -34,7 +34,7 @@ describe('App shell', () => {
   it('lists every page in four groups', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    for (const label of ['Overview', 'Clients', 'Projects', 'People', 'Invoices', 'Expenses', 'Categories', 'Technologies', 'Countries', 'Expense types', 'Currencies', 'Users']) {
+    for (const label of ['Overview', 'Clients', 'Projects', 'People', 'Invoices', 'Expenses', 'Recurring', 'Categories', 'Technologies', 'Countries', 'Expense types', 'Currencies', 'Users']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
     for (const group of ['Work', 'Finance', 'Reference data', 'Admin']) {
@@ -73,6 +73,7 @@ describe('App shell', () => {
     ['/people', 'People'],
     ['/finance/invoices', 'Invoices'],
     ['/finance/expenses', 'Expenses'],
+    ['/finance/recurring', 'Recurring expenses'],
     ['/categories', 'Categories'],
     ['/technologies', 'Technologies'],
     ['/countries', 'Countries'],
