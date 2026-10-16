@@ -12,6 +12,7 @@ import { ProjectsPage } from '@/features/projects/projects-page';
 import { BillsPage } from '@/features/bills/bills-page';
 import { CountriesPage } from '@/features/countries/countries-page';
 import { OverviewPage } from '@/features/overview/overview-page';
+import { PeoplePage } from '@/features/people/people-page';
 import { AllocationPage } from '@/features/allocation/allocation-page';
 import { CashFlowPage } from '@/features/cash-flow/cash-flow-page';
 import { CurrencyTaxPage } from '@/features/currency-tax/currency-tax-page';
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="clients" element={<ClientsPage />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
+          <Route path="people" element={<PeoplePage />} />
           <Route path="finance/receipts-bills" element={<BillsPage />} />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="technologies" element={<TechnologiesPage />} />
