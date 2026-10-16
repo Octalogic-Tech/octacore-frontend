@@ -14,6 +14,7 @@ import {
   lineAmount,
   linesTotal,
   makeInvoiceFormSchema,
+  overdueTotal,
   parseRecipients,
   projectFormSchema,
   projectRowsSchema,
@@ -156,6 +157,33 @@ describe('sortInvoices', () => {
     const rows = [row(1, '2026-10-01'), row(2, '2026-11-01')];
     sortInvoices(rows);
     expect(rows.map((invoice) => invoice.id)).toEqual([1, 2]);
+  });
+});
+
+describe('overdueTotal', () => {
+  // INV-002: unpaid, $12,000. Each case changes only what the name says.
+  const unpaid = invoices[1];
+  const today = '2026-11-20';
+
+  it.each([
+    ['unpaid and due yesterday', { dueDate: '2026-11-19' }, 12000],
+    ['unpaid and due today', { dueDate: '2026-11-20' }, 0],
+    ['unpaid and due tomorrow', { dueDate: '2026-11-21' }, 0],
+    ['unpaid with no due date', { dueDate: null }, 0],
+    ['paid, though past its due date', { dueDate: '2026-11-01', paidDate: '2026-11-10' }, 0],
+  ])('counts an invoice that is %s as %i', (_name, over, expected) => {
+    expect(overdueTotal([{ ...unpaid, ...over }], today)).toBe(expected);
+  });
+
+  it('adds up what each overdue invoice asks of the client, after its discount', () => {
+    const late = { ...unpaid, subtotal: 10000, discountPercent: 10, amount: 9000, dueDate: '2026-11-01' };
+    const later = { ...unpaid, id: 9, subtotal: 5000, amount: 5000, dueDate: '2026-11-10' };
+    const notYet = { ...unpaid, id: 10, amount: 700, dueDate: '2026-12-01' };
+    expect(overdueTotal([late, later, notYet], today)).toBe(14000);
+  });
+
+  it('is zero for no invoices', () => {
+    expect(overdueTotal([], today)).toBe(0);
   });
 });
 

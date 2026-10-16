@@ -202,6 +202,9 @@ At the foot of the sidebar and the menu sheet, a single 44px button: the person'
 ### Inputs
 Underline fields: no box, no fill. A 1px Muted Navy rule that turns navy on hover and firms to 3px navy on focus, with padding compensating so nothing moves. A drawn arm leads the label. Errors are a 2px navy rule and a navy arm before the message, announced with `role="alert"`; there is no red. Select is a native select with a drawn chevron; the Yes and No choice is a pair of native radio buttons styled as 44px chips, the chosen one a navy block.
 
+### Tabs
+A page with more than one subject splits into tabs: text only (the icon set is for row actions), 44px tall, on a navy rule the width of the content. Labels are Slate Navy; hover, keyboard focus and the selected tab turn them Octalogic Navy, and the selected tab also carries a 3px teal bar on the rule. A count follows the name in regular weight ("Invoices 4") once it is known. The selected tab lives in the address (`?tab=`, bare for the first tab), replacing the history entry so Back leaves the page; an unknown value opens the first tab. Only the open tab is on the page.
+
 ### Panels and tables
 A framed panel (grey, 1px navy frame, one cut corner) holds a table: a navy rule under the heads, Hairline between rows, rows at least 44px, amounts right-aligned in tabular figures, a pager at the foot (rows per page, range, Previous and Next).
 

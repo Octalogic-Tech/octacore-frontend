@@ -97,6 +97,16 @@ export function sortInvoices(rows: readonly InvoiceRow[]): InvoiceRow[] {
   return [...rows].sort((a, b) => b.issueDate.localeCompare(a.issueDate) || b.id - a.id);
 }
 
+/**
+ * What the client still owes on invoices whose due date has passed: unpaid, and due before `today` (`YYYY-MM-DD`).
+ * An invoice with no due date is never overdue, and one due today is not yet.
+ */
+export function overdueTotal(rows: readonly InvoiceRow[], today: string): number {
+  return rows
+    .filter((invoice) => !invoice.paidDate && invoice.dueDate !== null && invoice.dueDate < today)
+    .reduce((total, invoice) => total + invoice.amount, 0);
+}
+
 /** A percentage field, as text: empty means none, otherwise 0 to 50 with up to two decimals. */
 const discountField = z
   .string()

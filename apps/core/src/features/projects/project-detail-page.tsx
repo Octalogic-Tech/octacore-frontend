@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { LuCircleCheck, LuDownload, LuEye, LuMail, LuPencil, LuTrash2, LuUndo2 } from 'react-icons/lu';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,7 @@ import { IconButton } from '@/components/ui/icon-button';
 import { LinkArrow } from '@/components/ui/link-arrow';
 import { Panel } from '@/components/ui/panel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { statusOf } from '@/lib/core-api';
 import { formatCurrency, formatDate, localToday } from '@/lib/format';
 import {
@@ -17,6 +18,7 @@ import {
   useDeleteProject,
   useInvoices,
   useProject,
+  useProjectResources,
   useSetInvoicePaid,
 } from './api';
 import { InvoiceEmailDialog } from './invoice-email-dialog';
@@ -24,12 +26,18 @@ import { InvoiceFormDialog } from './invoice-form-dialog';
 import { downloadInvoicePdf, notSetUpMessage } from './invoice-pdf';
 import { InvoicePreviewDialog } from './invoice-preview-dialog';
 import { ProjectFormDialog } from './project-form-dialog';
+import { ProjectOverview } from './project-overview';
 import { ResourcesPanel } from './resources-panel';
 import { sortInvoices, type InvoiceRow } from './schema';
 
 // The focus fallback for every dialog on this page: <main> is not focusable, and Add invoice is always there.
 const NONE = '—';
 const INT32_MAX = 2_147_483_647;
+
+// The page's tabs, in order. The chosen one is the `tab` in the address, so a reload, Back or a link lands on it.
+const TABS = ['overview', 'invoices', 'resources'] as const;
+type Tab = (typeof TABS)[number];
+const tabOf = (value: string | null): Tab => TABS.find((tab) => tab === value) ?? 'overview';
 
 const backLink =
   'mb-4 inline-flex min-h-11 items-center font-semibold decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline';
@@ -48,6 +56,16 @@ function ProjectNotFound() {
   );
 }
 
+/** A tab's name with how many it holds, once that is known: "Invoices 4". */
+function TabLabel({ label, count }: { label: string; count?: number }) {
+  if (count === undefined) return label;
+  return (
+    <>
+      {label} <span className="tabular ml-1.5 font-normal">{count}</span>
+    </>
+  );
+}
+
 export function ProjectDetailPage() {
   const { id = '' } = useParams();
   // Only a plain positive integer the service could hold is worth asking about; anything else is not a project.
@@ -60,6 +78,10 @@ function ProjectDetail({ projectId }: { projectId: number }) {
   const navigate = useNavigate();
   const project = useProject(projectId);
   const invoices = useInvoices(projectId);
+  // Also read by the Resources tab itself; the same query, so this only adds the count to the tab's name.
+  const resources = useProjectResources(projectId);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tab = tabOf(searchParams.get('tab'));
   const removeProject = useDeleteProject();
   const removeInvoice = useDeleteInvoice();
   const setPaid = useSetInvoicePaid();
@@ -78,6 +100,11 @@ function ProjectDetail({ projectId }: { projectId: number }) {
   if (statusOf(project.error) === 404) return <ProjectNotFound />;
 
   const data = project.data;
+
+  // The overview is the bare address; every other tab is `?tab=`. Replacing the entry keeps Back for leaving the page.
+  function showTab(next: string) {
+    setSearchParams(next === 'overview' ? {} : { tab: next }, { replace: true });
+  }
 
   async function togglePaid(invoice: InvoiceRow) {
     setPaidFailed(false);
@@ -129,152 +156,129 @@ function ProjectDetail({ projectId }: { projectId: number }) {
         empty={null}
       >
         {data ? (
-          <>
-            <dl className="mb-6 grid gap-x-12 gap-y-4 border-t border-navy pt-4 sm:grid-cols-3">
-              <div>
-                <dt className="text-small text-navy-80">Client</dt>
-                <dd className="font-semibold">{data.clientName || NONE}</dd>
-              </div>
-              <div>
-                <dt className="text-small text-navy-80">Project type</dt>
-                <dd className="font-semibold">{data.projectTypeLabel || NONE}</dd>
-              </div>
-              <div>
-                <dt className="text-small text-navy-80">Billing type</dt>
-                <dd className="font-semibold">{data.billingTypeLabel || NONE}</dd>
-              </div>
-              <div>
-                <dt className="text-small text-navy-80">Key</dt>
-                <dd className="font-semibold">{data.key || NONE}</dd>
-              </div>
-              <div>
-                <dt className="text-small text-navy-80">Discount</dt>
-                <dd className="font-semibold">{data.discountPercent > 0 ? `${data.discountPercent}%` : NONE}</dd>
-              </div>
-              <div className="sm:col-span-2">
-                <dt className="text-small text-navy-80">Billing address</dt>
-                <dd className="whitespace-pre-line font-semibold">{data.billingAddress || NONE}</dd>
-              </div>
-            </dl>
-            {data.description ? <p className="mb-6 max-w-[64ch] text-body">{data.description}</p> : null}
+          <Tabs value={tab} onValueChange={showTab}>
+            <TabsList aria-label="Project sections">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="invoices">
+                <TabLabel label="Invoices" count={invoices.data?.length} />
+              </TabsTrigger>
+              <TabsTrigger value="resources">
+                <TabLabel label="Resources" count={resources.data?.length} />
+              </TabsTrigger>
+            </TabsList>
 
-            <p className="mb-8 max-w-[64ch] text-statement">
-              {invoices.data?.length === 0 ? (
-                'Nothing is invoiced yet.'
-              ) : (
-                <>
-                  <span className="tabular font-semibold">{formatCurrency(data.totalOutstanding)}</span> outstanding of{' '}
-                  <span className="tabular font-semibold">{formatCurrency(data.totalValue)}</span> invoiced.
-                </>
-              )}
-            </p>
+            <TabsContent value="overview">
+              <ProjectOverview project={data} invoices={invoices.data} />
+            </TabsContent>
 
-            <ResourcesPanel projectId={projectId} billingType={data.billingType} />
+            <TabsContent value="invoices">
+              {paidFailed ? (
+                <p role="alert" className="mb-4 text-small font-semibold text-foreground">
+                  That did not save. Try again.
+                </p>
+              ) : null}
+              {notice ? (
+                <p role={notice.kind === 'failed' ? 'alert' : 'status'} className="mb-4 text-small font-semibold text-foreground">
+                  {notice.text}
+                </p>
+              ) : null}
 
-            <h2 className="mb-3 text-title font-semibold">Invoices</h2>
-
-            {paidFailed ? (
-              <p role="alert" className="mb-4 text-small font-semibold text-foreground">
-                That did not save. Try again.
-              </p>
-            ) : null}
-            {notice ? (
-              <p role={notice.kind === 'failed' ? 'alert' : 'status'} className="mb-4 text-small font-semibold text-foreground">
-                {notice.text}
-              </p>
-            ) : null}
-
-            <Panel>
-              <QueryBoundary
-                isLoading={invoices.isLoading}
-                isError={invoices.isError}
-                onRetry={() => void invoices.refetch()}
-                isEmpty={!invoices.data?.length}
-                empty={
-                  <div className="grid justify-items-start gap-1">
-                    <p className="text-body">No invoices yet.</p>
-                    <Button variant="quiet" onClick={() => setInvoiceForm({ open: true })}>
-                      Add the first invoice
-                    </Button>
-                  </div>
-                }
-              >
-                <Table aria-label="Invoices">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Number</TableHead>
-                      <TableHead>Issued</TableHead>
-                      <TableHead>Due</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rows.map((invoice) => (
-                      <TableRow key={invoice.id}>
-                        <TableCell className="min-w-[10rem]">
-                          <span className="block font-semibold">{invoice.number}</span>
-                          {invoice.description ? <span className="block text-small">{invoice.description}</span> : null}
-                        </TableCell>
-                        <TableCell className="tabular whitespace-nowrap">{formatDate(invoice.issueDate)}</TableCell>
-                        <TableCell className="tabular whitespace-nowrap">
-                          {invoice.dueDate ? formatDate(invoice.dueDate) : NONE}
-                        </TableCell>
-                        <TableCell className="tabular text-right">{formatCurrency(invoice.amount)}</TableCell>
-                        <TableCell>
-                          {invoice.paidDate ? (
-                            <Badge variant="outline">Paid {formatDate(invoice.paidDate)}</Badge>
-                          ) : (
-                            <Badge>Unpaid</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap text-right">
-                          <IconButton
-                            label={`Preview ${invoice.number}`}
-                            icon={LuEye}
-                            onClick={() => {
-                              setNotice(null);
-                              setPreviewing(invoice);
-                            }}
-                          />
-                          <IconButton
-                            label={`Download ${invoice.number}`}
-                            icon={LuDownload}
-                            onClick={() => void download(invoice)}
-                          />
-                          <IconButton
-                            label={`Email ${invoice.number}`}
-                            icon={LuMail}
-                            onClick={() => {
-                              setNotice(null);
-                              setEmailing(invoice);
-                            }}
-                          />
-                          <IconButton
-                            label={`${invoice.paidDate ? 'Mark unpaid' : 'Mark paid'} ${invoice.number}`}
-                            icon={invoice.paidDate ? LuUndo2 : LuCircleCheck}
-                            disabled={setPaid.isPending}
-                            onClick={() => void togglePaid(invoice)}
-                          />
-                          <IconButton
-                            label={`Edit ${invoice.number}`}
-                            icon={LuPencil}
-                            onClick={() => setInvoiceForm({ open: true, invoice })}
-                          />
-                          <IconButton
-                            label={`Delete ${invoice.number}`}
-                            icon={LuTrash2}
-                            onClick={() => setInvoiceToDelete(invoice)}
-                          />
-                        </TableCell>
+              <Panel>
+                <QueryBoundary
+                  isLoading={invoices.isLoading}
+                  isError={invoices.isError}
+                  onRetry={() => void invoices.refetch()}
+                  isEmpty={!invoices.data?.length}
+                  empty={
+                    <div className="grid justify-items-start gap-1">
+                      <p className="text-body">No invoices yet.</p>
+                      <Button variant="quiet" onClick={() => setInvoiceForm({ open: true })}>
+                        Add the first invoice
+                      </Button>
+                    </div>
+                  }
+                >
+                  <Table aria-label="Invoices">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Number</TableHead>
+                        <TableHead>Issued</TableHead>
+                        <TableHead>Due</TableHead>
+                        <TableHead className="text-right">Amount</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </QueryBoundary>
-            </Panel>
-          </>
+                    </TableHeader>
+                    <TableBody>
+                      {rows.map((invoice) => (
+                        <TableRow key={invoice.id}>
+                          <TableCell className="min-w-[10rem]">
+                            <span className="block font-semibold">{invoice.number}</span>
+                            {invoice.description ? <span className="block text-small">{invoice.description}</span> : null}
+                          </TableCell>
+                          <TableCell className="tabular whitespace-nowrap">{formatDate(invoice.issueDate)}</TableCell>
+                          <TableCell className="tabular whitespace-nowrap">
+                            {invoice.dueDate ? formatDate(invoice.dueDate) : NONE}
+                          </TableCell>
+                          <TableCell className="tabular text-right">{formatCurrency(invoice.amount)}</TableCell>
+                          <TableCell>
+                            {invoice.paidDate ? (
+                              <Badge variant="outline">Paid {formatDate(invoice.paidDate)}</Badge>
+                            ) : (
+                              <Badge>Unpaid</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap text-right">
+                            <IconButton
+                              label={`Preview ${invoice.number}`}
+                              icon={LuEye}
+                              onClick={() => {
+                                setNotice(null);
+                                setPreviewing(invoice);
+                              }}
+                            />
+                            <IconButton
+                              label={`Download ${invoice.number}`}
+                              icon={LuDownload}
+                              onClick={() => void download(invoice)}
+                            />
+                            <IconButton
+                              label={`Email ${invoice.number}`}
+                              icon={LuMail}
+                              onClick={() => {
+                                setNotice(null);
+                                setEmailing(invoice);
+                              }}
+                            />
+                            <IconButton
+                              label={`${invoice.paidDate ? 'Mark unpaid' : 'Mark paid'} ${invoice.number}`}
+                              icon={invoice.paidDate ? LuUndo2 : LuCircleCheck}
+                              disabled={setPaid.isPending}
+                              onClick={() => void togglePaid(invoice)}
+                            />
+                            <IconButton
+                              label={`Edit ${invoice.number}`}
+                              icon={LuPencil}
+                              onClick={() => setInvoiceForm({ open: true, invoice })}
+                            />
+                            <IconButton
+                              label={`Delete ${invoice.number}`}
+                              icon={LuTrash2}
+                              onClick={() => setInvoiceToDelete(invoice)}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </QueryBoundary>
+              </Panel>
+            </TabsContent>
+
+            <TabsContent value="resources">
+              <ResourcesPanel projectId={projectId} billingType={data.billingType} />
+            </TabsContent>
+          </Tabs>
         ) : null}
       </QueryBoundary>
 

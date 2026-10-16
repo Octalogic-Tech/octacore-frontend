@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
-import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { coreApi } from '@/lib/core-api';
 import { queryDefaults } from '@/lib/query-client';
 import { categoriesEnvelope } from '@/test/fixtures/categories';
@@ -59,12 +59,23 @@ const serve = (opts: { project?: unknown; invoices?: unknown; resources?: unknow
     throw new Error(`unexpected GET ${path}`);
   }) as never);
 
+const INVOICES_TAB = '/projects/1?tab=invoices';
+const RESOURCES_TAB = '/projects/1?tab=resources';
+
+/** Shows the address's query string, so a test can see which tab the page put there. */
+function Search() {
+  return <code data-testid="search">{useLocation().search}</code>;
+}
+
 function renderAt(route: string) {
   return renderWithProviders(
-    <Routes>
-      <Route path="/projects/:id" element={<ProjectDetailPage />} />
-      <Route path="/projects" element={<p>Projects list</p>} />
-    </Routes>,
+    <>
+      <Routes>
+        <Route path="/projects/:id" element={<ProjectDetailPage />} />
+        <Route path="/projects" element={<p>Projects list</p>} />
+      </Routes>
+      <Search />
+    </>,
     { route },
   );
 }
@@ -113,7 +124,7 @@ describe('ProjectDetailPage: reading', () => {
   });
 
   it('lists the invoices newest issue date first, each with its status', async () => {
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
     const table = await screen.findByRole('table', { name: 'Invoices' });
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(2);
@@ -131,15 +142,24 @@ describe('ProjectDetailPage: reading', () => {
     expect(older.getByText('Paid 12 Oct 2026')).toBeInTheDocument();
   });
 
-  it('says so, and offers the first invoice, when there are none', async () => {
-    serve({
-      project: projectEnvelope({ ...projectRows[0], totalValue: 0, totalOutstanding: 0 }),
-      invoices: invoicesEnvelope([]),
+  describe('with no invoices', () => {
+    beforeEach(() => {
+      serve({
+        project: projectEnvelope({ ...projectRows[0], totalValue: 0, totalOutstanding: 0 }),
+        invoices: invoicesEnvelope([]),
+      });
     });
-    renderAt('/projects/1');
-    expect(await screen.findByText('No invoices yet.')).toBeInTheDocument();
-    expect(screen.getByText(sentence('Nothing is invoiced yet.'))).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add the first invoice' })).toBeInTheDocument();
+
+    it('says on the overview that nothing is invoiced yet', async () => {
+      renderAt('/projects/1');
+      expect(await screen.findByText(sentence('Nothing is invoiced yet.'))).toBeInTheDocument();
+    });
+
+    it('says so on the invoices tab, and offers the first invoice', async () => {
+      renderAt(INVOICES_TAB);
+      expect(await screen.findByText('No invoices yet.')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Add the first invoice' })).toBeInTheDocument();
+    });
   });
 
   it('links back to the projects', async () => {
@@ -149,13 +169,10 @@ describe('ProjectDetailPage: reading', () => {
 });
 
 describe('ProjectDetailPage: resources', () => {
-  it('asks for only this project’s resources and shows them above the invoices', async () => {
-    renderAt('/projects/1');
-    const resources = await screen.findByRole('heading', { level: 2, name: 'Resources' });
-    const invoices = screen.getByRole('heading', { level: 2, name: 'Invoices' });
-    expect(coreApi.get).toHaveBeenCalledWith('/project-resources', { params: { projectId: 1 } });
-    expect(resources.compareDocumentPosition(invoices) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  it('asks for only this project’s resources and lists them on the resources tab', async () => {
+    renderAt(RESOURCES_TAB);
     const table = await screen.findByRole('table', { name: 'Resources' });
+    expect(coreApi.get).toHaveBeenCalledWith('/project-resources', { params: { projectId: 1 } });
     expect(within(table).getByText('Ben Cho')).toBeInTheDocument();
   });
 
@@ -165,16 +182,140 @@ describe('ProjectDetailPage: resources', () => {
       if (path === '/invoices') return { data: invoicesEnvelope() };
       throw new Error('down');
     }) as never);
-    renderAt('/projects/1');
+    const user = userEvent.setup();
+    renderAt(INVOICES_TAB);
     expect(await screen.findByRole('table', { name: 'Invoices' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Resources' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
   });
 
   it('opens the resource dialog from the panel', async () => {
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(RESOURCES_TAB);
     await user.click(await screen.findByRole('button', { name: 'Add resource' }));
     expect(screen.getByRole('dialog', { name: 'New resource' })).toBeInTheDocument();
+  });
+});
+
+describe('ProjectDetailPage: tabs', () => {
+  const tab = (name: string) => screen.getByRole('tab', { name });
+
+  it('opens on the overview, and the other two tabs say how many they hold', async () => {
+    // One invoice and two resources, so a count on the wrong tab shows.
+    serve({ invoices: invoicesEnvelope([invoiceRows[0]]) });
+    renderAt('/projects/1');
+    expect(await screen.findByRole('tab', { name: 'Invoices 1' })).toHaveAttribute('aria-selected', 'false');
+    expect(await screen.findByRole('tab', { name: 'Resources 2' })).toHaveAttribute('aria-selected', 'false');
+    expect(tab('Overview')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('shows no count while a tab’s list has not loaded', async () => {
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/projects/1') return { data: projectEnvelope() };
+      throw new Error('down');
+    }) as never);
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    expect(tab('Invoices')).toBeInTheDocument();
+    expect(tab('Resources')).toBeInTheDocument();
+  });
+
+  it('keeps the tables off the overview', async () => {
+    renderAt('/projects/1');
+    await screen.findByText(sentence('$12,000 outstanding of $48,000 invoiced.'));
+    expect(screen.getByText('Acme')).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Invoices' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Resources' })).not.toBeInTheDocument();
+  });
+
+  it('switches to a tab on click, shows only that tab, and writes it into the address', async () => {
+    const user = userEvent.setup();
+    renderAt('/projects/1');
+    await user.click(await screen.findByRole('tab', { name: 'Invoices 2' }));
+
+    expect(await screen.findByRole('table', { name: 'Invoices' })).toBeInTheDocument();
+    expect(screen.queryByText('Acme')).not.toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Resources' })).not.toBeInTheDocument();
+    expect(tab('Invoices 2')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByTestId('search')).toHaveTextContent('?tab=invoices');
+
+    await user.click(tab('Resources 2'));
+    expect(await screen.findByRole('table', { name: 'Resources' })).toBeInTheDocument();
+    expect(screen.queryByRole('table', { name: 'Invoices' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('search')).toHaveTextContent('?tab=resources');
+  });
+
+  it('leaves the address bare when the person returns to the overview', async () => {
+    const user = userEvent.setup();
+    renderAt(INVOICES_TAB);
+    await user.click(await screen.findByRole('tab', { name: 'Overview' }));
+    expect(await screen.findByText('Acme')).toBeInTheDocument();
+    expect(screen.getByTestId('search')).toBeEmptyDOMElement();
+  });
+
+  it('replaces the address instead of adding to it, so Back leaves the page rather than stepping through tabs', async () => {
+    const user = userEvent.setup();
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/projects', '/projects/1']} initialIndex={1}>
+          <Routes>
+            <Route path="/projects/:id" element={<ProjectDetailPage />} />
+            <Route path="/projects" element={<p>Projects list</p>} />
+          </Routes>
+          <Back />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await user.click(await screen.findByRole('tab', { name: 'Invoices 2' }));
+    await user.click(screen.getByRole('tab', { name: 'Resources 2' }));
+
+    await user.click(screen.getByRole('button', { name: 'Go back' }));
+
+    expect(await screen.findByText('Projects list')).toBeInTheDocument();
+  });
+
+  it.each([
+    ['invoices', 'Invoices'],
+    ['resources', 'Resources'],
+  ])('opens on the %s tab when the address names it', async (value, table) => {
+    renderAt(`/projects/1?tab=${value}`);
+    expect(await screen.findByRole('table', { name: table })).toBeInTheDocument();
+    expect(screen.queryByText('Acme')).not.toBeInTheDocument();
+  });
+
+  it('falls back to the overview for a tab it does not know', async () => {
+    renderAt('/projects/1?tab=billing');
+    expect(await screen.findByText('Acme')).toBeInTheDocument();
+    expect(tab('Overview')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it.each([
+    ['the overview', '/projects/1'],
+    ['the invoices tab', INVOICES_TAB],
+    ['the resources tab', RESOURCES_TAB],
+  ])('keeps Add invoice, Edit project and Delete project in the header on %s', async (_name, route) => {
+    renderAt(route);
+    expect(await screen.findByRole('button', { name: 'Add invoice' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit project' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete project' })).toBeInTheDocument();
+  });
+
+  it('says how much of the outstanding amount is overdue', async () => {
+    // Today is 20 Nov 2026 in this file; INV-002 fell due on the 15th.
+    serve({ invoices: invoicesEnvelope([invoiceRows[0], { ...invoiceRows[1], dueDate: '2026-11-15' }]) });
+    renderAt('/projects/1');
+    expect(
+      await screen.findByText(sentence('$12,000 outstanding of $48,000 invoiced, $12,000 of it overdue.')),
+    ).toBeInTheDocument();
+  });
+
+  it('leaves overdue out while nothing is past due', async () => {
+    serve({ invoices: invoicesEnvelope([invoiceRows[0], { ...invoiceRows[1], dueDate: '2026-11-30' }]) });
+    renderAt('/projects/1');
+    expect(await screen.findByText(sentence('$12,000 outstanding of $48,000 invoiced.'))).toBeInTheDocument();
   });
 });
 
@@ -211,8 +352,12 @@ describe('ProjectDetailPage: when the project is not there', () => {
       if (path === '/project-resources') return { data: resourcesEnvelope() };
       throw new Error('down');
     }) as never);
+    const user = userEvent.setup();
     renderAt('/projects/1');
     expect(await screen.findByRole('heading', { level: 1, name: 'Website' })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Invoices' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
   });
 });
@@ -221,7 +366,7 @@ describe('ProjectDetailPage: invoices', () => {
   it('marks an unpaid invoice paid with today’s local date, and refetches the totals', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
     await user.click(await screen.findByRole('button', { name: 'Mark paid INV-002' }));
     await waitFor(() => expect(coreApi.patch).toHaveBeenCalledWith('/invoices/2', { paidDate: '2026-11-20' }));
     await waitFor(() => expect(gets('/projects/1')).toHaveLength(2));
@@ -231,7 +376,7 @@ describe('ProjectDetailPage: invoices', () => {
   it('marks a paid invoice unpaid by clearing its paid date', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
     await user.click(await screen.findByRole('button', { name: 'Mark unpaid INV-001' }));
     await waitFor(() => expect(coreApi.patch).toHaveBeenCalledWith('/invoices/1', { paidDate: null }));
   });
@@ -244,7 +389,7 @@ describe('ProjectDetailPage: invoices', () => {
       }) as never,
     );
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
     const button = await screen.findByRole('button', { name: 'Mark paid INV-002' });
     await user.click(button);
     await waitFor(() => expect(button).toBeDisabled());
@@ -258,7 +403,7 @@ describe('ProjectDetailPage: invoices', () => {
   it('says so when marking paid fails', async () => {
     vi.mocked(coreApi.patch).mockRejectedValue(new Error('down'));
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
     await user.click(await screen.findByRole('button', { name: 'Mark paid INV-002' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
   });
@@ -274,7 +419,7 @@ describe('ProjectDetailPage: invoices', () => {
 
   it('opens the invoice dialog on an invoice', async () => {
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
     await user.click(await screen.findByRole('button', { name: 'Edit INV-001' }));
     expect(screen.getByRole('dialog', { name: 'Edit invoice' })).toBeInTheDocument();
     expect(screen.getByLabelText('Number')).toHaveValue('INV-001');
@@ -297,7 +442,7 @@ describe('ProjectDetailPage: invoices', () => {
   it('deletes an invoice only after the confirmation', async () => {
     vi.mocked(coreApi.delete).mockResolvedValue(saved);
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
     await user.click(await screen.findByRole('button', { name: 'Delete INV-001' }));
     expect(screen.getByText('Delete invoice “INV-001”?')).toBeInTheDocument();
     expect(coreApi.delete).not.toHaveBeenCalled();
@@ -342,7 +487,7 @@ describe('ProjectDetailPage: things removed elsewhere', () => {
   it('treats deleting an invoice that was already removed as done: the dialog closes and the table refetches', async () => {
     vi.mocked(coreApi.delete).mockRejectedValue(failure(404));
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
     await user.click(await screen.findByRole('button', { name: 'Delete INV-001' }));
     await user.click(screen.getByRole('button', { name: 'Delete invoice' }));
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
@@ -362,7 +507,7 @@ describe('ProjectDetailPage: things removed elsewhere', () => {
   it('still says so when a delete fails for any other reason', async () => {
     vi.mocked(coreApi.delete).mockRejectedValue(failure(500));
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
     await user.click(await screen.findByRole('button', { name: 'Delete INV-001' }));
     await user.click(screen.getByRole('button', { name: 'Delete invoice' }));
     expect(await screen.findByText('That did not work. Try again.')).toBeInTheDocument();
@@ -378,7 +523,7 @@ describe('ProjectDetailPage: things removed elsewhere', () => {
       return saved;
     }) as never);
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
     await user.click(await screen.findByRole('button', { name: 'Add the first invoice' }));
     await user.type(screen.getByLabelText('Number'), 'INV-003');
     await screen.findByLabelText('Line 1 description');
@@ -393,7 +538,7 @@ describe('ProjectDetailPage: things removed elsewhere', () => {
       return saved;
     }) as never);
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
     await user.click(await screen.findByRole('button', { name: 'Delete INV-001' }));
     await user.click(screen.getByRole('button', { name: 'Delete invoice' }));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add invoice' })).toHaveFocus());
@@ -438,7 +583,7 @@ describe('ProjectDetailPage: the invoice document', () => {
   });
 
   it('offers Preview, Download and Email on every invoice', async () => {
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
 
     for (const number of ['INV-001', 'INV-002']) {
       for (const action of ['Preview', 'Download', 'Email']) {
@@ -449,7 +594,7 @@ describe('ProjectDetailPage: the invoice document', () => {
 
   it('previews the saved invoice in a dialog', async () => {
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
 
     await user.click(await screen.findByRole('button', { name: 'Preview INV-001' }));
 
@@ -464,7 +609,7 @@ describe('ProjectDetailPage: the invoice document', () => {
       names.push(this.download);
     });
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
 
     await user.click(await screen.findByRole('button', { name: 'Download INV-001' }));
 
@@ -473,7 +618,7 @@ describe('ProjectDetailPage: the invoice document', () => {
 
   it('says so when a download fails, and clears the message on the next action', async () => {
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
     const download = await screen.findByRole('button', { name: 'Download INV-001' });
     const original = vi.mocked(coreApi.get).getMockImplementation();
     vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
@@ -491,7 +636,7 @@ describe('ProjectDetailPage: the invoice document', () => {
   it('opens the email dialog on the draft, and says who the invoice was sent to', async () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
 
     await user.click(await screen.findByRole('button', { name: 'Email INV-001' }));
     expect(screen.getByRole('dialog', { name: 'Email INV-001' })).toBeInTheDocument();
@@ -554,7 +699,7 @@ describe('ProjectDetailPage: the discount', () => {
     ]);
     serve({ project: discounted(10), invoices: own });
     const user = userEvent.setup();
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
     await user.click(await screen.findByRole('button', { name: 'Edit INV-001' }));
 
     expect(screen.getByLabelText('Discount (%)')).toHaveValue('25');
@@ -564,7 +709,7 @@ describe('ProjectDetailPage: the discount', () => {
   it('lists each invoice at what the client pays, after its discount', async () => {
     const own = invoicesEnvelope([{ ...invoiceRows[0], subtotal: 36000, discountPercent: 25, amount: 27000 }]);
     serve({ invoices: own });
-    renderAt('/projects/1');
+    renderAt(INVOICES_TAB);
 
     const row = (await screen.findByText('INV-001')).closest('tr') as HTMLElement;
     expect(within(row).getByText('$27,000')).toBeInTheDocument();
