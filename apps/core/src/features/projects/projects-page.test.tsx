@@ -248,8 +248,19 @@ describe('ProjectsPage: status', () => {
     expect(screen.getByText('No projects have this status.')).toBeInTheDocument();
   });
 
-  it('uses the search wording when text is typed too, and returns to page 1 when the filter changes', async () => {
-    const many = Array.from({ length: 12 }, (_, index) => ({
+  it('uses the search wording, not the status wording, when search text and a status both match nothing', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectsPage />);
+    await screen.findByText('Website');
+    await user.selectOptions(screen.getByLabelText('Status'), 'Completed');
+    await user.type(screen.getByLabelText('Search projects'), 'nothing like this');
+    expect(screen.getByText('No projects match “nothing like this”.')).toBeInTheDocument();
+    expect(screen.queryByText('No projects have this status.')).not.toBeInTheDocument();
+  });
+
+  it('returns to page 1 when the filter changes while the table is on a later page', async () => {
+    // 25 projects, 13 of them active: the active ones still fill two pages, so the page is not clamped for us.
+    const many = Array.from({ length: 25 }, (_, index) => ({
       ...projectRows[0],
       id: 100 + index,
       name: `Project ${String(index + 1).padStart(2, '0')}`,
@@ -261,13 +272,9 @@ describe('ProjectsPage: status', () => {
     renderWithProviders(<ProjectsPage />);
     await screen.findByText('Project 01');
     await user.click(screen.getByRole('button', { name: 'Next' }));
-    expect(screen.getByText('11–12 of 12')).toBeInTheDocument();
+    expect(screen.getByText('11–20 of 25')).toBeInTheDocument();
 
-    await user.selectOptions(screen.getByLabelText('Status'), 'Completed');
-    expect(screen.getByText('1–6 of 6')).toBeInTheDocument();
-
-    await user.type(screen.getByLabelText('Search projects'), 'nothing like this');
-    expect(screen.getByText('No projects match “nothing like this”.')).toBeInTheDocument();
-    expect(screen.queryByText('No projects have this status.')).not.toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText('Status'), 'Active');
+    expect(screen.getByText('1–10 of 13')).toBeInTheDocument();
   });
 });

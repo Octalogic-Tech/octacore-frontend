@@ -528,6 +528,16 @@ describe('ProjectFormDialog: technologies', () => {
     expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ technologyIds: [2, 1] }));
   });
 
+  it('does not say there are no technologies when the list failed to load for a new project', async () => {
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/clients') return { data: clientsEnvelope() };
+      throw new Error('down');
+    }) as never);
+    openDialog();
+    expect(await screen.findByText('Technologies could not be loaded.')).toBeInTheDocument();
+    expect(screen.queryByText(/No technologies yet/)).not.toBeInTheDocument();
+  });
+
   it('says so, and where to add some, when there are no technologies at all', async () => {
     vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
       if (path === '/clients') return { data: clientsEnvelope() };

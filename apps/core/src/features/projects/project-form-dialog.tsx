@@ -225,7 +225,7 @@ export function ProjectFormDialog({
                   <Arm className="w-3 text-rule" />
                   Technologies
                 </legend>
-                {technologyOptions.length === 0 && !technologies.isLoading ? (
+                {technologyOptions.length === 0 && technologies.isSuccess ? (
                   <p className="text-small text-navy-72">No technologies yet. Add some on the Technologies page.</p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
