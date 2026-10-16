@@ -389,3 +389,72 @@ describe('ProjectFormDialog: discount', () => {
     expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ discountPercent: 0 }));
   });
 });
+
+describe('ProjectFormDialog: status and dates', () => {
+  it('opens on Active with no dates, and saves a new project as such', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog();
+    expect(screen.getByLabelText('Status')).toHaveValue('active');
+    expect(screen.getByLabelText('Start date')).toHaveValue('');
+    expect(screen.getByLabelText('End date')).toHaveValue('');
+    await user.type(screen.getByLabelText('Name'), 'Hooli');
+    await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
+    await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/projects',
+      expect.objectContaining({ projectStatus: 'active', startDate: null, endDate: null }),
+    );
+  });
+
+  it('sends the status and dates that were chosen', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog();
+    await user.type(screen.getByLabelText('Name'), 'Hooli');
+    await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
+    await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
+    await user.selectOptions(screen.getByLabelText('Status'), 'On hold');
+    await user.type(screen.getByLabelText('Start date'), '2026-02-01');
+    await user.type(screen.getByLabelText('End date'), '2026-11-30');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/projects',
+      expect.objectContaining({ projectStatus: 'on_hold', startDate: '2026-02-01', endDate: '2026-11-30' }),
+    );
+  });
+
+  it('opens an edit on the stored status and dates', () => {
+    openDialog({ project: legacy });
+    expect(screen.getByLabelText('Status')).toHaveValue('completed');
+    expect(screen.getByLabelText('Start date')).toHaveValue('2025-03-01');
+    expect(screen.getByLabelText('End date')).toHaveValue('2025-09-30');
+  });
+
+  it('sends null for a date that was cleared, so the service clears it', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ project: website });
+    expect(screen.getByLabelText('Start date')).toHaveValue('2026-01-01');
+    await user.clear(screen.getByLabelText('Start date'));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/projects/1',
+      expect.objectContaining({ projectStatus: 'active', startDate: null, endDate: null }),
+    );
+  });
+
+  it('says the end must not be before the start, and sends nothing', async () => {
+    const user = userEvent.setup();
+    openDialog({ project: website });
+    await user.type(screen.getByLabelText('End date'), '2025-12-31');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('The project must end on or after it starts')).toBeInTheDocument();
+    expect(coreApi.patch).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+});

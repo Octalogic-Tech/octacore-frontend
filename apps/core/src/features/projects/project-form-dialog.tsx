@@ -14,6 +14,7 @@ import {
   billingOptions,
   emptyProjectForm,
   projectFormSchema,
+  projectStatusOptions,
   projectTypeOptions,
   toProjectBody,
   toProjectFormValues,
@@ -171,6 +172,34 @@ export function ProjectFormDialog({
                 </option>
               ))}
             </Select>
+          </Field>
+          <Field label="Status" htmlFor="project-status" error={errors.projectStatus?.message}>
+            <Select {...fieldA11y('project-status', errors.projectStatus?.message)} {...register('projectStatus')}>
+              {projectStatusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Start date" htmlFor="project-start-date" error={errors.startDate?.message}>
+            <Input
+              {...fieldA11y('project-start-date', errors.startDate?.message)}
+              {...register('startDate')}
+              type="date"
+            />
+          </Field>
+          <Field
+            label="End date"
+            htmlFor="project-end-date"
+            error={errors.endDate?.message}
+            hint="Leave empty while the project has no end date."
+          >
+            <Input
+              {...fieldA11y('project-end-date', errors.endDate?.message)}
+              {...register('endDate')}
+              type="date"
+            />
           </Field>
           <Field
             label="Discount (%)"
