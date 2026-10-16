@@ -218,6 +218,9 @@ describe('toProjectBody', () => {
       key: null,
       billingAddress: null,
       discountPercent: 0,
+      projectStatus: 'active',
+      startDate: null,
+      endDate: null,
     });
     expect(toProjectBody(projectForm({ description: 'Marketing site.', clientId: '12' }))).toMatchObject({
       description: 'Marketing site.',
@@ -241,6 +244,9 @@ describe('toProjectFormValues', () => {
       projectType: 'resource_augmentation',
       billingType: 'retainer',
       discountPercent: '0',
+      projectStatus: 'active',
+      startDate: '2026-01-01',
+      endDate: '',
     });
   });
 
@@ -955,5 +961,63 @@ describe('a new invoice and its project’s discount', () => {
 
   it('ignores the project’s discount for an invoice already saved: it keeps its own', () => {
     expect(toInvoiceFormValues(invoices[0], 10).discountPercent).toBe('0');
+  });
+});
+
+describe('project status and dates', () => {
+  it('reads the status, its label and the dates from a project row', () => {
+    expect(projects[0]).toMatchObject({
+      projectStatus: 'active',
+      projectStatusLabel: 'Active',
+      startDate: '2026-01-01',
+      endDate: null,
+    });
+    expect(projects[1]).toMatchObject({ projectStatus: 'on_hold', projectStatusLabel: 'On hold', startDate: null });
+    expect(projects[2]).toMatchObject({
+      projectStatus: 'completed',
+      projectStatusLabel: 'Completed',
+      startDate: '2025-03-01',
+      endDate: '2025-09-30',
+    });
+  });
+
+  it('refuses a row whose status the service does not know', () => {
+    expect(() => projectRowsSchema.parse([{ ...projectRows[0], projectStatus: 'paused' }])).toThrow();
+  });
+
+  it('sends a new project as active with no dates', () => {
+    expect(toProjectBody(projectForm())).toMatchObject({ projectStatus: 'active', startDate: null, endDate: null });
+  });
+
+  it('sends the status and dates that were chosen', () => {
+    const body = toProjectBody(projectForm({ projectStatus: 'on_hold', startDate: '2026-02-01', endDate: '2026-11-30' }));
+    expect(body).toMatchObject({ projectStatus: 'on_hold', startDate: '2026-02-01', endDate: '2026-11-30' });
+  });
+
+  it('opens an edit on the stored status, and a missing date as an empty field', () => {
+    expect(toProjectFormValues(projects[0])).toMatchObject({ projectStatus: 'active', startDate: '2026-01-01', endDate: '' });
+  });
+
+  it.each([
+    ['end after start', '2026-01-01', '2026-12-31', true],
+    ['the same day', '2026-06-01', '2026-06-01', true],
+    ['end before start', '2026-06-02', '2026-06-01', false],
+    ['only a start', '2026-01-01', '', true],
+    ['only an end', '', '2026-12-31', true],
+    ['neither', '', '', true],
+  ])('checks the dates: %s', (_name, startDate, endDate, valid) => {
+    const result = projectFormSchema.safeParse(projectForm({ startDate, endDate }));
+    expect(result.success).toBe(valid);
+    if (!valid) {
+      expect(result.error?.issues[0]).toMatchObject({
+        path: ['endDate'],
+        message: 'The project must end on or after it starts',
+      });
+    }
+  });
+
+  it('refuses a status that is not one of the three', () => {
+    expect(projectFormSchema.safeParse(projectForm({ projectStatus: 'paused' })).success).toBe(false);
+    expect(projectFormSchema.safeParse(projectForm({ projectStatus: '' })).success).toBe(false);
   });
 });

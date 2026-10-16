@@ -5,7 +5,8 @@
 // are simply not listed here. An invoice carries its lines, whose amount is headcount x quantity x rate (INV-001:
 // 1 x 160 x 150 + 1 x 160 x 75), and, from the second invoice on, a billing period that may be null. Nothing here
 // is discounted (discountPercent 0), so an invoice's amount equals its subtotal; tests that need a discount
-// override it on a copy.
+// override it on a copy. Each project has a status and optional start and end dates: Website is active and started,
+// Mobile app is on hold with no dates, Legacy portal is completed and has both.
 const stamp = '2026-10-15T09:30:00.000000Z';
 const audit = { status: 1, createdDate: stamp, updatedDate: stamp, deletedDate: null };
 
@@ -20,6 +21,9 @@ export const projectRows = [
     key: 'WEB',
     billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',
     discountPercent: 0,
+    projectStatus: 'active',
+    startDate: '2026-01-01',
+    endDate: null,
     clientId: 1,
     client: acme,
     billingType: 'retainer',
@@ -35,6 +39,9 @@ export const projectRows = [
     key: null,
     billingAddress: null,
     discountPercent: 0,
+    projectStatus: 'on_hold',
+    startDate: null,
+    endDate: null,
     clientId: null,
     client: null,
     billingType: 'fixed_cost',
@@ -50,6 +57,9 @@ export const projectRows = [
     key: null,
     billingAddress: null,
     discountPercent: 0,
+    projectStatus: 'completed',
+    startDate: '2025-03-01',
+    endDate: '2025-09-30',
     clientId: 1,
     client: acme,
     billingType: null,

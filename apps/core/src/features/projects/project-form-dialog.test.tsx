@@ -59,6 +59,9 @@ describe('ProjectFormDialog: adding', () => {
       key: null,
       billingAddress: null,
       discountPercent: 0,
+      projectStatus: 'active',
+      startDate: null,
+      endDate: null,
     });
   });
 
@@ -80,6 +83,9 @@ describe('ProjectFormDialog: adding', () => {
       key: null,
       billingAddress: null,
       discountPercent: 0,
+      projectStatus: 'active',
+      startDate: null,
+      endDate: null,
     });
   });
 
@@ -129,6 +135,9 @@ describe('ProjectFormDialog: editing', () => {
       billingType: 'retainer',
       key: 'WEB',
       billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',      discountPercent: 0,
+      projectStatus: 'active',
+      startDate: '2026-01-01',
+      endDate: null,
     });
   });
 
@@ -154,6 +163,9 @@ describe('ProjectFormDialog: editing', () => {
       key: null,
       billingAddress: null,
       discountPercent: 0,
+      projectStatus: 'completed',
+      startDate: '2025-03-01',
+      endDate: '2025-09-30',
     });
   });
 
@@ -240,6 +252,9 @@ describe('ProjectFormDialog: key and billing address', () => {
       billingType: 'retainer',
       key: 'TKO',
       billingAddress: 'Michael Jordan,\nVenice',      discountPercent: 0,
+      projectStatus: 'active',
+      startDate: null,
+      endDate: null,
     });
   });
 
