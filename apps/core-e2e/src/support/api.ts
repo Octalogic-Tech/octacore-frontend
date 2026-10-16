@@ -51,6 +51,7 @@ const project = (fields: Row): Row =>
     projectStatus: 'active',
     startDate: null,
     endDate: null,
+    technologies: [],
     clientId: null,
     client: null,
     billingType: 'retainer',

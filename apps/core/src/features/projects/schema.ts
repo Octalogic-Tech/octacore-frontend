@@ -60,6 +60,8 @@ export const projectRowSchema = z
     projectStatus: projectStatusSchema,
     startDate: z.iso.date().nullable(),
     endDate: z.iso.date().nullable(),
+    // The technologies the project uses, by name; the service sends only live ones.
+    technologies: z.array(z.object({ id: z.number().int(), name: z.string() })),
     clientId: z.number().int().nullable(),
     client: z.object({ name: z.string() }).nullable(),
     projectType: projectTypeSchema.nullable(),
@@ -157,6 +159,8 @@ export const projectFormSchema = z
     // `YYYY-MM-DD` from a date input, or empty.
     startDate: z.string(),
     endDate: z.string(),
+    // The ids of the ticked technologies, as the checkbox values.
+    technologyIds: z.array(z.string()),
   })
   .superRefine((values, context) => {
     if (values.startDate !== '' && values.endDate !== '' && values.endDate < values.startDate) {
@@ -178,6 +182,7 @@ export const emptyProjectForm: ProjectFormValues = {
   projectStatus: 'active',
   startDate: '',
   endDate: '',
+  technologyIds: [],
 };
 
 export function toProjectFormValues(project?: ProjectRow): ProjectFormValues {
@@ -196,6 +201,7 @@ export function toProjectFormValues(project?: ProjectRow): ProjectFormValues {
     projectStatus: project.projectStatus,
     startDate: project.startDate ?? '',
     endDate: project.endDate ?? '',
+    technologyIds: project.technologies.map((technology) => String(technology.id)),
   };
 }
 
@@ -213,6 +219,8 @@ export interface ProjectBody {
   /** `YYYY-MM-DD`, or null to clear. */
   startDate: string | null;
   endDate: string | null;
+  /** The whole set, always sent: an empty list clears the project's technologies. */
+  technologyIds: number[];
 }
 
 /** Empty optional fields go as null: PATCH changes only what it is sent, and null clears. */
@@ -229,6 +237,7 @@ export function toProjectBody(values: ProjectFormValues): ProjectBody {
     projectStatus: projectStatusSchema.parse(values.projectStatus),
     startDate: orNull(values.startDate),
     endDate: orNull(values.endDate),
+    technologyIds: values.technologyIds.map(Number),
   };
 }
 

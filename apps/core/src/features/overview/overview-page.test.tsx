@@ -21,6 +21,7 @@ const project = (id: number, clientName: string, totalValue: number, totalOutsta
   projectStatus: 'active',
   startDate: null,
   endDate: null,
+  technologies: [],
   clientId: id,
   client: { name: clientName },
   projectType: 'product',

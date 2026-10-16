@@ -1,9 +1,10 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { coreApi } from '@/lib/core-api';
 import { clientsEnvelope } from '@/test/fixtures/clients';
 import { projectRows } from '@/test/fixtures/projects';
+import { technologiesEnvelope } from '@/test/fixtures/technologies';
 import { renderWithProviders } from '@/test/utils';
 import { ProjectFormDialog } from './project-form-dialog';
 import { projectRowsSchema, type ProjectRow } from './schema';
@@ -27,6 +28,7 @@ function openDialog(props: { project?: ProjectRow } = {}) {
 beforeEach(() => {
   vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
     if (path === '/clients') return { data: clientsEnvelope() };
+    if (path === '/technologies') return { data: technologiesEnvelope() };
     throw new Error(`unexpected GET ${path}`);
   }) as never);
 });
@@ -62,6 +64,7 @@ describe('ProjectFormDialog: adding', () => {
       projectStatus: 'active',
       startDate: null,
       endDate: null,
+      technologyIds: [],
     });
   });
 
@@ -86,6 +89,7 @@ describe('ProjectFormDialog: adding', () => {
       projectStatus: 'active',
       startDate: null,
       endDate: null,
+      technologyIds: [],
     });
   });
 
@@ -138,6 +142,7 @@ describe('ProjectFormDialog: editing', () => {
       projectStatus: 'active',
       startDate: '2026-01-01',
       endDate: null,
+      technologyIds: [2, 1],
     });
   });
 
@@ -166,6 +171,7 @@ describe('ProjectFormDialog: editing', () => {
       projectStatus: 'completed',
       startDate: '2025-03-01',
       endDate: '2025-09-30',
+      technologyIds: [],
     });
   });
 
@@ -255,6 +261,7 @@ describe('ProjectFormDialog: key and billing address', () => {
       projectStatus: 'active',
       startDate: null,
       endDate: null,
+      technologyIds: [],
     });
   });
 
@@ -456,5 +463,78 @@ describe('ProjectFormDialog: status and dates', () => {
     expect(await screen.findByText('The project must end on or after it starts')).toBeInTheDocument();
     expect(coreApi.patch).not.toHaveBeenCalled();
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+});
+
+describe('ProjectFormDialog: technologies', () => {
+  const group = () => screen.findByRole('group', { name: 'Technologies' });
+
+  it('offers every technology as a chip, in name order, none chosen for a new project', async () => {
+    openDialog();
+    const chips = await within(await group()).findAllByRole('checkbox');
+    expect(chips.map((chip) => chip.closest('label')?.textContent)).toEqual(['Express', 'Nest', 'React']);
+    for (const chip of chips) expect(chip).not.toBeChecked();
+  });
+
+  it('sends the chosen technologies as ids', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog();
+    await user.type(screen.getByLabelText('Name'), 'Hooli');
+    await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
+    await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
+    await user.click(within(await group()).getByRole('checkbox', { name: 'React' }));
+    await user.click(within(await group()).getByRole('checkbox', { name: 'Express' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith('/projects', expect.objectContaining({ technologyIds: [1, 3] }));
+  });
+
+  it('opens an edit with the project’s own technologies ticked', async () => {
+    openDialog({ project: website });
+    const chips = within(await group());
+    expect(chips.getByRole('checkbox', { name: 'Nest' })).toBeChecked();
+    expect(chips.getByRole('checkbox', { name: 'React' })).toBeChecked();
+    // The rest of the list arrives after the project's own technologies, which are offered at once.
+    expect(await chips.findByRole('checkbox', { name: 'Express' })).not.toBeChecked();
+  });
+
+  it('sends an empty list when every technology is unticked, so the old set is cleared', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ project: website });
+    const chips = within(await group());
+    await user.click(chips.getByRole('checkbox', { name: 'Nest' }));
+    await user.click(chips.getByRole('checkbox', { name: 'React' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ technologyIds: [] }));
+  });
+
+  it('still offers and keeps the project’s own technologies when the technology list fails', async () => {
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/clients') return { data: clientsEnvelope() };
+      throw new Error('down');
+    }) as never);
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ project: website });
+    const chips = within(await group());
+    expect(chips.getByRole('checkbox', { name: 'Nest' })).toBeChecked();
+    expect(chips.getByRole('checkbox', { name: 'React' })).toBeChecked();
+    expect(await screen.findByText('Technologies could not be loaded.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ technologyIds: [2, 1] }));
+  });
+
+  it('says so, and where to add some, when there are no technologies at all', async () => {
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/clients') return { data: clientsEnvelope() };
+      if (path === '/technologies') return { data: technologiesEnvelope([]) };
+      throw new Error(`unexpected GET ${path}`);
+    }) as never);
+    openDialog();
+    expect(await screen.findByText('No technologies yet. Add some on the Technologies page.')).toBeInTheDocument();
   });
 });

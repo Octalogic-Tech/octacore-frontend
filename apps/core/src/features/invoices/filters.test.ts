@@ -42,6 +42,7 @@ const project = (id: number, name: string, client: { id: number; name: string } 
   projectStatusLabel: 'Active',
   startDate: null,
   endDate: null,
+  technologies: [],
   clientName: client?.name ?? '',
   projectType: null,
   billingType: null,

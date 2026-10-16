@@ -13,6 +13,7 @@ const project = (id: number, totalValue: number, totalOutstanding: number): Proj
   projectStatusLabel: 'Active',
   startDate: null,
   endDate: null,
+  technologies: [],
   clientName: 'Client A',
   projectType: 'product',
   billingType: 'retainer',

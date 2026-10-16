@@ -221,6 +221,7 @@ describe('toProjectBody', () => {
       projectStatus: 'active',
       startDate: null,
       endDate: null,
+      technologyIds: [],
     });
     expect(toProjectBody(projectForm({ description: 'Marketing site.', clientId: '12' }))).toMatchObject({
       description: 'Marketing site.',
@@ -247,6 +248,7 @@ describe('toProjectFormValues', () => {
       projectStatus: 'active',
       startDate: '2026-01-01',
       endDate: '',
+      technologyIds: ['2', '1'],
     });
   });
 
@@ -1019,5 +1021,25 @@ describe('project status and dates', () => {
   it('refuses a status that is not one of the three', () => {
     expect(projectFormSchema.safeParse(projectForm({ projectStatus: 'paused' })).success).toBe(false);
     expect(projectFormSchema.safeParse(projectForm({ projectStatus: '' })).success).toBe(false);
+  });
+});
+
+describe('project technologies', () => {
+  it('reads the technologies a project uses', () => {
+    expect(projects[0].technologies).toEqual([
+      { id: 2, name: 'Nest' },
+      { id: 1, name: 'React' },
+    ]);
+    expect(projects[1].technologies).toEqual([]);
+  });
+
+  it('opens a new project with none chosen, and an edit with its own ticked', () => {
+    expect(toProjectFormValues().technologyIds).toEqual([]);
+    expect(toProjectFormValues(projects[0]).technologyIds).toEqual(['2', '1']);
+  });
+
+  it('sends the whole set as numbers, and an empty list when none are chosen', () => {
+    expect(toProjectBody(projectForm({ technologyIds: ['3', '1'] })).technologyIds).toEqual([3, 1]);
+    expect(toProjectBody(projectForm({ technologyIds: [] })).technologyIds).toEqual([]);
   });
 });

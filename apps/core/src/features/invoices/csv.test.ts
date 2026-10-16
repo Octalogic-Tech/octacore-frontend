@@ -37,6 +37,7 @@ const make = (fields: Partial<InvoiceListRow> = {}): InvoiceListRow => ({
         projectStatusLabel: 'Active',
         startDate: null,
         endDate: null,
+        technologies: [],
         projectType: null,
         billingType: null,
         projectTypeLabel: '',
