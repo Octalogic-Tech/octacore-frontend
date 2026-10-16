@@ -1,9 +1,10 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { coreApi } from '@/lib/core-api';
 import { clientsEnvelope } from '@/test/fixtures/clients';
 import { projectRows } from '@/test/fixtures/projects';
+import { technologiesEnvelope } from '@/test/fixtures/technologies';
 import { renderWithProviders } from '@/test/utils';
 import { ProjectFormDialog } from './project-form-dialog';
 import { projectRowsSchema, type ProjectRow } from './schema';
@@ -27,6 +28,7 @@ function openDialog(props: { project?: ProjectRow } = {}) {
 beforeEach(() => {
   vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
     if (path === '/clients') return { data: clientsEnvelope() };
+    if (path === '/technologies') return { data: technologiesEnvelope() };
     throw new Error(`unexpected GET ${path}`);
   }) as never);
 });
@@ -59,6 +61,10 @@ describe('ProjectFormDialog: adding', () => {
       key: null,
       billingAddress: null,
       discountPercent: 0,
+      projectStatus: 'active',
+      startDate: null,
+      endDate: null,
+      technologyIds: [],
     });
   });
 
@@ -80,6 +86,10 @@ describe('ProjectFormDialog: adding', () => {
       key: null,
       billingAddress: null,
       discountPercent: 0,
+      projectStatus: 'active',
+      startDate: null,
+      endDate: null,
+      technologyIds: [],
     });
   });
 
@@ -129,6 +139,10 @@ describe('ProjectFormDialog: editing', () => {
       billingType: 'retainer',
       key: 'WEB',
       billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',      discountPercent: 0,
+      projectStatus: 'active',
+      startDate: '2026-01-01',
+      endDate: null,
+      technologyIds: [2, 1],
     });
   });
 
@@ -154,6 +168,10 @@ describe('ProjectFormDialog: editing', () => {
       key: null,
       billingAddress: null,
       discountPercent: 0,
+      projectStatus: 'completed',
+      startDate: '2025-03-01',
+      endDate: '2025-09-30',
+      technologyIds: [],
     });
   });
 
@@ -240,6 +258,10 @@ describe('ProjectFormDialog: key and billing address', () => {
       billingType: 'retainer',
       key: 'TKO',
       billingAddress: 'Michael Jordan,\nVenice',      discountPercent: 0,
+      projectStatus: 'active',
+      startDate: null,
+      endDate: null,
+      technologyIds: [],
     });
   });
 
@@ -372,5 +394,157 @@ describe('ProjectFormDialog: discount', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ discountPercent: 0 }));
+  });
+});
+
+describe('ProjectFormDialog: status and dates', () => {
+  it('opens on Active with no dates, and saves a new project as such', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog();
+    expect(screen.getByLabelText('Status')).toHaveValue('active');
+    expect(screen.getByLabelText('Start date')).toHaveValue('');
+    expect(screen.getByLabelText('End date')).toHaveValue('');
+    await user.type(screen.getByLabelText('Name'), 'Hooli');
+    await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
+    await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/projects',
+      expect.objectContaining({ projectStatus: 'active', startDate: null, endDate: null }),
+    );
+  });
+
+  it('sends the status and dates that were chosen', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog();
+    await user.type(screen.getByLabelText('Name'), 'Hooli');
+    await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
+    await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
+    await user.selectOptions(screen.getByLabelText('Status'), 'On hold');
+    await user.type(screen.getByLabelText('Start date'), '2026-02-01');
+    await user.type(screen.getByLabelText('End date'), '2026-11-30');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/projects',
+      expect.objectContaining({ projectStatus: 'on_hold', startDate: '2026-02-01', endDate: '2026-11-30' }),
+    );
+  });
+
+  it('opens an edit on the stored status and dates', () => {
+    openDialog({ project: legacy });
+    expect(screen.getByLabelText('Status')).toHaveValue('completed');
+    expect(screen.getByLabelText('Start date')).toHaveValue('2025-03-01');
+    expect(screen.getByLabelText('End date')).toHaveValue('2025-09-30');
+  });
+
+  it('sends null for a date that was cleared, so the service clears it', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ project: website });
+    expect(screen.getByLabelText('Start date')).toHaveValue('2026-01-01');
+    await user.clear(screen.getByLabelText('Start date'));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/projects/1',
+      expect.objectContaining({ projectStatus: 'active', startDate: null, endDate: null }),
+    );
+  });
+
+  it('says the end must not be before the start, and sends nothing', async () => {
+    const user = userEvent.setup();
+    openDialog({ project: website });
+    await user.type(screen.getByLabelText('End date'), '2025-12-31');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('The project must end on or after it starts')).toBeInTheDocument();
+    expect(coreApi.patch).not.toHaveBeenCalled();
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+});
+
+describe('ProjectFormDialog: technologies', () => {
+  const group = () => screen.findByRole('group', { name: 'Technologies' });
+
+  it('offers every technology as a chip, in name order, none chosen for a new project', async () => {
+    openDialog();
+    const chips = await within(await group()).findAllByRole('checkbox');
+    expect(chips.map((chip) => chip.closest('label')?.textContent)).toEqual(['Express', 'Nest', 'React']);
+    for (const chip of chips) expect(chip).not.toBeChecked();
+  });
+
+  it('sends the chosen technologies as ids', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog();
+    await user.type(screen.getByLabelText('Name'), 'Hooli');
+    await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
+    await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
+    await user.click(within(await group()).getByRole('checkbox', { name: 'React' }));
+    await user.click(within(await group()).getByRole('checkbox', { name: 'Express' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith('/projects', expect.objectContaining({ technologyIds: [1, 3] }));
+  });
+
+  it('opens an edit with the project’s own technologies ticked', async () => {
+    openDialog({ project: website });
+    const chips = within(await group());
+    expect(chips.getByRole('checkbox', { name: 'Nest' })).toBeChecked();
+    expect(chips.getByRole('checkbox', { name: 'React' })).toBeChecked();
+    // The rest of the list arrives after the project's own technologies, which are offered at once.
+    expect(await chips.findByRole('checkbox', { name: 'Express' })).not.toBeChecked();
+  });
+
+  it('sends an empty list when every technology is unticked, so the old set is cleared', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ project: website });
+    const chips = within(await group());
+    await user.click(chips.getByRole('checkbox', { name: 'Nest' }));
+    await user.click(chips.getByRole('checkbox', { name: 'React' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ technologyIds: [] }));
+  });
+
+  it('still offers and keeps the project’s own technologies when the technology list fails', async () => {
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/clients') return { data: clientsEnvelope() };
+      throw new Error('down');
+    }) as never);
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ project: website });
+    const chips = within(await group());
+    expect(chips.getByRole('checkbox', { name: 'Nest' })).toBeChecked();
+    expect(chips.getByRole('checkbox', { name: 'React' })).toBeChecked();
+    expect(await screen.findByText('Technologies could not be loaded.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ technologyIds: [2, 1] }));
+  });
+
+  it('does not say there are no technologies when the list failed to load for a new project', async () => {
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/clients') return { data: clientsEnvelope() };
+      throw new Error('down');
+    }) as never);
+    openDialog();
+    expect(await screen.findByText('Technologies could not be loaded.')).toBeInTheDocument();
+    expect(screen.queryByText(/No technologies yet/)).not.toBeInTheDocument();
+  });
+
+  it('says so, and where to add some, when there are no technologies at all', async () => {
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/clients') return { data: clientsEnvelope() };
+      if (path === '/technologies') return { data: technologiesEnvelope([]) };
+      throw new Error(`unexpected GET ${path}`);
+    }) as never);
+    openDialog();
+    expect(await screen.findByText('No technologies yet. Add some on the Technologies page.')).toBeInTheDocument();
   });
 });

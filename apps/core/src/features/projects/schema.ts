@@ -28,6 +28,21 @@ export const projectTypeOptions = projectTypeSchema.options.map((value) => ({
   label: PROJECT_TYPE_LABELS[value],
 }));
 
+export const projectStatusSchema = z.enum(['active', 'on_hold', 'completed']);
+
+export type ProjectStatus = z.infer<typeof projectStatusSchema>;
+
+export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
+  active: 'Active',
+  on_hold: 'On hold',
+  completed: 'Completed',
+};
+
+export const projectStatusOptions = projectStatusSchema.options.map((value) => ({
+  value,
+  label: PROJECT_STATUS_LABELS[value],
+}));
+
 // Only what the pages use. The service also sends `status`, the audit dates and the embedded client's other
 // fields; unknown keys are dropped. `client` is null with no client, or with a soft-deleted one while `clientId`
 // is still set. Both types are null on a project saved before they existed.
@@ -41,6 +56,12 @@ export const projectRowSchema = z
     billingAddress: z.string().nullable().transform(nullToEmpty),
     // Percent off every invoice of the project; a new invoice starts from it.
     discountPercent: z.number(),
+    // Where the project stands, and the days it runs; either date may be empty.
+    projectStatus: projectStatusSchema,
+    startDate: z.iso.date().nullable(),
+    endDate: z.iso.date().nullable(),
+    // The technologies the project uses, by name; the service sends only live ones.
+    technologies: z.array(z.object({ id: z.number().int(), name: z.string() })),
     clientId: z.number().int().nullable(),
     client: z.object({ name: z.string() }).nullable(),
     projectType: projectTypeSchema.nullable(),
@@ -54,6 +75,7 @@ export const projectRowSchema = z
     // Flattened so the search can read them like any other column; empty while the project has no type.
     projectTypeLabel: row.projectType ? PROJECT_TYPE_LABELS[row.projectType] : '',
     billingTypeLabel: row.billingType ? BILLING_LABELS[row.billingType] : '',
+    projectStatusLabel: PROJECT_STATUS_LABELS[row.projectStatus],
   }));
 
 export const projectRowsSchema = z.array(projectRowSchema);
@@ -122,17 +144,29 @@ const discountField = z
 const percentOf = (text: string) => (text.trim() === '' ? 0 : Number(text));
 
 // Every field is text, so a blank field can be told from a typed one; `clientId` is '' for None.
-export const projectFormSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required'),
-  description: z.string().trim(),
-  // Capitals are applied as the person types and again on send; 2 to 10 letters or digits, or empty for none.
-  key: z.string().trim().refine((value) => value === '' || /^[A-Za-z0-9]{2,10}$/.test(value), 'Use 2 to 10 letters or digits'),
-  billingAddress: z.string().trim().max(1000, 'Keep the address under 1,000 characters'),
-  discountPercent: discountField,
-  clientId: z.string(),
-  projectType: z.string().refine((value) => projectTypeSchema.safeParse(value).success, 'Choose a project type'),
-  billingType: z.string().refine((value) => billingTypeSchema.safeParse(value).success, 'Choose a billing type'),
-});
+export const projectFormSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Name is required'),
+    description: z.string().trim(),
+    // Capitals are applied as the person types and again on send; 2 to 10 letters or digits, or empty for none.
+    key: z.string().trim().refine((value) => value === '' || /^[A-Za-z0-9]{2,10}$/.test(value), 'Use 2 to 10 letters or digits'),
+    billingAddress: z.string().trim().max(1000, 'Keep the address under 1,000 characters'),
+    discountPercent: discountField,
+    clientId: z.string(),
+    projectType: z.string().refine((value) => projectTypeSchema.safeParse(value).success, 'Choose a project type'),
+    billingType: z.string().refine((value) => billingTypeSchema.safeParse(value).success, 'Choose a billing type'),
+    projectStatus: z.string().refine((value) => projectStatusSchema.safeParse(value).success, 'Choose a status'),
+    // `YYYY-MM-DD` from a date input, or empty.
+    startDate: z.string(),
+    endDate: z.string(),
+    // The ids of the ticked technologies, as the checkbox values.
+    technologyIds: z.array(z.string()),
+  })
+  .superRefine((values, context) => {
+    if (values.startDate !== '' && values.endDate !== '' && values.endDate < values.startDate) {
+      context.addIssue({ code: 'custom', path: ['endDate'], message: 'The project must end on or after it starts' });
+    }
+  });
 
 export type ProjectFormValues = z.infer<typeof projectFormSchema>;
 
@@ -145,6 +179,10 @@ export const emptyProjectForm: ProjectFormValues = {
   clientId: '',
   projectType: '',
   billingType: '',
+  projectStatus: 'active',
+  startDate: '',
+  endDate: '',
+  technologyIds: [],
 };
 
 export function toProjectFormValues(project?: ProjectRow): ProjectFormValues {
@@ -160,6 +198,10 @@ export function toProjectFormValues(project?: ProjectRow): ProjectFormValues {
     // A legacy project has no types yet: the selects open on "Choose" and saving asks for a pick.
     projectType: project.projectType ?? '',
     billingType: project.billingType ?? '',
+    projectStatus: project.projectStatus,
+    startDate: project.startDate ?? '',
+    endDate: project.endDate ?? '',
+    technologyIds: project.technologies.map((technology) => String(technology.id)),
   };
 }
 
@@ -173,6 +215,12 @@ export interface ProjectBody {
   billingAddress: string | null;
   /** 0 to 50; an empty field is 0. */
   discountPercent: number;
+  projectStatus: ProjectStatus;
+  /** `YYYY-MM-DD`, or null to clear. */
+  startDate: string | null;
+  endDate: string | null;
+  /** The whole set, always sent: an empty list clears the project's technologies. */
+  technologyIds: number[];
 }
 
 /** Empty optional fields go as null: PATCH changes only what it is sent, and null clears. */
@@ -186,6 +234,10 @@ export function toProjectBody(values: ProjectFormValues): ProjectBody {
     key: values.key.trim() === '' ? null : values.key.trim().toUpperCase(),
     billingAddress: orNull(values.billingAddress.trim()),
     discountPercent: percentOf(values.discountPercent),
+    projectStatus: projectStatusSchema.parse(values.projectStatus),
+    startDate: orNull(values.startDate),
+    endDate: orNull(values.endDate),
+    technologyIds: values.technologyIds.map(Number),
   };
 }
 

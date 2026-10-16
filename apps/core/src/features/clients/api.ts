@@ -1,7 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { coreApi, unwrap } from '@/lib/core-api';
-import { clientRowsSchema, contactRowsSchema, type ClientBody, type ContactStep } from './schema';
+import {
+  clientRowsSchema,
+  contactRowsSchema,
+  type ClientBody,
+  type ClientRow,
+  type ContactRow,
+  type ContactStep,
+} from './schema';
 
 const CLIENTS = ['clients'] as const;
 const CONTACTS = ['client-contacts'] as const;
@@ -22,6 +29,29 @@ export function useClientContacts() {
     queryKey: CONTACTS,
     queryFn: async () => unwrap((await coreApi.get('/client-contacts')).data, contactRowsSchema),
   });
+}
+
+export type ListState = 'loading' | 'ready' | 'failed';
+
+function listState(query: { data: unknown; isError: boolean }): ListState {
+  // Data from an earlier fetch still counts as ready if a refetch fails.
+  if (query.data !== undefined) return 'ready';
+  return query.isError ? 'failed' : 'loading';
+}
+
+/**
+ * A project's client and that client's contact, read from the two lists the app already loads. A client has at most one
+ * live contact, so matching on the client's id is exact. Each list reports its own state, so a failed request is not
+ * mistaken for "none".
+ */
+export function useClientDetails(clientId: number | null) {
+  const clients = useClients();
+  const contacts = useClientContacts();
+  const client: ClientRow | null =
+    clientId === null ? null : ((clients.data ?? []).find((row) => row.id === clientId) ?? null);
+  const contact: ContactRow | null =
+    clientId === null ? null : ((contacts.data ?? []).find((row) => row.clientId === clientId) ?? null);
+  return { client, contact, clientsState: listState(clients), contactsState: listState(contacts) };
 }
 
 /**

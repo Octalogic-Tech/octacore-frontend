@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { clientRowsSchema, contactRowsSchema } from '@/features/clients/schema';
 import { unwrap } from '@/lib/core-api';
 import { signInLive, type LiveSend } from '@/test/live-api';
 import {
@@ -14,6 +15,7 @@ import {
   toInvoiceBody,
   toProjectBody,
 } from './schema';
+import { RETAINER_HOURS } from './team-margin';
 
 // Opt-in: this talks to the real FastAPI service and WRITES to it (it adds a project, a category, a person, resources
 // and invoices, changes them, and deletes the project again; deletes are soft, so rows stay in the tables). It only
@@ -462,6 +464,145 @@ describe.skipIf(!base)('the discount, on a service with its migration applied', 
       expect(await readProject(project.id)).toMatchObject({ discountPercent: 0 });
     } finally {
       await send('DELETE', `/projects/${project.id}`);
+    }
+  });
+
+  it('keeps a project’s status and dates, refuses an end before the start, and clears the dates again', async () => {
+    const created = await send('POST', '/projects', {
+      name: 'Status check',
+      description: null,
+      clientId: null,
+      projectType: 'product',
+      billingType: 'fixed_cost',
+      projectStatus: 'on_hold',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+    });
+    expect(created.status).toBe(201);
+    const project = unwrap(await created.json(), projectRowSchema);
+    try {
+      expect(project).toMatchObject({ projectStatus: 'on_hold', startDate: '2026-01-01', endDate: '2026-12-31' });
+
+      const early = await send('PATCH', `/projects/${project.id}`, { endDate: '2025-12-31' });
+      expect(early.status).toBe(422);
+      expect(await readProject(project.id)).toMatchObject({ startDate: '2026-01-01', endDate: '2026-12-31' });
+
+      const cleared = await send('PATCH', `/projects/${project.id}`, {
+        projectStatus: 'completed',
+        startDate: null,
+        endDate: null,
+      });
+      expect(cleared.status).toBe(200);
+      expect(await readProject(project.id)).toMatchObject({
+        projectStatus: 'completed',
+        startDate: null,
+        endDate: null,
+      });
+    } finally {
+      await send('DELETE', `/projects/${project.id}`);
+    }
+  });
+
+  it('saves a project with technologies, replaces them, and loses one that was deleted', async () => {
+    const react = unwrap(await (await send('POST', '/technologies', { name: 'Live React' })).json(), createdSchema);
+    const nest = unwrap(await (await send('POST', '/technologies', { name: 'Live Nest' })).json(), createdSchema);
+    const created = await send('POST', '/projects', {
+      name: 'Technology check',
+      description: null,
+      clientId: null,
+      projectType: 'product',
+      billingType: 'fixed_cost',
+      technologyIds: [react.id, nest.id],
+    });
+    expect(created.status).toBe(201);
+    const project = unwrap(await created.json(), projectRowSchema);
+    try {
+      expect(project.technologies.map((technology) => technology.name)).toEqual(['Live Nest', 'Live React']);
+
+      const unknown = await send('PATCH', `/projects/${project.id}`, { technologyIds: [999_999] });
+      expect(unknown.status).toBe(409);
+
+      const replaced = await send('PATCH', `/projects/${project.id}`, { technologyIds: [nest.id] });
+      expect(replaced.status).toBe(200);
+      expect((await readProject(project.id)).technologies).toEqual([{ id: nest.id, name: 'Live Nest' }]);
+
+      await send('DELETE', `/technologies/${nest.id}`);
+      expect((await readProject(project.id)).technologies).toEqual([]);
+    } finally {
+      await send('DELETE', `/projects/${project.id}`);
+      await send('DELETE', `/technologies/${react.id}`);
+      await send('DELETE', `/technologies/${nest.id}`);
+    }
+  });
+
+  it('lets a project find its client’s city and contact in the two lists the Overview reads', async () => {
+    const client = unwrap(
+      await (await send('POST', '/clients', { name: 'Contact check client', city: 'Pune' })).json(),
+      createdSchema,
+    );
+    const contact = unwrap(
+      await (
+        await send('POST', '/client-contacts', {
+          clientId: client.id,
+          name: 'Contact check person',
+          email: 'live@example.com',
+          phone: '+91 20 5550 0000',
+        })
+      ).json(),
+      createdSchema,
+    );
+    const created = await send('POST', '/projects', {
+      name: 'Contact check',
+      description: null,
+      clientId: client.id,
+      projectType: 'product',
+      billingType: 'fixed_cost',
+    });
+    expect(created.status).toBe(201);
+    const project = unwrap(await created.json(), projectRowSchema);
+    try {
+      expect(project).toMatchObject({ clientId: client.id, clientName: 'Contact check client' });
+      const clients = unwrap(await (await send('GET', '/clients')).json(), clientRowsSchema);
+      const contacts = unwrap(await (await send('GET', '/client-contacts')).json(), contactRowsSchema);
+      expect(clients.find((row) => row.id === project.clientId)).toMatchObject({ city: 'Pune', countryName: '' });
+      expect(contacts.filter((row) => row.clientId === project.clientId)).toMatchObject([
+        { id: contact.id, name: 'Contact check person', email: 'live@example.com', phone: '+91 20 5550 0000' },
+      ]);
+    } finally {
+      await send('DELETE', `/projects/${project.id}`);
+      await send('DELETE', `/clients/${client.id}`); // the service soft-deletes the client's contact with it
+    }
+  });
+
+  it('drafts a retainer resource for the same hours a month that the margin sentence uses', async () => {
+    const category = unwrap(
+      await (await send('POST', '/categories', { name: 'Hours check', description: 'Made by the live test' })).json(),
+      createdSchema,
+    );
+    const created = await send('POST', '/projects', {
+      name: 'Hours check',
+      description: null,
+      clientId: null,
+      projectType: 'resource_augmentation',
+      billingType: 'retainer',
+    });
+    expect(created.status).toBe(201);
+    const project = unwrap(await created.json(), projectRowSchema);
+    try {
+      const resource = await send('POST', '/project-resources', {
+        projectId: project.id,
+        name: 'Hours check',
+        personId: null,
+        categoryId: category.id,
+        rate: 50,
+      });
+      expect(resource.status).toBe(201);
+      const draft = await readDraft(project.id);
+      expect(draft.lineItems).toHaveLength(1);
+      expect(draft.lineItems[0].quantity).toBe(RETAINER_HOURS);
+    } finally {
+      await send('DELETE', `/projects/${project.id}`);
+      await send('DELETE', `/categories/${category.id}`);
     }
   });
 });
