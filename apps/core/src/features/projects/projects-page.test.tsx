@@ -51,11 +51,12 @@ describe('ProjectsPage', () => {
   it('keeps a project that has no client or description', async () => {
     renderWithProviders(<ProjectsPage />);
     const mobile = await rowOf('Mobile app');
-    expect(mobile.getAllByRole('cell').slice(0, 6).map((cell) => cell.textContent)).toEqual([
+    expect(mobile.getAllByRole('cell').slice(0, 7).map((cell) => cell.textContent)).toEqual([
       'Mobile app',
       '',
       'Product',
       'Fixed cost',
+      'On hold',
       '$32,000',
       '$0',
     ]);
@@ -64,11 +65,12 @@ describe('ProjectsPage', () => {
   it('shows a dash for the types of a project saved before they existed', async () => {
     renderWithProviders(<ProjectsPage />);
     const legacy = await rowOf('Legacy portal');
-    expect(legacy.getAllByRole('cell').slice(0, 6).map((cell) => cell.textContent)).toEqual([
+    expect(legacy.getAllByRole('cell').slice(0, 7).map((cell) => cell.textContent)).toEqual([
       'Legacy portal',
       'Acme',
       '—',
       '—',
+      'Completed',
       '$0',
       '$0',
     ]);
@@ -208,5 +210,64 @@ describe('ProjectsPage: a project removed elsewhere', () => {
     await waitFor(() =>
       expect(vi.mocked(coreApi.get).mock.calls.filter(([path]) => path === '/projects')).toHaveLength(2),
     );
+  });
+});
+
+describe('ProjectsPage: status', () => {
+  const names = () => screen.getAllByRole('link').map((link) => link.textContent);
+
+  it('shows each project’s status in its own column', async () => {
+    renderWithProviders(<ProjectsPage />);
+    expect(await screen.findByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
+    expect((await rowOf('Website')).getByText('Active')).toBeInTheDocument();
+  });
+
+  it('opens on All statuses and narrows to one status at a time', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectsPage />);
+    await screen.findByText('Website');
+    const filter = screen.getByLabelText('Status');
+    expect(filter).toHaveValue('all');
+    expect(names()).toEqual(['Website', 'Mobile app', 'Legacy portal']);
+
+    await user.selectOptions(filter, 'Completed');
+    expect(names()).toEqual(['Legacy portal']);
+    await user.selectOptions(filter, 'On hold');
+    expect(names()).toEqual(['Mobile app']);
+    await user.selectOptions(filter, 'All statuses');
+    expect(names()).toEqual(['Website', 'Mobile app', 'Legacy portal']);
+  });
+
+  it('says so when no project has the chosen status', async () => {
+    const onlyActive = projectRows.map((row) => ({ ...row, projectStatus: 'active' }));
+    serve(projectsEnvelope(onlyActive));
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectsPage />);
+    await screen.findByText('Website');
+    await user.selectOptions(screen.getByLabelText('Status'), 'Completed');
+    expect(screen.getByText('No projects have this status.')).toBeInTheDocument();
+  });
+
+  it('uses the search wording when text is typed too, and returns to page 1 when the filter changes', async () => {
+    const many = Array.from({ length: 12 }, (_, index) => ({
+      ...projectRows[0],
+      id: 100 + index,
+      name: `Project ${String(index + 1).padStart(2, '0')}`,
+      key: null,
+      projectStatus: index % 2 === 0 ? 'active' : 'completed',
+    }));
+    serve(projectsEnvelope(many));
+    const user = userEvent.setup();
+    renderWithProviders(<ProjectsPage />);
+    await screen.findByText('Project 01');
+    await user.click(screen.getByRole('button', { name: 'Next' }));
+    expect(screen.getByText('11–12 of 12')).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText('Status'), 'Completed');
+    expect(screen.getByText('1–6 of 6')).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Search projects'), 'nothing like this');
+    expect(screen.getByText('No projects match “nothing like this”.')).toBeInTheDocument();
+    expect(screen.queryByText('No projects have this status.')).not.toBeInTheDocument();
   });
 });

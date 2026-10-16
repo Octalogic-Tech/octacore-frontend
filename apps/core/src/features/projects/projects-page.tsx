@@ -7,15 +7,18 @@ import { SearchField } from '@/components/search-field';
 import { TablePager } from '@/components/table-pager';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { Field } from '@/components/ui/field';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
+import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { filterBy } from '@/lib/filter';
 import { formatCurrency } from '@/lib/format';
 import { useDeleteProject, useProjects } from './api';
 import { ProjectFormDialog } from './project-form-dialog';
-import type { ProjectRow } from './schema';
+import { ProjectStatusBadge } from './project-status-badge';
+import { projectStatusOptions, type ProjectRow, type ProjectStatus } from './schema';
 
 const NONE = '—';
 
@@ -26,10 +29,16 @@ export function ProjectsPage() {
   const [form, setForm] = useState<{ open: boolean; project?: ProjectRow }>({ open: false });
   const [toDelete, setToDelete] = useState<ProjectRow | null>(null);
 
+  const [status, setStatus] = useState<'all' | ProjectStatus>('all');
+
   const rows = useMemo(() => projects.data ?? [], [projects.data]);
+  const withStatus = useMemo(
+    () => (status === 'all' ? rows : rows.filter((row) => row.projectStatus === status)),
+    [rows, status],
+  );
   const filtered = useMemo(
-    () => filterBy(rows, search, ['name', 'description', 'clientName', 'projectTypeLabel', 'billingTypeLabel']),
-    [rows, search],
+    () => filterBy(withStatus, search, ['name', 'description', 'clientName', 'projectTypeLabel', 'billingTypeLabel']),
+    [withStatus, search],
   );
   const paging = usePagedRows(filtered);
 
@@ -39,7 +48,7 @@ export function ProjectsPage() {
         <Button onClick={() => setForm({ open: true })}>Add project</Button>
       </PageHeader>
 
-      <div className="mb-6">
+      <div className="mb-6 grid gap-x-6 gap-y-4 sm:grid-cols-2">
         <SearchField
           id="project-search"
           label="Search projects"
@@ -49,6 +58,23 @@ export function ProjectsPage() {
             paging.setPage(0);
           }}
         />
+        <Field label="Status" htmlFor="project-status-filter">
+          <Select
+            id="project-status-filter"
+            value={status}
+            onChange={(event) => {
+              setStatus(event.target.value as 'all' | ProjectStatus);
+              paging.setPage(0);
+            }}
+          >
+            <option value="all">All statuses</option>
+            {projectStatusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
       </div>
 
       <Panel>
@@ -67,7 +93,9 @@ export function ProjectsPage() {
           }
         >
           {filtered.length === 0 ? (
-            <p className="p-6 text-body">No projects match “{search.trim()}”.</p>
+            <p className="p-6 text-body">
+              {search.trim() ? `No projects match “${search.trim()}”.` : 'No projects have this status.'}
+            </p>
           ) : (
             <>
               <Table>
@@ -77,6 +105,7 @@ export function ProjectsPage() {
                     <TableHead>Client</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Billing</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Total value</TableHead>
                     <TableHead className="text-right">Outstanding</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -96,6 +125,9 @@ export function ProjectsPage() {
                       <TableCell>{project.clientName}</TableCell>
                       <TableCell>{project.projectTypeLabel || NONE}</TableCell>
                       <TableCell>{project.billingTypeLabel || NONE}</TableCell>
+                      <TableCell>
+                        <ProjectStatusBadge status={project.projectStatus} />
+                      </TableCell>
                       <TableCell className="tabular text-right">{formatCurrency(project.totalValue)}</TableCell>
                       <TableCell className="tabular text-right">{formatCurrency(project.totalOutstanding)}</TableCell>
                       <TableCell className="whitespace-nowrap text-right">
