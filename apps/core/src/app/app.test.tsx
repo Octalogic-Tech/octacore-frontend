@@ -7,10 +7,6 @@ import { AuthTestProvider } from '@/test/auth';
 import { envelope, fakeAdapter } from '@/test/fake-adapter';
 import App from './app';
 
-vi.mock('@/lib/api', () => ({
-  api: { get: vi.fn().mockResolvedValue({ data: [] }), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
-}));
-
 const originalAdapter = coreApi.defaults.adapter;
 
 // The core-service pages (Clients, Categories, Technologies, Countries) use coreApi: answer it here so no request leaves the test.
@@ -38,7 +34,7 @@ describe('App shell', () => {
   it('lists every page in four groups', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    for (const label of ['Overview', 'Clients', 'Projects', 'Receipts and bills', 'Categories', 'Technologies', 'Countries', 'Users']) {
+    for (const label of ['Overview', 'Clients', 'Projects', 'People', 'Invoices', 'Categories', 'Technologies', 'Countries', 'Users']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
     for (const group of ['Work', 'Finance', 'Reference data', 'Admin']) {
@@ -46,12 +42,14 @@ describe('App shell', () => {
     }
   });
 
-  it('shows who is signed in, with Change password and Sign out', () => {
+  it('shows who is signed in, with Change password and Sign out in a popover on the name', async () => {
+    const user = userEvent.setup();
     renderAt('/');
     const account = screen.getByRole('region', { name: 'Account' });
-    expect(within(account).getByText('Ada Admin')).toBeInTheDocument();
-    expect(within(account).getByRole('button', { name: 'Change password' })).toBeInTheDocument();
-    expect(within(account).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    await user.click(within(account).getByRole('button', { name: 'Ada Admin' }));
+    const menu = await screen.findByRole('dialog', { name: 'Account options' });
+    expect(within(menu).getByRole('button', { name: 'Change password' })).toBeInTheDocument();
+    expect(within(menu).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
   });
 
   it('marks only the current page', () => {
@@ -72,7 +70,8 @@ describe('App shell', () => {
     ['/', 'Overview'],
     ['/clients', 'Clients'],
     ['/projects', 'Projects'],
-    ['/finance/receipts-bills', 'Receipts and bills'],
+    ['/people', 'People'],
+    ['/finance/invoices', 'Invoices'],
     ['/categories', 'Categories'],
     ['/technologies', 'Technologies'],
     ['/countries', 'Countries'],

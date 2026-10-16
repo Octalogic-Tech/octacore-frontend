@@ -10,10 +10,6 @@ import { adminUser } from '@/test/fixtures/users';
 import { envelope, fakeAdapter, sessionEnvelope } from '@/test/fake-adapter';
 import App from './app';
 
-vi.mock('@/lib/api', () => ({
-  api: { get: vi.fn().mockResolvedValue({ data: [] }), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
-}));
-
 const originalAdapter = coreApi.defaults.adapter;
 
 // The Users page calls coreApi: answer it here so no request leaves the test (the deep-link test installs its own).
@@ -50,7 +46,7 @@ function renderWithContext(route: string, value: Partial<AuthContextValue>) {
 }
 
 describe('the app behind sign-in', () => {
-  it.each(['/', '/clients', '/finance/receipts-bills', '/nope'])(
+  it.each(['/', '/clients', '/finance/invoices', '/nope'])(
     'sends a signed-out visitor from %s to the login page, with no navigation',
     async (route) => {
       renderWithContext(route, { status: 'anonymous', user: null });
@@ -64,6 +60,12 @@ describe('the app behind sign-in', () => {
     renderWithContext('/clients', { status: 'loading', user: null });
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
     expect(screen.queryByRole('navigation', { name: 'Main' })).not.toBeInTheDocument();
+  });
+
+  it('sends a signed-in person who follows the old Receipts and bills link to Invoices', async () => {
+    renderWithContext('/finance/receipts-bills', {});
+    expect(await screen.findByRole('heading', { level: 1, name: 'Invoices' })).toBeInTheDocument();
+    expect(screen.getByText('at /finance/invoices')).toBeInTheDocument();
   });
 
   it('sends a signed-in person away from the login page to the overview', async () => {
@@ -125,8 +127,9 @@ describe('the app behind sign-in', () => {
     );
     expect(await screen.findByRole('heading', { level: 1, name: 'Clients' })).toBeInTheDocument();
 
-    // The desktop sidebar and the phone menu both hold an account block; either signs out.
-    await user.click(screen.getAllByRole('button', { name: 'Sign out' })[0]);
+    // Signing out is in the popover that the name in the sidebar opens.
+    await user.click(within(screen.getByRole('region', { name: 'Account' })).getByRole('button'));
+    await user.click(await screen.findByRole('button', { name: 'Sign out' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Sign in' })).toBeInTheDocument();
     await user.type(screen.getByLabelText('Email'), 'grace@example.com');
     await user.type(screen.getByLabelText('Password'), 'a long enough password');

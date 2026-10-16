@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-Vite 4.3 and React 19 in the Nx 16.5 workspace `octacore-frontend`. Tailwind 4, shadcn-structured components (Radix for dialogs), TanStack Query 5, react-hook-form with zod, react-router 6. Data comes from a json-server mock on `http://localhost:3002` (`json-server/db.json`, bills only); the FastAPI core service in `octacore-backend` is wired in for sign-in and for Categories, Technologies, Clients, Projects, Countries and Users. Versions are recorded in `docs/superpowers/specs/2026-10-14-core-redesign-design.md`, section 15. Hosting is undecided.
+Vite 4.3 and React 19 in the Nx 16.5 workspace `octacore-frontend`. Tailwind 4, shadcn-structured components (Radix for dialogs), TanStack Query 5, react-hook-form with zod, react-router 6. Data and sign-in come from the FastAPI core service in `octacore-backend`. A json-server mock (`json-server/db.json`, now empty) is still in the repository, but no page reads it. Versions are recorded in `docs/superpowers/specs/2026-10-14-core-redesign-design.md`, section 15. Hosting is undecided.
 
 ## Users
 
@@ -20,8 +20,8 @@ Which devices they use is not confirmed. The app must work on a phone and on a d
 
 One place for the partners to do four jobs:
 
-- See what is owed: what is outstanding across projects, and what bills are waiting for approval.
-- Record and review bills: add a bill with a picture of it, filter by date or approval, export a CSV.
+- See what is owed: what is outstanding across projects, and which invoices are unpaid.
+- Review invoices: every project's invoices in one list, the unpaid ones by default, filtered by status, client, project or issue date, with a CSV export.
 - Look up projects and the clients they belong to.
 - Keep the reference data (categories, technologies) accurate so everything else stays consistent.
 
@@ -29,18 +29,17 @@ It replaces three separate apps (Core, Projects, Finance) that only linked to ea
 
 ## Operating Context
 
-- Only bills are still a mock (json-server). The real backend is the FastAPI core service in `octacore-backend` (port 5001, base path `/api/v1`, every response in a `{statusCode, message, data, meta}` envelope). It has users, categories, clients, countries, projects, people and technologies, but nothing for bills, and its fields differ from the mock's. Sign-in and the Categories, Technologies, Clients, Projects, Countries and Users pages use it (Countries read-only). A technology has an optional category. A project has a project type (resource augmentation or product) and a billing type (retainer or fixed cost); its total value and what is outstanding are calculated from its invoices, each marked paid when the client pays. Wiring in the rest is a later step.
+- Everything is on the real backend, the FastAPI core service in `octacore-backend` (port 5001, base path `/api/v1`, every response in a `{statusCode, message, data, meta}` envelope). It has users, categories, clients, countries, projects, people, technologies and invoices. Sign-in and the Categories, Technologies, Clients, Projects, People, Invoices, Countries and Users pages use it (Countries read-only). A technology has an optional category. A person has an optional current monthly salary in whole dollars, one figure with no history; like every other record it is visible to anyone who is signed in. A project has a project type (resource augmentation or product) and a billing type (retainer or fixed cost); it has resources (people with a category and an hourly rate) and invoices made of lines; an invoice's amount is the sum of its lines, a retainer invoice starts from the resources at 160 hours each, and the project's total value and what is outstanding are calculated from its invoices, each marked paid when the client pays. Each invoice can be previewed, downloaded as a PDF and emailed; a project's key numbers its invoices. An invoice has no status of its own: it is paid once it has a paid date, overdue when unpaid and past its due date, and unpaid otherwise. On the Invoices page "active" means every invoice not yet paid, overdue ones included; its date filters work on the issue date.
 - The service's country data comes from a legacy dump: it stores 0 for a missing numeric or calling code and the text NULL for a missing ISO3 code. The app shows a dash for all three.
-- A bill is recorded with an image. The mock cannot store files, so only the file name is kept until real storage exists.
-- The bills CSV export came from the old Finance app and is kept.
+- The Invoices page keeps the CSV export the old Finance app had for bills; it exports the rows shown.
 - The old Projects and Finance apps are retired; their working parts live here.
 
 ## Capabilities and Constraints
 
-- Eight areas: Overview, Clients, Projects, Receipts and bills, Categories, Technologies, Countries (read-only, from the core service), and Users (admins only). The old navigation's People, Documents, Supports and Setting were dead links and are not part of the app.
-- Sign-in is built. Every page sits behind an email and password checked by the core service (it issues the tokens; there is no third-party provider), and the sidebar shows who is signed in with Change password and Sign out. One role exists, `admin`, with full access; admins manage accounts on the Users page. The json-server mock (Bills) does not check tokens until it moves to the core service.
-- Open decisions: hosting; how and when the rest of the FastAPI service is wired in and how its fields map to the mock's; where bill images are stored; the currency (the app shows `$` through one formatter, as the old cards did); which roles beyond `admin` will exist.
-- Terminology: the page is "Receipts and bills"; "Reimbursement" is stored as `actualExpense`.
+- Nine areas: Overview, Clients, Projects, People, Invoices, Categories, Technologies, Countries (read-only, from the core service), and Users (admins only). The old navigation's Documents, Supports and Setting were dead links and are not part of the app.
+- Sign-in is built. Every page sits behind an email and password checked by the core service (it issues the tokens; there is no third-party provider), and the sidebar shows who is signed in with Change password and Sign out. One role exists, `admin`, with full access; admins manage accounts on the Users page.
+- Open decisions: hosting; whether to remove the json-server mock now that no page reads it; the currency (the app shows `$` through one formatter, as the old cards did); which roles beyond `admin` will exist.
+- Terminology: the page is "Invoices" (it was "Receipts and bills"); an invoice is paid, overdue or unpaid, and "active" means not yet paid.
 
 ## Brand Commitments
 
@@ -50,8 +49,8 @@ It replaces three separate apps (Core, Projects, Finance) that only linked to ea
 
 ## Evidence on Hand
 
-- Mock data in `json-server/db.json`: bills from the old apps (categories, technologies and projects now live in the core service).
-- No real client names, amounts or bill images are in the repository, so none may be invented in the interface.
+- `json-server/db.json` is empty: everything now lives in the core service.
+- No real client names or amounts are in the repository, so none may be invented in the interface.
 
 ## Product Principles
 

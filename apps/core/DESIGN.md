@@ -100,6 +100,15 @@ components:
     backgroundColor: "{colors.grey}"
     textColor: "{colors.navy}"
     rounded: "{rounded.none}"
+  popover:
+    backgroundColor: "{colors.grey}"
+    textColor: "{colors.navy}"
+    rounded: "{rounded.none}"
+  avatar:
+    backgroundColor: "{colors.navy-deep}"
+    textColor: "{colors.on-navy}"
+    rounded: "{rounded.none}"
+    size: "36px"
   badge-solid:
     backgroundColor: "{colors.navy}"
     textColor: "{colors.on-navy}"
@@ -121,7 +130,7 @@ components:
 
 **Creative North Star: "The Asterisk, at Work"**
 
-Octacore is the octa-website's system doing a different job. The website persuades; this app is operated by the four partners to see what is owed, record bills and keep reference data straight. So the identity is the same and the volume is lower. The page is Paper Grey with navy ink, rules are hairlines, every corner is square, and the logo's offset arm is the one recurring device: it marks the current page, leads every field label and sits in every primary button. Nothing floats, glows or rounds.
+Octacore is the octa-website's system doing a different job. The website persuades; this app is operated by the four partners to see what is owed, follow invoices and keep reference data straight. So the identity is the same and the volume is lower. The page is Paper Grey with navy ink, rules are hairlines, every corner is square, and the logo's offset arm is the one recurring device: it marks the current page, leads every field label and sits in every primary button. Nothing floats, glows or rounds.
 
 The app speaks in numbers inside sentences ("$55,000 outstanding across 8 projects"), not in tiles, and gets out of the way: no onboarding, no marketing language, no motion beyond hover and focus.
 
@@ -132,7 +141,7 @@ The visual world was set by the brief ("based off the octa-website") and is take
 - Hairline rules at 0 degrees; framed panels with one 45 degree cut at the bottom right.
 - Square corners everywhere. No shadows (one 1px seam inside the primary button), no gradients, no red.
 - Underline fields; a drawn arm leads each label and turns teal while the field has focus.
-- No icon set: every mark (the arm, the arm-arrow, the tick, chevron, close) is drawn.
+- One icon set, for table row actions only: Lucide through `react-icons/lu`. Every other mark (the arm, the arm-arrow, the tick, chevron, close) is drawn.
 
 ## Colors
 
@@ -140,7 +149,7 @@ Exactly the website's palette; no other colour enters the app.
 
 - **Octalogic Navy** (navy): ink on grey, the sidebar, primary buttons, solid badges, the frame of panels.
 - **Night Navy** (navy-deep): the resting arm cell of a primary button.
-- **Arm Teal** (teal): action and current state only: the current nav arm, the button cell on hover and focus, the label arm while a field has focus, the underline under a hovered quiet button. It never carries text on grey (1.39:1).
+- **Arm Teal** (teal): action and current state only: the current nav arm, the button cell on hover and focus, the label arm while a field has focus, the underline under a hovered quiet button or icon button. It never carries text on grey (1.39:1).
 - **Paper Grey** (grey): the page, panels and dialogs. There is no white surface; white is only text on navy.
 - **Slate Navy** (navy-80): secondary text, table headings, descriptions. **Muted Navy** (navy-72): placeholders, hints and the resting rule of a field.
 - **Hairline** (rule) and **Soft Hairline** (rule-soft): row dividers and the hover fill of a row.
@@ -182,13 +191,19 @@ Every corner is square (radius 0). The one non-rectangular silhouette is the 45 
 ## Components
 
 ### Buttons
-A label and a square arm cell, 52px tall; one primary per screen. Hover and keyboard focus fill the cell teal and swing the arm into an arrow (220ms and 320ms). The quiet variant is plain text, 44px tall, with a teal underline on hover and focus; it is used for Edit, Delete, Cancel, Previous and Next.
+A label and a square arm cell, 52px tall; one primary per screen. Hover and keyboard focus fill the cell teal and swing the arm into an arrow (220ms and 320ms). The quiet variant is plain text, 44px tall, with a teal underline on hover and focus; it is used for Cancel, Previous and Next. A table row's actions (Edit, Delete, Preview and the like) are icon buttons instead: one Lucide mark in a 44px square with no text, named by its `aria-label` and tooltip ("Edit Acme"), and a teal bar under the mark on hover and focus.
 
 ### Navigation
 Logo, then three groups of text links (Work, Finance, Reference data). Group names are Small, uppercase and tracked, in Mist. The current page is white with a teal arm and `aria-current="page"`; other links are Mist with a Mist arm that lengthens and turns teal on hover.
 
+### Account
+At the foot of the sidebar and the menu sheet, a single 44px button: the person's initials in a square Night Navy tile (first letter of the first and last word of the name), the name, and a drawn chevron. It opens a popover upward, as wide as the button, with the email and then Change password and Sign out as quiet buttons. The popover is a grey object with a 1px navy frame: flat, no scrim, and it closes on Escape, an outside click or a choice. Change password closes it and opens its dialog, and focus comes back to the name button.
+
 ### Inputs
 Underline fields: no box, no fill. A 1px Muted Navy rule that turns navy on hover and firms to 3px navy on focus, with padding compensating so nothing moves. A drawn arm leads the label. Errors are a 2px navy rule and a navy arm before the message, announced with `role="alert"`; there is no red. Select is a native select with a drawn chevron; the Yes and No choice is a pair of native radio buttons styled as 44px chips, the chosen one a navy block.
+
+### Tabs
+A page with more than one subject splits into tabs: text only (the icon set is for row actions), 44px tall, on a navy rule the width of the content. Labels are Slate Navy; hover, keyboard focus and the selected tab turn them Octalogic Navy, and the selected tab also carries a 3px teal bar on the rule. A count follows the name in regular weight ("Invoices 4") once it is known. The selected tab lives in the address (`?tab=`, bare for the first tab), replacing the history entry so Back leaves the page; an unknown value opens the first tab. Only the open tab is on the page.
 
 ### Panels and tables
 A framed panel (grey, 1px navy frame, one cut corner) holds a table: a navy rule under the heads, Hairline between rows, rows at least 44px, amounts right-aligned in tabular figures, a pager at the foot (rows per page, range, Previous and Next).
@@ -197,7 +212,7 @@ A framed panel (grey, 1px navy frame, one cut corner) holds a table: a navy rule
 A grey object on the scrim with the cut corner, the title at Title size, a description, a 44px close button and the form below. A destructive action asks in an alert dialog with explicit wording ("Delete category “Web”? This cannot be undone.") and a navy button, never red.
 
 ### Badges
-Status is a word, not a colour: navy filled for Approved, outlined for Pending.
+Status is a word, not a colour: navy filled while money is still owed (Unpaid, Overdue), outlined for Paid.
 
 ### States
 Loading is five grey rows. A failed request is an inline message with a Try again button. An empty table says what is missing and offers the add action. A search with no match says so.
@@ -206,7 +221,7 @@ Loading is five grey rows. A failed request is an inline message with a Try agai
 
 ### Do:
 - **Do** keep teal a signal and every corner square.
-- **Do** draw marks (arm, tick, chevron, close) rather than importing an icon set.
+- **Do** draw marks (arm, tick, chevron, close) rather than importing an icon set, and give a row action an icon button with a label that names the row.
 - **Do** put amounts and dates in tabular figures and keep every target at least 44px.
 - **Do** say what is true in loading, empty and error states.
 - **Do** keep motion to hover and focus, and respect `prefers-reduced-motion`.
@@ -214,10 +229,10 @@ Loading is five grey rows. A failed request is an inline message with a Try agai
 ### Don't:
 - **Don't** use red, gradients, glows or shadows; delete is a confirmation, not a colour.
 - **Don't** round a corner.
-- **Don't** add an icon library (the design-contract test fails on one).
+- **Don't** add an icon set other than Lucide (the design-contract test fails on one), or use icons outside table row actions.
 - **Don't** put teal text on grey, or Muted Navy text on a hover fill.
 - **Don't** build metric tiles; put numbers inside a sentence on a ruled line.
-- **Don't** show a control until the thing behind it exists. Sign-in exists, so the login page and the account controls (Change password, Sign out) are shown; a user menu or settings control still waits for something real behind it.
+- **Don't** show a control until the thing behind it exists. Sign-in exists, so the login page and the account popover (Change password, Sign out) are shown; a settings control still waits for something real behind it.
 
 ## Differences from octa-website
 
@@ -226,6 +241,7 @@ Deliberate, so a later reader does not "fix" them back:
 - Dialogs use a clip-path cut; framed panels use the corner svg. The website uses the svg technique for panels only.
 - shadcn's `accent` token is the Soft Hairline hover fill, not teal; teal is the separate `signal` token. `destructive` is navy.
 - Text is never below 14px, so the website's 13px Label is not used; sidebar group names use Small.
-- Select and the Yes and No choice are native elements, not Radix components.
+- Select and the Yes and No choice are native elements, not Radix components. Dialogs, the menu sheet and the account popover are Radix.
+- The avatar is a square initials tile, not a circle: every corner is square, and there is no photo to show.
 - The resting colour of an arm on navy is Mist, as on the website. An earlier build used Navy Rule (1.52:1) and was corrected in review.
 - No scroll reveals or play-once motion: this is an operating tool.

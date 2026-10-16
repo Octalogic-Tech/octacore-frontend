@@ -18,11 +18,12 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Overview', to: '/', end: true },
       { label: 'Clients', to: '/clients' },
       { label: 'Projects', to: '/projects' },
+      { label: 'People', to: '/people' },
     ],
   },
   {
     label: 'Finance',
-    items: [{ label: 'Receipts and bills', to: '/finance/receipts-bills' }],
+    items: [{ label: 'Invoices', to: '/finance/invoices' }],
   },
   {
     label: 'Reference data',
@@ -36,5 +37,10 @@ export const NAV_GROUPS: NavGroup[] = [
     label: 'Admin',
     roles: ['admin'],
     items: [{ label: 'Users', to: '/users' }],
+  },
+  {
+    label: 'Planned',
+    roles: ['admin'],
+    items: [{ label: 'Planned features', to: '/planned' }],
   },
 ];

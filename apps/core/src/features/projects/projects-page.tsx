@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { LuPencil, LuTrash2 } from 'react-icons/lu';
 import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
@@ -6,6 +7,7 @@ import { SearchField } from '@/components/search-field';
 import { TablePager } from '@/components/table-pager';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
@@ -97,20 +99,16 @@ export function ProjectsPage() {
                       <TableCell className="tabular text-right">{formatCurrency(project.totalValue)}</TableCell>
                       <TableCell className="tabular text-right">{formatCurrency(project.totalOutstanding)}</TableCell>
                       <TableCell className="whitespace-nowrap text-right">
-                        <Button
-                          variant="quiet"
-                          aria-label={`Edit ${project.name}`}
+                        <IconButton
+                          label={`Edit ${project.name}`}
+                          icon={LuPencil}
                           onClick={() => setForm({ open: true, project })}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="quiet"
-                          aria-label={`Delete ${project.name}`}
+                        />
+                        <IconButton
+                          label={`Delete ${project.name}`}
+                          icon={LuTrash2}
                           onClick={() => setToDelete(project)}
-                        >
-                          Delete
-                        </Button>
+                        />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -141,7 +139,7 @@ export function ProjectsPage() {
           if (!open) setToDelete(null);
         }}
         title={`Delete project “${toDelete?.name ?? ''}”?`}
-        description="Its invoices are deleted with it. This cannot be undone."
+        description="Its resources and invoices are deleted with it. This cannot be undone."
         confirmLabel="Delete project"
         fallbackFocusId="project-search"
         onConfirm={async () => {

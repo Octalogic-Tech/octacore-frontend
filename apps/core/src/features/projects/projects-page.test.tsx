@@ -161,13 +161,15 @@ describe('ProjectsPage: writing', () => {
     expect(screen.getByLabelText('Name')).toHaveValue('Website');
   });
 
-  it('deletes only after the confirmation, and says the invoices go with it', async () => {
+  it('deletes only after the confirmation, and says the resources and invoices go with it', async () => {
     vi.mocked(coreApi.delete).mockResolvedValue(saved);
     const user = userEvent.setup();
     renderWithProviders(<ProjectsPage />);
     await user.click(await screen.findByRole('button', { name: 'Delete Website' }));
     expect(screen.getByText('Delete project “Website”?')).toBeInTheDocument();
-    expect(screen.getByText('Its invoices are deleted with it. This cannot be undone.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Its resources and invoices are deleted with it. This cannot be undone.'),
+    ).toBeInTheDocument();
     expect(coreApi.delete).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Delete project' }));
     await waitFor(() => expect(coreApi.delete).toHaveBeenCalledWith('/projects/1'));

@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, configure } from '@testing-library/react';
 import { threadId } from 'node:worker_threads';
-import { afterEach } from 'vitest';
+import { afterEach, vi } from 'vitest';
 
 afterEach(() => cleanup());
 
@@ -50,3 +50,9 @@ console.warn = (...args: unknown[]) => {
   if (typeof args[0] === 'string' && args[0].startsWith('⚠️ React Router Future Flag Warning')) return;
   warn(...args);
 };
+
+// jsdom has no object URLs. The preview creates one per file it shows, so tests get inert, replaceable stand-ins.
+if (!URL.createObjectURL) {
+  URL.createObjectURL = vi.fn(() => 'blob:octacore-test');
+  URL.revokeObjectURL = vi.fn();
+}

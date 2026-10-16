@@ -87,6 +87,17 @@ describe('Field', () => {
     expect(screen.queryByText('If you would rather we call.')).not.toBeInTheDocument();
   });
 
+  it('keeps its label and control at the top of its cell, so a neighbour with a hint cannot push them down', () => {
+    // A grid stretches every field to the tallest in its row and, left alone, spreads the extra height between the
+    // label and the control. jsdom has no layout, so this pins the class that stops it.
+    render(
+      <Field label="Name" htmlFor="name">
+        <Input id="name" />
+      </Field>,
+    );
+    expect(screen.getByLabelText('Name').closest('[data-slot="field"]')).toHaveClass('content-start');
+  });
+
   it('gives fieldA11y no error attributes when valid', () => {
     expect(fieldA11y('x')).toEqual({ id: 'x', 'aria-invalid': undefined, 'aria-describedby': undefined });
   });

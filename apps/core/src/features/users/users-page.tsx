@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
+import { LuPencil, LuTrash2 } from 'react-icons/lu';
 import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
 import { SearchField } from '@/components/search-field';
 import { TablePager } from '@/components/table-pager';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/features/auth/auth-context';
@@ -83,18 +85,18 @@ export function UsersPage() {
                       <TableCell className="tabular">{row.lastLoginDate ? formatDate(row.lastLoginDate) : 'Never'}</TableCell>
                       <TableCell className="tabular">{formatDate(row.createdDate)}</TableCell>
                       <TableCell className="whitespace-nowrap text-right">
-                        <Button variant="quiet" aria-label={`Edit ${row.name}`} onClick={() => setForm({ open: true, user: row })}>
-                          Edit
-                        </Button>
-                        <Button
-                          variant="quiet"
-                          aria-label={`Delete ${row.name}`}
+                        <IconButton
+                          label={`Edit ${row.name}`}
+                          icon={LuPencil}
+                          onClick={() => setForm({ open: true, user: row })}
+                        />
+                        <IconButton
+                          label={`Delete ${row.name}`}
+                          icon={LuTrash2}
                           // The service refuses it too (409); this just does not offer it.
                           disabled={row.id === me?.id}
                           onClick={() => setToDelete(row)}
-                        >
-                          Delete
-                        </Button>
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

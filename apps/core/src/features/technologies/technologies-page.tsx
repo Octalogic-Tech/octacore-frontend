@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
+import { LuPencil, LuTrash2 } from 'react-icons/lu';
 import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
 import { SearchField } from '@/components/search-field';
 import { TablePager } from '@/components/table-pager';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
+import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
@@ -79,20 +81,16 @@ export function TechnologiesPage() {
                       <TableCell>{technology.categoryName || '—'}</TableCell>
                       <TableCell className="min-w-[16rem]">{technology.description}</TableCell>
                       <TableCell className="whitespace-nowrap text-right">
-                        <Button
-                          variant="quiet"
-                          aria-label={`Edit ${technology.name}`}
+                        <IconButton
+                          label={`Edit ${technology.name}`}
+                          icon={LuPencil}
                           onClick={() => setForm({ open: true, technology })}
-                        >
-                          Edit
-                        </Button>
-                        <Button
-                          variant="quiet"
-                          aria-label={`Delete ${technology.name}`}
+                        />
+                        <IconButton
+                          label={`Delete ${technology.name}`}
+                          icon={LuTrash2}
                           onClick={() => setToDelete(technology)}
-                        >
-                          Delete
-                        </Button>
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

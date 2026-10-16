@@ -11,6 +11,8 @@ export const buttonVariants = cva(
         primary: 'min-h-[3.25rem] items-stretch bg-primary text-primary-foreground',
         quiet:
           'min-h-11 items-center px-3 text-foreground decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline',
+        // A bare mark in a 44px square; the quiet button's teal underline is drawn as a bar under the mark.
+        icon: 'relative size-11 flex-none items-center justify-center text-foreground after:pointer-events-none after:absolute after:inset-x-2.5 after:bottom-1.5 after:h-0.5 after:bg-teal after:opacity-0 hover:after:opacity-100 focus-visible:after:opacity-100',
       },
     },
     defaultVariants: { variant: 'primary' },

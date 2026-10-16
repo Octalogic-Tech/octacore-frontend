@@ -1,13 +1,11 @@
 import { countriesBody } from './countries';
 
-export const API = 'http://localhost:3002';
 export const CORE_API = 'http://localhost:5001/api/v1';
 /** The password the stubbed sign-in accepts. */
 export const E2E_PASSWORD = 'correct horse battery';
 
-// XHRs only. The dev server moves up a port when 3000 and 3001 are taken and can land on the API's own
-// port (3002); a plain URL match would then also swallow the page navigation to /categories or /projects.
-const xhr = (method: string, path: string, base = API) => ({
+// XHRs only: a plain URL match would also swallow a page navigation to the same address.
+const xhr = (method: string, path: string, base: string) => ({
   method,
   url: `${base}${path}`,
   resourceType: 'xhr' as const,
@@ -47,6 +45,9 @@ const acme = (): Row => record({ id: 1, name: 'Acme', description: 'Anvils and r
 const project = (fields: Row): Row =>
   record({
     description: null,
+    key: null,
+    billingAddress: null,
+    discountPercent: 0,
     clientId: null,
     client: null,
     billingType: 'retainer',
@@ -61,6 +62,10 @@ const projects = (): Row[] => [
     id: 1,
     name: 'Website',
     description: 'Marketing site.',
+    key: 'WEB',
+    billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',
+    // A long-term contract: every new invoice for this project starts at 10% off.
+    discountPercent: 10,
     clientId: 1,
     client: acme(),
     projectType: 'resource_augmentation',
@@ -71,41 +76,66 @@ const projects = (): Row[] => [
   project({ id: 3, name: 'Legacy portal', clientId: 1, client: acme(), projectType: null, billingType: null }),
 ];
 
+const line = (id: number, invoiceId: number, description: string, quantity: number, rate: number): Row =>
+  record({ id, invoiceId, description, headcount: 1, quantity, rate, amount: quantity * rate });
+
 const invoices = (): Row[] => [
   record({
     id: 1,
     projectId: 1,
     number: 'INV-001',
     description: 'October retainer',
+    subtotal: 36000,
+    discountPercent: 0,
     amount: 36000,
     issueDate: '2026-10-01',
     dueDate: '2026-10-31',
     paidDate: '2026-10-12',
+    periodStart: '2026-09-01',
+    periodEnd: '2026-09-30',
+    lineItems: [line(1, 1, 'Asha Rao — Mobile', 160, 150), line(2, 1, 'Ben Cho — Web', 160, 75)],
   }),
   record({
     id: 2,
     projectId: 1,
     number: 'INV-002',
     description: null,
+    subtotal: 12000,
+    discountPercent: 0,
     amount: 12000,
     issueDate: '2026-11-01',
     dueDate: null,
     paidDate: null,
+    periodStart: null,
+    periodEnd: null,
+    lineItems: [line(3, 2, 'Ben Cho — Web', 160, 75)],
   }),
 ];
 
-const bill = (id: number, billDate: string, approved: boolean, uploadedBy: string, amount: number): Row => ({
-  id,
-  billDate,
-  amount,
-  billType: id % 2 ? 'Regular' : 'Bonus',
-  actualExpense: id % 2 === 0,
-  billPath: `/path/to/bill/${id}`,
-  uploadedBy,
-  submittedBy: uploadedBy,
-  approved,
-  approvedBy: approved ? 'Manager' : '',
-});
+const resources = (): Row[] => [
+  record({
+    id: 1,
+    projectId: 1,
+    personId: 1,
+    categoryId: 2,
+    name: 'Asha Rao',
+    headcount: 1,
+    rate: 150,
+    category: { id: 2, name: 'Mobile' },
+    person: { id: 1, name: 'Asha Rao' },
+  }),
+  record({
+    id: 2,
+    projectId: 1,
+    personId: null,
+    categoryId: 1,
+    name: 'Ben Cho',
+    headcount: 1,
+    rate: 75,
+    category: { id: 1, name: 'Web' },
+    person: null,
+  }),
+];
 
 /**
  * The core service sends credentials (the refresh cookie), and a browser only accepts a credentialed cross-origin
@@ -135,8 +165,8 @@ function stubCore(
 }
 
 /**
- * Stubs every collection: categories, technologies, clients, client contacts, projects, invoices, countries and
- * users as the core service answers them, bills as the json-server mock does, and the sign-in routes. `signedIn` says
+ * Stubs every collection: categories, technologies, clients, client contacts, projects, project resources, people,
+ * invoices (and each invoice's PDF, email draft and next number), countries and users as the core service answers them, and the sign-in routes. `signedIn` says
  * whether the refresh cookie is valid when the page loads; `POST /auth/login` accepts E2E_PASSWORD and signs in.
  * `/categories` and `/users` keep state so an add or a delete shows up on the next read.
  */
@@ -226,13 +256,52 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
   stubCore('GET', '/projects', () => ({ body: envelope(projects()) }));
   stubCore('GET', '/projects/*', () => ({ body: envelope(projects()[0]) }));
   stubCore('GET', '/invoices*', () => ({ body: envelope(invoices()) }));
+  // `*` does not cross a `/`, so the draft (`/projects/1/invoice-draft`) needs its own stub; the resources call
+  // carries a query string.
+  stubCore('GET', '/projects/*/invoice-draft', () => ({
+    body: envelope({
+      lineItems: [
+        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rate: 150 },
+        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rate: 75 },
+      ],
+    }),
+  }));
+  stubCore('GET', '/project-resources*', () => ({ body: envelope(resources()) }));
+  stubCore('GET', '/people', () => ({
+    body: envelope([
+      record({
+        id: 1,
+        name: 'Asha Rao',
+        joinDate: '2024-01-15',
+        leaveDate: null,
+        email: 'asha@example.com',
+        phone: null,
+        imageLink: null,
+        contractLink: null,
+        monthlySalary: 5600,
+      }),
+      record({
+        id: 2,
+        name: 'Ben Cho',
+        joinDate: null,
+        leaveDate: null,
+        email: null,
+        phone: '+91 20 5550 0101',
+        imageLink: null,
+        contractLink: null,
+        monthlySalary: null,
+      }),
+    ]),
+  }));
 
-  cy.intercept(xhr('GET', '/bills'), [
-    bill(1, '2023-08-10', true, 'John Doe', 100),
-    bill(2, '2023-08-09', false, 'Jane Smith', 200),
-    bill(3, '2023-08-08', true, 'Michael Johnson', 50),
-    bill(4, '2023-08-07', false, 'Priya Nair', 75.5),
-    bill(5, '2023-08-06', true, 'John Doe', 300),
-    bill(6, '2023-08-05', false, 'Jane Smith', 120),
-  ]);
+  // `*` does not cross a `/`: each invoice document route and the next-number route needs its own stub.
+  stubCore('GET', '/invoices/*/pdf', () => ({ body: '%PDF-1.4\n%%EOF' }));
+  stubCore('GET', '/invoices/*/email-draft', () => ({
+    body: envelope({
+      to: ['michael@example.com'],
+      subject: 'Invoice INV-001 from Test Company LLP',
+      message: 'Hello Michael Jordan,\n\nPlease find attached invoice INV-001.\n\nRegards,\nTest Company LLP',
+    }),
+  }));
+  stubCore('GET', '/projects/*/next-invoice-number*', () => ({ body: envelope({ number: 'OCTA/26-27/WEB/001' }) }));
 }

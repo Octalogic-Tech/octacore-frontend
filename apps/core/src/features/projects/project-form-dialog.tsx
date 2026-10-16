@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useClients } from '@/features/clients/api';
-import { statusOf } from '@/lib/core-api';
+import { serviceMessage, statusOf } from '@/lib/core-api';
 import { useSaveProject } from './api';
 import {
   billingOptions,
@@ -43,6 +43,8 @@ export function ProjectFormDialog({
     register,
     handleSubmit,
     reset,
+    setError,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<ProjectFormValues>({ resolver: zodResolver(projectFormSchema), defaultValues: emptyProjectForm });
 
@@ -65,11 +67,19 @@ export function ProjectFormDialog({
     return options;
   }, [clients.data, project]);
 
+  const keyField = register('key');
+
   const submit = handleSubmit(async (values) => {
     setFailure(null);
     try {
       await save.mutateAsync({ id: project?.id, body: toProjectBody(values) });
     } catch (error) {
+      // Another project already uses the key: say so on the key, which is the one thing to change.
+      if (statusOf(error) === 409 && serviceMessage(error)?.startsWith('Another project already uses the key')) {
+        setError('key', { type: 'server', message: 'Another project already uses that key.' });
+        setFocus('key');
+        return;
+      }
       // Saving again would repeat an edit that cannot succeed once the project is gone (404). Anything else may be a
       // passing fault, so it says to try again.
       setFailure(project !== undefined && statusOf(error) === 404 ? 'removed' : 'failed');
@@ -93,10 +103,38 @@ export function ProjectFormDialog({
           <Field label="Name" htmlFor="project-name" error={errors.name?.message}>
             <Input {...fieldA11y('project-name', errors.name?.message)} {...register('name')} autoComplete="off" />
           </Field>
+          <Field
+            label="Key"
+            htmlFor="project-key"
+            error={errors.key?.message}
+            hint="A short code used to number invoices, like TKO. Leave empty to type invoice numbers by hand."
+          >
+            <Input
+              {...fieldA11y('project-key', errors.key?.message)}
+              {...keyField}
+              onChange={(event) => {
+                event.target.value = event.target.value.toUpperCase();
+                void keyField.onChange(event);
+              }}
+              autoComplete="off"
+            />
+          </Field>
           <Field label="Description" htmlFor="project-description" error={errors.description?.message}>
             <Textarea
               {...fieldA11y('project-description', errors.description?.message)}
               {...register('description')}
+            />
+          </Field>
+          <Field
+            label="Billing address"
+            htmlFor="project-billing-address"
+            error={errors.billingAddress?.message}
+            hint="Printed under “Billed to” on the invoice."
+          >
+            <Textarea
+              {...fieldA11y('project-billing-address', errors.billingAddress?.message)}
+              {...register('billingAddress')}
+              rows={4}
             />
           </Field>
           <Field
@@ -133,6 +171,19 @@ export function ProjectFormDialog({
                 </option>
               ))}
             </Select>
+          </Field>
+          <Field
+            label="Discount (%)"
+            htmlFor="project-discount"
+            error={errors.discountPercent?.message}
+            hint="Taken off every invoice of this project, up to 50. Each invoice can change it."
+          >
+            <Input
+              {...fieldA11y('project-discount', errors.discountPercent?.message)}
+              {...register('discountPercent')}
+              inputMode="decimal"
+              autoComplete="off"
+            />
           </Field>
           {failure === 'failed' ? (
             <p role="alert" className="text-small font-semibold text-foreground">
