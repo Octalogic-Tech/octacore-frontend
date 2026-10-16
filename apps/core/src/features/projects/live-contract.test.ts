@@ -464,4 +464,40 @@ describe.skipIf(!base)('the discount, on a service with its migration applied', 
       await send('DELETE', `/projects/${project.id}`);
     }
   });
+
+  it('keeps a project’s status and dates, refuses an end before the start, and clears the dates again', async () => {
+    const created = await send('POST', '/projects', {
+      name: 'Status check',
+      description: null,
+      clientId: null,
+      projectType: 'product',
+      billingType: 'fixed_cost',
+      projectStatus: 'on_hold',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+    });
+    expect(created.status).toBe(201);
+    const project = unwrap(await created.json(), projectRowSchema);
+    try {
+      expect(project).toMatchObject({ projectStatus: 'on_hold', startDate: '2026-01-01', endDate: '2026-12-31' });
+
+      const early = await send('PATCH', `/projects/${project.id}`, { endDate: '2025-12-31' });
+      expect(early.status).toBe(422);
+      expect(await readProject(project.id)).toMatchObject({ startDate: '2026-01-01', endDate: '2026-12-31' });
+
+      const cleared = await send('PATCH', `/projects/${project.id}`, {
+        projectStatus: 'completed',
+        startDate: null,
+        endDate: null,
+      });
+      expect(cleared.status).toBe(200);
+      expect(await readProject(project.id)).toMatchObject({
+        projectStatus: 'completed',
+        startDate: null,
+        endDate: null,
+      });
+    } finally {
+      await send('DELETE', `/projects/${project.id}`);
+    }
+  });
 });
