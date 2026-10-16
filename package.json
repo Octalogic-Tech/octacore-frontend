@@ -74,7 +74,7 @@
     "jest-transform-stub": "^2.0.0",
     "jsdom": "~22.1.0",
     "json-server": "^0.17.3",
-    "nx": "16.5.1",
+    "nx": "22.7.10",
     "nx-cloud": "latest",
     "postcss": "^8.4.30",
     "prettier": "^2.6.2",
