@@ -27,6 +27,7 @@ import { downloadInvoicePdf, notSetUpMessage } from './invoice-pdf';
 import { InvoicePreviewDialog } from './invoice-preview-dialog';
 import { ProjectFormDialog } from './project-form-dialog';
 import { ProjectOverview } from './project-overview';
+import { ProjectStatusBadge } from './project-status-badge';
 import { ResourcesPanel } from './resources-panel';
 import { sortInvoices, type InvoiceRow } from './schema';
 
@@ -129,7 +130,10 @@ function ProjectDetail({ projectId }: { projectId: number }) {
       <Link to="/projects" className={backLink}>
         Back to projects
       </Link>
-      <PageHeader title={data?.name ?? 'Project'}>
+      <PageHeader
+        title={data?.name ?? 'Project'}
+        badge={data ? <ProjectStatusBadge status={data.projectStatus} /> : undefined}
+      >
         {data ? (
           <>
             <Button variant="quiet" onClick={() => setProjectForm(true)}>

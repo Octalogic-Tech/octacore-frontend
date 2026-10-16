@@ -1,4 +1,4 @@
-import { formatCurrency, localToday } from '@/lib/format';
+import { formatCurrency, formatDate, localToday } from '@/lib/format';
 import { overdueTotal, type InvoiceRow, type ProjectRow } from './schema';
 
 const NONE = '—';
@@ -52,6 +52,14 @@ export function ProjectOverview({ project, invoices }: ProjectOverviewProps) {
         <div>
           <dt className="text-small text-navy-80">Discount</dt>
           <dd className="font-semibold">{project.discountPercent > 0 ? `${project.discountPercent}%` : NONE}</dd>
+        </div>
+        <div>
+          <dt className="text-small text-navy-80">Start</dt>
+          <dd className="font-semibold">{project.startDate ? formatDate(project.startDate) : NONE}</dd>
+        </div>
+        <div>
+          <dt className="text-small text-navy-80">End</dt>
+          <dd className="font-semibold">{project.endDate ? formatDate(project.endDate) : NONE}</dd>
         </div>
         <div className="sm:col-span-2">
           <dt className="text-small text-navy-80">Billing address</dt>

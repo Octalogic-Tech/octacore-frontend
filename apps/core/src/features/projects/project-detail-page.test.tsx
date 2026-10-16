@@ -83,6 +83,9 @@ function renderAt(route: string) {
 const sentence = (expected: string) => (_: string, element: Element | null) =>
   element?.tagName === 'P' && element.textContent === expected;
 
+/** The value beside a label in the Overview facts. */
+const fact = (label: string) => screen.getByText(label, { selector: 'dt' }).nextElementSibling as HTMLElement;
+
 const gets = (path: string) => vi.mocked(coreApi.get).mock.calls.filter(([called]) => called === path);
 
 beforeEach(() => {
@@ -119,8 +122,9 @@ describe('ProjectDetailPage: reading', () => {
     serve({ project: projectEnvelope(legacy), invoices: invoicesEnvelope([]), resources: resourcesEnvelope([]) });
     renderAt('/projects/1');
     await screen.findByRole('heading', { level: 1, name: 'Legacy portal' });
-    // Client, project type, billing type, key, discount and billing address.
-    expect(screen.getAllByText('—')).toHaveLength(6);
+    for (const label of ['Client', 'Project type', 'Billing type', 'Key', 'Discount', 'Billing address']) {
+      expect(fact(label)).toHaveTextContent('—');
+    }
   });
 
   it('lists the invoices newest issue date first, each with its status', async () => {
@@ -714,5 +718,30 @@ describe('ProjectDetailPage: the discount', () => {
     const row = (await screen.findByText('INV-001')).closest('tr') as HTMLElement;
     expect(within(row).getByText('$27,000')).toBeInTheDocument();
     expect(within(row).queryByText('$36,000')).not.toBeInTheDocument();
+  });
+});
+
+describe('ProjectDetailPage: status and dates', () => {
+  it('shows the status as a badge beside the title', async () => {
+    renderAt('/projects/1');
+    const title = await screen.findByRole('heading', { level: 1, name: 'Website' });
+    expect(within(title.parentElement as HTMLElement).getByText('Active')).toBeInTheDocument();
+  });
+
+  it('shows Start and End among the facts, and a dash for an empty one', async () => {
+    renderAt('/projects/1');
+    await screen.findByRole('heading', { level: 1, name: 'Website' });
+    expect(fact('Start')).toHaveTextContent('1 Jan 2026');
+    expect(fact('End')).toHaveTextContent('—');
+  });
+
+  it('shows a completed project with both of its dates', async () => {
+    serve({ project: projectEnvelope(projectRows[2]), invoices: invoicesEnvelope([]), resources: resourcesEnvelope([]) });
+    renderAt('/projects/1');
+    const title = await screen.findByRole('heading', { level: 1, name: 'Legacy portal' });
+    expect(within(title.parentElement as HTMLElement).getByText('Completed')).toBeInTheDocument();
+    expect(fact('Start')).toHaveTextContent('1 Mar 2025');
+    // Some ICU versions spell September "Sept" in en-GB.
+    expect(fact('End')).toHaveTextContent(/^30 Sept? 2025$/);
   });
 });
