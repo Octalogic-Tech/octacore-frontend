@@ -22,10 +22,10 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: 'Resources',
-    // Leave joins them when its page is built.
     items: [
       { label: 'People', to: '/resources/people' },
       { label: 'Allocation', to: '/resources/allocation' },
+      { label: 'Leave', to: '/resources/leave' },
     ],
   },
   {

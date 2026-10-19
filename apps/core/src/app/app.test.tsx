@@ -34,7 +34,7 @@ describe('App shell', () => {
   it('lists every page in five groups', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    for (const label of ['Overview', 'Clients', 'Projects', 'People', 'Allocation', 'Invoices', 'Expenses', 'Categories', 'Technologies', 'Countries', 'Expense types', 'Users']) {
+    for (const label of ['Overview', 'Clients', 'Projects', 'People', 'Allocation', 'Leave', 'Invoices', 'Expenses', 'Categories', 'Technologies', 'Countries', 'Expense types', 'Users']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
     for (const group of ['Work', 'Resources', 'Finance', 'Reference data', 'Admin']) {
@@ -46,13 +46,14 @@ describe('App shell', () => {
     expect(within(nav).queryByRole('link', { name: 'Currencies' })).not.toBeInTheDocument();
   });
 
-  it('puts People and Allocation in the Resources group, not under Work', () => {
+  it('puts People, Allocation and Leave in the Resources group, not under Work', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
     const resources = within(within(nav).getByRole('list', { name: 'Resources' }));
-    expect(resources.getAllByRole('link').map((link) => link.textContent)).toEqual(['People', 'Allocation']);
+    expect(resources.getAllByRole('link').map((link) => link.textContent)).toEqual(['People', 'Allocation', 'Leave']);
     expect(resources.getByRole('link', { name: 'People' })).toHaveAttribute('href', '/resources/people');
     expect(resources.getByRole('link', { name: 'Allocation' })).toHaveAttribute('href', '/resources/allocation');
+    expect(resources.getByRole('link', { name: 'Leave' })).toHaveAttribute('href', '/resources/leave');
     const work = within(within(nav).getByRole('list', { name: 'Work' }));
     expect(work.queryByRole('link', { name: 'People' })).not.toBeInTheDocument();
   });
@@ -87,6 +88,7 @@ describe('App shell', () => {
     ['/projects', 'Projects'],
     ['/resources/people', 'People'],
     ['/resources/allocation', 'Allocation'],
+    ['/resources/leave', 'Leave'],
     ['/finance/invoices', 'Invoices'],
     ['/finance/expenses', 'Expenses'],
     ['/categories', 'Categories'],
@@ -111,6 +113,13 @@ describe('App shell', () => {
     const nav = screen.getByRole('navigation', { name: 'Main' });
     expect(within(nav).getByRole('link', { name: 'Allocation' })).toHaveAttribute('aria-current', 'page');
     expect(within(nav).getByRole('link', { name: 'People' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('keeps Leave current on its page', () => {
+    renderAt('/resources/leave');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'Leave' })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('link', { name: 'Allocation' })).not.toHaveAttribute('aria-current');
   });
 
   it('no longer has a Planned page for Allocation, which is built', () => {

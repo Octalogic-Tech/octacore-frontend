@@ -16,6 +16,7 @@ import { InvoicesPage } from '@/features/invoices/invoices-page';
 import { OverviewPage } from '@/features/overview/overview-page';
 import { PeoplePage } from '@/features/people/people-page';
 import { AllocationPage } from '@/features/allocation/allocation-page';
+import { LeavePage } from '@/features/leave/leave-page';
 import { CashFlowPage } from '@/features/cash-flow/cash-flow-page';
 import { CurrencyTaxPage } from '@/features/currency-tax/currency-tax-page';
 import { MilestonesPage } from '@/features/milestones/milestones-page';
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="resources/people" element={<PeoplePage />} />
           <Route path="resources/allocation" element={<AllocationPage />} />
+          <Route path="resources/leave" element={<LeavePage />} />
           {/* People moved into Resources: a saved link still lands on it. */}
           <Route path="people" element={<Navigate to="/resources/people" replace />} />
           <Route path="finance/invoices" element={<InvoicesPage />} />
