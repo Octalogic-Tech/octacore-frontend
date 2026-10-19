@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { coreApi } from '@/lib/core-api';
 import { peopleEnvelope, personRows } from '@/test/fixtures/people';
+import { technologiesEnvelope } from '@/test/fixtures/technologies';
 import { renderWithProviders } from '@/test/utils';
 import { PeoplePage } from './people-page';
 
@@ -14,6 +15,7 @@ vi.mock('@/lib/core-api', async (importOriginal) => ({
 const serve = (people: unknown = peopleEnvelope()) =>
   vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
     if (path === '/people') return { data: people };
+    if (path === '/technologies') return { data: technologiesEnvelope() };
     throw new Error(`unexpected GET ${path}`);
   }) as never);
 
@@ -37,28 +39,36 @@ describe('PeoplePage', () => {
     expect(coreApi.get).toHaveBeenCalledWith('/people');
   });
 
-  it('lists each person with their contact, dates and monthly salary in dollars', async () => {
+  it('lists each person with their contact, dates and monthly salary in rupees', async () => {
     renderWithProviders(<PeoplePage />);
     const ada = await rowOf('Ada Lovelace');
     expect(ada.getByText('ada@example.com')).toBeInTheDocument();
     expect(ada.getByText('+44 20 7946 0000')).toBeInTheDocument();
     expect(ada.getByText('15 Jan 2024')).toBeInTheDocument();
-    expect(ada.getByText('$5,600.00')).toBeInTheDocument();
+    expect(ada.getByText('₹85,000.00')).toBeInTheDocument();
     expect(screen.getByText('1–3 of 3')).toBeInTheDocument();
   });
 
-  it('shows the date a person left, and a salary with its thousands separator', async () => {
+  it('shows the date a person left, and a salary grouped the Indian way', async () => {
     renderWithProviders(<PeoplePage />);
     const grace = await rowOf('Grace Hopper');
     expect(grace.getByText('1 Mar 2023')).toBeInTheDocument();
     expect(grace.getByText('30 Jun 2025')).toBeInTheDocument();
-    expect(grace.getByText('$7,250.00')).toBeInTheDocument();
+    expect(grace.getByText('₹92,500.00')).toBeInTheDocument();
   });
 
-  it('shows a salary to the cent', async () => {
-    serve(peopleEnvelope([{ ...personRows[0], monthlySalaryCents: 560075 }]));
+  it('groups lakhs and crores, and shows a salary to the paisa', async () => {
+    serve(peopleEnvelope([{ ...personRows[0], monthlySalaryPaise: 12_345_678 }]));
     renderWithProviders(<PeoplePage />);
-    expect((await rowOf('Ada Lovelace')).getByText('$5,600.75')).toBeInTheDocument();
+    expect((await rowOf('Ada Lovelace')).getByText('₹1,23,456.78')).toBeInTheDocument();
+  });
+
+  it('lists the technologies each person knows, and nothing for a person who knows none', async () => {
+    renderWithProviders(<PeoplePage />);
+    expect(await screen.findByRole('columnheader', { name: 'Technologies' })).toBeInTheDocument();
+    expect((await rowOf('Ada Lovelace')).getByText('Nest, React')).toBeInTheDocument();
+    expect((await rowOf('Grace Hopper')).getByText('Express')).toBeInTheDocument();
+    expect((await rowOf('Linus Torvalds')).queryByText(/Nest|React|Express/)).not.toBeInTheDocument();
   });
 
   it('links to the contract only when there is one', async () => {
@@ -71,30 +81,33 @@ describe('PeoplePage', () => {
     expect((await rowOf('Grace Hopper')).queryByRole('link')).not.toBeInTheDocument();
   });
 
-  it('keeps a person who has only a name, and shows no salary for them rather than $0.00', async () => {
+  it('keeps a person who has only a name, and shows no salary for them rather than ₹0.00', async () => {
     renderWithProviders(<PeoplePage />);
     const linus = await rowOf('Linus Torvalds');
-    expect(linus.getAllByRole('cell').slice(0, 6).map((cell) => cell.textContent)).toEqual([
+    expect(linus.getAllByRole('cell').slice(0, 7).map((cell) => cell.textContent)).toEqual([
       'Linus Torvalds',
       '',
       '',
       '',
       '',
       '',
+      '',
     ]);
-    expect(linus.queryByText('$0.00')).not.toBeInTheDocument();
+    expect(linus.queryByText('₹0.00')).not.toBeInTheDocument();
   });
 
-  it('shows a salary of zero as $0.00, not as empty', async () => {
-    serve(peopleEnvelope([{ ...personRows[2], monthlySalaryCents: 0 }]));
+  it('shows a salary of zero as ₹0.00, not as empty', async () => {
+    serve(peopleEnvelope([{ ...personRows[2], monthlySalaryPaise: 0 }]));
     renderWithProviders(<PeoplePage />);
-    expect((await rowOf('Linus Torvalds')).getByText('$0.00')).toBeInTheDocument();
+    expect((await rowOf('Linus Torvalds')).getByText('₹0.00')).toBeInTheDocument();
   });
 
   it.each<[string, string, string[]]>([
     ['a name', 'grace', ['Grace Hopper']],
     ['an email', 'ada@example', ['Ada Lovelace']],
     ['a phone number', '202 555', ['Grace Hopper']],
+    ['a technology', 'react', ['Ada Lovelace']],
+    ['part of a technology, in any case', 'EXPR', ['Grace Hopper']],
   ])('searches %s', async (_label, query, expected) => {
     const user = userEvent.setup();
     renderWithProviders(<PeoplePage />);
@@ -127,7 +140,7 @@ describe('PeoplePage', () => {
     await user.click(await screen.findByRole('button', { name: 'Add person' }));
     expect(screen.getByRole('dialog', { name: 'New person' })).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('');
-    expect(screen.getByLabelText('Monthly salary (USD)')).toHaveValue('');
+    expect(screen.getByLabelText('Monthly salary (INR)')).toHaveValue('');
   });
 
   it('opens the dialog on a person, salary included', async () => {
@@ -136,7 +149,7 @@ describe('PeoplePage', () => {
     await user.click(await screen.findByRole('button', { name: 'Edit Ada Lovelace' }));
     expect(screen.getByRole('dialog', { name: 'Edit person' })).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Ada Lovelace');
-    expect(screen.getByLabelText('Monthly salary (USD)')).toHaveValue('5600.00');
+    expect(screen.getByLabelText('Monthly salary (INR)')).toHaveValue('85000.00');
   });
 
   it('deletes only after the confirmation', async () => {
@@ -164,6 +177,26 @@ describe('PeoplePage', () => {
     );
   });
 
+  it('marks the allocation entries and leaves stale after a delete, since the service deletes them with the person', async () => {
+    vi.mocked(coreApi.delete).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    const { client } = renderWithProviders(<PeoplePage />);
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    await user.click(await screen.findByRole('button', { name: 'Delete Ada Lovelace' }));
+    await user.click(screen.getByRole('button', { name: 'Delete person' }));
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ['allocations'], refetchType: 'none' })),
+    );
+    expect(invalidate).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ['leaves'], refetchType: 'none' }));
+  });
+
+  it('says in the confirmation that the allocation entries and leaves go with the person', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<PeoplePage />);
+    await user.click(await screen.findByRole('button', { name: 'Delete Ada Lovelace' }));
+    expect(screen.getByText(/Their allocation entries and leaves are deleted with them\. This cannot be undone\./)).toBeInTheDocument();
+  });
+
   it('moves focus to the search field after a delete removes the row that held it', async () => {
     vi.mocked(coreApi.delete).mockImplementation((async () => {
       serve(peopleEnvelope(personRows.slice(1)));
@@ -188,7 +221,8 @@ describe('PeoplePage: failures', () => {
   it.each([
     ['a bare array, which is what the json-server mock sends', personRows],
     ['a person row that has lost its name', peopleEnvelope([{ ...personRows[0], name: undefined }])],
-    ['a person row that has lost its salary field', peopleEnvelope([{ ...personRows[0], monthlySalaryCents: undefined }])],
+    ['a person row that has lost its technologies', peopleEnvelope([{ ...personRows[0], technologies: undefined }])],
+    ['a person row that has lost its salary field', peopleEnvelope([{ ...personRows[0], monthlySalaryPaise: undefined }])],
   ])('shows the error state, not a broken table, when the service answers with %s', async (_label, body) => {
     serve(body);
     renderWithProviders(<PeoplePage />);

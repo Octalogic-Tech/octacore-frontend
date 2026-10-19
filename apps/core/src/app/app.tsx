@@ -37,7 +37,9 @@ export default function App() {
           <Route path="clients" element={<ClientsPage />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
-          <Route path="people" element={<PeoplePage />} />
+          <Route path="resources/people" element={<PeoplePage />} />
+          {/* People moved into Resources: a saved link still lands on it. */}
+          <Route path="people" element={<Navigate to="/resources/people" replace />} />
           <Route path="finance/invoices" element={<InvoicesPage />} />
           <Route path="finance/expenses" element={<ExpensesPage />} />
           {/* Recurring expenses are now a tab of Expenses: a saved link still lands on it. */}

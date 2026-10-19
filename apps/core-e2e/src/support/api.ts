@@ -348,7 +348,12 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
         phone: null,
         imageLink: null,
         contractLink: null,
-        monthlySalaryCents: 560075,
+        monthlySalaryPaise: 8_500_075,
+        // By name, as the service sends them.
+        technologies: [
+          { id: 2, name: 'Nest' },
+          { id: 1, name: 'React' },
+        ],
       }),
       record({
         id: 2,
@@ -359,7 +364,8 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
         phone: '+91 20 5550 0101',
         imageLink: null,
         contractLink: null,
-        monthlySalaryCents: null,
+        monthlySalaryPaise: null,
+        technologies: [],
       }),
     ]),
   }));

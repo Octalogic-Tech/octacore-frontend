@@ -18,8 +18,12 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Overview', to: '/', end: true },
       { label: 'Clients', to: '/clients' },
       { label: 'Projects', to: '/projects' },
-      { label: 'People', to: '/people' },
     ],
+  },
+  {
+    label: 'Resources',
+    // Allocation and Leave join People here when their pages are built.
+    items: [{ label: 'People', to: '/resources/people' }],
   },
   {
     label: 'Finance',

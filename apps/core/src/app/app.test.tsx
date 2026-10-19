@@ -31,19 +31,29 @@ function renderAt(route: string) {
 }
 
 describe('App shell', () => {
-  it('lists every page in four groups', () => {
+  it('lists every page in five groups', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
     for (const label of ['Overview', 'Clients', 'Projects', 'People', 'Invoices', 'Expenses', 'Categories', 'Technologies', 'Countries', 'Expense types', 'Users']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
-    for (const group of ['Work', 'Finance', 'Reference data', 'Admin']) {
+    for (const group of ['Work', 'Resources', 'Finance', 'Reference data', 'Admin']) {
       expect(within(nav).getByText(group)).toBeInTheDocument();
     }
     // Recurring expenses are a tab of Expenses, not a page of their own.
     expect(within(nav).queryByRole('link', { name: 'Recurring' })).not.toBeInTheDocument();
     // A country carries its currency, so there is no Currencies page.
     expect(within(nav).queryByRole('link', { name: 'Currencies' })).not.toBeInTheDocument();
+  });
+
+  it('puts People in the Resources group, not under Work', () => {
+    renderAt('/');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    const resources = within(within(nav).getByRole('list', { name: 'Resources' }));
+    expect(resources.getAllByRole('link').map((link) => link.textContent)).toEqual(['People']);
+    expect(resources.getByRole('link', { name: 'People' })).toHaveAttribute('href', '/resources/people');
+    const work = within(within(nav).getByRole('list', { name: 'Work' }));
+    expect(work.queryByRole('link', { name: 'People' })).not.toBeInTheDocument();
   });
 
   it('shows who is signed in, with Change password and Sign out in a popover on the name', async () => {
@@ -74,7 +84,7 @@ describe('App shell', () => {
     ['/', 'Overview'],
     ['/clients', 'Clients'],
     ['/projects', 'Projects'],
-    ['/people', 'People'],
+    ['/resources/people', 'People'],
     ['/finance/invoices', 'Invoices'],
     ['/finance/expenses', 'Expenses'],
     ['/categories', 'Categories'],
@@ -85,6 +95,13 @@ describe('App shell', () => {
   ])('shows the page title for %s', (route, title) => {
     renderAt(route);
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();
+  });
+
+  it('sends the old /people address to the People page in Resources', () => {
+    renderAt('/people');
+    expect(screen.getByRole('heading', { level: 1, name: 'People' })).toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'People' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('no longer has a Currencies page', () => {

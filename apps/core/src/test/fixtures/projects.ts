@@ -208,10 +208,10 @@ export const resourceRows = [
   },
 ];
 
-// GET /people: every column of the person; the resource form reads only the id and the name.
+// GET /people: every column of the person; the resource form reads only the id and the name. Salaries are whole INR paise.
 export const peopleRows = [
-  { ...audit, id: 1, name: 'Asha Rao', joinDate: null, leaveDate: null, email: 'asha@example.com', phone: null, imageLink: null, contractLink: null, monthlySalaryCents: null },
-  { ...audit, id: 2, name: 'Ben Cho', joinDate: '2026-01-05', leaveDate: null, email: null, phone: '+91 20 5550 0101', imageLink: null, contractLink: null, monthlySalaryCents: 480000 },
+  { ...audit, id: 1, name: 'Asha Rao', joinDate: null, leaveDate: null, email: 'asha@example.com', phone: null, imageLink: null, contractLink: null, monthlySalaryPaise: null, technologies: [] },
+  { ...audit, id: 2, name: 'Ben Cho', joinDate: '2026-01-05', leaveDate: null, email: null, phone: '+91 20 5550 0101', imageLink: null, contractLink: null, monthlySalaryPaise: 38_400_000, technologies: [] },
 ];
 
 // GET /projects/1/invoice-draft for a retainer project: one line per resource, 160 hours at its rate, and the billing

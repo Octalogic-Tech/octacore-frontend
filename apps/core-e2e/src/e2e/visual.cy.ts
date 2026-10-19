@@ -7,7 +7,7 @@ const pages = [
   ['project', '/projects/1'],
   ['project-invoices', '/projects/1?tab=invoices'],
   ['project-resources', '/projects/1?tab=resources'],
-  ['people', '/people'],
+  ['people', '/resources/people'],
   ['invoices', '/finance/invoices'],
   ['categories', '/categories'],
   ['technologies', '/technologies'],

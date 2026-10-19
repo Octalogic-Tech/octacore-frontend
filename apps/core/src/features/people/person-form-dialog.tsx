@@ -1,10 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useEffect, useMemo, useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
+import { ChoiceChip } from '@/components/ui/choice-chip';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { Arm } from '@/components/ui/marks';
+import { useTechnologies } from '@/features/technologies/api';
 import { useSavePerson } from './api';
 import {
   emptyPersonForm,
@@ -23,10 +26,12 @@ interface PersonFormDialogProps {
 }
 
 export function PersonFormDialog({ open, onOpenChange, person }: PersonFormDialogProps) {
+  const technologies = useTechnologies();
   const save = useSavePerson();
   const [failed, setFailed] = useState(false);
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
@@ -38,6 +43,16 @@ export function PersonFormDialog({ open, onOpenChange, person }: PersonFormDialo
       setFailed(false);
     }
   }, [open, person, reset]);
+
+  // The person's own technologies are always offered, so a technology list that is still loading, has failed or has
+  // since lost one cannot clear them on save.
+  const technologyOptions = useMemo(() => {
+    const options = (technologies.data ?? []).map((technology) => ({ id: technology.id, label: technology.name }));
+    for (const own of person?.technologies ?? []) {
+      if (!options.some((option) => option.id === own.id)) options.push({ id: own.id, label: own.name });
+    }
+    return options.sort((a, b) => a.label.localeCompare(b.label));
+  }, [technologies.data, person]);
 
   const submit = handleSubmit(async (values) => {
     setFailed(false);
@@ -108,10 +123,10 @@ export function PersonFormDialog({ open, onOpenChange, person }: PersonFormDialo
             />
           </Field>
           <Field
-            label="Monthly salary (USD)"
+            label="Monthly salary (INR)"
             htmlFor="person-monthly-salary"
             error={errors.monthlySalary?.message}
-            hint="Dollars and cents, like 5600.00."
+            hint="Rupees and paise, like 85000.00."
           >
             <Input
               {...fieldA11y('person-monthly-salary', errors.monthlySalary?.message)}
@@ -120,6 +135,43 @@ export function PersonFormDialog({ open, onOpenChange, person }: PersonFormDialo
               autoComplete="off"
             />
           </Field>
+          <Controller
+            control={control}
+            name="technologyIds"
+            render={({ field }) => (
+              <fieldset className="grid content-start gap-2">
+                <legend className="mb-1 flex min-h-6 items-center gap-2 text-small font-semibold text-foreground">
+                  <Arm className="w-3 text-rule" />
+                  Technologies
+                </legend>
+                {technologyOptions.length === 0 && technologies.isSuccess ? (
+                  <p className="text-small text-navy-72">No technologies yet. Add some on the Technologies page.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {technologyOptions.map((option) => {
+                      const id = String(option.id);
+                      return (
+                        <ChoiceChip
+                          key={id}
+                          checked={field.value.includes(id)}
+                          onChange={(event) =>
+                            field.onChange(
+                              event.target.checked ? [...field.value, id] : field.value.filter((value) => value !== id),
+                            )
+                          }
+                        >
+                          {option.label}
+                        </ChoiceChip>
+                      );
+                    })}
+                  </div>
+                )}
+                {technologies.isError ? (
+                  <p className="text-small text-navy-72">Technologies could not be loaded.</p>
+                ) : null}
+              </fieldset>
+            )}
+          />
           {failed ? (
             <p role="alert" className="text-small font-semibold text-foreground">
               That did not save. Try again.

@@ -36,14 +36,26 @@ describe('core', () => {
     cy.contains('td', 'Globex').should('be.visible');
   });
 
-  it('lists the people with their monthly salary in dollars and cents', () => {
+  it('lists the people under Resources with their technologies and monthly salary in rupees and paise', () => {
     cy.get(nav).contains('a', 'People').click();
+    cy.location('pathname').should('eq', '/resources/people');
     cy.contains('h1', 'People');
     cy.contains('td', 'Asha Rao').should('be.visible');
     cy.contains('td', 'asha@example.com').should('be.visible');
-    cy.contains('td', '$5,600.75').should('be.visible');
+    cy.contains('td', 'Nest, React').should('be.visible');
+    cy.contains('td', '₹85,000.75').should('be.visible');
     cy.contains('td', 'Ben Cho').should('be.visible');
     cy.get(`${nav} a[aria-current="page"]`).should('have.length', 1).and('contain', 'People');
+    // Search finds a person by a technology they know.
+    cy.get('#person-search').type('nest');
+    cy.contains('td', 'Asha Rao').should('be.visible');
+    cy.contains('td', 'Ben Cho').should('not.exist');
+  });
+
+  it('sends the old /people address to the People page in Resources', () => {
+    cy.visit('/people');
+    cy.location('pathname').should('eq', '/resources/people');
+    cy.contains('h1', 'People');
   });
 
   it('lists the projects and opens one with its resources and invoices', () => {
