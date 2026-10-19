@@ -65,7 +65,7 @@ describe('core', () => {
     cy.contains('Unpaid').should('be.visible');
     // Each invoice is in its own currency.
     cy.contains('td', '$36,000.00').should('be.visible');
-    cy.contains('td', '₹2,00,000.00').should('be.visible');
+    cy.contains('td', '₹2,36,000.00').should('be.visible');
     cy.contains('[role="tab"]', 'Resources').click();
     cy.location('search').should('eq', '?tab=resources');
     cy.contains('h2', 'Resources').should('be.visible');
@@ -189,9 +189,9 @@ describe('core', () => {
     cy.contains('h1', 'Invoices');
     cy.get('#invoices-status').should('have.value', 'active');
     cy.contains('td', 'INV-002').should('be.visible');
-    // Each amount is in the invoice's own currency.
+    // Each invoice is listed at what its client pays, in its own currency.
     cy.contains('td', 'INV-002').parent('tr').contains('$12,000.00').should('be.visible');
-    cy.contains('td', 'INV-003').parent('tr').contains('₹2,00,000.00').should('be.visible');
+    cy.contains('td', 'INV-003').parent('tr').contains('₹2,36,000.00').should('be.visible');
     cy.contains('td', 'INV-001').should('not.exist');
     cy.get('#invoices-status').select('Paid');
     cy.contains('td', 'INV-001').should('be.visible');
@@ -202,10 +202,10 @@ describe('core', () => {
     cy.get(nav).contains('a', 'Invoices').click();
     cy.contains('button', 'Export CSV').click();
     cy.readFile(`${Cypress.config('downloadsFolder')}/invoices.csv`)
-      .should('contain', 'Number,Client,Project,Issued,Due,Paid,Amount,Currency,Status')
-      .and('contain', 'INV-002,Acme,Website,2026-11-01,,,12000.00,USD,Unpaid')
-      // The amount stays in the invoice's own currency (before tax), with its code beside it.
-      .and('contain', 'INV-003,Acme,Website,2026-11-02,,,200000.00,INR,Unpaid')
+      .should('contain', 'Number,Client,Project,Issued,Due,Paid,Amount,Tax,Total,Currency,Status')
+      .and('contain', 'INV-002,Acme,Website,2026-11-01,,,12000.00,0.00,12000.00,USD,Unpaid')
+      // The amount before tax, the tax and the total stay in the invoice's own currency, with its code beside them.
+      .and('contain', 'INV-003,Acme,Website,2026-11-02,,,200000.00,36000.00,236000.00,INR,Unpaid')
       .and('not.contain', 'INV-001');
   });
 });
