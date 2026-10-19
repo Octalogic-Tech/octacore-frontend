@@ -2,8 +2,9 @@
 // service's own envelope; the values are made up. A project embeds its client's own columns (no country) or null.
 // A project from before the type columns existed has null for both types. The totals are what the service
 // calculates from a project's live invoices: project 1's match the two invoices below, and project 2's invoices
-// are simply not listed here. An invoice carries its lines, whose amount is headcount x quantity x rate (INV-001:
-// 1 x 160 x 150 + 1 x 160 x 75), and, from the second invoice on, a billing period that may be null. Nothing here
+// are simply not listed here. Every amount is whole US cents, as the service sends it (a rate of 150 dollars is
+// `rateCents` 15000). An invoice carries its lines, whose amount is headcount x quantity x rate (INV-001:
+// 1 x 160 x 15000 + 1 x 160 x 7500), and, from the second invoice on, a billing period that may be null. Nothing here
 // is discounted (discountPercent 0), so an invoice's amount equals its subtotal; tests that need a discount
 // override it on a copy. Each project has a status and optional start and end dates: Website is active and started,
 // Mobile app is on hold with no dates, Legacy portal is completed and has both. A project lists the technologies it
@@ -33,8 +34,8 @@ export const projectRows = [
     client: acme,
     billingType: 'retainer',
     projectType: 'resource_augmentation',
-    totalValue: 48000,
-    totalOutstanding: 12000,
+    totalValueCents: 4_800_000,
+    totalOutstandingCents: 1_200_000,
   },
   {
     ...audit,
@@ -52,8 +53,8 @@ export const projectRows = [
     client: null,
     billingType: 'fixed_cost',
     projectType: 'product',
-    totalValue: 32000,
-    totalOutstanding: 0,
+    totalValueCents: 3_200_000,
+    totalOutstandingCents: 0,
   },
   {
     ...audit,
@@ -71,20 +72,20 @@ export const projectRows = [
     client: acme,
     billingType: null,
     projectType: null,
-    totalValue: 0,
-    totalOutstanding: 0,
+    totalValueCents: 0,
+    totalOutstandingCents: 0,
   },
 ];
 
-const line = (id: number, invoiceId: number, description: string, quantity: number, rate: number) => ({
+const line = (id: number, invoiceId: number, description: string, quantity: number, rateCents: number) => ({
   ...audit,
   id,
   invoiceId,
   description,
   headcount: 1,
   quantity,
-  rate,
-  amount: quantity * rate,
+  rateCents,
+  amountCents: quantity * rateCents,
 });
 
 export const invoiceRows = [
@@ -94,15 +95,15 @@ export const invoiceRows = [
     projectId: 1,
     number: 'INV-001',
     description: 'October retainer',
-    subtotal: 36000,
+    subtotalCents: 3_600_000,
     discountPercent: 0,
-    amount: 36000,
+    amountCents: 3_600_000,
     issueDate: '2026-10-01',
     dueDate: '2026-10-31',
     paidDate: '2026-10-12',
     periodStart: '2026-09-01',
     periodEnd: '2026-09-30',
-    lineItems: [line(1, 1, 'Asha Rao — Mobile', 160, 150), line(2, 1, 'Ben Cho — Web', 160, 75)],
+    lineItems: [line(1, 1, 'Asha Rao — Mobile', 160, 15000), line(2, 1, 'Ben Cho — Web', 160, 7500)],
   },
   {
     ...audit,
@@ -110,15 +111,15 @@ export const invoiceRows = [
     projectId: 1,
     number: 'INV-002',
     description: null,
-    subtotal: 12000,
+    subtotalCents: 1_200_000,
     discountPercent: 0,
-    amount: 12000,
+    amountCents: 1_200_000,
     issueDate: '2026-11-01',
     dueDate: null,
     paidDate: null,
     periodStart: null,
     periodEnd: null,
-    lineItems: [line(3, 2, 'Ben Cho — Web', 160, 75)],
+    lineItems: [line(3, 2, 'Ben Cho — Web', 160, 7500)],
   },
 ];
 
@@ -133,7 +134,7 @@ export const resourceRows = [
     categoryId: 2,
     name: 'Asha Rao',
     headcount: 1,
-    rate: 150,
+    rateCents: 15000,
     category: { id: 2, name: 'Mobile' },
     person: { id: 1, name: 'Asha Rao' },
   },
@@ -145,7 +146,7 @@ export const resourceRows = [
     categoryId: 1,
     name: 'Ben Cho',
     headcount: 1,
-    rate: 75,
+    rateCents: 7500,
     category: { id: 1, name: 'Web' },
     person: null,
   },
@@ -153,15 +154,15 @@ export const resourceRows = [
 
 // GET /people: every column of the person; the resource form reads only the id and the name.
 export const peopleRows = [
-  { ...audit, id: 1, name: 'Asha Rao', joinDate: null, leaveDate: null, email: 'asha@example.com', phone: null, imageLink: null, contractLink: null, monthlySalary: null },
-  { ...audit, id: 2, name: 'Ben Cho', joinDate: '2026-01-05', leaveDate: null, email: null, phone: '+91 20 5550 0101', imageLink: null, contractLink: null, monthlySalary: 4800 },
+  { ...audit, id: 1, name: 'Asha Rao', joinDate: null, leaveDate: null, email: 'asha@example.com', phone: null, imageLink: null, contractLink: null, monthlySalaryCents: null },
+  { ...audit, id: 2, name: 'Ben Cho', joinDate: '2026-01-05', leaveDate: null, email: null, phone: '+91 20 5550 0101', imageLink: null, contractLink: null, monthlySalaryCents: 480000 },
 ];
 
 // GET /projects/1/invoice-draft for a retainer project: one line per resource, 160 hours at its rate.
 export const draftBody = {
   lineItems: [
-    { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rate: 150 },
-    { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rate: 75 },
+    { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rateCents: 15000 },
+    { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rateCents: 7500 },
   ],
 };
 
@@ -189,7 +190,7 @@ export const emailDraftBody = {
   to: ['michael@example.com'],
   subject: 'Invoice INV-001 from Test Company LLP',
   message:
-    'Hello Michael Jordan,\n\nPlease find attached invoice INV-001 for the period 1 Sep – 30 Sep 2026, for $36,000.\n\nPayment details are on the invoice.\n\nRegards,\nTest Company LLP',
+    'Hello Michael Jordan,\n\nPlease find attached invoice INV-001 for the period 1 Sep – 30 Sep 2026, for $36,000.00.\n\nPayment details are on the invoice.\n\nRegards,\nTest Company LLP',
 };
 
 export const emailDraftEnvelope = (data: unknown = emailDraftBody) => envelope('Successfully built email draft', data);

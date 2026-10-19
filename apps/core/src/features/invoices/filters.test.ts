@@ -18,9 +18,9 @@ const invoice = (id: number, projectId: number, fields: Partial<InvoiceRow> = {}
   projectId,
   number: `INV-${id}`,
   description: '',
-  subtotal: 1000 * id,
+  subtotalCents: 1000 * id,
   discountPercent: 0,
-  amount: 1000 * id,
+  amountCents: 1000 * id,
   issueDate: '2026-11-01',
   dueDate: null,
   paidDate: null,
@@ -48,8 +48,8 @@ const project = (id: number, name: string, client: { id: number; name: string } 
   billingType: null,
   projectTypeLabel: '',
   billingTypeLabel: '',
-  totalValue: 0,
-  totalOutstanding: 0,
+  totalValueCents: 0,
+  totalOutstandingCents: 0,
 });
 
 const acme = { id: 1, name: 'Acme' };

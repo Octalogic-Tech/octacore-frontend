@@ -14,7 +14,7 @@ import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { filterBy } from '@/lib/filter';
-import { formatCurrency } from '@/lib/format';
+import { formatUsd } from '@/lib/money';
 import { useDeleteProject, useProjects } from './api';
 import { ProjectFormDialog } from './project-form-dialog';
 import { ProjectStatusBadge } from './project-status-badge';
@@ -128,8 +128,8 @@ export function ProjectsPage() {
                       <TableCell>
                         <ProjectStatusBadge status={project.projectStatus} />
                       </TableCell>
-                      <TableCell className="tabular text-right">{formatCurrency(project.totalValue)}</TableCell>
-                      <TableCell className="tabular text-right">{formatCurrency(project.totalOutstanding)}</TableCell>
+                      <TableCell className="tabular text-right">{formatUsd(project.totalValueCents)}</TableCell>
+                      <TableCell className="tabular text-right">{formatUsd(project.totalOutstandingCents)}</TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         <IconButton
                           label={`Edit ${project.name}`}

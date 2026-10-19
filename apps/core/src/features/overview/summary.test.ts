@@ -1,7 +1,8 @@
 import type { InvoiceRow, ProjectRow } from '@/features/projects/schema';
 import { summarize } from './summary';
 
-const project = (id: number, totalValue: number, totalOutstanding: number): ProjectRow => ({
+// Every amount is in whole US cents.
+const project = (id: number, totalValueCents: number, totalOutstandingCents: number): ProjectRow => ({
   id,
   name: `Project ${id}`,
   description: '',
@@ -19,8 +20,8 @@ const project = (id: number, totalValue: number, totalOutstanding: number): Proj
   billingType: 'retainer',
   projectTypeLabel: 'Product',
   billingTypeLabel: 'Retainer',
-  totalValue,
-  totalOutstanding,
+  totalValueCents,
+  totalOutstandingCents,
 });
 
 const invoice = (id: number, fields: Partial<InvoiceRow> = {}): InvoiceRow => ({
@@ -28,9 +29,9 @@ const invoice = (id: number, fields: Partial<InvoiceRow> = {}): InvoiceRow => ({
   projectId: 1,
   number: `INV-${id}`,
   description: '',
-  subtotal: 10,
+  subtotalCents: 10,
   discountPercent: 0,
-  amount: 10,
+  amountCents: 10,
   issueDate: '2026-10-01',
   dueDate: null,
   paidDate: null,

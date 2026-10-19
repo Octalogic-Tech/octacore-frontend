@@ -1,9 +1,8 @@
 import { z } from 'zod';
+import { MAX_CENTS, amountProblem, parseAmount, toAmountText } from '@/lib/money';
 
 const nullToEmpty = (text: string | null) => text ?? '';
 const orNull = (text: string) => (text === '' ? null : text);
-
-const INT32_MAX = 2_147_483_647;
 
 const MAX_DISCOUNT_PERCENT = 50;
 // 0 to 50 with up to two decimals, as typed: "7.5", "12.25". A comma, a sign or a percent mark must be told what is
@@ -66,8 +65,9 @@ export const projectRowSchema = z
     client: z.object({ name: z.string() }).nullable(),
     projectType: projectTypeSchema.nullable(),
     billingType: billingTypeSchema.nullable(),
-    totalValue: z.number().int(),
-    totalOutstanding: z.number().int(),
+    // Whole US cents.
+    totalValueCents: z.number().int(),
+    totalOutstandingCents: z.number().int(),
   })
   .transform(({ client, ...row }) => ({
     ...row,
@@ -87,8 +87,9 @@ export const lineItemRowSchema = z.object({
   description: z.string(),
   headcount: z.number().int(),
   quantity: z.number().int(),
-  rate: z.number().int(),
-  amount: z.number().int(),
+  // Whole US cents, like every amount the service sends.
+  rateCents: z.number().int(),
+  amountCents: z.number().int(),
 });
 
 export const invoiceRowSchema = z.object({
@@ -96,11 +97,11 @@ export const invoiceRowSchema = z.object({
   projectId: z.number().int(),
   number: z.string(),
   description: z.string().nullable().transform(nullToEmpty),
-  // Calculated by the service from the lines; never sent. `amount` is what the client pays: the subtotal less the
-  // invoice's own discount.
-  subtotal: z.number().int(),
+  // Calculated by the service from the lines; never sent. `amountCents` is what the client pays: the subtotal less
+  // the invoice's own discount.
+  subtotalCents: z.number().int(),
   discountPercent: z.number(),
-  amount: z.number().int(),
+  amountCents: z.number().int(),
   issueDate: z.iso.date(),
   dueDate: z.iso.date().nullable(),
   paidDate: z.iso.date().nullable(),
@@ -120,13 +121,13 @@ export function sortInvoices(rows: readonly InvoiceRow[]): InvoiceRow[] {
 }
 
 /**
- * What the client still owes on invoices whose due date has passed: unpaid, and due before `today` (`YYYY-MM-DD`).
- * An invoice with no due date is never overdue, and one due today is not yet.
+ * What the client still owes, in cents, on invoices whose due date has passed: unpaid, and due before `today`
+ * (`YYYY-MM-DD`). An invoice with no due date is never overdue, and one due today is not yet.
  */
 export function overdueTotal(rows: readonly InvoiceRow[], today: string): number {
   return rows
     .filter((invoice) => !invoice.paidDate && invoice.dueDate !== null && invoice.dueDate < today)
-    .reduce((total, invoice) => total + invoice.amount, 0);
+    .reduce((total, invoice) => total + invoice.amountCents, 0);
 }
 
 /** A percentage field, as text: empty means none, otherwise 0 to 50 with up to two decimals. */
@@ -251,12 +252,18 @@ interface LineFigures {
   rate: string;
 }
 
-/** A line's amount, Qty x hours x rate, from its text fields: null until all three are whole numbers. */
+/**
+ * A line's amount in cents, Qty x hours x rate, from its text fields: null until Qty and hours are whole numbers and
+ * the rate (dollars and cents, as typed) is an amount the form accepts.
+ */
 export function lineAmount(line: LineFigures): number | null {
-  const figures = [line.headcount, line.quantity, line.rate].map((text) => text.trim());
-  if (!figures.every((text) => WHOLE_NUMBER.test(text))) return null;
-  const [headcount, quantity, rate] = figures.map(Number);
-  return headcount * quantity * rate;
+  const headcount = line.headcount.trim();
+  const quantity = line.quantity.trim();
+  const rate = line.rate.trim();
+  if (!WHOLE_NUMBER.test(headcount) || !WHOLE_NUMBER.test(quantity) || amountProblem(rate, { allowZero: true })) {
+    return null;
+  }
+  return Number(headcount) * Number(quantity) * parseAmount(rate);
 }
 
 export function linesTotal(lines: readonly LineFigures[]): number {
@@ -264,17 +271,21 @@ export function linesTotal(lines: readonly LineFigures[]): number {
 }
 
 /**
- * The whole dollars a discount takes off a subtotal, half a dollar rounding up: the service's own rule, so the
- * preview never differs from what is saved. Done in hundredths of a percent, as integers, because 12.25% as a
- * float can land a half dollar on the wrong side. Text the form refuses (empty, not a percentage, above 50) takes
- * nothing off; the form reports it on its own.
+ * The cents a discount takes off a subtotal given in cents, floored: the service's own rule (floored once, on the
+ * subtotal), so the preview never differs from what is saved. Done in hundredths of a percent, as integers, and the
+ * product in `BigInt`: a subtotal times hundredths can pass 2^53, where a float rounds the product (1_801_800_215_001
+ * at 49.99% is one such, a cent off in a float). The largest case, 200 lines at the cap at 50%, is 10^16 before the
+ * division, which a number still holds exactly. Text the form refuses (empty, not a percentage, above 50) takes
+ * nothing off, and neither does a subtotal that is not a safe whole number (a line the form is already refusing);
+ * the form reports those on its own.
  */
-export function discountAmount(subtotal: number, percent: string): number {
+export function discountAmount(subtotalCents: number, percent: string): number {
   const text = percent.trim();
   if (!PERCENT_TEXT.test(text) || Number(text) > MAX_DISCOUNT_PERCENT) return 0;
+  if (!Number.isSafeInteger(subtotalCents)) return 0;
   const [whole, fraction = ''] = text.split('.');
   const hundredths = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
-  return Math.floor((subtotal * hundredths + 5000) / 10000);
+  return Number((BigInt(subtotalCents) * BigInt(hundredths)) / 10000n);
 }
 
 /** What an invoice of these lines comes to: the subtotal, the discount and the total the client pays. */
@@ -284,7 +295,17 @@ export function invoiceTotals(lines: readonly LineFigures[], percent: string) {
   return { subtotal, discount, total: subtotal - discount };
 }
 
-// Text, not number inputs: a comma, a currency sign or a decimal point must be told what is wrong, not dropped.
+// A rate is text in dollars and cents, so a blank field can be told from a typed one and a comma, a currency sign or
+// a third decimal is told what is wrong, not dropped. 0 is a fair rate.
+const rateField = z
+  .string()
+  .trim()
+  .superRefine((text, context) => {
+    const problem = text === '' ? 'Rate is required' : amountProblem(text, { allowZero: true });
+    if (problem !== null) context.addIssue({ code: 'custom', message: problem });
+  });
+
+// Text, not number inputs: a comma or a currency sign must be told what is wrong, not dropped.
 export const lineFormSchema = z
   .object({
     description: z.string().trim().min(1, 'Description is required'),
@@ -307,25 +328,17 @@ export const lineFormSchema = z
         else if (Number(text) < 1 || Number(text) > MAX_QUANTITY)
           context.addIssue({ code: 'custom', message: 'Quantity must be from 1 to 100,000' });
       }),
-    rate: z
-      .string()
-      .trim()
-      .superRefine((text, context) => {
-        if (text === '') context.addIssue({ code: 'custom', message: 'Rate is required' });
-        else if (!WHOLE_NUMBER.test(text)) context.addIssue({ code: 'custom', message: 'Enter a whole number, like 85' });
-        else if (Number(text) > INT32_MAX) context.addIssue({ code: 'custom', message: 'Rate is too large' });
-      }),
+    rate: rateField,
   })
   .superRefine((line, context) => {
-    // Each field can be in range while the line is not: the service refuses a line above its integer limit. Said
-    // only when each field is in range, so a field already reported is not also reported as a large line.
+    // Each field can be in range while the line is not: the service refuses a line above the cap. Said only when
+    // each field is in range (`lineAmount` is null while the rate is not), so a field already reported is not also
+    // reported as a large line.
     const amount = lineAmount(line);
     const headcount = Number(line.headcount.trim());
     const quantity = Number(line.quantity.trim());
-    const rate = Number(line.rate.trim());
-    const eachInRange =
-      headcount >= 1 && headcount <= MAX_HEADCOUNT && quantity >= 1 && quantity <= MAX_QUANTITY && rate <= INT32_MAX;
-    if (amount !== null && eachInRange && amount > INT32_MAX) {
+    const eachInRange = headcount >= 1 && headcount <= MAX_HEADCOUNT && quantity >= 1 && quantity <= MAX_QUANTITY;
+    if (amount !== null && eachInRange && amount > MAX_CENTS) {
       context.addIssue({ code: 'custom', path: ['rate'], message: 'This line is too large' });
     }
   });
@@ -404,7 +417,7 @@ export function toInvoiceFormValues(invoice?: InvoiceRow, projectDiscountPercent
             description: item.description,
             headcount: String(item.headcount),
             quantity: String(item.quantity),
-            rate: String(item.rate),
+            rate: toAmountText(item.rateCents),
           }))
         : [{ ...blankLine }],
   };
@@ -414,7 +427,8 @@ export interface LineItemBody {
   description: string;
   headcount: number;
   quantity: number;
-  rate: number;
+  /** Whole US cents; the form holds dollars and cents. */
+  rateCents: number;
 }
 
 export interface InvoiceBody {
@@ -447,7 +461,7 @@ export function toInvoiceBody(values: InvoiceFormValues): InvoiceBody {
       description: line.description,
       headcount: Number(line.headcount),
       quantity: Number(line.quantity),
-      rate: Number(line.rate),
+      rateCents: parseAmount(line.rate),
     })),
   };
 }
@@ -455,7 +469,12 @@ export function toInvoiceBody(values: InvoiceFormValues): InvoiceBody {
 /** The lines a new invoice would start with (GET /projects/:id/invoice-draft). Quantity is hours on a retainer. */
 export const invoiceDraftSchema = z.object({
   lineItems: z.array(
-    z.object({ description: z.string(), headcount: z.number().int(), quantity: z.number().int(), rate: z.number().int() }),
+    z.object({
+      description: z.string(),
+      headcount: z.number().int(),
+      quantity: z.number().int(),
+      rateCents: z.number().int(),
+    }),
   ),
 });
 
@@ -467,11 +486,9 @@ export function draftToLines(draft: InvoiceDraft): LineFormValues[] {
     description: item.description,
     headcount: String(item.headcount),
     quantity: String(item.quantity),
-    rate: String(item.rate),
+    rate: toAmountText(item.rateCents),
   }));
 }
-
-const MAX_RESOURCE_RATE = 1_000_000;
 
 // `person` and `category` are null with none, or with a soft-deleted one while the id is still set. Only the names
 // are read; the ids stay so a form can tell "no person" from "a person who has gone".
@@ -483,7 +500,8 @@ export const resourceRowSchema = z
     categoryId: z.number().int(),
     name: z.string(),
     headcount: z.number().int(),
-    rate: z.number().int(),
+    // Whole US cents per hour.
+    rateCents: z.number().int(),
     person: z.object({ name: z.string() }).nullable(),
     category: z.object({ name: z.string() }).nullable(),
   })
@@ -511,15 +529,8 @@ export const resourceFormSchema = z.object({
       else if (!/^\d+$/.test(text) || Number(text) < 1 || Number(text) > 1000)
         context.addIssue({ code: 'custom', message: 'Enter a whole number from 1 to 1,000' });
     }),
-  // Text, not a number input: a comma, a currency sign or a decimal point must be told what is wrong, not dropped.
-  rate: z
-    .string()
-    .trim()
-    .superRefine((text, context) => {
-      if (text === '') context.addIssue({ code: 'custom', message: 'Rate is required' });
-      else if (!/^\d+$/.test(text)) context.addIssue({ code: 'custom', message: 'Enter a whole number, like 85' });
-      else if (Number(text) > MAX_RESOURCE_RATE) context.addIssue({ code: 'custom', message: 'Rate is too large' });
-    }),
+  // Dollars and cents per hour, as typed.
+  rate: rateField,
 });
 
 export type ResourceFormValues = z.infer<typeof resourceFormSchema>;
@@ -541,7 +552,7 @@ export function toResourceFormValues(resource?: ResourceRow): ResourceFormValues
     personId: resource.personId !== null && resource.personName !== '' ? String(resource.personId) : '',
     categoryId: resource.categoryName !== '' ? String(resource.categoryId) : '',
     headcount: String(resource.headcount),
-    rate: String(resource.rate),
+    rate: toAmountText(resource.rateCents),
   };
 }
 
@@ -550,7 +561,8 @@ export interface ResourceBody {
   personId: number | null;
   categoryId: number;
   headcount: number;
-  rate: number;
+  /** Whole US cents per hour; the form holds dollars and cents. */
+  rateCents: number;
 }
 
 /** A resource cannot move to another project, so the body never carries one; a create adds `projectId`. */
@@ -560,7 +572,7 @@ export function toResourceBody(values: ResourceFormValues): ResourceBody {
     personId: values.personId === '' ? null : Number(values.personId),
     categoryId: Number(values.categoryId),
     headcount: Number(values.headcount),
-    rate: Number(values.rate),
+    rateCents: parseAmount(values.rate),
   };
 }
 

@@ -174,11 +174,16 @@ export function ResourceFormDialog({
               autoComplete="off"
             />
           </Field>
-          <Field label="Rate per hour" htmlFor="resource-rate" error={errors.rate?.message} hint="Whole dollars.">
+          <Field
+            label="Rate per hour"
+            htmlFor="resource-rate"
+            error={errors.rate?.message}
+            hint="Dollars and cents, like 85.50."
+          >
             <Input
               {...fieldA11y('resource-rate', errors.rate?.message)}
               {...register('rate')}
-              inputMode="numeric"
+              inputMode="decimal"
               autoComplete="off"
             />
           </Field>

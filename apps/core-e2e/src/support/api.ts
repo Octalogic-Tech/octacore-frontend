@@ -56,8 +56,8 @@ const project = (fields: Row): Row =>
     client: null,
     billingType: 'retainer',
     projectType: 'product',
-    totalValue: 0,
-    totalOutstanding: 0,
+    totalValueCents: 0,
+    totalOutstandingCents: 0,
     ...fields,
   });
 
@@ -73,15 +73,16 @@ const projects = (): Row[] => [
     clientId: 1,
     client: acme(),
     projectType: 'resource_augmentation',
-    totalValue: 48000,
-    totalOutstanding: 12000,
+    totalValueCents: 4_800_000,
+    totalOutstandingCents: 1_200_000,
   }),
-  project({ id: 2, name: 'Mobile app', billingType: 'fixed_cost', totalValue: 32000 }),
+  project({ id: 2, name: 'Mobile app', billingType: 'fixed_cost', totalValueCents: 3_200_000 }),
   project({ id: 3, name: 'Legacy portal', clientId: 1, client: acme(), projectType: null, billingType: null }),
 ];
 
-const line = (id: number, invoiceId: number, description: string, quantity: number, rate: number): Row =>
-  record({ id, invoiceId, description, headcount: 1, quantity, rate, amount: quantity * rate });
+// Every amount the service sends is whole US cents: a rate of 15000 is $150.00 an hour.
+const line = (id: number, invoiceId: number, description: string, quantity: number, rateCents: number): Row =>
+  record({ id, invoiceId, description, headcount: 1, quantity, rateCents, amountCents: quantity * rateCents });
 
 const invoices = (): Row[] => [
   record({
@@ -89,30 +90,30 @@ const invoices = (): Row[] => [
     projectId: 1,
     number: 'INV-001',
     description: 'October retainer',
-    subtotal: 36000,
+    subtotalCents: 3_600_000,
     discountPercent: 0,
-    amount: 36000,
+    amountCents: 3_600_000,
     issueDate: '2026-10-01',
     dueDate: '2026-10-31',
     paidDate: '2026-10-12',
     periodStart: '2026-09-01',
     periodEnd: '2026-09-30',
-    lineItems: [line(1, 1, 'Asha Rao — Mobile', 160, 150), line(2, 1, 'Ben Cho — Web', 160, 75)],
+    lineItems: [line(1, 1, 'Asha Rao — Mobile', 160, 15000), line(2, 1, 'Ben Cho — Web', 160, 7500)],
   }),
   record({
     id: 2,
     projectId: 1,
     number: 'INV-002',
     description: null,
-    subtotal: 12000,
+    subtotalCents: 1_200_000,
     discountPercent: 0,
-    amount: 12000,
+    amountCents: 1_200_000,
     issueDate: '2026-11-01',
     dueDate: null,
     paidDate: null,
     periodStart: null,
     periodEnd: null,
-    lineItems: [line(3, 2, 'Ben Cho — Web', 160, 75)],
+    lineItems: [line(3, 2, 'Ben Cho — Web', 160, 7500)],
   }),
 ];
 
@@ -124,7 +125,7 @@ const resources = (): Row[] => [
     categoryId: 2,
     name: 'Asha Rao',
     headcount: 1,
-    rate: 150,
+    rateCents: 15000,
     category: { id: 2, name: 'Mobile' },
     person: { id: 1, name: 'Asha Rao' },
   }),
@@ -135,7 +136,7 @@ const resources = (): Row[] => [
     categoryId: 1,
     name: 'Ben Cho',
     headcount: 1,
-    rate: 75,
+    rateCents: 7500,
     category: { id: 1, name: 'Web' },
     person: null,
   }),
@@ -273,8 +274,8 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
   stubCore('GET', '/projects/*/invoice-draft', () => ({
     body: envelope({
       lineItems: [
-        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rate: 150 },
-        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rate: 75 },
+        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rateCents: 15000 },
+        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rateCents: 7500 },
       ],
     }),
   }));
@@ -290,7 +291,7 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
         phone: null,
         imageLink: null,
         contractLink: null,
-        monthlySalary: 5600,
+        monthlySalaryCents: 560075,
       }),
       record({
         id: 2,
@@ -301,7 +302,7 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
         phone: '+91 20 5550 0101',
         imageLink: null,
         contractLink: null,
-        monthlySalary: null,
+        monthlySalaryCents: null,
       }),
     ]),
   }));

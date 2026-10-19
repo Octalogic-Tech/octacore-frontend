@@ -1,9 +1,13 @@
 import { neutraliseFormula, toCsv } from '@/lib/csv';
+import { toAmountText } from '@/lib/money';
 import { STATUS_LABELS, invoiceStatus, type InvoiceListRow } from './filters';
 
 const HEADERS = ['Number', 'Client', 'Project', 'Issued', 'Due', 'Paid', 'Amount', 'Status'];
 
-/** One row per invoice, as listed. Dates stay `YYYY-MM-DD` and the amount a plain number, so a spreadsheet can sort them. */
+/**
+ * One row per invoice, as listed. Dates stay `YYYY-MM-DD` and the amount a plain number of dollars and cents
+ * (`360.00`), so a spreadsheet can sort them.
+ */
 export function invoicesToCsv(invoices: readonly InvoiceListRow[], today: string): string {
   return toCsv(
     HEADERS,
@@ -14,7 +18,7 @@ export function invoicesToCsv(invoices: readonly InvoiceListRow[], today: string
       invoice.issueDate,
       invoice.dueDate ?? '',
       invoice.paidDate ?? '',
-      String(invoice.amount),
+      toAmountText(invoice.amountCents),
       STATUS_LABELS[invoiceStatus(invoice, today)],
     ]),
   );

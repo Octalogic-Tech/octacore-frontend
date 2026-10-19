@@ -43,8 +43,8 @@ describe('ProjectsPage', () => {
     expect(website.getByText('Acme')).toBeInTheDocument();
     expect(website.getByText('Resource augmentation')).toBeInTheDocument();
     expect(website.getByText('Retainer')).toBeInTheDocument();
-    expect(website.getByText('$48,000')).toBeInTheDocument();
-    expect(website.getByText('$12,000')).toBeInTheDocument();
+    expect(website.getByText('$48,000.00')).toBeInTheDocument();
+    expect(website.getByText('$12,000.00')).toBeInTheDocument();
     expect(screen.getByText('1–3 of 3')).toBeInTheDocument();
   });
 
@@ -57,8 +57,8 @@ describe('ProjectsPage', () => {
       'Product',
       'Fixed cost',
       'On hold',
-      '$32,000',
-      '$0',
+      '$32,000.00',
+      '$0.00',
     ]);
   });
 
@@ -71,8 +71,8 @@ describe('ProjectsPage', () => {
       '—',
       '—',
       'Completed',
-      '$0',
-      '$0',
+      '$0.00',
+      '$0.00',
     ]);
   });
 
@@ -130,7 +130,7 @@ describe('ProjectsPage', () => {
   });
 
   it('shows the error state for a row that lacks a field the page needs', async () => {
-    serve(projectsEnvelope([{ ...projectRows[0], totalValue: undefined }]));
+    serve(projectsEnvelope([{ ...projectRows[0], totalValueCents: undefined }]));
     renderWithProviders(<ProjectsPage />);
     expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
   });

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { amountProblem, parseAmount, toAmountText } from './money';
+import { amountProblem, parseAmount, toAmountText } from '@/lib/money';
 
 const nullToEmpty = (text: string | null) => text ?? '';
 const orNull = (text: string) => (text === '' ? null : text);

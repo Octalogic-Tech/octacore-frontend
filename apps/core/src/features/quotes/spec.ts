@@ -28,7 +28,7 @@ export const quotesSpec: PlannedSpec = {
   surface: 'page',
   home: 'Work › Quotes',
   size: 'M',
-  needs: ['money-in-cents', 'currency-tax'],
+  needs: ['currency-tax'],
   does: [
     'A list of quotes, each with a status: draft, sent, won or lost.',
     'A quote editor: resources (category, headcount, rate, months), a discount, a currency and tax, giving a monthly and a total price.',

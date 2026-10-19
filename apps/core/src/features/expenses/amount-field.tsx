@@ -5,7 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { countryPickerOptions, type CountryRef } from '@/features/countries/options';
 import { PRIMARY_CURRENCY, type Country } from '@/features/countries/schema';
-import { amountProblem, convertToCents, formatRate, formatUsd, parseAmount } from './money';
+import { amountProblem, formatUsd, parseAmount } from '@/lib/money';
+import { convertToCents, formatRate } from './money';
 
 interface AmountFieldProps {
   /** Prefix of the two control ids: `expense` gives `expense-country` and `expense-amount`. */

@@ -29,9 +29,9 @@ const projects = [...projectRows, { ...projectRows[0], id: 4, name: 'Billing', c
 // INV-001 (paid) and INV-002 (unpaid, no due date) are the shared fixtures, both on Website.
 const invoices = [
   ...invoiceRows,
-  { ...invoiceRows[1], id: 3, projectId: 2, number: 'INV-003', amount: 8000, issueDate: '2026-10-20', dueDate: '2026-11-10' },
-  { ...invoiceRows[1], id: 4, projectId: 3, number: 'INV-004', amount: 5000, issueDate: '2026-11-15', dueDate: '2026-12-01' },
-  { ...invoiceRows[0], id: 5, projectId: 4, number: 'INV-005', amount: 2000, issueDate: '2026-09-15', dueDate: '2026-10-15', paidDate: '2026-10-01' },
+  { ...invoiceRows[1], id: 3, projectId: 2, number: 'INV-003', amountCents: 800_000, issueDate: '2026-10-20', dueDate: '2026-11-10' },
+  { ...invoiceRows[1], id: 4, projectId: 3, number: 'INV-004', amountCents: 500_000, issueDate: '2026-11-15', dueDate: '2026-12-01' },
+  { ...invoiceRows[0], id: 5, projectId: 4, number: 'INV-005', amountCents: 200_000, issueDate: '2026-09-15', dueDate: '2026-10-15', paidDate: '2026-10-01' },
 ];
 
 function serve(opts: { invoices?: unknown; projects?: unknown; fail?: '/invoices' | '/projects' } = {}) {
@@ -90,7 +90,7 @@ describe('InvoicesPage: reading', () => {
     expect(row.getByRole('link', { name: 'Mobile app' })).toHaveAttribute('href', '/projects/2');
     expect(row.getByText('20 Oct 2026')).toBeInTheDocument();
     expect(row.getByText('10 Nov 2026')).toBeInTheDocument();
-    expect(row.getByText('$8,000')).toBeInTheDocument();
+    expect(row.getByText('$8,000.00')).toBeInTheDocument();
     expect(row.getByText('Overdue')).toBeInTheDocument();
     // No client on the project, so a dash in its place.
     expect(row.getByText('—')).toBeInTheDocument();
@@ -210,7 +210,7 @@ describe('InvoicesPage: clearing and exporting', () => {
     const [filename, csv] = vi.mocked(downloadCsv).mock.calls[0];
     expect(filename).toBe('invoices.csv');
     expect(csv).toContain('INV-002');
-    expect(csv).toContain('INV-003,,Mobile app,2026-10-20,2026-11-10,,8000,Overdue');
+    expect(csv).toContain('INV-003,,Mobile app,2026-10-20,2026-11-10,,8000.00,Overdue');
     expect(csv).toContain('INV-004');
     expect(csv).not.toContain('INV-001');
     expect(csv).not.toContain('INV-005');

@@ -111,12 +111,12 @@ export function PersonFormDialog({ open, onOpenChange, person }: PersonFormDialo
             label="Monthly salary (USD)"
             htmlFor="person-monthly-salary"
             error={errors.monthlySalary?.message}
-            hint="Whole dollars, like 5600."
+            hint="Dollars and cents, like 5600.00."
           >
             <Input
               {...fieldA11y('person-monthly-salary', errors.monthlySalary?.message)}
               {...register('monthlySalary')}
-              inputMode="numeric"
+              inputMode="decimal"
               autoComplete="off"
             />
           </Field>

@@ -5,6 +5,7 @@ const LIST_LENGTH = 5;
 
 export interface OverviewSummary {
   projectCount: number;
+  /** The two totals, in whole US cents like every amount the service sends. */
   totalValue: number;
   totalOutstanding: number;
   /** Up to five projects, largest outstanding amount first. Settled projects are left out. */
@@ -30,11 +31,11 @@ export function summarize(projects: ProjectRow[], invoices: InvoiceRow[]): Overv
   const unpaid = toListRows(invoices, projects).filter((invoice) => invoice.paidDate === null);
   return {
     projectCount: projects.length,
-    totalValue: sum(projects.map((project) => project.totalValue)),
-    totalOutstanding: sum(projects.map((project) => project.totalOutstanding)),
+    totalValue: sum(projects.map((project) => project.totalValueCents)),
+    totalOutstanding: sum(projects.map((project) => project.totalOutstandingCents)),
     topOutstanding: projects
-      .filter((project) => project.totalOutstanding > 0)
-      .sort((a, b) => b.totalOutstanding - a.totalOutstanding)
+      .filter((project) => project.totalOutstandingCents > 0)
+      .sort((a, b) => b.totalOutstandingCents - a.totalOutstandingCents)
       .slice(0, LIST_LENGTH),
     unpaidCount: unpaid.length,
     unpaidInvoices: unpaid.sort(dueSoonestFirst).slice(0, LIST_LENGTH),
