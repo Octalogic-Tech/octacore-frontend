@@ -77,6 +77,38 @@ describe('Drawer', () => {
     await waitFor(() => expect(opener).toHaveFocus());
   });
 
+  it('lets the caller place focus on open, and still returns it to the opener', async () => {
+    function Placed() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setOpen(true)}>
+            Open settings
+          </button>
+          <Drawer open={open} onOpenChange={setOpen}>
+            <DrawerContent
+              title="Quote settings"
+              onOpenAutoFocus={(event) => {
+                event.preventDefault();
+                document.getElementById('second')?.focus();
+              }}
+            >
+              <input aria-label="First" />
+              <input id="second" aria-label="Second" />
+            </DrawerContent>
+          </Drawer>
+        </>
+      );
+    }
+    render(<Placed />);
+    const opener = screen.getByRole('button', { name: 'Open settings' });
+    await userEvent.click(opener);
+    await screen.findByRole('dialog', { name: 'Quote settings' });
+    expect(screen.getByRole('textbox', { name: 'Second' })).toHaveFocus();
+    await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(opener).toHaveFocus());
+  });
+
   it('sits on the right edge, full height, and scrolls inside', async () => {
     render(<Harness />);
     await userEvent.click(screen.getByRole('button', { name: 'Open settings' }));

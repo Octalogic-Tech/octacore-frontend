@@ -49,6 +49,19 @@ const TIME = [
   { name: 'hoursPerMonth', id: 'quote-hours-per-month', label: 'Hours in a month' },
 ] as const;
 
+/**
+ * Where focus goes as the drawer opens: the first field with a message, in the order the drawer shows them, so a failed
+ * save lands on what is wrong; with nothing wrong, the first field as usual.
+ */
+function focusFirstWrongField(event: Event) {
+  const wrong = (event.currentTarget as HTMLElement).querySelector<HTMLElement>('[aria-invalid="true"]');
+  if (!wrong) return;
+  event.preventDefault();
+  // A failed save has react-hook-form focus its own first wrong field on a timer, which is not always this one (the
+  // currency is first in the form and last here): ask again after it.
+  setTimeout(() => wrong.focus());
+}
+
 function Group({ legend, children }: { legend: string; children: ReactNode }) {
   return (
     <fieldset className="grid gap-4">
@@ -118,6 +131,7 @@ export function QuoteSettingsDrawer({
         title="Quote settings"
         description="What the totals are worked out from. Saved with the quote."
         fallbackFocusId={fallbackFocusId}
+        onOpenAutoFocus={focusFirstWrongField}
       >
         <div className="grid gap-8">
           <Group legend="Rates">

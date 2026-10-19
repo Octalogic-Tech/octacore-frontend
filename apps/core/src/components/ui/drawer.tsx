@@ -10,7 +10,8 @@ export const Drawer = DialogPrimitive.Root;
 /**
  * A grey panel from the right edge, full height, with a hairline on its left side, over the same scrim as a
  * dialog. It is for settings that sit beside a page, where a dialog would hide what the settings change. The
- * title is visible; a description is optional. Focus goes back to whatever opened it.
+ * title is visible; a description is optional. Focus goes back to whatever opened it. An `onOpenAutoFocus` runs once
+ * that is noted, and may `preventDefault()` to put focus somewhere other than the first field.
  */
 export function DrawerContent({
   title,
@@ -18,6 +19,7 @@ export function DrawerContent({
   className,
   children,
   fallbackFocusId,
+  onOpenAutoFocus,
   ...props
 }: Omit<ComponentProps<typeof DialogPrimitive.Content>, 'title'> & {
   title: string;
@@ -32,7 +34,10 @@ export function DrawerContent({
       <DialogPrimitive.Overlay data-slot="drawer-overlay" className="fixed inset-0 z-50 bg-scrim" />
       <DialogPrimitive.Content
         data-slot="drawer-content"
-        onOpenAutoFocus={returnFocus.onOpenAutoFocus}
+        onOpenAutoFocus={(event) => {
+          returnFocus.onOpenAutoFocus();
+          onOpenAutoFocus?.(event);
+        }}
         onCloseAutoFocus={returnFocus.onCloseAutoFocus}
         className={cn(
           'fixed inset-y-0 right-0 z-50 w-[min(28rem,100%)] overflow-y-auto border-l border-rule bg-background p-6 sm:p-8',

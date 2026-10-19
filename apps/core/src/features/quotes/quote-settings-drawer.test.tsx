@@ -1,30 +1,39 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { QuoteSettingsDrawer } from './quote-settings-drawer';
 import { emptyQuoteForm, quoteFormSchema, type QuoteFormValues } from './schema';
 
-/** The drawer on a form of its own, with the form's values printed outside it so a test can read them. */
-function Harness() {
-  const [open, setOpen] = useState(true);
+/**
+ * The drawer on a form of its own, with the form's values printed outside it so a test can read them. `wrong` starts the
+ * form with those values and asks for every field's message at once, as a failed save does, and `open` is whether the
+ * drawer starts open.
+ */
+function Harness({ wrong, open: startOpen = true }: { wrong?: Partial<QuoteFormValues>; open?: boolean }) {
+  const [open, setOpen] = useState(startOpen);
   const {
     register,
     control,
     watch,
+    trigger,
     formState: { errors },
   } = useForm<QuoteFormValues>({
     resolver: zodResolver(quoteFormSchema),
     mode: 'onTouched',
-    defaultValues: emptyQuoteForm,
+    defaultValues: { ...emptyQuoteForm, ...wrong },
   });
+  useEffect(() => {
+    if (wrong) void trigger();
+  }, [trigger, wrong]);
   return (
     <>
       <button type="button" onClick={() => setOpen(true)}>
         Open
       </button>
       <pre data-testid="values">{JSON.stringify(watch())}</pre>
+      <p data-testid="wrong">{Object.keys(errors).join(',')}</p>
       <QuoteSettingsDrawer
         open={open}
         onOpenChange={setOpen}
@@ -107,6 +116,43 @@ describe('QuoteSettingsDrawer', () => {
     await user.tab();
     expect(await within(drawer()).findByText('Enter a percentage like 7.5')).toBeInTheDocument();
     expect(testing).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  describe('opening with something wrong', () => {
+    // Out of the form's own order on purpose: the drawer shows the rate first, then Testing, and the currency last.
+    const WRONG = { currencyCode: 'RUPEES', testingPercent: 'abc', developerRate: '3,100' };
+
+    it('puts focus on the first wrong field the drawer shows, and gives it back to the opener on Done', async () => {
+      const user = userEvent.setup();
+      render(<Harness wrong={WRONG} open={false} />);
+      await waitFor(() => expect(screen.getByTestId('wrong')).toHaveTextContent('currencyCode,developerRate,testingPercent'));
+      await user.click(screen.getByRole('button', { name: 'Open' }));
+
+      const rate = within(within(drawer()).getByRole('group', { name: 'Developer' })).getByLabelText('Rate per hour');
+      await waitFor(() => expect(rate).toHaveFocus());
+      expect(rate).toHaveAttribute('aria-invalid', 'true');
+
+      await user.click(within(drawer()).getByRole('button', { name: 'Done' }));
+      expect(screen.getByRole('button', { name: 'Open' })).toHaveFocus();
+    });
+
+    it('goes past the fields that are fine, to the one that is wrong', async () => {
+      const user = userEvent.setup();
+      render(<Harness wrong={{ hoursPerMonth: '9999' }} open={false} />);
+      await waitFor(() => expect(screen.getByTestId('wrong')).toHaveTextContent('hoursPerMonth'));
+      await user.click(screen.getByRole('button', { name: 'Open' }));
+      await waitFor(() => expect(within(drawer()).getByLabelText('Hours in a month')).toHaveFocus());
+    });
+
+    it('leaves focus on the first field as before when nothing is wrong', async () => {
+      const user = userEvent.setup();
+      render(<Harness open={false} />);
+      await user.click(screen.getByRole('button', { name: 'Open' }));
+      const developer = within(within(drawer()).getByRole('group', { name: 'Developer' }));
+      await waitFor(() => expect(developer.getByLabelText('People')).toHaveFocus());
+      await user.click(within(drawer()).getByRole('button', { name: 'Done' }));
+      expect(screen.getByRole('button', { name: 'Open' })).toHaveFocus();
+    });
   });
 
   it('ends with a Done button that closes it, and reopening keeps what was typed', async () => {

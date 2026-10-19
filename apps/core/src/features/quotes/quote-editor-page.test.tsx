@@ -33,7 +33,13 @@ const failure = (status: number, data: unknown = {}) =>
   });
 
 function Where() {
-  return <p data-testid="where">{useLocation().pathname}</p>;
+  const location = useLocation();
+  return (
+    <>
+      <p data-testid="where">{location.pathname}</p>
+      <p data-testid="state">{JSON.stringify(location.state)}</p>
+    </>
+  );
 }
 
 function renderEditor(route: string) {
@@ -175,6 +181,29 @@ describe('QuoteEditorPage, a new quote', () => {
     expect(screen.getByRole('button', { name: 'Remove line 1' })).toBeDisabled();
   });
 
+  it('names each line field and its total on a narrow screen, where the column headings are hidden', async () => {
+    renderEditor('/quotes/new');
+    const line = within(screen.getByRole('group', { name: 'Line 1' }));
+    const cells = [
+      ['Description', screen.getByLabelText('Line 1 description')],
+      ['Units', screen.getByLabelText('Line 1 units')],
+      ['Hours per unit', screen.getByLabelText('Line 1 hours per unit')],
+      ['Total hours', lineTotal(1)],
+    ] as const;
+    for (const [text, cell] of cells) {
+      const label = line.getByText(text);
+      // Shown below `sm` and hidden from it up, where the column headings say the same; the inputs keep their own names.
+      expect(label).toHaveClass('sm:hidden', 'text-small', 'font-semibold', 'text-navy-80');
+      expect(label).not.toHaveClass('hidden');
+      expect(label).toHaveAttribute('aria-hidden', 'true');
+      expect(label.parentElement).toContainElement(cell);
+    }
+    // The column headings, from `sm` up, are as they were: one row above the lines, not repeated in them.
+    const [heading, rowLabel] = screen.getAllByText('Hours per unit');
+    expect(heading.parentElement).toHaveClass('hidden', 'sm:grid');
+    expect(rowLabel).toBe(line.getByText('Hours per unit'));
+  });
+
   it('keeps a setting through the drawer closing and saves it', async () => {
     const user = userEvent.setup();
     vi.mocked(coreApi.post).mockResolvedValue({ data: quoteEnvelope({ id: 12 }) });
@@ -231,6 +260,39 @@ describe('QuoteEditorPage, a new quote', () => {
     expect(await within(drawer()).findByText('Enter a percentage like 7.5')).toBeInTheDocument();
     expect(within(drawer()).getByLabelText('Testing (%)')).toHaveValue('abc');
     expect(coreApi.post).not.toHaveBeenCalled();
+  });
+
+  it('moves focus to the first wrong field of the drawer a save opens, and gives it back on Done', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/new');
+    await fillQuote(user);
+    await user.click(settingsButton());
+    // The currency is the first setting in the form's own order, Testing (%) the first one the drawer shows.
+    await retype(user, within(within(drawer()).getByRole('group', { name: 'Currency' })).getByLabelText('Currency code'), 'RUPEES');
+    await retype(user, within(within(drawer()).getByRole('group', { name: 'Percentages' })).getByLabelText('Testing (%)'), 'abc');
+    await user.click(within(drawer()).getByRole('button', { name: 'Done' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await within(drawer()).findByText('Enter a percentage like 7.5')).toBeInTheDocument();
+    await waitFor(() => expect(within(drawer()).getByLabelText('Testing (%)')).toHaveFocus());
+    // Let react-hook-form's own pass at focusing a wrong field go by: the first one in the drawer keeps it.
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(within(drawer()).getByLabelText('Testing (%)')).toHaveFocus();
+    expect(coreApi.post).not.toHaveBeenCalled();
+
+    // It was Save that opened the drawer, so Done hands focus back there.
+    await user.click(within(drawer()).getByRole('button', { name: 'Done' }));
+    expect(screen.getByRole('button', { name: 'Save' })).toHaveFocus();
+  });
+
+  it('gives focus back to the Settings button when the drawer it opened closes', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/new');
+    await user.click(settingsButton());
+    expect(drawer()).toBeInTheDocument();
+    await user.click(within(drawer()).getByRole('button', { name: 'Done' }));
+    expect(settingsButton()).toHaveFocus();
   });
 
   it('refuses a save with a blank hours with that line’s message, sending nothing', async () => {
@@ -310,6 +372,25 @@ describe('QuoteEditorPage, a new quote', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('says Saved on the page it moves to after the first save, until the next edit', async () => {
+    const user = userEvent.setup();
+    vi.mocked(coreApi.post).mockResolvedValue({ data: quoteEnvelope({ id: 12 }) });
+    renderEditor('/quotes/new');
+    await fillQuote(user);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Website build' })).toBeInTheDocument();
+    expect(screen.getByTestId('where')).toHaveTextContent('/quotes/12');
+    expect(screen.getByRole('status')).toHaveTextContent('Saved');
+    // The cue is for this arrival only: it is not left in the history entry for a reload or a Back to find.
+    await waitFor(() => expect(screen.getByTestId('state')).toHaveTextContent(/^null$/));
+    expect(screen.getByRole('status')).toHaveTextContent('Saved');
+
+    await user.type(screen.getByLabelText('Title'), '!');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('goes to the quotes when the create answer cannot be read, never saying it failed', async () => {
     const user = userEvent.setup();
     vi.mocked(coreApi.post).mockResolvedValue({ data: { surprise: true } });
@@ -321,6 +402,8 @@ describe('QuoteEditorPage, a new quote', () => {
     expect(screen.getByText('Quotes list')).toBeInTheDocument();
     expect(coreApi.post).toHaveBeenCalledTimes(1);
     expect(screen.queryByText('Could not save. Try again.')).not.toBeInTheDocument();
+    // Nothing is carried to the list.
+    expect(screen.getByTestId('state')).toHaveTextContent(/^null$/);
   });
 
   it.each([
@@ -354,6 +437,7 @@ describe('QuoteEditorPage, a saved quote', () => {
     renderEditor('/quotes/7');
     expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard refresh' })).toBeInTheDocument();
     expect(coreApi.get).toHaveBeenCalledWith('/quotations/7');
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Title')).toHaveValue('Dashboard refresh');
     expect(screen.getByLabelText('Currency')).toHaveValue('USD');
     expect(screen.getAllByRole('group', { name: /^Line \d+$/ })).toHaveLength(3);
@@ -409,6 +493,100 @@ describe('QuoteEditorPage, a saved quote', () => {
 
     await user.type(title, '!');
     expect(screen.queryByText('Saved')).not.toBeInTheDocument();
+  });
+
+  describe('while a save is on its way', () => {
+    /** A PATCH that stays out until `answer` is called, with the editor open on quote 7 and Save pressed. */
+    async function saveAndWait(user: UserEvent) {
+      let answer: () => void = () => undefined;
+      vi.mocked(coreApi.patch).mockReturnValue(
+        new Promise((resolve) => {
+          answer = () => resolve({ data: quoteEnvelope(saved) });
+        }),
+      );
+      renderEditor('/quotes/7');
+      await screen.findByLabelText('Title');
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() => expect(coreApi.patch).toHaveBeenCalledTimes(1));
+      expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+      return {
+        /** The service answers, and the editor has finished with the answer. */
+        answered: async () => {
+          answer();
+          await waitFor(() => expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled());
+        },
+      };
+    }
+
+    it('keeps what is typed, added or removed meanwhile, and does not say Saved', async () => {
+      const user = userEvent.setup();
+      const save = await saveAndWait(user);
+      await user.type(screen.getByLabelText('Title'), '!');
+      await retype(user, screen.getByLabelText('Line 3 hours per unit'), '20');
+      await user.click(screen.getByRole('button', { name: 'Add line' }));
+      await user.click(screen.getByRole('button', { name: 'Remove line 1' }));
+      await save.answered();
+
+      expect(screen.getByLabelText('Title')).toHaveValue('Dashboard refresh!');
+      expect(screen.getAllByRole('group', { name: /^Line \d+$/ })).toHaveLength(3);
+      expect(screen.getByLabelText('Line 1 description')).toHaveValue('Chart tiles');
+      expect(screen.getByLabelText('Line 2 hours per unit')).toHaveValue('20');
+      expect(screen.getByLabelText('Line 3 units')).toHaveValue('1');
+      // Those edits are not saved, so the page must not say they are.
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
+    it('goes on to save what was typed meanwhile with the next Save, then says Saved', async () => {
+      const user = userEvent.setup();
+      const save = await saveAndWait(user);
+      await user.type(screen.getByLabelText('Title'), '!');
+      await save.answered();
+
+      vi.mocked(coreApi.patch).mockResolvedValue({ data: quoteEnvelope(saved) });
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      expect(await screen.findByRole('status')).toHaveTextContent('Saved');
+      expect(coreApi.patch).toHaveBeenCalledTimes(2);
+      expect(vi.mocked(coreApi.patch).mock.calls[1][1]).toMatchObject({ title: 'Dashboard refresh!' });
+      expect(screen.getByLabelText('Title')).toHaveValue('Dashboard refresh!');
+
+      await user.type(screen.getByLabelText('Title'), '?');
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
+    it('says Saved when nothing was changed meanwhile, and clears it at the next edit', async () => {
+      const user = userEvent.setup();
+      const save = await saveAndWait(user);
+      await save.answered();
+      expect(screen.getByRole('status')).toHaveTextContent('Saved');
+      await user.type(screen.getByLabelText('Line 2 description'), '!');
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+
+    it('leaves a currency typed meanwhile as it was typed', async () => {
+      const user = userEvent.setup();
+      const save = await saveAndWait(user);
+      await retype(user, screen.getByLabelText('Currency'), 'gbp');
+      await save.answered();
+      expect(screen.getByLabelText('Currency')).toHaveValue('gbp');
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows the currency in capitals once a code typed in lower case is saved', async () => {
+    const user = userEvent.setup();
+    vi.mocked(coreApi.patch).mockResolvedValue({ data: quoteEnvelope(saved) });
+    renderEditor('/quotes/7');
+    await retype(user, await screen.findByLabelText('Currency'), ' eur ');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Saved');
+    expect(vi.mocked(coreApi.patch).mock.calls[0][1]).toMatchObject({ currencyCode: 'EUR' });
+    expect(screen.getByLabelText('Currency')).toHaveValue('EUR');
+    // Showing the capitals is not an edit: the page goes on saying it is saved.
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(screen.getByRole('status')).toHaveTextContent('Saved');
+    await user.click(settingsButton());
+    expect(within(drawer()).getByLabelText('Currency code')).toHaveValue('EUR');
   });
 
   it.each([

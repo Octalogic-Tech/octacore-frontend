@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
 import { Button } from '@/components/ui/button';
@@ -33,10 +33,14 @@ const COLUMNS = 'sm:grid-cols-[minmax(0,1fr)_5.5rem_7rem_6rem_5.5rem]';
 const LINE_FIELDS = ['description', 'units', 'hoursPerUnit'] as const;
 const LINE_NAMES = { description: 'description', units: 'units', hoursPerUnit: 'hours per unit' } as const;
 const PLACEHOLDERS = { description: 'Description', units: 'Units', hoursPerUnit: 'Hours' } as const;
+const LINE_LABELS = { description: 'Description', units: 'Units', hoursPerUnit: 'Hours per unit' } as const;
 const INPUT_MODES = { description: undefined, units: 'numeric', hoursPerUnit: 'decimal' } as const;
 
 const backLink =
   'mb-4 inline-flex min-h-11 items-center font-semibold decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline';
+
+// Above each field of a stacked line, where the column headings are hidden; from `sm` up the headings say it and these go.
+const narrowLabel = 'text-small font-semibold text-navy-80 sm:hidden';
 
 const lineShape = quoteFormSchema.shape.lines.element.shape;
 
@@ -107,9 +111,13 @@ function SavedQuote({ quoteId }: { quoteId: number }) {
 
 function QuoteForm({ quote }: { quote?: QuoteRow }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const save = useSaveQuote();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [saved, setSaved] = useState(false);
+  // A new quote's first save ends in this page being opened for it, and the form that was saved is gone: the navigation
+  // carries the news, so the page says "Saved" like it does after any later save.
+  const arrivedSaved = quote !== undefined && (location.state as { saved?: boolean } | null)?.saved === true;
+  const [saved, setSaved] = useState(arrivedSaved);
   const [failure, setFailure] = useState<string | null>(null);
   const {
     register,
@@ -117,6 +125,8 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
     handleSubmit,
     watch,
     reset,
+    getValues,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<QuoteFormValues>({
     resolver: zodResolver(quoteFormSchema),
@@ -126,11 +136,20 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
   });
   const { fields, append, remove } = useFieldArray({ control, name: 'lines' });
 
-  // "Saved" holds until the next edit.
+  // "Saved" holds until the next edit. The edits are counted too, so a save answered after more were made can tell.
+  const edits = useRef(0);
   useEffect(() => {
-    const subscription = watch(() => setSaved(false));
+    const subscription = watch(() => {
+      edits.current += 1;
+      setSaved(false);
+    });
     return () => subscription.unsubscribe();
   }, [watch]);
+
+  // The news is for this arrival alone: taken out of the history entry, a reload or a Back does not repeat it.
+  useEffect(() => {
+    if (arrivedSaved) navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+  }, [arrivedSaved, location.pathname, location.search, navigate]);
 
   const values = watch();
   const calc = toCalcInput(values);
@@ -144,15 +163,25 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
     async (valid) => {
       setFailure(null);
       setSaved(false);
+      const editsAtSend = edits.current;
       try {
         const id = await save.mutateAsync({ id: quote?.id, body: toQuoteBody(valid) });
         if (quote === undefined) {
-          // A new quote moves to its own address; if the answer did not say where that is, to the list it is on.
-          navigate(id === undefined ? '/quotes' : `/quotes/${id}`, { replace: true });
+          // A new quote moves to its own address (which says "Saved" there); if the answer did not say where that is, to
+          // the list it is on.
+          if (id === undefined) navigate('/quotes', { replace: true });
+          else navigate(`/quotes/${id}`, { replace: true, state: { saved: true } });
           return;
         }
-        reset(valid);
-        setSaved(true);
+        // Whatever was typed, added or removed while the save was out stays: the form is made clean against what was
+        // saved, not set back to it.
+        const unchangedSince = edits.current === editsAtSend;
+        const code = valid.currencyCode.toUpperCase();
+        reset({ ...valid, currencyCode: code }, { keepValues: true, keepErrors: true });
+        // The code is kept in capitals, so show it so, unless it was changed meanwhile.
+        const typed = getValues('currencyCode');
+        if (typed !== code && typed.trim() === valid.currencyCode) setValue('currencyCode', code);
+        setSaved(unchangedSince);
       } catch (error) {
         const status = statusOf(error);
         if (quote !== undefined && status === 404) {
@@ -209,7 +238,7 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
 
             <div className="grid gap-3">
               <h2 className="text-small font-semibold text-navy-80">Lines</h2>
-              {/* Column names for the sighted; the inputs carry their own names, and below `sm` each row stacks. */}
+              {/* Column names for the sighted; the inputs carry their own names. Below `sm` each row stacks and labels itself. */}
               <div aria-hidden="true" className={`hidden gap-2 text-small font-semibold text-navy-80 sm:grid ${COLUMNS}`}>
                 <span>Description</span>
                 <span>Units</span>
@@ -226,20 +255,29 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
                   <div key={field.id} role="group" aria-label={`Line ${number}`} className="grid gap-1">
                     <div className={`grid items-start gap-2 ${COLUMNS}`}>
                       {LINE_FIELDS.map((name) => (
-                        <Input
-                          key={name}
-                          {...fieldA11y(`line-${number}-${name}`, rowErrors?.[name]?.message)}
-                          {...register(`lines.${index}.${name}`)}
-                          aria-label={`Line ${number} ${LINE_NAMES[name]}`}
-                          placeholder={PLACEHOLDERS[name]}
-                          inputMode={INPUT_MODES[name]}
-                          autoComplete="off"
-                        />
+                        <div key={name} className="grid gap-1">
+                          <span aria-hidden="true" className={narrowLabel}>
+                            {LINE_LABELS[name]}
+                          </span>
+                          <Input
+                            {...fieldA11y(`line-${number}-${name}`, rowErrors?.[name]?.message)}
+                            {...register(`lines.${index}.${name}`)}
+                            aria-label={`Line ${number} ${LINE_NAMES[name]}`}
+                            placeholder={PLACEHOLDERS[name]}
+                            inputMode={INPUT_MODES[name]}
+                            autoComplete="off"
+                          />
+                        </div>
                       ))}
-                      <p className="tabular py-3 text-right text-small">
-                        <span className="sr-only">{`Line ${number} total hours `}</span>
-                        {total === null ? NONE : formatHours(total)}
-                      </p>
+                      <div className="grid gap-1">
+                        <span aria-hidden="true" className={narrowLabel}>
+                          Total hours
+                        </span>
+                        <p className="tabular py-3 text-small sm:text-right">
+                          <span className="sr-only">{`Line ${number} total hours `}</span>
+                          {total === null ? NONE : formatHours(total)}
+                        </p>
+                      </div>
                       <Button
                         variant="quiet"
                         aria-label={`Remove line ${number}`}
