@@ -19,15 +19,15 @@ describe('formatUsd', () => {
 
 describe('formatMoney', () => {
   it('groups rupees the Indian way', () => {
-    expect(formatMoney(12345678, { code: 'INR', symbol: '₹' })).toBe('₹1,23,456.78');
+    expect(formatMoney(12345678, { currencyCode: 'INR', currencySymbol: '₹' })).toBe('₹1,23,456.78');
   });
 
   it('groups other currencies the US way', () => {
-    expect(formatMoney(123456, { code: 'EUR', symbol: '€' })).toBe('€1,234.56');
+    expect(formatMoney(123456, { currencyCode: 'EUR', currencySymbol: '€' })).toBe('€1,234.56');
   });
 
   it('falls back to the symbol for a code the browser rejects', () => {
-    expect(formatMoney(100, { code: 'US', symbol: 'u' })).toBe('u1.00');
+    expect(formatMoney(100, { currencyCode: 'US', currencySymbol: 'u' })).toBe('u1.00');
   });
 });
 

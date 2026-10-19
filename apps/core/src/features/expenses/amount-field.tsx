@@ -3,70 +3,67 @@ import type { UseFormRegisterReturn } from 'react-hook-form';
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { PRIMARY_CURRENCY, type CurrencyRow } from '@/features/currencies/schema';
+import { countryPickerOptions, type CountryRef } from '@/features/countries/options';
+import { PRIMARY_CURRENCY, type Country } from '@/features/countries/schema';
 import { amountProblem, convertToCents, formatRate, formatUsd, parseAmount } from './money';
-import { withCurrent } from './options';
 
 interface AmountFieldProps {
-  /** Prefix of the two control ids: `expense` gives `expense-currency` and `expense-amount`. */
+  /** Prefix of the two control ids: `expense` gives `expense-country` and `expense-amount`. */
   idPrefix: string;
-  /** The live currencies. */
-  currencies: readonly CurrencyRow[];
-  /** The record's own currency, kept in the list while the list is loading or no longer holds it. */
-  current?: { id: number; code: string };
-  currencyProps: UseFormRegisterReturn;
+  /** Every country; the picker offers the active ones that have a rate. */
+  countries: readonly Country[];
+  /** The record's own country, kept in the list while the list is loading or no longer offers it. */
+  current?: CountryRef;
+  countryProps: UseFormRegisterReturn;
   amountProps: UseFormRegisterReturn;
   /** The two values as typed, for the preview in dollars. */
-  currencyId: string;
+  countryId: string;
   amount: string;
-  currencyError?: string;
+  countryError?: string;
   amountError?: string;
-  currenciesFailed?: boolean;
+  countriesFailed?: boolean;
 }
 
 /** What to tell the person under the amount: how to type it, and for another currency what it comes to in dollars. */
-function amountHint(currency: CurrencyRow | undefined, amount: string): string {
-  if (!currency) return 'Choose a currency, then type the amount, like 7.20.';
-  if (currency.code === PRIMARY_CURRENCY) return 'In US dollars, like 7.20.';
-  if (amountProblem(amount) !== null) {
-    return `In ${currency.code}, like 7.20. It is converted to US dollars when you save.`;
-  }
-  const cents = convertToCents(parseAmount(amount), currency.rate);
-  const rate = `${formatRate(currency.rate)} ${currency.code} per $1`;
+function amountHint(country: Country | undefined, amount: string): string {
+  if (!country) return 'Choose a country, then type the amount, like 7.20.';
+  const code = country.currencyCode;
+  if (code === PRIMARY_CURRENCY) return 'In US dollars, like 7.20.';
+  // Only the record's own country can lack a rate: the picker offers no other.
+  if (country.rate === null) return `${code} has no exchange rate yet. Sync the rates on the Countries page.`;
+  if (amountProblem(amount) !== null) return `In ${code}, like 7.20. It is converted to US dollars when you save.`;
+  const cents = convertToCents(parseAmount(amount), country.rate);
+  const rate = `${formatRate(country.rate)} ${code} per $1`;
   return cents < 1 ? `Less than one US cent at ${rate}.` : `About ${formatUsd(cents)} at ${rate}.`;
 }
 
-/** The currency and the amount of a charge, side by side: one control in two fields. */
+/** The country (and so the currency) and the amount of a charge, side by side: one control in two fields. */
 export function AmountField({
   idPrefix,
-  currencies,
+  countries,
   current,
-  currencyProps,
+  countryProps,
   amountProps,
-  currencyId,
+  countryId,
   amount,
-  currencyError,
+  countryError,
   amountError,
-  currenciesFailed,
+  countriesFailed,
 }: AmountFieldProps) {
-  const currency = currencies.find((row) => String(row.id) === currencyId);
+  const country = countries.find((row) => String(row.id) === countryId);
   const options = useMemo(
-    () =>
-      withCurrent(
-        currencies.map((row) => ({ id: row.id, label: `${row.code} · ${row.name}` })),
-        current && { id: current.id, label: current.code },
-      ),
-    [currencies, current],
+    () => countryPickerOptions(countries, { needsRate: true, withCurrency: true, current }),
+    [countries, current],
   );
   return (
-    <div className="grid gap-6 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)]">
+    <div className="grid gap-6 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]">
       <Field
-        label="Currency"
-        htmlFor={`${idPrefix}-currency`}
-        error={currencyError}
-        hint={currenciesFailed ? 'Currencies could not be loaded.' : undefined}
+        label="Country"
+        htmlFor={`${idPrefix}-country`}
+        error={countryError}
+        hint={countriesFailed ? 'Countries could not be loaded.' : undefined}
       >
-        <Select {...fieldA11y(`${idPrefix}-currency`, currencyError)} {...currencyProps}>
+        <Select {...fieldA11y(`${idPrefix}-country`, countryError)} {...countryProps}>
           <option value="">Choose…</option>
           {options.map((option) => (
             <option key={option.id} value={String(option.id)}>
@@ -75,7 +72,7 @@ export function AmountField({
           ))}
         </Select>
       </Field>
-      <Field label="Amount" htmlFor={`${idPrefix}-amount`} error={amountError} hint={amountHint(currency, amount)}>
+      <Field label="Amount" htmlFor={`${idPrefix}-amount`} error={amountError} hint={amountHint(country, amount)}>
         <Input {...fieldA11y(`${idPrefix}-amount`, amountError)} {...amountProps} inputMode="decimal" autoComplete="off" />
       </Field>
     </div>

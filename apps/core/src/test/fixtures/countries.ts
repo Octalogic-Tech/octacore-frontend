@@ -1,19 +1,24 @@
-// Twelve real rows from GET http://localhost:5001/api/v1/countries (octacore-backend, FastAPI),
-// captured 2026-10-14, in the service's own envelope. Antarctica and Bouvet Island carry the 0 that
-// the data uses for "no numeric code" and "no calling code".
+// Twelve rows shaped like GET /api/v1/countries (octacore-backend, FastAPI) under the countries CRUD contract, in the
+// service's own envelope. The ids, names and codes are real rows captured 2026-10-14; the currency, rate, tax rate and
+// active fields are made up to match docs/superpowers/specs/2026-10-19-countries-crud-design.md, because the service
+// that sends them did not exist yet. Antarctica and Bouvet Island carry the 0 that the data uses for "no numeric code"
+// and "no calling code" and the empty ISO3 that the migration made of the legacy text NULL.
+//
+// Who is switched on: the United States (US dollars, always rate 1), Germany and India (a rate each) and Japan (active
+// but not synced yet, so no rate). Antarctica is an inactive US dollar country, which a dollar picker must skip.
 export const countryRows = [
-  { id: 1, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "AF", name: "AFGHANISTAN", nicename: "Afghanistan", iso3: "AFG", numcode: 4, phonecode: 93 },
-  { id: 2, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "AL", name: "ALBANIA", nicename: "Albania", iso3: "ALB", numcode: 8, phonecode: 355 },
-  { id: 3, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "DZ", name: "ALGERIA", nicename: "Algeria", iso3: "DZA", numcode: 12, phonecode: 213 },
-  { id: 8, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "AQ", name: "ANTARCTICA", nicename: "Antarctica", iso3: "NULL", numcode: 0, phonecode: 0 },
-  { id: 29, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "BV", name: "BOUVET ISLAND", nicename: "Bouvet Island", iso3: "NULL", numcode: 0, phonecode: 0 },
-  { id: 30, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "BR", name: "BRAZIL", nicename: "Brazil", iso3: "BRA", numcode: 76, phonecode: 55 },
-  { id: 73, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "FR", name: "FRANCE", nicename: "France", iso3: "FRA", numcode: 250, phonecode: 33 },
-  { id: 80, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "DE", name: "GERMANY", nicename: "Germany", iso3: "DEU", numcode: 276, phonecode: 49 },
-  { id: 99, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "IN", name: "INDIA", nicename: "India", iso3: "IND", numcode: 356, phonecode: 91 },
-  { id: 107, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "JP", name: "JAPAN", nicename: "Japan", iso3: "JPN", numcode: 392, phonecode: 81 },
-  { id: 225, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "GB", name: "UNITED KINGDOM", nicename: "United Kingdom", iso3: "GBR", numcode: 826, phonecode: 44 },
-  { id: 226, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "US", name: "UNITED STATES", nicename: "United States", iso3: "USA", numcode: 840, phonecode: 1 },
+  { id: 1, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "AF", name: "AFGHANISTAN", nicename: "Afghanistan", iso3: "AFG", numcode: 4, phonecode: 93, currencyCode: "AFN", currencyName: "Afghan afghani", currencySymbol: "؋", rate: 70.5, taxRate: 0, active: false },
+  { id: 2, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "AL", name: "ALBANIA", nicename: "Albania", iso3: "ALB", numcode: 8, phonecode: 355, currencyCode: "ALL", currencyName: "Albanian lek", currencySymbol: "L", rate: null, taxRate: 0, active: false },
+  { id: 3, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "DZ", name: "ALGERIA", nicename: "Algeria", iso3: "DZA", numcode: 12, phonecode: 213, currencyCode: "DZD", currencyName: "Algerian dinar", currencySymbol: "DA", rate: null, taxRate: 0, active: false },
+  { id: 8, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "AQ", name: "ANTARCTICA", nicename: "Antarctica", iso3: "", numcode: 0, phonecode: 0, currencyCode: "USD", currencyName: "US dollar", currencySymbol: "$", rate: 1, taxRate: 0, active: false },
+  { id: 29, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "BV", name: "BOUVET ISLAND", nicename: "Bouvet Island", iso3: "", numcode: 0, phonecode: 0, currencyCode: "NOK", currencyName: "Norwegian krone", currencySymbol: "kr", rate: null, taxRate: 0, active: false },
+  { id: 30, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "BR", name: "BRAZIL", nicename: "Brazil", iso3: "BRA", numcode: 76, phonecode: 55, currencyCode: "BRL", currencyName: "Brazilian real", currencySymbol: "R$", rate: 5.4, taxRate: 0, active: false },
+  { id: 73, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "FR", name: "FRANCE", nicename: "France", iso3: "FRA", numcode: 250, phonecode: 33, currencyCode: "EUR", currencyName: "Euro", currencySymbol: "€", rate: 0.92, taxRate: 20, active: false },
+  { id: 80, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "DE", name: "GERMANY", nicename: "Germany", iso3: "DEU", numcode: 276, phonecode: 49, currencyCode: "EUR", currencyName: "Euro", currencySymbol: "€", rate: 0.92, taxRate: 19, active: true },
+  { id: 99, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "IN", name: "INDIA", nicename: "India", iso3: "IND", numcode: 356, phonecode: 91, currencyCode: "INR", currencyName: "Indian rupee", currencySymbol: "₹", rate: 88.25, taxRate: 18, active: true },
+  { id: 107, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "JP", name: "JAPAN", nicename: "Japan", iso3: "JPN", numcode: 392, phonecode: 81, currencyCode: "JPY", currencyName: "Japanese yen", currencySymbol: "¥", rate: null, taxRate: 10, active: true },
+  { id: 225, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "GB", name: "UNITED KINGDOM", nicename: "United Kingdom", iso3: "GBR", numcode: 826, phonecode: 44, currencyCode: "GBP", currencyName: "Pound sterling", currencySymbol: "£", rate: 0.78, taxRate: 20, active: false },
+  { id: 226, status: 1, createdDate: "2026-10-14T14:41:42.928081Z", updatedDate: "2026-10-14T14:41:42.928081Z", deletedDate: null, iso: "US", name: "UNITED STATES", nicename: "United States", iso3: "USA", numcode: 840, phonecode: 1, currencyCode: "USD", currencyName: "US dollar", currencySymbol: "$", rate: 1, taxRate: 0, active: true },
 ];
 
 export const countriesEnvelope = (data: unknown = countryRows) => ({

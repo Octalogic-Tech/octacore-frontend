@@ -1,9 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { coreApi } from '@/lib/core-api';
+import { countryRows } from '@/test/fixtures/countries';
 import {
   answering,
-  currencyRows,
   expenseRows,
   expenseTypeRows,
   expensesEnvelope,
@@ -23,7 +23,7 @@ const answers = {
   '/expenses': expenseRows,
   '/expense-types': expenseTypeRows,
   '/projects': projectRows,
-  '/currencies': currencyRows,
+  '/countries': countryRows,
   '/people': personRows,
 };
 

@@ -227,6 +227,14 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
   });
 
   stubCore('GET', '/countries', () => ({ body: countriesBody }));
+  stubCore('POST', '/countries/sync-rates', () => ({
+    body: envelope({
+      date: '2026-10-19',
+      updatedCountries: 3,
+      updatedCurrencies: ['EUR', 'INR'],
+      missingCurrencies: ['JPY'],
+    }),
+  }));
 
   stubCore('GET', '/technologies', () => ({
     body: envelope([

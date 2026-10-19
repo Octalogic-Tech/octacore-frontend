@@ -1,5 +1,8 @@
-// Twelve real rows from GET http://localhost:5001/api/v1/countries (octacore-backend, FastAPI),
-// captured 2026-10-14, in the service's own envelope.
+// Twelve rows shaped like GET /api/v1/countries (octacore-backend, FastAPI) under the countries CRUD contract, in the
+// service's own envelope. The ids, names and codes are real rows captured 2026-10-14; the currency, rate, tax rate and
+// active fields are made up to match docs/superpowers/specs/2026-10-19-countries-crud-design.md in octacore-backend,
+// because the service that sends them did not exist yet. The United States (US dollars, always rate 1), Germany, India
+// and Japan are active; Japan has no rate until a sync fills it.
 export const countriesBody = {
   "statusCode": 200,
   "message": "Successfully fetched countries",
@@ -15,7 +18,13 @@ export const countriesBody = {
       "nicename": "Afghanistan",
       "iso3": "AFG",
       "numcode": 4,
-      "phonecode": 93
+      "phonecode": 93,
+      "currencyCode": "AFN",
+      "currencyName": "Afghan afghani",
+      "currencySymbol": "؋",
+      "rate": 70.5,
+      "taxRate": 0,
+      "active": false
     },
     {
       "id": 2,
@@ -28,7 +37,13 @@ export const countriesBody = {
       "nicename": "Albania",
       "iso3": "ALB",
       "numcode": 8,
-      "phonecode": 355
+      "phonecode": 355,
+      "currencyCode": "ALL",
+      "currencyName": "Albanian lek",
+      "currencySymbol": "L",
+      "rate": null,
+      "taxRate": 0,
+      "active": false
     },
     {
       "id": 3,
@@ -41,7 +56,13 @@ export const countriesBody = {
       "nicename": "Algeria",
       "iso3": "DZA",
       "numcode": 12,
-      "phonecode": 213
+      "phonecode": 213,
+      "currencyCode": "DZD",
+      "currencyName": "Algerian dinar",
+      "currencySymbol": "DA",
+      "rate": null,
+      "taxRate": 0,
+      "active": false
     },
     {
       "id": 8,
@@ -52,9 +73,15 @@ export const countriesBody = {
       "iso": "AQ",
       "name": "ANTARCTICA",
       "nicename": "Antarctica",
-      "iso3": "NULL",
+      "iso3": "",
       "numcode": 0,
-      "phonecode": 0
+      "phonecode": 0,
+      "currencyCode": "USD",
+      "currencyName": "US dollar",
+      "currencySymbol": "$",
+      "rate": 1,
+      "taxRate": 0,
+      "active": false
     },
     {
       "id": 29,
@@ -65,9 +92,15 @@ export const countriesBody = {
       "iso": "BV",
       "name": "BOUVET ISLAND",
       "nicename": "Bouvet Island",
-      "iso3": "NULL",
+      "iso3": "",
       "numcode": 0,
-      "phonecode": 0
+      "phonecode": 0,
+      "currencyCode": "NOK",
+      "currencyName": "Norwegian krone",
+      "currencySymbol": "kr",
+      "rate": null,
+      "taxRate": 0,
+      "active": false
     },
     {
       "id": 30,
@@ -80,7 +113,13 @@ export const countriesBody = {
       "nicename": "Brazil",
       "iso3": "BRA",
       "numcode": 76,
-      "phonecode": 55
+      "phonecode": 55,
+      "currencyCode": "BRL",
+      "currencyName": "Brazilian real",
+      "currencySymbol": "R$",
+      "rate": 5.4,
+      "taxRate": 0,
+      "active": false
     },
     {
       "id": 73,
@@ -93,7 +132,13 @@ export const countriesBody = {
       "nicename": "France",
       "iso3": "FRA",
       "numcode": 250,
-      "phonecode": 33
+      "phonecode": 33,
+      "currencyCode": "EUR",
+      "currencyName": "Euro",
+      "currencySymbol": "€",
+      "rate": 0.92,
+      "taxRate": 20,
+      "active": false
     },
     {
       "id": 80,
@@ -106,7 +151,13 @@ export const countriesBody = {
       "nicename": "Germany",
       "iso3": "DEU",
       "numcode": 276,
-      "phonecode": 49
+      "phonecode": 49,
+      "currencyCode": "EUR",
+      "currencyName": "Euro",
+      "currencySymbol": "€",
+      "rate": 0.92,
+      "taxRate": 19,
+      "active": true
     },
     {
       "id": 99,
@@ -119,7 +170,13 @@ export const countriesBody = {
       "nicename": "India",
       "iso3": "IND",
       "numcode": 356,
-      "phonecode": 91
+      "phonecode": 91,
+      "currencyCode": "INR",
+      "currencyName": "Indian rupee",
+      "currencySymbol": "₹",
+      "rate": 88.25,
+      "taxRate": 18,
+      "active": true
     },
     {
       "id": 107,
@@ -132,7 +189,13 @@ export const countriesBody = {
       "nicename": "Japan",
       "iso3": "JPN",
       "numcode": 392,
-      "phonecode": 81
+      "phonecode": 81,
+      "currencyCode": "JPY",
+      "currencyName": "Japanese yen",
+      "currencySymbol": "¥",
+      "rate": null,
+      "taxRate": 10,
+      "active": true
     },
     {
       "id": 225,
@@ -145,7 +208,13 @@ export const countriesBody = {
       "nicename": "United Kingdom",
       "iso3": "GBR",
       "numcode": 826,
-      "phonecode": 44
+      "phonecode": 44,
+      "currencyCode": "GBP",
+      "currencyName": "Pound sterling",
+      "currencySymbol": "£",
+      "rate": 0.78,
+      "taxRate": 20,
+      "active": false
     },
     {
       "id": 226,
@@ -158,7 +227,13 @@ export const countriesBody = {
       "nicename": "United States",
       "iso3": "USA",
       "numcode": 840,
-      "phonecode": 1
+      "phonecode": 1,
+      "currencyCode": "USD",
+      "currencyName": "US dollar",
+      "currencySymbol": "$",
+      "rate": 1,
+      "taxRate": 0,
+      "active": true
     }
   ],
   "meta": null

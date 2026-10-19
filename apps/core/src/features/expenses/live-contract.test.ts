@@ -1,29 +1,56 @@
-import { currencyRowSchema, currencyRowsSchema } from '@/features/currencies/schema';
+import { countriesSchema, countrySchema } from '@/features/countries/schema';
 import { expenseTypeRowSchema } from '@/features/expense-types/schema';
 import { personRowSchema } from '@/features/people/schema';
 import { unwrap } from '@/lib/core-api';
 import { signInLive, type LiveSend } from '@/test/live-api';
 import { expenseRowSchema, expenseRowsSchema, expenseSummarySchema, recurringRowSchema, recurringRowsSchema } from './schema';
 
-// Opt-in: this talks to the real FastAPI service and WRITES to it (a type, a currency, expenses and a recurring
+// Opt-in: this talks to the real FastAPI service and WRITES to it (a type, a country, expenses and a recurring
 // expense, all deleted again; the deletes are soft, so rows stay in the tables). It only runs when
 // CORE_API_WRITE_URL names a service on a scratch database, never one you care about.
 //   (in octacore-backend)  DB_NAME=<scratch db> .venv/bin/uvicorn app.main:create_app --factory --port 5002
 //   (here)                 CORE_API_WRITE_URL=http://127.0.0.1:5002/api/v1 CORE_API_TEST_EMAIL=<email> CORE_API_TEST_PASSWORD=<password> pnpm exec nx test core --skip-nx-cache
+// Written against docs/superpowers/specs/2026-10-19-countries-crud-design.md before the service existed: not yet run.
 const base = process.env.CORE_API_WRITE_URL;
 
 let send: LiveSend;
 
 const json = async (response: Response) => response.json();
 
-/** Three random capital letters: a code a leftover from an earlier failed run cannot collide with. */
+/** Three random capital letters: a currency code a leftover from an earlier failed run cannot collide with. */
 const randomCode = () => Array.from({ length: 3 }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join('');
 
-async function usdId(): Promise<number> {
-  const rows = unwrap(await json(await send('GET', '/currencies')), currencyRowsSchema);
-  const usd = rows.find((row) => row.code === 'USD');
-  if (!usd) throw new Error('The service has no US dollar currency: has the migration run?');
+async function countries() {
+  return unwrap(await json(await send('GET', '/countries')), countriesSchema);
+}
+
+async function usdCountryId(): Promise<number> {
+  const usd = (await countries()).find((row) => row.currencyCode === 'USD' && row.active);
+  if (!usd) throw new Error('The service has no active country that uses US dollars: has the migration run and the seed?');
   return usd.id;
+}
+
+/** A country of its own to type a charge under, with a rate, so a test never edits a seeded country. */
+async function createCountry(rate: number) {
+  const taken = new Set((await countries()).map((row) => row.iso));
+  const iso = ['QX', 'QZ', 'QJ', 'QK', 'QW', 'QV', 'QY'].find((candidate) => !taken.has(candidate));
+  if (!iso) throw new Error('No free ISO code left to test with');
+  const code = randomCode();
+  const created = await send('POST', '/countries', {
+    iso,
+    nicename: `Live check ${iso}`,
+    iso3: '',
+    numcode: 0,
+    phonecode: 0,
+    currencyCode: code,
+    currencyName: 'Live check currency',
+    currencySymbol: '¤',
+    rate,
+    taxRate: 0,
+    active: true,
+  });
+  expect(created.status).toBe(201);
+  return { country: unwrap(await json(created), countrySchema), code };
 }
 
 describe.skipIf(!base)('the running core service, expenses', () => {
@@ -31,12 +58,12 @@ describe.skipIf(!base)('the running core service, expenses', () => {
     send = await signInLive(base as string);
   });
 
-  it('keeps US dollars as the primary currency, locked', async () => {
-    const id = await usdId();
-    const row = unwrap(await json(await send('GET', `/currencies/${id}`)), currencyRowSchema);
-    expect(row).toMatchObject({ code: 'USD', symbol: '$', rate: 1 });
-    expect((await send('PATCH', `/currencies/${id}`, { rate: 2 })).status).toBe(409);
-    expect((await send('DELETE', `/currencies/${id}`)).status).toBe(409);
+  it('keeps the dollar country’s rate at 1, and its place as the last active one', async () => {
+    const id = await usdCountryId();
+    const row = unwrap(await json(await send('GET', `/countries/${id}`)), countrySchema);
+    expect(row).toMatchObject({ currencyCode: 'USD', currencySymbol: '$', rate: 1, active: true });
+    expect((await send('PATCH', `/countries/${id}`, { rate: 2 })).status).toBe(422);
+    expect((await send('DELETE', `/countries/${id}`)).status).toBe(409);
   });
 
   it('converts a rupee expense, keeps its rate, and leaves it alone when the rate changes', async () => {
@@ -44,11 +71,7 @@ describe.skipIf(!base)('the running core service, expenses', () => {
       await json(await send('POST', '/expense-types', { name: `Live check ${randomCode()}`, description: null })),
       expenseTypeRowSchema,
     );
-    const code = randomCode();
-    const currency = unwrap(
-      await json(await send('POST', '/currencies', { code, name: 'Live check currency', symbol: '¤', rate: 88.25 })),
-      currencyRowSchema,
-    );
+    const { country, code } = await createCountry(88.25);
     const person = unwrap(
       await json(await send('POST', '/people', { name: `Live check person ${randomCode()}` })),
       personRowSchema,
@@ -62,14 +85,19 @@ describe.skipIf(!base)('the running core service, expenses', () => {
         projectId: null,
         personId: person.id,
         chargeDate: '2026-10-01',
-        currencyId: currency.id,
+        countryId: country.id,
         amount: 882500,
       });
       expect(created.status).toBe(201);
       const row = unwrap(await json(created), expenseRowSchema);
       expenseId = row.id;
       expect(row).toMatchObject({ amountCents: 10000, originalAmount: 882500, exchangeRate: 88.25 });
-      expect(row.originalCurrency).toMatchObject({ id: currency.id, code });
+      expect(row.originalCountry).toEqual({
+        id: country.id,
+        name: country.nicename,
+        currencyCode: code,
+        currencySymbol: '¤',
+      });
       expect(row.person).toEqual({ id: person.id, name: person.name });
 
       // Filtered by the person, the expense is found; for a person nobody has, it is not.
@@ -88,7 +116,7 @@ describe.skipIf(!base)('the running core service, expenses', () => {
       expect(summary).toMatchObject({ totalCents: 10000, count: 1 });
       expect(summary.byMonth).toEqual([{ month: '2026-10', totalCents: 10000 }]);
 
-      expect((await send('PATCH', `/currencies/${currency.id}`, { rate: 90 })).status).toBe(200);
+      expect((await send('PATCH', `/countries/${country.id}`, { rate: 90 })).status).toBe(200);
       const edited = await send('PATCH', `/expenses/${row.id}`, { notes: 'Edited' });
       expect(edited.status).toBe(200);
       expect(unwrap(await json(edited), expenseRowSchema)).toMatchObject({
@@ -106,15 +134,17 @@ describe.skipIf(!base)('the running core service, expenses', () => {
             expenseTypeId: type.id,
             projectId: null,
             chargeDate: '2026-10-01',
-            currencyId: currency.id,
+            countryId: country.id,
             amount: 1,
           })
         ).status,
       ).toBe(422);
+      // A country an expense uses cannot be deleted.
+      expect((await send('DELETE', `/countries/${country.id}`)).status).toBe(409);
     } finally {
       if (expenseId !== undefined) expect((await send('DELETE', `/expenses/${expenseId}`)).status).toBe(200);
       expect((await send('DELETE', `/people/${person.id}`)).status).toBe(200);
-      expect((await send('DELETE', `/currencies/${currency.id}`)).status).toBe(200);
+      expect((await send('DELETE', `/countries/${country.id}`)).status).toBe(200);
       expect((await send('DELETE', `/expense-types/${type.id}`)).status).toBe(200);
     }
   });
@@ -132,7 +162,7 @@ describe.skipIf(!base)('the running core service, expenses', () => {
         notes: null,
         expenseTypeId: type.id,
         projectId: null,
-        currencyId: await usdId(),
+        countryId: await usdCountryId(),
         amount: 1500,
         frequency: 'yearly',
         startDate: '2022-03-01',

@@ -118,6 +118,25 @@ describe('core', () => {
     cy.contains('td', 'Afghanistan').should('not.exist');
   });
 
+  it('shows each country’s currency and rate, shows only the active ones when asked, and syncs the rates', () => {
+    cy.get(nav).contains('a', 'Countries').click();
+    cy.contains('h1', 'Countries');
+    cy.contains('td', 'Afghanistan').should('be.visible');
+    cy.get('#country-show').select('Active countries');
+    cy.contains('td', 'Afghanistan').should('not.exist');
+    cy.contains('td', 'India')
+      .parent('tr')
+      .within(() => {
+        cy.contains('INR').should('be.visible');
+        cy.contains('88.25').should('be.visible');
+        cy.contains('18%').should('be.visible');
+        cy.contains('Active').should('be.visible');
+      });
+    cy.contains('button', 'Sync rates').click();
+    cy.contains('[role="status"]', 'Updated 3 rates as of 2026-10-19.').should('be.visible');
+    cy.contains('[role="status"]', 'No rate found for JPY.').should('be.visible');
+  });
+
   it('lists the unpaid invoices, and the paid ones when asked', () => {
     cy.get(nav).contains('a', 'Invoices').click();
     cy.contains('h1', 'Invoices');

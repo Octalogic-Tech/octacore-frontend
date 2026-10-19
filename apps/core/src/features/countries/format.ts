@@ -1,9 +1,9 @@
-// The service stores 0 where a country has no ISO numeric code or no calling code (Antarctica, for one).
+import { formatRate } from '@/features/expenses/money';
+
 const NONE = '—';
 
-export const formatIso3 = (code: string): string => code || NONE;
+/** The rate per US dollar as the table shows it (`88.25`, `1` for US dollars), or a dash while there is none. */
+export const formatCountryRate = (rate: number | null): string => (rate === null ? NONE : formatRate(rate));
 
-export const formatPhoneCode = (code: number): string => (code > 0 ? `+${code}` : NONE);
-
-/** ISO 3166 prints numeric codes with three digits: 004, not 4. */
-export const formatNumericCode = (code: number): string => (code > 0 ? String(code).padStart(3, '0') : NONE);
+/** A tax rate as a percentage without trailing zeros: `18%`, `7.5%`, `0%`. */
+export const formatTaxRate = (rate: number): string => `${Number(rate.toFixed(2))}%`;

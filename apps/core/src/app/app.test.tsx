@@ -34,7 +34,7 @@ describe('App shell', () => {
   it('lists every page in four groups', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    for (const label of ['Overview', 'Clients', 'Projects', 'People', 'Invoices', 'Expenses', 'Categories', 'Technologies', 'Countries', 'Expense types', 'Currencies', 'Users']) {
+    for (const label of ['Overview', 'Clients', 'Projects', 'People', 'Invoices', 'Expenses', 'Categories', 'Technologies', 'Countries', 'Expense types', 'Users']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
     for (const group of ['Work', 'Finance', 'Reference data', 'Admin']) {
@@ -42,6 +42,8 @@ describe('App shell', () => {
     }
     // Recurring expenses are a tab of Expenses, not a page of their own.
     expect(within(nav).queryByRole('link', { name: 'Recurring' })).not.toBeInTheDocument();
+    // A country carries its currency, so there is no Currencies page.
+    expect(within(nav).queryByRole('link', { name: 'Currencies' })).not.toBeInTheDocument();
   });
 
   it('shows who is signed in, with Change password and Sign out in a popover on the name', async () => {
@@ -79,11 +81,15 @@ describe('App shell', () => {
     ['/technologies', 'Technologies'],
     ['/countries', 'Countries'],
     ['/expense-types', 'Expense types'],
-    ['/currencies', 'Currencies'],
     ['/users', 'Users'],
   ])('shows the page title for %s', (route, title) => {
     renderAt(route);
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();
+  });
+
+  it('no longer has a Currencies page', () => {
+    renderAt('/currencies');
+    expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
   });
 
   it('shows a not-found page inside the shell', () => {

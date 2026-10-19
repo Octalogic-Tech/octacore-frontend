@@ -2,9 +2,9 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useLocation } from 'react-router-dom';
 import { coreApi } from '@/lib/core-api';
+import { countryRows } from '@/test/fixtures/countries';
 import {
   answering,
-  currencyRows,
   expenseRows,
   expenseTypeRows,
   recurringRows,
@@ -24,7 +24,7 @@ const answers = {
   '/recurring-expenses': recurringRows,
   '/expense-types': expenseTypeRows,
   '/projects': projectRows,
-  '/currencies': currencyRows,
+  '/countries': countryRows,
   '/people': personRows,
 };
 

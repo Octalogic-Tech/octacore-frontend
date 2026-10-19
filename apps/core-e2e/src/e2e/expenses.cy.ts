@@ -73,13 +73,21 @@ describe('expenses', () => {
     cy.contains('[role="tab"]', 'Recurring').should('have.attr', 'aria-selected', 'true');
   });
 
-  it('shows the new expense dialog with US dollars chosen and a person to pick', () => {
+  it('shows the new expense dialog with the United States chosen and a person to pick', () => {
     cy.get(nav).contains('a', 'Expenses').click();
     cy.contains('button', 'Add expense').click();
     cy.get('[role="dialog"]').within(() => {
-      cy.get('#expense-currency').should('have.value', '1');
+      cy.get('#expense-country').should('have.value', '226');
+      // Only the active countries that have a rate are offered: Japan has none yet, the United Kingdom is switched off.
+      cy.get('#expense-country option[value]:not([value=""])').then((options) => {
+        expect([...options].map((option) => option.textContent)).to.deep.equal([
+          'Germany · EUR',
+          'India · INR',
+          'United States · USD',
+        ]);
+      });
       cy.get('#expense-person').select('Asha Rao');
-      cy.get('#expense-currency').select('2');
+      cy.get('#expense-country').select('99');
       cy.get('#expense-amount').type('8825');
       cy.contains('About $100.00 at 88.25 INR per $1.').should('be.visible');
       cy.contains('button', 'Cancel').click();
@@ -87,13 +95,8 @@ describe('expenses', () => {
     cy.get('[role="dialog"]').should('not.exist');
   });
 
-  it('lists the currencies and keeps US dollars locked', () => {
-    cy.get(nav).contains('a', 'Currencies').click();
-    cy.contains('h1', 'Currencies');
-    cy.contains('td', 'Indian rupee').should('be.visible');
-    cy.contains('td', '88.25').should('be.visible');
-    cy.contains('Primary').should('be.visible');
-    cy.get('button[aria-label="Edit US dollar"]').should('not.exist');
-    cy.get('button[aria-label="Edit Indian rupee"]').should('be.visible');
+  it('has no Currencies page: a country carries the currency', () => {
+    cy.get(nav).contains('a', 'Countries').should('be.visible');
+    cy.get(nav).contains('a', 'Currencies').should('not.exist');
   });
 });

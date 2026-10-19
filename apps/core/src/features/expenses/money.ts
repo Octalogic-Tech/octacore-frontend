@@ -16,15 +16,15 @@ export function formatUsd(cents: number): string {
 }
 
 /** An amount in its own currency with its symbol. Rupees are grouped the Indian way (₹1,23,456.78). */
-export function formatMoney(minor: number, currency: { code: string; symbol: string }): string {
+export function formatMoney(minor: number, currency: { currencyCode: string; currencySymbol: string }): string {
   try {
-    return new Intl.NumberFormat(currency.code === 'INR' ? 'en-IN' : 'en-US', {
+    return new Intl.NumberFormat(currency.currencyCode === 'INR' ? 'en-IN' : 'en-US', {
       style: 'currency',
-      currency: currency.code,
+      currency: currency.currencyCode,
     }).format(minor / 100);
   } catch {
     // A code the browser does not recognise: the symbol and plain digits.
-    return `${currency.symbol}${toAmountText(minor)}`;
+    return `${currency.currencySymbol}${toAmountText(minor)}`;
   }
 }
 
