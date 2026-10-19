@@ -538,7 +538,7 @@ describe('resource row schema', () => {
     ['an id', { ...resourceRows[0], id: undefined }],
     ['a name', { ...resourceRows[0], name: undefined }],
     ['a rate', { ...resourceRows[0], rateCents: undefined }],
-    ['a whole-number rate', { ...resourceRows[0], rateCents: 42.5 }],
+    ['a whole-cent rate', { ...resourceRows[0], rateCents: 42.5 }],
     ['a category id', { ...resourceRows[0], categoryId: undefined }],
   ])('rejects a resource row without %s', (_label, row) => {
     expect(resourceRowsSchema.safeParse([row]).success).toBe(false);
@@ -953,7 +953,8 @@ describe('discountAmount', () => {
     [1000, '0', 0],
     [21_600, '12.25', 2_646],
     [2_147_483_647 * 200, '50', 214_748_364_700],
-    // 200 lines at the cap, half off: the product with 5,000 hundredths is 10^16, past what a number holds exactly.
+    // 200 lines at the cap, half off: the product with 5,000 hundredths is 10^16, which a number holds exactly, so
+    // this pins the extreme, not BigInt; the 49.99% case below is the one a float gets wrong.
     [2_000_000_000_000, '50', 1_000_000_000_000],
   ])('takes %i cents at %s percent down by %i cents, floored', (subtotal, percent, expected) => {
     expect(discountAmount(subtotal, percent)).toBe(expected);

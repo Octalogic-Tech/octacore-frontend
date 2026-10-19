@@ -11,7 +11,8 @@ import type { PlannedSpec } from './types';
 
 /**
  * Every piece that is described but not built, in the suggested build order. Currency and tax comes first because
- * the pieces after it store or read money; Allocation, Skills and Portfolio touch no money and can move earlier.
+ * Cash flow, Profit and loss and Quotes need it; a piece with no needs (Milestones, Recurring invoices, Allocation,
+ * Skills, Portfolio) can move earlier.
  * When a piece is built, delete its spec.ts, skeleton page and dialog previews, build the real ones in the same
  * folder, and remove the piece from this list and from the routes under `planned` in app.tsx.
  */

@@ -273,9 +273,11 @@ export function linesTotal(lines: readonly LineFigures[]): number {
 /**
  * The cents a discount takes off a subtotal given in cents, floored: the service's own rule (floored once, on the
  * subtotal), so the preview never differs from what is saved. Done in hundredths of a percent, as integers, and the
- * product in `BigInt`: 200 lines at the cap at 50% is 10^16 before the division, past what a number holds exactly.
- * Text the form refuses (empty, not a percentage, above 50) takes nothing off, and neither does a subtotal that is
- * not a safe whole number (a line the form is already refusing); the form reports those on its own.
+ * product in `BigInt`: a subtotal times hundredths can pass 2^53, where a float rounds the product (1_801_800_215_001
+ * at 49.99% is one such, a cent off in a float). The largest case, 200 lines at the cap at 50%, is 10^16 before the
+ * division, which a number still holds exactly. Text the form refuses (empty, not a percentage, above 50) takes
+ * nothing off, and neither does a subtotal that is not a safe whole number (a line the form is already refusing);
+ * the form reports those on its own.
  */
 export function discountAmount(subtotalCents: number, percent: string): number {
   const text = percent.trim();
