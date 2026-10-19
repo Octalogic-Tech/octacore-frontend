@@ -78,7 +78,14 @@ describe('PeoplePage', () => {
     expect(link).toHaveAttribute('href', 'https://example.com/ada-contract.pdf');
     expect(link).toHaveAttribute('target', '_blank');
     expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'));
-    expect((await rowOf('Grace Hopper')).queryByRole('link')).not.toBeInTheDocument();
+    expect((await rowOf('Grace Hopper')).queryByRole('link', { name: /Contract/ })).not.toBeInTheDocument();
+  });
+
+  it('links each name to the person’s page', async () => {
+    renderWithProviders(<PeoplePage />);
+    expect(await screen.findByRole('link', { name: 'Ada Lovelace' })).toHaveAttribute('href', '/resources/people/1');
+    expect(screen.getByRole('link', { name: 'Grace Hopper' })).toHaveAttribute('href', '/resources/people/2');
+    expect(screen.getByRole('link', { name: 'Linus Torvalds' })).toHaveAttribute('href', '/resources/people/3');
   });
 
   it('keeps a person who has only a name, and shows no salary for them rather than ₹0.00', async () => {

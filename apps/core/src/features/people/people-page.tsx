@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { LuPencil, LuTrash2 } from 'react-icons/lu';
+import { Link } from 'react-router-dom';
 import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
 import { SearchField } from '@/components/search-field';
@@ -82,7 +83,14 @@ export function PeoplePage() {
                 <TableBody>
                   {paging.pageRows.map((person) => (
                     <TableRow key={person.id}>
-                      <TableCell className="font-semibold">{person.name}</TableCell>
+                      <TableCell className="font-semibold">
+                        <Link
+                          to={`/resources/people/${person.id}`}
+                          className="inline-flex min-h-11 items-center decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline"
+                        >
+                          {person.name}
+                        </Link>
+                      </TableCell>
                       <TableCell className="min-w-[12rem]">
                         {person.email ? <span className="block">{person.email}</span> : null}
                         {person.phone ? <span className="block text-small">{person.phone}</span> : null}

@@ -23,9 +23,16 @@ interface PersonFormDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Present when editing, absent when adding. A snapshot taken when the dialog was opened. */
   person?: PersonRow;
+  /** Where focus goes on close if the element that opened the dialog is gone (the people list's search, by default). */
+  fallbackFocusId?: string;
 }
 
-export function PersonFormDialog({ open, onOpenChange, person }: PersonFormDialogProps) {
+export function PersonFormDialog({
+  open,
+  onOpenChange,
+  person,
+  fallbackFocusId = 'person-search',
+}: PersonFormDialogProps) {
   const technologies = useTechnologies();
   const save = useSavePerson();
   const [failed, setFailed] = useState(false);
@@ -73,7 +80,7 @@ export function PersonFormDialog({ open, onOpenChange, person }: PersonFormDialo
         if (!isSubmitting) onOpenChange(next);
       }}
     >
-      <DialogContent fallbackFocusId="person-search">
+      <DialogContent fallbackFocusId={fallbackFocusId}>
         <DialogTitle>{person ? 'Edit person' : 'New person'}</DialogTitle>
         <DialogDescription>Only the name is required.</DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6">

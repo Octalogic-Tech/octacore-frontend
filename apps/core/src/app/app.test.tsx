@@ -115,6 +115,13 @@ describe('App shell', () => {
     expect(within(nav).getByRole('link', { name: 'People' })).not.toHaveAttribute('aria-current');
   });
 
+  it('keeps People current on a person’s page', () => {
+    renderAt('/resources/people/1');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'People' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('heading', { level: 1, name: 'Person' })).toBeInTheDocument();
+  });
+
   it('keeps Leave current on its page', () => {
     renderAt('/resources/leave');
     const nav = screen.getByRole('navigation', { name: 'Main' });
