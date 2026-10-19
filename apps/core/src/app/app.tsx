@@ -22,6 +22,7 @@ import { MilestonesPage } from '@/features/milestones/milestones-page';
 import { PlannedPage } from '@/features/planned/planned-page';
 import { PortfolioPage } from '@/features/portfolio/portfolio-page';
 import { ProfitLossPage } from '@/features/profit-loss/profit-loss-page';
+import { QuoteEditorPage } from '@/features/quotes/quote-editor-page';
 import { QuotesPage } from '@/features/quotes/quotes-page';
 import { RecurringInvoicesPage } from '@/features/recurring-invoices/recurring-invoices-page';
 import { SkillsPage } from '@/features/skills/skills-page';
@@ -37,6 +38,9 @@ export default function App() {
           <Route path="clients" element={<ClientsPage />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
+          <Route path="quotes" element={<QuotesPage />} />
+          <Route path="quotes/new" element={<QuoteEditorPage />} />
+          <Route path="quotes/:id" element={<QuoteEditorPage />} />
           <Route path="people" element={<PeoplePage />} />
           <Route path="finance/invoices" element={<InvoicesPage />} />
           <Route path="finance/expenses" element={<ExpensesPage />} />
@@ -73,7 +77,6 @@ export default function App() {
             <Route path="skills" element={<SkillsPage />} />
             <Route path="cash-flow" element={<CashFlowPage />} />
             <Route path="profit-loss" element={<ProfitLossPage />} />
-            <Route path="quotes" element={<QuotesPage />} />
             <Route path="portfolio" element={<PortfolioPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />

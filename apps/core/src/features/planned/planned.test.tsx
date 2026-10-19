@@ -29,7 +29,6 @@ const IN_ORDER = [
   ['skills', 'Skills matrix'],
   ['cash-flow', 'Cash-flow forecast'],
   ['profit-loss', 'Profit and loss'],
-  ['quotes', 'Quote generator'],
   ['portfolio', 'Portfolio'],
 ] as const;
 
@@ -40,13 +39,12 @@ const DIALOGS = [
   ['profit-loss', 'Preview the expense dialog', 'Add an expense'],
   ['allocation', 'Preview the allocation dialog', 'Allocate a person'],
   ['skills', 'Preview the skills dialog', 'Edit skills'],
-  ['quotes', 'Preview the quote dialog', 'New quote'],
   ['portfolio', 'Preview the case study dialog', 'Case study'],
   ['portfolio', 'Preview the portfolio link dialog', 'New portfolio link'],
 ] as const;
 
 describe('the planned registry', () => {
-  it('lists the nine pieces in the suggested build order', () => {
+  it('lists the eight pieces in the suggested build order', () => {
     expect(PLANNED.map((spec) => [spec.id, spec.title])).toEqual(IN_ORDER);
   });
 
@@ -62,6 +60,10 @@ describe('the planned registry', () => {
         expect(dialog.happens.length, `${dialog.title} happens`).toBeGreaterThan(0);
       }
     }
+  });
+
+  it('no longer lists Quotes, which is built', () => {
+    expect(PLANNED.map((spec) => spec.id)).not.toContain('quotes');
   });
 
   it('never asks for a piece that comes later in the order', () => {
@@ -91,6 +93,12 @@ describe('the Planned index', () => {
     expect(screen.getByRole('link', { name: title })).toHaveAttribute('href', `/planned/${id}`);
   });
 
+  it('has no card for Quotes, which is a real page now', () => {
+    renderAt('/planned');
+    expect(screen.queryByRole('link', { name: 'Quote generator' })).toBeNull();
+    expect(screen.queryByRole('heading', { level: 2, name: 'Quote generator' })).toBeNull();
+  });
+
   it('says what a piece waits on', () => {
     renderAt('/planned');
     const card = screen.getByRole('listitem', { name: 'Cash-flow forecast' });
@@ -107,6 +115,12 @@ describe('a planned page', () => {
       expect(screen.getByRole('heading', { level: 2, name: section })).toBeInTheDocument();
     }
     expect(screen.getByRole('link', { name: 'All planned work' })).toHaveAttribute('href', '/planned');
+  });
+
+  it('no longer has a planned page for Quotes', () => {
+    renderAt('/planned/quotes');
+    expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
+    expect(screen.queryByText('Planned, not built yet')).toBeNull();
   });
 
   it('has no dialog to preview when none is planned', () => {
