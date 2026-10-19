@@ -123,7 +123,7 @@ describe('ProjectDetailPage: reading', () => {
     expect(screen.getByText('WEB')).toBeInTheDocument();
     expect(screen.getByText(/Acme Corporation/)).toBeInTheDocument();
     expect(screen.getByText(/1 Anvil Road/)).toBeInTheDocument();
-    expect(await screen.findByText(sentence('$12,000 outstanding of $48,000 invoiced.'))).toBeInTheDocument();
+    expect(await screen.findByText(sentence('$12,000.00 outstanding of $48,000.00 invoiced.'))).toBeInTheDocument();
   });
 
   it('shows dashes for a project with no client or types', async () => {
@@ -144,21 +144,21 @@ describe('ProjectDetailPage: reading', () => {
     const newest = within(rows[0]);
     expect(newest.getByText('INV-002')).toBeInTheDocument();
     expect(newest.getByText('1 Nov 2026')).toBeInTheDocument();
-    expect(newest.getByText('$12,000')).toBeInTheDocument();
+    expect(newest.getByText('$12,000.00')).toBeInTheDocument();
     expect(newest.getByText('Unpaid')).toBeInTheDocument();
     const older = within(rows[1]);
     expect(older.getByText('INV-001')).toBeInTheDocument();
     expect(older.getByText('October retainer')).toBeInTheDocument();
     expect(older.getByText('1 Oct 2026')).toBeInTheDocument();
     expect(older.getByText('31 Oct 2026')).toBeInTheDocument();
-    expect(older.getByText('$36,000')).toBeInTheDocument();
+    expect(older.getByText('$36,000.00')).toBeInTheDocument();
     expect(older.getByText('Paid 12 Oct 2026')).toBeInTheDocument();
   });
 
   describe('with no invoices', () => {
     beforeEach(() => {
       serve({
-        project: projectEnvelope({ ...projectRows[0], totalValue: 0, totalOutstanding: 0 }),
+        project: projectEnvelope({ ...projectRows[0], totalValueCents: 0, totalOutstandingCents: 0 }),
         invoices: invoicesEnvelope([]),
       });
     });
@@ -237,7 +237,7 @@ describe('ProjectDetailPage: tabs', () => {
 
   it('keeps the tables off the overview', async () => {
     renderAt('/projects/1');
-    await screen.findByText(sentence('$12,000 outstanding of $48,000 invoiced.'));
+    await screen.findByText(sentence('$12,000.00 outstanding of $48,000.00 invoiced.'));
     expect(screen.getByText('Acme')).toBeInTheDocument();
     expect(screen.queryByRole('table', { name: 'Invoices' })).not.toBeInTheDocument();
     expect(screen.queryByRole('table', { name: 'Resources' })).not.toBeInTheDocument();
@@ -321,14 +321,14 @@ describe('ProjectDetailPage: tabs', () => {
     serve({ invoices: invoicesEnvelope([invoiceRows[0], { ...invoiceRows[1], dueDate: '2026-11-15' }]) });
     renderAt('/projects/1');
     expect(
-      await screen.findByText(sentence('$12,000 outstanding of $48,000 invoiced, $12,000 of it overdue.')),
+      await screen.findByText(sentence('$12,000.00 outstanding of $48,000.00 invoiced, $12,000.00 of it overdue.')),
     ).toBeInTheDocument();
   });
 
   it('leaves overdue out while nothing is past due', async () => {
     serve({ invoices: invoicesEnvelope([invoiceRows[0], { ...invoiceRows[1], dueDate: '2026-11-30' }]) });
     renderAt('/projects/1');
-    expect(await screen.findByText(sentence('$12,000 outstanding of $48,000 invoiced.'))).toBeInTheDocument();
+    expect(await screen.findByText(sentence('$12,000.00 outstanding of $48,000.00 invoiced.'))).toBeInTheDocument();
   });
 });
 
@@ -528,7 +528,7 @@ describe('ProjectDetailPage: things removed elsewhere', () => {
 
   it('moves focus to Add invoice after the first invoice replaces the empty state that held the opener', async () => {
     serve({
-      project: projectEnvelope({ ...projectRows[0], totalValue: 0, totalOutstanding: 0 }),
+      project: projectEnvelope({ ...projectRows[0], totalValueCents: 0, totalOutstandingCents: 0 }),
       invoices: invoicesEnvelope([]),
     });
     vi.mocked(coreApi.post).mockImplementation((async () => {
@@ -685,8 +685,8 @@ describe('ProjectDetailPage: the discount', () => {
     await user.click(await screen.findByRole('button', { name: 'Add invoice' }));
 
     expect(screen.getByLabelText('Discount (%)')).toHaveValue('10');
-    // The draft's lines come to $36,000 before the discount.
-    expect(await screen.findByText('Total $32,400')).toBeInTheDocument();
+    // The draft's lines come to $36,000.00 before the discount.
+    expect(await screen.findByText('Total $32,400.00')).toBeInTheDocument();
   });
 
   it('sends the project’s discount with the invoice it adds', async () => {
@@ -707,7 +707,7 @@ describe('ProjectDetailPage: the discount', () => {
 
   it('opens an invoice on its own discount, not the project’s', async () => {
     const own = invoicesEnvelope([
-      { ...invoiceRows[0], subtotal: 36000, discountPercent: 25, amount: 27000 },
+      { ...invoiceRows[0], subtotalCents: 3_600_000, discountPercent: 25, amountCents: 2_700_000 },
       invoiceRows[1],
     ]);
     serve({ project: discounted(10), invoices: own });
@@ -716,17 +716,17 @@ describe('ProjectDetailPage: the discount', () => {
     await user.click(await screen.findByRole('button', { name: 'Edit INV-001' }));
 
     expect(screen.getByLabelText('Discount (%)')).toHaveValue('25');
-    expect(screen.getByText('Total $27,000')).toBeInTheDocument();
+    expect(screen.getByText('Total $27,000.00')).toBeInTheDocument();
   });
 
   it('lists each invoice at what the client pays, after its discount', async () => {
-    const own = invoicesEnvelope([{ ...invoiceRows[0], subtotal: 36000, discountPercent: 25, amount: 27000 }]);
+    const own = invoicesEnvelope([{ ...invoiceRows[0], subtotalCents: 3_600_000, discountPercent: 25, amountCents: 2_700_000 }]);
     serve({ invoices: own });
     renderAt(INVOICES_TAB);
 
     const row = (await screen.findByText('INV-001')).closest('tr') as HTMLElement;
-    expect(within(row).getByText('$27,000')).toBeInTheDocument();
-    expect(within(row).queryByText('$36,000')).not.toBeInTheDocument();
+    expect(within(row).getByText('$27,000.00')).toBeInTheDocument();
+    expect(within(row).queryByText('$36,000.00')).not.toBeInTheDocument();
   });
 });
 

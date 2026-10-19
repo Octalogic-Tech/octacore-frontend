@@ -12,9 +12,9 @@ const make = (fields: Partial<InvoiceListRow> = {}): InvoiceListRow => ({
         projectId: 1,
         number: 'INV-001',
         description: '',
-        subtotal: 36000,
+        subtotalCents: 36000,
         discountPercent: 0,
-        amount: 36000,
+        amountCents: 36000,
         issueDate: '2026-10-01',
         dueDate: '2026-10-31',
         paidDate: '2026-10-12',
@@ -42,8 +42,8 @@ const make = (fields: Partial<InvoiceListRow> = {}): InvoiceListRow => ({
         billingType: null,
         projectTypeLabel: '',
         billingTypeLabel: '',
-        totalValue: 0,
-        totalOutstanding: 0,
+        totalValueCents: 0,
+        totalOutstandingCents: 0,
       },
     ],
   )[0],
@@ -52,7 +52,18 @@ const make = (fields: Partial<InvoiceListRow> = {}): InvoiceListRow => ({
 
 describe('invoicesToCsv', () => {
   it('writes a header and one CRLF-separated row per invoice, with ISO dates and the amount as a number', () => {
-    expect(invoicesToCsv([make()], TODAY)).toBe([HEADER, 'INV-001,Acme,Website,2026-10-01,2026-10-31,2026-10-12,36000,Paid'].join('\r\n'));
+    expect(invoicesToCsv([make()], TODAY)).toBe(
+      [HEADER, 'INV-001,Acme,Website,2026-10-01,2026-10-31,2026-10-12,360.00,Paid'].join('\r\n'),
+    );
+  });
+
+  it.each([
+    [36000, '360.00'],
+    [123456, '1234.56'],
+    [5, '0.05'],
+    [0, '0.00'],
+  ])('writes %i cents as the plain number %s, with two decimals, no symbol and no grouping', (amountCents, text) => {
+    expect(invoicesToCsv([make({ amountCents })], TODAY)).toContain(`2026-10-12,${text},Paid`);
   });
 
   it('writes only the header when there are no invoices', () => {
@@ -60,8 +71,8 @@ describe('invoicesToCsv', () => {
   });
 
   it('leaves the due and paid dates empty when there are none', () => {
-    const row = make({ number: 'INV-002', issueDate: '2026-11-01', dueDate: null, paidDate: null, amount: 12000 });
-    expect(invoicesToCsv([row], TODAY)).toContain('INV-002,Acme,Website,2026-11-01,,,12000,Unpaid');
+    const row = make({ number: 'INV-002', issueDate: '2026-11-01', dueDate: null, paidDate: null, amountCents: 12000 });
+    expect(invoicesToCsv([row], TODAY)).toContain('INV-002,Acme,Website,2026-11-01,,,120.00,Unpaid');
   });
 
   it('says Overdue for an unpaid invoice past its due date, as of today', () => {

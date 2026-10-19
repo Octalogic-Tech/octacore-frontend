@@ -5,7 +5,8 @@ import { IconButton } from '@/components/ui/icon-button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { formatDate } from '@/lib/format';
-import { formatMoney, formatRate, formatUsd } from './money';
+import { formatUsd } from '@/lib/money';
+import { formatMoney, formatRate } from './money';
 import type { ExpenseRow } from './schema';
 
 const NONE = '—';

@@ -62,7 +62,8 @@ describe('ResourceFormDialog: adding', () => {
     await screen.findByRole('option', { name: 'Mobile' });
     await user.type(screen.getByLabelText('Name'), 'Zoë Müller');
     await user.selectOptions(screen.getByLabelText('Category'), 'Mobile');
-    await user.type(screen.getByLabelText('Rate per hour'), '85');
+    expect(screen.getByText('Dollars and cents, like 85.50.')).toBeInTheDocument();
+    await user.type(screen.getByLabelText('Rate per hour'), '85.50');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.post).toHaveBeenCalledTimes(1);
@@ -72,7 +73,7 @@ describe('ResourceFormDialog: adding', () => {
       personId: null,
       categoryId: 2,
       headcount: 1,
-      rate: 85,
+      rateCents: 8550,
     });
   });
 
@@ -92,7 +93,7 @@ describe('ResourceFormDialog: adding', () => {
       personId: 2,
       categoryId: 1,
       headcount: 1,
-      rate: 75,
+      rateCents: 7500,
     });
   });
 
@@ -119,7 +120,7 @@ describe('ResourceFormDialog: adding', () => {
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
-  it.each(['42.50', '$85', '1,200'])('says what is wrong with a rate of %s and sends nothing', async (rate) => {
+  it.each(['12.505', '$85', '1,200'])('says what is wrong with a rate of %s and sends nothing', async (rate) => {
     const user = userEvent.setup();
     openDialog();
     await screen.findByRole('option', { name: 'Mobile' });
@@ -127,19 +128,19 @@ describe('ResourceFormDialog: adding', () => {
     await user.selectOptions(screen.getByLabelText('Category'), 'Mobile');
     await user.type(screen.getByLabelText('Rate per hour'), rate);
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Enter a whole number, like 85')).toBeInTheDocument();
+    expect(await screen.findByText('Enter an amount like 7.20, with no commas or signs')).toBeInTheDocument();
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
-  it('refuses a rate past the limit the service holds', async () => {
+  it('refuses a rate past the cap the service holds', async () => {
     const user = userEvent.setup();
     openDialog();
     await screen.findByRole('option', { name: 'Mobile' });
     await user.type(screen.getByLabelText('Name'), 'Zoë');
     await user.selectOptions(screen.getByLabelText('Category'), 'Mobile');
-    await user.type(screen.getByLabelText('Rate per hour'), '1000001');
+    await user.type(screen.getByLabelText('Rate per hour'), '100000000.01');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Rate is too large')).toBeInTheDocument();
+    expect(await screen.findByText('The amount is too large')).toBeInTheDocument();
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
@@ -160,7 +161,7 @@ describe('ResourceFormDialog: editing', () => {
     expect(screen.getByLabelText('Name')).toHaveValue('Asha Rao');
     expect(screen.getByLabelText('Person')).toHaveValue('1');
     expect(screen.getByLabelText('Category')).toHaveValue('2');
-    expect(screen.getByLabelText('Rate per hour')).toHaveValue('150');
+    expect(screen.getByLabelText('Rate per hour')).toHaveValue('150.00');
     await user.selectOptions(screen.getByLabelText('Person'), 'None');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
@@ -170,7 +171,7 @@ describe('ResourceFormDialog: editing', () => {
       personId: null,
       categoryId: 2,
       headcount: 1,
-      rate: 150,
+      rateCents: 15000,
     });
   });
 
@@ -257,7 +258,7 @@ describe('ResourceFormDialog: number of people', () => {
       personId: null,
       categoryId: 2,
       headcount: 3,
-      rate: 27,
+      rateCents: 2700,
     });
   });
 

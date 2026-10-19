@@ -7,7 +7,7 @@ export const cashFlowSpec: PlannedSpec = {
   surface: 'page',
   home: 'Finance › Cash flow',
   size: 'S–M',
-  needs: ['money-in-cents', 'currency-tax', 'milestones'],
+  needs: ['currency-tax', 'milestones'],
   does: [
     'A bar per week of money expected in against payroll going out, with a running balance and the list behind each bar.',
     'Money in comes from unpaid invoices at their expected pay date, from milestones not yet invoiced, and from recurring drafts.',

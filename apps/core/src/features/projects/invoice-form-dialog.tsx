@@ -6,7 +6,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { statusOf } from '@/lib/core-api';
-import { addMonths, endOfMonth, formatCurrency } from '@/lib/format';
+import { addMonths, endOfMonth } from '@/lib/format';
+import { formatUsd } from '@/lib/money';
 import { useInvoiceDraft, useNextInvoiceNumber, useSaveInvoice } from './api';
 import {
   blankLine,
@@ -44,6 +45,8 @@ const COLUMNS = 'sm:grid-cols-[1fr_4.5rem_6rem_7rem_6rem_5.5rem]';
 const ROW_OF_TWO = 'grid gap-6 sm:grid-cols-2 md:grid-cols-3';
 const ROW_OF_THREE = 'grid gap-6 md:grid-cols-3';
 const LINE_FIELDS = ['description', 'headcount', 'quantity', 'rate'] as const;
+// The rate takes dollars and cents; Qty and hours are whole numbers.
+const INPUT_MODES = { description: undefined, headcount: 'numeric', quantity: 'numeric', rate: 'decimal' } as const;
 
 export function InvoiceFormDialog({
   open,
@@ -332,13 +335,13 @@ function InvoiceEditor({
                         {...register(`lines.${index}.${name}`)}
                         aria-label={names[name]}
                         placeholder={placeholders[name]}
-                        inputMode={name === 'description' ? undefined : 'numeric'}
+                        inputMode={INPUT_MODES[name]}
                         autoComplete="off"
                       />
                     ))}
                     <p className="tabular py-3 text-right text-small">
                       <span className="sr-only">{`Line ${number} amount `}</span>
-                      {amount === null ? NONE : formatCurrency(amount)}
+                      {amount === null ? NONE : formatUsd(amount)}
                     </p>
                     <Button
                       variant="quiet"
@@ -377,13 +380,13 @@ function InvoiceEditor({
                 {/* The discount's two lines only while it takes something off: otherwise the total is the sum. */}
                 {totals.discount > 0 ? (
                   <>
-                    <p className="tabular text-small">Subtotal {formatCurrency(totals.subtotal)}</p>
+                    <p className="tabular text-small">Subtotal {formatUsd(totals.subtotal)}</p>
                     <p className="tabular text-small">
-                      Discount ({Number(discountPercent)}%) -{formatCurrency(totals.discount)}
+                      Discount ({Number(discountPercent)}%) -{formatUsd(totals.discount)}
                     </p>
                   </>
                 ) : null}
-                <p className="tabular font-semibold">Total {formatCurrency(totals.total)}</p>
+                <p className="tabular font-semibold">Total {formatUsd(totals.total)}</p>
               </div>
             </div>
           </>

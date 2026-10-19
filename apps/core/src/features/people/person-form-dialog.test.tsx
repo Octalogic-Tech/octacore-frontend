@@ -16,7 +16,7 @@ const [ada, grace] = personRowsSchema.parse(personRows);
 const onOpenChange = vi.fn();
 
 const SALARY = 'Monthly salary (USD)';
-const WHOLE_NUMBER = 'Enter a whole number, like 5600';
+const WRONG_FORMAT = 'Enter an amount like 7.20, with no commas or signs';
 
 /** What the service answers a save with; the dialog does not read it. */
 const saved = { data: { statusCode: 200, message: 'saved', data: {}, meta: null } };
@@ -30,7 +30,7 @@ afterEach(() => {
 });
 
 describe('PersonFormDialog: adding', () => {
-  it('creates the person with every field, the salary as a number of dollars', async () => {
+  it('creates the person with every field, the salary as a number of cents', async () => {
     vi.mocked(coreApi.post).mockResolvedValue({ data: createdPersonEnvelope(7) });
     const user = userEvent.setup();
     openDialog();
@@ -54,8 +54,20 @@ describe('PersonFormDialog: adding', () => {
       leaveDate: '2026-03-31',
       imageLink: 'https://example.com/margaret.png',
       contractLink: 'https://example.com/margaret.pdf',
-      monthlySalary: 8400,
+      monthlySalaryCents: 840000,
     });
+  });
+
+  it('sends a salary typed with cents as whole cents', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue({ data: createdPersonEnvelope(7) });
+    const user = userEvent.setup();
+    openDialog();
+    await user.type(screen.getByLabelText('Name'), 'Margaret Hamilton');
+    expect(screen.getByText('Dollars and cents, like 5600.00.')).toBeInTheDocument();
+    await user.type(screen.getByLabelText(SALARY), '5600.75');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith('/people', expect.objectContaining({ monthlySalaryCents: 560075 }));
   });
 
   it('creates a person with only a name, and nulls for the rest', async () => {
@@ -73,7 +85,7 @@ describe('PersonFormDialog: adding', () => {
       leaveDate: null,
       imageLink: null,
       contractLink: null,
-      monthlySalary: null,
+      monthlySalaryCents: null,
     });
   });
 
@@ -85,7 +97,7 @@ describe('PersonFormDialog: adding', () => {
     await user.type(screen.getByLabelText(SALARY), '0');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.post).toHaveBeenCalledWith('/people', expect.objectContaining({ monthlySalary: 0 }));
+    expect(coreApi.post).toHaveBeenCalledWith('/people', expect.objectContaining({ monthlySalaryCents: 0 }));
   });
 
   it('blocks a person without a name', async () => {
@@ -106,7 +118,7 @@ describe('PersonFormDialog: adding', () => {
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
-  it.each(['5,600', '$5600', '5600.50', '-5'])(
+  it.each(['5,600', '$5600', '5600.755', '-5'])(
     'tells a salary typed as “%s” what is wrong, next to the field, and does not save',
     async (salary) => {
       const user = userEvent.setup();
@@ -114,7 +126,7 @@ describe('PersonFormDialog: adding', () => {
       await user.type(screen.getByLabelText('Name'), 'Ada');
       await user.type(screen.getByLabelText(SALARY), salary);
       await user.click(screen.getByRole('button', { name: 'Save' }));
-      expect(await screen.findByText(WHOLE_NUMBER)).toBeInTheDocument();
+      expect(await screen.findByText(WRONG_FORMAT)).toBeInTheDocument();
       expect(screen.getByLabelText(SALARY)).toHaveAttribute('aria-invalid', 'true');
       expect(coreApi.post).not.toHaveBeenCalled();
     },
@@ -124,9 +136,9 @@ describe('PersonFormDialog: adding', () => {
     const user = userEvent.setup();
     openDialog();
     await user.type(screen.getByLabelText('Name'), 'Ada');
-    await user.type(screen.getByLabelText(SALARY), '2147483648');
+    await user.type(screen.getByLabelText(SALARY), '100000000.01');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Salary is too large')).toBeInTheDocument();
+    expect(await screen.findByText('The amount is too large')).toBeInTheDocument();
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
@@ -166,7 +178,7 @@ describe('PersonFormDialog: editing', () => {
     expect(screen.getByLabelText('Left')).toHaveValue('');
     expect(screen.getByLabelText('Image link')).toHaveValue('https://example.com/ada.png');
     expect(screen.getByLabelText('Contract link')).toHaveValue('https://example.com/ada-contract.pdf');
-    expect(screen.getByLabelText(SALARY)).toHaveValue('5600');
+    expect(screen.getByLabelText(SALARY)).toHaveValue('5600.00');
   });
 
   it('changes the person with PATCH under their id, and sends the new salary', async () => {
@@ -187,7 +199,7 @@ describe('PersonFormDialog: editing', () => {
       leaveDate: null,
       imageLink: 'https://example.com/ada.png',
       contractLink: 'https://example.com/ada-contract.pdf',
-      monthlySalary: 6200,
+      monthlySalaryCents: 620000,
     });
   });
 
@@ -198,7 +210,7 @@ describe('PersonFormDialog: editing', () => {
     await user.clear(screen.getByLabelText(SALARY));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/people/2', expect.objectContaining({ monthlySalary: null }));
+    expect(coreApi.patch).toHaveBeenCalledWith('/people/2', expect.objectContaining({ monthlySalaryCents: null }));
   });
 
   it('marks the project resources stale, since each carries the name of its person', async () => {

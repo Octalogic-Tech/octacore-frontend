@@ -30,12 +30,12 @@ describe('core', () => {
     cy.contains('td', 'Globex').should('be.visible');
   });
 
-  it('lists the people with their monthly salary in dollars', () => {
+  it('lists the people with their monthly salary in dollars and cents', () => {
     cy.get(nav).contains('a', 'People').click();
     cy.contains('h1', 'People');
     cy.contains('td', 'Asha Rao').should('be.visible');
     cy.contains('td', 'asha@example.com').should('be.visible');
-    cy.contains('td', '$5,600').should('be.visible');
+    cy.contains('td', '$5,600.75').should('be.visible');
     cy.contains('td', 'Ben Cho').should('be.visible');
     cy.get(`${nav} a[aria-current="page"]`).should('have.length', 1).and('contain', 'People');
   });
@@ -47,7 +47,7 @@ describe('core', () => {
     cy.contains('td', 'Legacy portal').should('be.visible');
     cy.contains('a', 'Website').click();
     cy.contains('h1', 'Website');
-    cy.contains('p', '$12,000 outstanding of $48,000 invoiced.').should('be.visible');
+    cy.contains('p', '$12,000.00 outstanding of $48,000.00 invoiced.').should('be.visible');
     cy.contains('dt', 'Discount').next().should('have.text', '10%');
     // The overview holds the facts and what is owed; the tables are one tab each, and the tab is in the address.
     cy.contains('td', 'INV-001').should('not.exist');
@@ -60,7 +60,7 @@ describe('core', () => {
     cy.location('search').should('eq', '?tab=resources');
     cy.contains('h2', 'Resources').should('be.visible');
     cy.contains('td', 'Asha Rao').should('be.visible');
-    cy.contains('td', '$150').should('be.visible');
+    cy.contains('td', '$150.00').should('be.visible');
     cy.contains('th', 'Qty').should('be.visible');
     cy.contains('button', 'Add invoice').click();
     cy.get('[role="dialog"]').invoke('outerWidth').should('be.gt', 1000);
@@ -68,12 +68,12 @@ describe('core', () => {
       cy.get('input[aria-label="Line 1 description"]').should('have.value', 'Asha Rao — Mobile');
       // The project's 10% starts the invoice's discount, and the total is after it.
       cy.get('#invoice-discount').should('have.value', '10');
-      cy.contains('Subtotal $36,000').should('be.visible');
-      cy.contains('Discount (10%) -$3,600').should('be.visible');
-      cy.contains('Total $32,400').should('be.visible');
+      cy.contains('Subtotal $36,000.00').should('be.visible');
+      cy.contains('Discount (10%) -$3,600.00').should('be.visible');
+      cy.contains('Total $32,400.00').should('be.visible');
       cy.get('#invoice-discount').clear();
       cy.get('#invoice-discount').type('0');
-      cy.contains('Total $36,000').should('be.visible');
+      cy.contains('Total $36,000.00').should('be.visible');
       cy.contains('button', 'Cancel').click();
     });
     cy.get('[role="dialog"]').should('not.exist');
@@ -134,7 +134,7 @@ describe('core', () => {
     cy.contains('button', 'Export CSV').click();
     cy.readFile(`${Cypress.config('downloadsFolder')}/invoices.csv`)
       .should('contain', 'Number,Client,Project,Issued,Due,Paid,Amount,Status')
-      .and('contain', 'INV-002,Acme,Website,2026-11-01,,,12000,Unpaid')
+      .and('contain', 'INV-002,Acme,Website,2026-11-01,,,12000.00,Unpaid')
       .and('not.contain', 'INV-001');
   });
 });

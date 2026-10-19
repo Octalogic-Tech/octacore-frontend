@@ -58,11 +58,11 @@ describe('ResourcesPanel: reading', () => {
     expect(asha.getByText('Asha Rao', { selector: 'td:nth-child(1)' })).toBeInTheDocument();
     expect(asha.getByText('Mobile')).toBeInTheDocument();
     expect(asha.getByText('Asha Rao', { selector: 'td:nth-child(3)' })).toBeInTheDocument();
-    expect(asha.getByText('$150')).toBeInTheDocument();
+    expect(asha.getByText('$150.00')).toBeInTheDocument();
     const ben = within(rows[1]);
     expect(ben.getByText('Web')).toBeInTheDocument();
     expect(ben.getByText('—')).toBeInTheDocument();
-    expect(ben.getByText('$75')).toBeInTheDocument();
+    expect(ben.getByText('$75.00')).toBeInTheDocument();
   });
 
   it('shows a dash for a category the service no longer lists', async () => {
@@ -151,45 +151,53 @@ describe('ResourcesPanel: changing', () => {
 
 describe('ResourcesPanel: team cost against billing', () => {
   const resourceOf = (over: Record<string, unknown>) => ({ ...resourceRows[0], ...over });
-  const personOf = (id: number, monthlySalary: number | null) => ({ ...peopleRows[0], id, monthlySalary });
+  // Rates and salaries are in whole US cents.
+  const personOf = (id: number, monthlySalaryCents: number | null) => ({ ...peopleRows[0], id, monthlySalaryCents });
   const sentence = (expected: string) => (_: string, element: Element | null) =>
     element?.tagName === 'P' && element.textContent === expected;
 
   it('says what the counted resources bill a month against their salaries, and how many it counted', async () => {
     serve(
       resourcesEnvelope([
-        resourceOf({ id: 1, personId: 1, rate: 50 }),
-        resourceOf({ id: 2, personId: 2, rate: 40, name: 'Ben Cho', person: { id: 2, name: 'Ben Cho' } }),
-        resourceOf({ id: 3, personId: null, person: null, name: 'Open role', rate: 90 }),
+        resourceOf({ id: 1, personId: 1, rateCents: 5000 }),
+        resourceOf({ id: 2, personId: 2, rateCents: 4000, name: 'Ben Cho', person: { id: 2, name: 'Ben Cho' } }),
+        resourceOf({ id: 3, personId: null, person: null, name: 'Open role', rateCents: 9000 }),
       ]),
-      peopleEnvelope([personOf(1, 5000), personOf(2, 4800)]),
+      peopleEnvelope([personOf(1, 500000), personOf(2, 480000)]),
     );
     renderPanel();
-    // billed (50 + 40) x 160 = 14,400; cost 9,800; margin 4,600 (32%); 2 of the 3 resources are counted.
+    // billed (5,000 + 4,000) x 160 = 1,440,000 cents; cost 980,000; margin 460,000 (32%); 2 of the 3 resources are
+    // counted.
     expect(
       await screen.findByText(
-        sentence('At current salaries, 2 of 3 resources bill $14,400 a month against $9,800 in salary: a margin of $4,600 (32%).'),
+        sentence(
+          'At current salaries, 2 of 3 resources bill $14,400.00 a month against $9,800.00 in salary: a margin of $4,600.00 (32%).',
+        ),
       ),
     ).toBeInTheDocument();
   });
 
   it('says bills for one resource, and shortfall when the salary is more than the billing', async () => {
-    serve(resourcesEnvelope([resourceOf({ id: 1, personId: 1, rate: 5 })]), peopleEnvelope([personOf(1, 900)]));
+    serve(resourcesEnvelope([resourceOf({ id: 1, personId: 1, rateCents: 500 })]), peopleEnvelope([personOf(1, 90000)]));
     renderPanel();
-    // billed 5 x 160 = 800; cost 900; a shortfall of 100, 12.5% of 800, shown as 13%.
+    // billed 500 x 160 = 80,000 cents; cost 90,000; a shortfall of 10,000, 12.5% of 80,000, shown as 13%.
     expect(
       await screen.findByText(
-        sentence('At current salaries, 1 of 1 resource bills $800 a month against $900 in salary: a shortfall of $100 (13%).'),
+        sentence(
+          'At current salaries, 1 of 1 resource bills $800.00 a month against $900.00 in salary: a shortfall of $100.00 (13%).',
+        ),
       ),
     ).toBeInTheDocument();
   });
 
   it('leaves the percentage out when the counted rates are all 0', async () => {
-    serve(resourcesEnvelope([resourceOf({ id: 1, personId: 1, rate: 0 })]), peopleEnvelope([personOf(1, 5000)]));
+    serve(resourcesEnvelope([resourceOf({ id: 1, personId: 1, rateCents: 0 })]), peopleEnvelope([personOf(1, 500000)]));
     renderPanel();
     expect(
       await screen.findByText(
-        sentence('At current salaries, 1 of 1 resource bills $0 a month against $5,000 in salary: a shortfall of $5,000.'),
+        sentence(
+          'At current salaries, 1 of 1 resource bills $0.00 a month against $5,000.00 in salary: a shortfall of $5,000.00.',
+        ),
       ),
     ).toBeInTheDocument();
   });
@@ -204,10 +212,10 @@ describe('ResourcesPanel: team cost against billing', () => {
   it('carries the caveat, and shows the total salary but no individual’s', async () => {
     serve(
       resourcesEnvelope([
-        resourceOf({ id: 1, personId: 1, rate: 50 }),
-        resourceOf({ id: 2, personId: 2, rate: 40, name: 'Ben Cho', person: { id: 2, name: 'Ben Cho' } }),
+        resourceOf({ id: 1, personId: 1, rateCents: 5000 }),
+        resourceOf({ id: 2, personId: 2, rateCents: 4000, name: 'Ben Cho', person: { id: 2, name: 'Ben Cho' } }),
       ]),
-      peopleEnvelope([personOf(1, 5000), personOf(2, 4800)]),
+      peopleEnvelope([personOf(1, 500000), personOf(2, 480000)]),
     );
     renderPanel();
     await screen.findByText(/At current salaries/);
@@ -216,8 +224,8 @@ describe('ResourcesPanel: team cost against billing', () => {
         'Salary is today’s figure, not what was paid. Resources with no person, no salary or a Qty above 1 are left out.',
       ),
     ).toBeInTheDocument();
-    // The two salaries are 5,000 and 4,800; only their total, 9,800, may appear.
-    expect(screen.getByText('$9,800')).toBeInTheDocument();
+    // The two salaries are $5,000.00 and $4,800.00; only their total, $9,800.00, may appear.
+    expect(screen.getByText('$9,800.00')).toBeInTheDocument();
     expect(screen.queryByText(/\$5,000/)).not.toBeInTheDocument();
     expect(screen.queryByText(/\$4,800/)).not.toBeInTheDocument();
   });

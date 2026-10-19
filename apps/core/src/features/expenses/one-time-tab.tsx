@@ -11,6 +11,7 @@ import { usePeople } from '@/features/people/api';
 import { useProjects } from '@/features/projects/api';
 import { downloadCsv } from '@/lib/csv';
 import { localToday, pluralize } from '@/lib/format';
+import { formatUsd } from '@/lib/money';
 import { useExpenses } from './api';
 import { expensesToCsv } from './csv';
 import { DeleteExpenseDialog } from './delete-expense-dialog';
@@ -23,7 +24,6 @@ import {
   toOneTimeQuery,
   type OneTimeFilters,
 } from './filters';
-import { formatUsd } from './money';
 import type { ExpenseRow } from './schema';
 
 /** A select's value is text: an empty one is "all", anything else is an id. */

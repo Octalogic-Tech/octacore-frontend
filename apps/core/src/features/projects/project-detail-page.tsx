@@ -12,7 +12,8 @@ import { Panel } from '@/components/ui/panel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { statusOf } from '@/lib/core-api';
-import { formatCurrency, formatDate, localToday } from '@/lib/format';
+import { formatDate, localToday } from '@/lib/format';
+import { formatUsd } from '@/lib/money';
 import {
   useDeleteInvoice,
   useDeleteProject,
@@ -224,7 +225,7 @@ function ProjectDetail({ projectId }: { projectId: number }) {
                           <TableCell className="tabular whitespace-nowrap">
                             {invoice.dueDate ? formatDate(invoice.dueDate) : NONE}
                           </TableCell>
-                          <TableCell className="tabular text-right">{formatCurrency(invoice.amount)}</TableCell>
+                          <TableCell className="tabular text-right">{formatUsd(invoice.amountCents)}</TableCell>
                           <TableCell>
                             {invoice.paidDate ? (
                               <Badge variant="outline">Paid {formatDate(invoice.paidDate)}</Badge>

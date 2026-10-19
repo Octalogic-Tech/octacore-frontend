@@ -15,12 +15,18 @@ vi.mock('@/lib/core-api', async (importOriginal) => ({
 
 const [paid, unpaid] = invoiceRowsSchema.parse(invoiceRows);
 
-/** What the migration leaves behind: one line of Qty 1 and 1 hour, the old amount as its rate. */
+/** What the migration leaves behind: one line of Qty 1 and 1 hour, the old amount as its rate (in cents). */
 const [legacy] = invoiceRowsSchema.parse([
   {
     ...invoiceRows[0],
     lineItems: [
-      { ...invoiceRows[0].lineItems[0], description: 'October retainer', quantity: 1, rate: 36000, amount: 36000 },
+      {
+        ...invoiceRows[0].lineItems[0],
+        description: 'October retainer',
+        quantity: 1,
+        rateCents: 3_600_000,
+        amountCents: 3_600_000,
+      },
     ],
   },
 ]);
@@ -47,8 +53,8 @@ const NEXT_PATH = '/projects/1/next-invoice-number';
 /** The owner's sample: 3 Fullstack Developers and 1 Project Lead for 160 hours each. */
 const SAMPLE_DRAFT = draftEnvelope({
   lineItems: [
-    { description: 'Fullstack Developer', headcount: 3, quantity: 160, rate: 27 },
-    { description: 'Project Lead', headcount: 1, quantity: 160, rate: 54 },
+    { description: 'Fullstack Developer', headcount: 3, quantity: 160, rateCents: 2700 },
+    { description: 'Project Lead', headcount: 1, quantity: 160, rateCents: 5400 },
   ],
 });
 
@@ -153,11 +159,11 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
     expect(screen.getByLabelText('Line 1 description')).toHaveValue('Asha Rao — Mobile');
     expect(screen.getByLabelText('Line 1 qty')).toHaveValue('1');
     expect(screen.getByLabelText('Line 1 hours')).toHaveValue('160');
-    expect(screen.getByLabelText('Line 1 rate')).toHaveValue('150');
-    expect(within(line(1)).getByText('$24,000')).toBeInTheDocument();
+    expect(screen.getByLabelText('Line 1 rate')).toHaveValue('150.00');
+    expect(within(line(1)).getByText('$24,000.00')).toBeInTheDocument();
     expect(screen.getByLabelText('Line 2 description')).toHaveValue('Ben Cho — Web');
-    expect(within(line(2)).getByText('$12,000')).toBeInTheDocument();
-    expect(screen.getByText('Total $36,000')).toBeInTheDocument();
+    expect(within(line(2)).getByText('$12,000.00')).toBeInTheDocument();
+    expect(screen.getByText('Total $36,000.00')).toBeInTheDocument();
     expect(screen.getByText('Retainer lines are 160 hours a month.')).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Number'), 'INV-9');
@@ -176,8 +182,8 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
       periodEnd: null,
       discountPercent: 0,
       lineItems: [
-        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rate: 150 },
-        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rate: 75 },
+        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rateCents: 15000 },
+        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rateCents: 7500 },
       ],
     });
   });
@@ -189,10 +195,10 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
 
     expect(screen.getByLabelText('Line 1 qty')).toHaveValue('3');
     expect(screen.getByLabelText('Line 1 hours')).toHaveValue('160');
-    expect(screen.getByLabelText('Line 1 rate')).toHaveValue('27');
-    expect(within(line(1)).getByText('$12,960')).toBeInTheDocument();
-    expect(within(line(2)).getByText('$8,640')).toBeInTheDocument();
-    expect(screen.getByText('Total $21,600')).toBeInTheDocument();
+    expect(screen.getByLabelText('Line 1 rate')).toHaveValue('27.00');
+    expect(within(line(1)).getByText('$12,960.00')).toBeInTheDocument();
+    expect(within(line(2)).getByText('$8,640.00')).toBeInTheDocument();
+    expect(screen.getByText('Total $21,600.00')).toBeInTheDocument();
   });
 
   it('names the columns and each line’s amount, so a pre-filled line says which number is which', async () => {
@@ -215,7 +221,7 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
     await screen.findByRole('group', { name: 'Line 1' });
     await user.clear(screen.getByLabelText('Line 1 hours'));
     await user.type(screen.getByLabelText('Line 1 hours'), '80');
-    expect(within(line(1)).getByText('$12,000')).toBeInTheDocument();
+    expect(within(line(1)).getByText('$12,000.00')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Remove line 2' }));
     expect(screen.queryByRole('group', { name: 'Line 2' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Add line' }));
@@ -223,7 +229,7 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
     await user.type(screen.getByLabelText('Line 2 description'), 'Hosting');
     await user.type(screen.getByLabelText('Line 2 hours'), '1');
     await user.type(screen.getByLabelText('Line 2 rate'), '300');
-    expect(screen.getByText('Total $12,300')).toBeInTheDocument();
+    expect(screen.getByText('Total $12,300.00')).toBeInTheDocument();
     await user.type(screen.getByLabelText('Number'), 'INV-9');
     await user.type(screen.getByLabelText('Issue date'), '2026-10-01');
     await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -232,8 +238,8 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
       '/invoices',
       expect.objectContaining({
         lineItems: [
-          { description: 'Asha Rao — Mobile', headcount: 1, quantity: 80, rate: 150 },
-          { description: 'Hosting', headcount: 1, quantity: 1, rate: 300 },
+          { description: 'Asha Rao — Mobile', headcount: 1, quantity: 80, rateCents: 15000 },
+          { description: 'Hosting', headcount: 1, quantity: 1, rateCents: 30000 },
         ],
       }),
     );
@@ -294,7 +300,7 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
     serveDraft(
-      draftEnvelope({ lineItems: [{ description: 'Cara Diaz — Web', headcount: 1, quantity: 160, rate: 90 }] }),
+      draftEnvelope({ lineItems: [{ description: 'Cara Diaz — Web', headcount: 1, quantity: 160, rateCents: 9000 }] }),
     );
     await user.click(screen.getByRole('button', { name: 'Open it' }));
 
@@ -354,9 +360,9 @@ describe('InvoiceFormDialog: line validation', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
   }
 
-  it.each(['42.50', '$85', '1,200'])('says what is wrong with a rate of %s and sends nothing', async (rate) => {
+  it.each(['12.505', '$85', '1,200'])('says what is wrong with a rate of %s and sends nothing', async (rate) => {
     await fillLine({ hours: '1', rate });
-    expect(await screen.findByText('Enter a whole number, like 85')).toBeInTheDocument();
+    expect(await screen.findByText('Enter an amount like 7.20, with no commas or signs')).toBeInTheDocument();
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
@@ -378,8 +384,9 @@ describe('InvoiceFormDialog: line validation', () => {
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
-  it('refuses a line whose Qty x hours x rate is past the limit the service holds', async () => {
-    await fillLine({ qty: '1000', hours: '100', rate: '21475' });
+  it('refuses a line whose Qty x hours x rate is past the cap the service holds', async () => {
+    // 1,000 x 100 x $1,000.01 is 10,000,100,000 cents, a hundred cents over the cap.
+    await fillLine({ qty: '1000', hours: '100', rate: '1000.01' });
     expect(await screen.findByText('This line is too large')).toBeInTheDocument();
     expect(coreApi.post).not.toHaveBeenCalled();
   });
@@ -418,6 +425,7 @@ describe('InvoiceFormDialog: adding to a fixed cost project', () => {
     await user.type(screen.getByLabelText('Line 1 description'), 'Milestone 1');
     await user.type(screen.getByLabelText('Line 1 units'), '1');
     await user.type(screen.getByLabelText('Line 1 rate'), '5000');
+    expect(within(line(1)).getByText('$5,000.00')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.post).toHaveBeenCalledWith('/invoices', {
@@ -430,8 +438,35 @@ describe('InvoiceFormDialog: adding to a fixed cost project', () => {
       periodStart: null,
       periodEnd: null,
       discountPercent: 0,
-      lineItems: [{ description: 'Milestone 1', headcount: 1, quantity: 1, rate: 5000 }],
+      lineItems: [{ description: 'Milestone 1', headcount: 1, quantity: 1, rateCents: 500000 }],
     });
+  });
+
+  it('takes a rate in dollars and cents, shows the line to the cent and sends it as cents', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    serveDraft(draftEnvelope({ lineItems: [] }));
+    const user = userEvent.setup();
+    openDialog({ billingType: 'fixed_cost' });
+    await screen.findByRole('group', { name: 'Line 1' });
+    await user.type(screen.getByLabelText('Number'), 'INV-1');
+    await user.type(screen.getByLabelText('Issue date'), '2026-10-01');
+    await user.type(screen.getByLabelText('Line 1 description'), 'Support');
+    await user.clear(screen.getByLabelText('Line 1 qty'));
+    await user.type(screen.getByLabelText('Line 1 qty'), '3');
+    await user.type(screen.getByLabelText('Line 1 units'), '160');
+    await user.type(screen.getByLabelText('Line 1 rate'), '12.50');
+
+    // 3 x 160 x $12.50.
+    expect(within(line(1)).getByText('$6,000.00')).toBeInTheDocument();
+    expect(screen.getByText('Total $6,000.00')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/invoices',
+      expect.objectContaining({
+        lineItems: [{ description: 'Support', headcount: 3, quantity: 160, rateCents: 1250 }],
+      }),
+    );
   });
 
   it('says Units too on a project from before billing types', async () => {
@@ -653,8 +688,8 @@ describe('InvoiceFormDialog: editing', () => {
     expect(screen.getByLabelText('Number')).toHaveValue('INV-001');
     expect(screen.getByLabelText('Paid date')).toHaveValue('2026-10-12');
     expect(screen.getByLabelText('Line 1 description')).toHaveValue('Asha Rao — Mobile');
-    expect(screen.getByLabelText('Line 2 rate')).toHaveValue('75');
-    expect(screen.getByText('Total $36,000')).toBeInTheDocument();
+    expect(screen.getByLabelText('Line 2 rate')).toHaveValue('75.00');
+    expect(screen.getByText('Total $36,000.00')).toBeInTheDocument();
     await user.clear(screen.getByLabelText('Paid date'));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
@@ -669,8 +704,8 @@ describe('InvoiceFormDialog: editing', () => {
       periodEnd: '2026-09-30',
       discountPercent: 0,
       lineItems: [
-        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rate: 150 },
-        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rate: 75 },
+        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rateCents: 15000 },
+        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rateCents: 7500 },
       ],
     });
     expect(calls(DRAFT_PATH)).toHaveLength(0);
@@ -682,8 +717,8 @@ describe('InvoiceFormDialog: editing', () => {
     openDialog({ invoice: legacy });
     expect(screen.getByLabelText('Line 1 qty')).toHaveValue('1');
     expect(screen.getByLabelText('Line 1 hours')).toHaveValue('1');
-    expect(screen.getByLabelText('Line 1 rate')).toHaveValue('36000');
-    expect(screen.getByText('Total $36,000')).toBeInTheDocument();
+    expect(screen.getByLabelText('Line 1 rate')).toHaveValue('36000.00');
+    expect(screen.getByText('Total $36,000.00')).toBeInTheDocument();
     await user.clear(screen.getByLabelText('Description'));
     await user.type(screen.getByLabelText('Description'), 'Edited');
     await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -697,7 +732,7 @@ describe('InvoiceFormDialog: editing', () => {
       periodStart: '2026-09-01',
       periodEnd: '2026-09-30',
       discountPercent: 0,
-      lineItems: [{ description: 'October retainer', headcount: 1, quantity: 1, rate: 36000 }],
+      lineItems: [{ description: 'October retainer', headcount: 1, quantity: 1, rateCents: 3_600_000 }],
     });
   });
 
@@ -791,40 +826,40 @@ describe('InvoiceFormDialog: the discount', () => {
     const user = userEvent.setup();
     await openOnLines({ projectDiscountPercent: 10 });
 
-    expect(screen.getByText('Subtotal $36,000')).toBeInTheDocument();
-    expect(screen.getByText('Discount (10%) -$3,600')).toBeInTheDocument();
-    expect(screen.getByText('Total $32,400')).toBeInTheDocument();
+    expect(screen.getByText('Subtotal $36,000.00')).toBeInTheDocument();
+    expect(screen.getByText('Discount (10%) -$3,600.00')).toBeInTheDocument();
+    expect(screen.getByText('Total $32,400.00')).toBeInTheDocument();
 
     await user.clear(discountField());
     await user.type(discountField(), '7.5');
-    expect(screen.getByText('Discount (7.5%) -$2,700')).toBeInTheDocument();
-    expect(screen.getByText('Total $33,300')).toBeInTheDocument();
+    expect(screen.getByText('Discount (7.5%) -$2,700.00')).toBeInTheDocument();
+    expect(screen.getByText('Total $33,300.00')).toBeInTheDocument();
 
     await user.clear(discountField());
     await user.type(discountField(), '0');
     expect(screen.queryByText(/^Subtotal/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Discount \(\d/)).not.toBeInTheDocument();
-    expect(screen.getByText('Total $36,000')).toBeInTheDocument();
+    expect(screen.getByText('Total $36,000.00')).toBeInTheDocument();
   });
 
-  it('follows the lines too, rounding the discount to whole dollars the way the service does', async () => {
+  it('follows the lines too, flooring the discount to the cent the way the service does', async () => {
     const user = userEvent.setup();
     serveDraft(draftEnvelope({ lineItems: [] }));
     await openOnLines({ projectDiscountPercent: 7.5, billingType: 'fixed_cost' });
     await user.type(screen.getByLabelText('Line 1 description'), 'Build');
     await user.type(screen.getByLabelText('Line 1 units'), '1');
-    await user.type(screen.getByLabelText('Line 1 rate'), '1010');
+    await user.type(screen.getByLabelText('Line 1 rate'), '10.10');
 
-    // 7.5% of 1,010 is 75.75: 76 off, 934 to pay.
-    expect(screen.getByText('Subtotal $1,010')).toBeInTheDocument();
-    expect(screen.getByText('Discount (7.5%) -$76')).toBeInTheDocument();
-    expect(screen.getByText('Total $934')).toBeInTheDocument();
+    // 7.5% of 10.10 is 0.7575: 75 cents off, floored, and $9.35 to pay.
+    expect(screen.getByText('Subtotal $10.10')).toBeInTheDocument();
+    expect(screen.getByText('Discount (7.5%) -$0.75')).toBeInTheDocument();
+    expect(screen.getByText('Total $9.35')).toBeInTheDocument();
   });
 
   it('shows only the total when there is no discount', async () => {
     await openOnLines({ projectDiscountPercent: 0 });
 
-    expect(screen.getByText('Total $36,000')).toBeInTheDocument();
+    expect(screen.getByText('Total $36,000.00')).toBeInTheDocument();
     expect(screen.queryByText(/^Subtotal/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Discount \(\d/)).not.toBeInTheDocument();
   });
@@ -891,20 +926,20 @@ describe('InvoiceFormDialog: the discount', () => {
     await user.type(discountField(), '60');
 
     expect(screen.queryByText(/^Discount \(\d/)).not.toBeInTheDocument();
-    expect(screen.getByText('Total $36,000')).toBeInTheDocument();
+    expect(screen.getByText('Total $36,000.00')).toBeInTheDocument();
   });
 
   it('opens an invoice on its own discount, not its project’s, and keeps it when saved', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     const [discounted] = invoiceRowsSchema.parse([
-      { ...invoiceRows[0], subtotal: 36000, discountPercent: 7.5, amount: 33300 },
+      { ...invoiceRows[0], subtotalCents: 3_600_000, discountPercent: 7.5, amountCents: 3_330_000 },
     ]);
     openDialog({ invoice: discounted, projectDiscountPercent: 10 });
 
     expect(discountField()).toHaveValue('7.5');
-    expect(screen.getByText('Discount (7.5%) -$2,700')).toBeInTheDocument();
-    expect(screen.getByText('Total $33,300')).toBeInTheDocument();
+    expect(screen.getByText('Discount (7.5%) -$2,700.00')).toBeInTheDocument();
+    expect(screen.getByText('Total $33,300.00')).toBeInTheDocument();
     expect(calls(DRAFT_PATH)).toHaveLength(0);
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
@@ -915,6 +950,6 @@ describe('InvoiceFormDialog: the discount', () => {
     openDialog({ invoice: paid, projectDiscountPercent: 10 });
 
     expect(discountField()).toHaveValue('0');
-    expect(screen.getByText('Total $36,000')).toBeInTheDocument();
+    expect(screen.getByText('Total $36,000.00')).toBeInTheDocument();
   });
 });

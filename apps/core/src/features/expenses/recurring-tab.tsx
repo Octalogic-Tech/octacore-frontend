@@ -11,8 +11,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { serviceMessage } from '@/lib/core-api';
 import { formatDate, pluralize } from '@/lib/format';
+import { formatUsd } from '@/lib/money';
 import { useChangeRecurringState, useDeleteRecurring, useRecurringExpenses } from './api';
-import { formatMoney, formatUsd } from './money';
+import { formatMoney } from './money';
 import { RecurringFormDialog } from './recurring-form-dialog';
 import { costTotals, sortRecurring } from './recurring';
 import { FREQUENCY_LABELS, STATE_LABELS, type RecurringRow, type RecurringState } from './schema';

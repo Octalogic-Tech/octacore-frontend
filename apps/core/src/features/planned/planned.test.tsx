@@ -22,7 +22,6 @@ function renderAt(route: string, auth?: Partial<AuthContextValue>) {
 
 /** The suggested build order, written out here on purpose: moving a piece is a decision, not an accident. */
 const IN_ORDER = [
-  ['money-in-cents', 'Money in cents'],
   ['currency-tax', 'Currency and tax'],
   ['milestones', 'Milestone schedule'],
   ['recurring-invoices', 'Recurring retainer drafts'],
@@ -33,8 +32,6 @@ const IN_ORDER = [
   ['quotes', 'Quote generator'],
   ['portfolio', 'Portfolio'],
 ] as const;
-
-const WITH_A_PAGE = IN_ORDER.filter(([id]) => id !== 'money-in-cents');
 
 const DIALOGS = [
   ['recurring-invoices', 'Preview the schedule dialog', 'Schedule a retainer project'],
@@ -49,7 +46,7 @@ const DIALOGS = [
 ] as const;
 
 describe('the planned registry', () => {
-  it('lists the ten pieces in the suggested build order', () => {
+  it('lists the nine pieces in the suggested build order', () => {
     expect(PLANNED.map((spec) => [spec.id, spec.title])).toEqual(IN_ORDER);
   });
 
@@ -89,27 +86,20 @@ describe('the Planned index', () => {
     expect(titles).toEqual(IN_ORDER.map(([, title]) => title));
   });
 
-  it.each(WITH_A_PAGE)('links %s to its own page', (id, title) => {
+  it.each(IN_ORDER)('links %s to its own page', (id, title) => {
     renderAt('/planned');
     expect(screen.getByRole('link', { name: title })).toHaveAttribute('href', `/planned/${id}`);
-  });
-
-  it('describes the cents work on the index itself, because it has no page', () => {
-    renderAt('/planned');
-    const card = screen.getByRole('listitem', { name: 'Money in cents' });
-    expect(within(card).queryByRole('link')).toBeNull();
-    expect(within(card).getByRole('heading', { name: 'Open decisions' })).toBeInTheDocument();
   });
 
   it('says what a piece waits on', () => {
     renderAt('/planned');
     const card = screen.getByRole('listitem', { name: 'Cash-flow forecast' });
-    expect(within(card).getByText(/Build after/)).toHaveTextContent('Money in cents');
+    expect(within(card).getByText(/Build after/)).toHaveTextContent('Build after: Currency and tax, Milestone schedule');
   });
 });
 
 describe('a planned page', () => {
-  it.each(WITH_A_PAGE)('%s says it is not built, and what it will be', (id, title) => {
+  it.each(IN_ORDER)('%s says it is not built, and what it will be', (id, title) => {
     renderAt(`/planned/${id}`);
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();
     expect(screen.getByText('Planned, not built yet')).toBeInTheDocument();
@@ -117,11 +107,6 @@ describe('a planned page', () => {
       expect(screen.getByRole('heading', { level: 2, name: section })).toBeInTheDocument();
     }
     expect(screen.getByRole('link', { name: 'All planned work' })).toHaveAttribute('href', '/planned');
-  });
-
-  it('has no page for the cents work', () => {
-    renderAt('/planned/money-in-cents');
-    expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
   });
 
   it('has no dialog to preview when none is planned', () => {

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useClientDetails, type ListState } from '@/features/clients/api';
-import { formatCurrency, formatDate, localToday } from '@/lib/format';
+import { formatDate, localToday } from '@/lib/format';
+import { formatUsd } from '@/lib/money';
 import { overdueTotal, type InvoiceRow, type ProjectRow } from './schema';
 
 const NONE = '—';
@@ -38,11 +39,11 @@ export function ProjectOverview({ project, invoices }: ProjectOverviewProps) {
           'Nothing is invoiced yet.'
         ) : (
           <>
-            <span className="tabular font-semibold">{formatCurrency(project.totalOutstanding)}</span> outstanding of{' '}
-            <span className="tabular font-semibold">{formatCurrency(project.totalValue)}</span> invoiced
+            <span className="tabular font-semibold">{formatUsd(project.totalOutstandingCents)}</span> outstanding
+            of <span className="tabular font-semibold">{formatUsd(project.totalValueCents)}</span> invoiced
             {overdue > 0 ? (
               <>
-                , <span className="tabular font-semibold">{formatCurrency(overdue)}</span> of it overdue
+                , <span className="tabular font-semibold">{formatUsd(overdue)}</span> of it overdue
               </>
             ) : null}
             .
