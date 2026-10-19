@@ -439,7 +439,7 @@ describe('CountriesPage: adding', () => {
     ).toBeInTheDocument();
   });
 
-  it('refreshes the countries, the recurring expenses, the expenses and the clients after a save', async () => {
+  it('refreshes the countries, the recurring expenses, the expenses, the clients and the projects after a save', async () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
     const { client } = renderWithProviders(<CountriesPage />);
@@ -454,6 +454,8 @@ describe('CountriesPage: adding', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['countries'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['expenses'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['clients'] });
+    // A project's billing terms are its country's, read afresh.
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['projects'] });
   });
 });
 
@@ -627,6 +629,7 @@ describe('CountriesPage: deleting', () => {
       })
     );
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['countries'] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['projects'] });
     await waitFor(() =>
       expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
     );
@@ -721,7 +724,7 @@ describe('CountriesPage: syncing the rates', () => {
     ).toBeInTheDocument();
   });
 
-  it('refreshes the countries, the recurring expenses, the expenses and the clients, so the new rates show', async () => {
+  it('refreshes the countries, the recurring expenses, the expenses, the clients and the projects, so the new rates show', async () => {
     vi.mocked(coreApi.post).mockResolvedValue(synced(result));
     const user = userEvent.setup();
     const { client } = renderWithProviders(<CountriesPage />);
@@ -734,6 +737,7 @@ describe('CountriesPage: syncing the rates', () => {
     });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['expenses'] });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['clients'] });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['projects'] });
     await waitFor(() =>
       expect(
         vi

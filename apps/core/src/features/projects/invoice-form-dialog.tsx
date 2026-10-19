@@ -5,10 +5,13 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { PRIMARY_CURRENCY, taxRateProblem } from '@/features/countries/schema';
+import { formatMoney } from '@/features/expenses/money';
 import { statusOf } from '@/lib/core-api';
 import { addMonths, endOfMonth } from '@/lib/format';
-import { formatUsd } from '@/lib/money';
+import { formatUsd, toAmountText } from '@/lib/money';
 import { useInvoiceDraft, useNextInvoiceNumber, useSaveInvoice } from './api';
+import { NO_RATE_SENTENCE, billingTermsText, rateText } from './billing';
 import {
   blankLine,
   draftToLines,
@@ -44,8 +47,10 @@ const NONE = '—';
 const COLUMNS = 'sm:grid-cols-[1fr_4.5rem_6rem_7rem_6rem_5.5rem]';
 const ROW_OF_TWO = 'grid gap-6 sm:grid-cols-2 md:grid-cols-3';
 const ROW_OF_THREE = 'grid gap-6 md:grid-cols-3';
+const ROW_OF_FOUR = 'grid gap-6 sm:grid-cols-2 md:grid-cols-4';
 const LINE_FIELDS = ['description', 'headcount', 'quantity', 'rate'] as const;
-// The rate takes dollars and cents; Qty and hours are whole numbers.
+// The rate takes units and hundredths of the invoice's currency (dollars and cents, rupees and paise); Qty and hours are
+// whole numbers.
 const INPUT_MODES = { description: undefined, headcount: 'numeric', quantity: 'numeric', rate: 'decimal' } as const;
 
 export function InvoiceFormDialog({
@@ -128,6 +133,7 @@ function InvoiceEditor({
   const { fields, append, remove, replace } = useFieldArray({ control, name: 'lines' });
   const lines = watch('lines');
   const discountPercent = watch('discountPercent');
+  const taxRate = watch('taxRate');
   const issueDate = watch('issueDate');
   const next = useNextInvoiceNumber(projectId, issueDate, !numberRequired && addMonths(issueDate, 0) !== '');
   const seeded = useRef(false);
@@ -143,14 +149,16 @@ function InvoiceEditor({
   }, [isSubmitting, onBusyChange]);
   useEffect(() => () => onBusyChange(false), [onBusyChange]);
 
-  // The draft fills the lines once, when it arrives, and nothing else: whatever was typed in the header stays. An
-  // empty draft (a fixed cost project, or a retainer with no resources) leaves the one blank line.
+  // The draft fills the lines and the tax rate once, when it arrives, and nothing else: whatever was typed in the header
+  // stays, the tax rate included. An empty draft (a fixed cost project, or a retainer with no resources) leaves the one
+  // blank line.
   useEffect(() => {
     if (!adding || seeded.current || !draft.data) return;
     seeded.current = true;
     const seed = draftToLines(draft.data);
     if (seed.length > 0) replace(seed);
-  }, [adding, draft.data, replace]);
+    if (getValues('taxRate') === '') setValue('taxRate', String(draft.data.taxRate));
+  }, [adding, draft.data, replace, getValues, setValue]);
 
   function fillDueDate(issue: string) {
     const due = addMonths(issue, 3);
@@ -172,7 +180,17 @@ function InvoiceEditor({
     }
   }
 
+  // What the invoice is billed in: a new one takes the draft's terms, a saved one keeps its own, and its currency cannot
+  // change. Unknown while the draft loads or has failed: the currency of what is typed is not known either.
+  const terms = invoice ?? draft.data;
+  // Only a new invoice can be blocked: with no terms, or with a billing country that has no rate yet, the service
+  // would refuse it, and typed amounts would be in a currency the person cannot see.
+  const unbillable = adding && (terms === undefined || terms.exchangeRate === null);
+  const dollars = terms === undefined || terms.currencyCode === PRIMARY_CURRENCY;
+  const money = (minor: number) => (terms ? formatMoney(minor, terms) : toAmountText(minor));
+
   const submit = handleSubmit(async (values) => {
+    if (unbillable) return;
     setFailure(null);
     try {
       await save.mutateAsync({ id: invoice?.id, body: toInvoiceBody(values) });
@@ -190,10 +208,14 @@ function InvoiceEditor({
   const building = adding && draft.isLoading;
   const linesMessage = errors.lines?.root?.message ?? errors.lines?.message;
   const nextNumber = next.data?.number;
-  const totals = invoiceTotals(lines ?? [], discountPercent ?? '');
+  const totals = invoiceTotals(lines ?? [], discountPercent ?? '', taxRate ?? '', terms?.exchangeRate ?? 1);
+  // The tax line, like the discount's two, only while it takes effect: otherwise the total is the sum.
+  const taxShown = taxRateProblem(taxRate ?? '') === null && Number(taxRate) > 0;
 
   return (
     <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
+      {terms ? <p className="text-small font-semibold text-navy-80">Billed in {billingTermsText(terms)}</p> : null}
+
       {/* Three lines, one grid column each from `md` up so they stay in line with each other. */}
       <div className={ROW_OF_TWO}>
         <Field
@@ -255,7 +277,7 @@ function InvoiceEditor({
         </Field>
       </div>
 
-      <div className={ROW_OF_THREE}>
+      <div className={ROW_OF_FOUR}>
         <Field label="Due date" htmlFor="invoice-due-date" error={errors.dueDate?.message}>
           <Input {...fieldA11y('invoice-due-date', errors.dueDate?.message)} {...register('dueDate')} type="date" />
         </Field>
@@ -280,6 +302,19 @@ function InvoiceEditor({
             autoComplete="off"
           />
         </Field>
+        <Field
+          label="Tax rate (%)"
+          htmlFor="invoice-tax-rate"
+          error={errors.taxRate?.message}
+          hint={`${adding ? 'Starts from the billing country’s rate. ' : ''}Change it for this invoice only; 0 is no tax.`}
+        >
+          <Input
+            {...fieldA11y('invoice-tax-rate', errors.taxRate?.message)}
+            {...register('taxRate')}
+            inputMode="decimal"
+            autoComplete="off"
+          />
+        </Field>
       </div>
 
       <div className="grid gap-3">
@@ -294,6 +329,9 @@ function InvoiceEditor({
             {adding && draft.isError ? (
               <div role="alert" className="grid justify-items-start gap-1">
                 <p className="text-small font-semibold text-foreground">Could not build the lines.</p>
+                <p className="text-small text-foreground">
+                  The billing terms are unknown, so the invoice cannot be saved yet.
+                </p>
                 <Button variant="quiet" onClick={() => void draft.refetch()}>
                   Try again
                 </Button>
@@ -309,7 +347,7 @@ function InvoiceEditor({
               <span>Description</span>
               <span>Qty</span>
               <span>{unit}</span>
-              <span>Rate</span>
+              <span>{dollars ? 'Rate' : `Rate (${terms?.currencyCode})`}</span>
               <span className="text-right">Amount</span>
               <span />
             </div>
@@ -341,7 +379,7 @@ function InvoiceEditor({
                     ))}
                     <p className="tabular py-3 text-right text-small">
                       <span className="sr-only">{`Line ${number} amount `}</span>
-                      {amount === null ? NONE : formatUsd(amount)}
+                      {amount === null ? NONE : money(amount)}
                     </p>
                     <Button
                       variant="quiet"
@@ -376,27 +414,56 @@ function InvoiceEditor({
               <Button variant="quiet" onClick={() => append({ ...blankLine })}>
                 Add line
               </Button>
-              <div className="grid justify-items-end gap-1">
-                {/* The discount's two lines only while it takes something off: otherwise the total is the sum. */}
-                {totals.discount > 0 ? (
-                  <>
-                    <p className="tabular text-small">Subtotal {formatUsd(totals.subtotal)}</p>
+              {terms ? (
+                <div className="grid justify-items-end gap-1">
+                  {/* The subtotal, the discount and the tax only while they take effect: otherwise the total is the sum. */}
+                  {totals.discount > 0 || taxShown ? (
+                    <p className="tabular text-small">Subtotal {money(totals.subtotal)}</p>
+                  ) : null}
+                  {totals.discount > 0 ? (
                     <p className="tabular text-small">
-                      Discount ({Number(discountPercent)}%) -{formatUsd(totals.discount)}
+                      Discount ({Number(discountPercent)}%) -{money(totals.discount)}
                     </p>
-                  </>
-                ) : null}
-                <p className="tabular font-semibold">Total {formatUsd(totals.total)}</p>
-              </div>
+                  ) : null}
+                  {taxShown ? (
+                    <p className="tabular text-small">
+                      Tax ({Number(taxRate)}%) {money(totals.tax)}
+                    </p>
+                  ) : null}
+                  <p className="tabular font-semibold">Total {money(totals.total)}</p>
+                  {/* What the service keeps for the reports: the amount after the discount, before tax. */}
+                  {dollars || terms.exchangeRate === null ? null : (
+                    <p className="tabular text-small text-navy-72">
+                      About {formatUsd(totals.usd)} in US dollars, before tax
+                    </p>
+                  )}
+                </div>
+              ) : null}
             </div>
           </>
         )}
 
+        {dollars ? null : (
+          <p className="text-small text-navy-72">
+            Rates and amounts are in {terms?.currencyCode} ({terms?.currencySymbol}).
+          </p>
+        )}
         {billingType === 'retainer' ? (
           <p className="text-small text-navy-72">Retainer lines are 160 hours a month.</p>
         ) : null}
+        {/* The resources' rates are in US dollars; the draft has converted them, and the person may change any line. */}
+        {adding && billingType === 'retainer' && !dollars && terms?.exchangeRate ? (
+          <p className="text-small text-navy-72">
+            The resources’ dollar rates are converted to {terms.currencyCode} at {rateText(terms, terms.exchangeRate)}.
+          </p>
+        ) : null}
       </div>
 
+      {adding && terms?.exchangeRate === null ? (
+        <p role="alert" className="text-small font-semibold text-foreground">
+          {NO_RATE_SENTENCE}
+        </p>
+      ) : null}
       {failure === 'failed' ? (
         <p role="alert" className="text-small font-semibold text-foreground">
           That did not save. Try again.
@@ -408,7 +475,7 @@ function InvoiceEditor({
         </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting || unbillable}>
           Save
         </Button>
         <Button variant="quiet" disabled={isSubmitting} onClick={onClose}>

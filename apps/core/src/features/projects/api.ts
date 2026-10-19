@@ -15,7 +15,7 @@ import {
 } from './schema';
 
 // The list and a project's own page sit under one prefix, so a change refetches both.
-const PROJECTS = ['projects'] as const;
+export const PROJECTS = ['projects'] as const;
 const PROJECT_LIST = [...PROJECTS, 'list'] as const;
 const INVOICES = ['invoices'] as const;
 const RESOURCES = ['project-resources'] as const;

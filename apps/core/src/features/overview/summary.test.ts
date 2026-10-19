@@ -1,7 +1,7 @@
 import type { InvoiceRow, ProjectRow } from '@/features/projects/schema';
 import { summarize } from './summary';
 
-// Every amount is in whole US cents.
+// The projects' totals are in whole US cents, as the service adds them up from each invoice's `amountUsdCents`.
 const project = (id: number, totalValueCents: number, totalOutstandingCents: number): ProjectRow => ({
   id,
   name: `Project ${id}`,
@@ -10,6 +10,9 @@ const project = (id: number, totalValueCents: number, totalOutstandingCents: num
   billingAddress: '',
   discountPercent: 0,
   clientId: 1,
+  countryId: null,
+  country: null,
+  billing: { currencyCode: 'USD', currencySymbol: '$', exchangeRate: 1, taxRate: 0, source: 'default' },
   projectStatus: 'active',
   projectStatusLabel: 'Active',
   startDate: null,
@@ -29,9 +32,16 @@ const invoice = (id: number, fields: Partial<InvoiceRow> = {}): InvoiceRow => ({
   projectId: 1,
   number: `INV-${id}`,
   description: '',
+  currencyCode: 'USD',
+  currencySymbol: '$',
+  exchangeRate: 1,
+  taxRate: 0,
   subtotalCents: 10,
   discountPercent: 0,
   amountCents: 10,
+  taxCents: 0,
+  totalCents: 10,
+  amountUsdCents: 10,
   issueDate: '2026-10-01',
   dueDate: null,
   paidDate: null,
@@ -49,6 +59,19 @@ describe('summarize', () => {
     expect(summary.projectCount).toBe(3);
     expect(summary.totalValue).toBe(4000);
     expect(summary.totalOutstanding).toBe(1100);
+  });
+
+  it('takes the totals from the projects, in dollars, whatever currencies the invoices are in', () => {
+    const rupees = invoice(1, { currencyCode: 'INR', currencySymbol: '₹', exchangeRate: 88.25, amountCents: 20_000_000, amountUsdCents: 226_629 });
+    const summary = summarize([project(1, 226_629, 226_629)], [rupees]);
+    expect(summary.totalValue).toBe(226_629);
+    expect(summary.totalOutstanding).toBe(226_629);
+    expect(summary.topOutstanding.map((item) => item.totalOutstandingCents)).toEqual([226_629]);
+  });
+
+  it('lists an unpaid invoice with its own currency, for the page to show in it', () => {
+    const rupees = invoice(1, { currencyCode: 'INR', currencySymbol: '₹', amountCents: 20_000_000 });
+    expect(summarize([], [rupees]).unpaidInvoices[0]).toMatchObject({ currencyCode: 'INR', amountCents: 20_000_000 });
   });
 
   it('ranks the five largest outstanding amounts and leaves settled projects out', () => {

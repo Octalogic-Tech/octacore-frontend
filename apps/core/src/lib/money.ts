@@ -1,6 +1,8 @@
 /**
- * Money on the wire is whole US cents. This is the one place that turns cents into text, and typed dollars back into
- * cents, so nothing else in the app does arithmetic on dollars.
+ * Money on the wire is whole minor units: US cents, or the minor units (paise, euro cents) of an invoice's or an expense's
+ * own currency, always hundredths. This is the one place that turns them into text, and typed amounts back into minor
+ * units, so nothing else in the app does arithmetic on dollars. Other currencies are shown by `formatMoney` in
+ * `@/features/expenses/money`.
  */
 
 /** The most one amount can be, in cents ($100,000,000.00). The service refuses more. */

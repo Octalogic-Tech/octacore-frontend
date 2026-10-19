@@ -10,9 +10,12 @@ import { Arm } from '@/components/ui/marks';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useClients } from '@/features/clients/api';
+import { useCountries } from '@/features/countries/api';
+import { countryPickerOptions } from '@/features/countries/options';
 import { useTechnologies } from '@/features/technologies/api';
 import { serviceMessage, statusOf } from '@/lib/core-api';
 import { useSaveProject } from './api';
+import { CLIENT_COUNTRY_SENTENCE, billingSentence, chosenCountrySentence } from './billing';
 import {
   billingOptions,
   emptyProjectForm,
@@ -41,6 +44,7 @@ export function ProjectFormDialog({
   fallbackFocusId = 'project-search',
 }: ProjectFormDialogProps) {
   const clients = useClients();
+  const countries = useCountries();
   const technologies = useTechnologies();
   const save = useSaveProject();
   const [failure, setFailure] = useState<'failed' | 'removed' | null>(null);
@@ -51,8 +55,11 @@ export function ProjectFormDialog({
     reset,
     setError,
     setFocus,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<ProjectFormValues>({ resolver: zodResolver(projectFormSchema), defaultValues: emptyProjectForm });
+  const countryId = watch('countryId');
+  const clientId = watch('clientId');
 
   useEffect(() => {
     if (open) {
@@ -72,6 +79,31 @@ export function ProjectFormDialog({
     if (current && !options.some((option) => option.id === current.id)) options.push(current);
     return options;
   }, [clients.data, project]);
+
+  // The project's own billing country is always an option, even once switched off or without a rate, so a countries list
+  // that is still loading, has failed or has since dropped it cannot blank the select and clear the country on save.
+  const countryOptions = useMemo(
+    () =>
+      countryPickerOptions(countries.data ?? [], {
+        needsRate: true,
+        withCurrency: true,
+        current: project?.country ?? undefined,
+      }),
+    [countries.data, project],
+  );
+
+  // What a new invoice would be billed in. The service's `billing` says it for the project as saved, so it is quoted only
+  // while the country (and, with no country, the client) still is what was saved; after a change it is the picked
+  // country's own terms, or the rule for None, as the form would leave the project.
+  const countrySentence = useMemo(() => {
+    const saved = toProjectFormValues(project);
+    if (project && countryId === saved.countryId && (countryId !== '' || clientId === saved.clientId)) {
+      return billingSentence(project.billing);
+    }
+    if (countryId === '') return CLIENT_COUNTRY_SENTENCE;
+    const picked = countries.data?.find((row) => String(row.id) === countryId);
+    return picked ? chosenCountrySentence(picked) : undefined;
+  }, [project, countryId, clientId, countries.data]);
 
   // The project's own technologies are always offered, so a technology list that is still loading, has failed or has
   // since lost one cannot clear them on save.
@@ -162,6 +194,23 @@ export function ProjectFormDialog({
             <Select {...fieldA11y('project-client', errors.clientId?.message)} {...register('clientId')}>
               <option value="">None</option>
               {clientOptions.map((option) => (
+                <option key={option.id} value={String(option.id)}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field
+            label="Billing country"
+            htmlFor="project-country"
+            error={errors.countryId?.message}
+            hint={[countries.isError ? 'Countries could not be loaded.' : undefined, countrySentence]
+              .filter(Boolean)
+              .join(' ')}
+          >
+            <Select {...fieldA11y('project-country', errors.countryId?.message)} {...register('countryId')}>
+              <option value="">None</option>
+              {countryOptions.map((option) => (
                 <option key={option.id} value={String(option.id)}>
                   {option.label}
                 </option>

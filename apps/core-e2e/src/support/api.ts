@@ -42,6 +42,11 @@ const users = (): Row[] => [
 
 const acme = (): Row => record({ id: 1, name: 'Acme', description: 'Anvils and rockets.', countryId: 99, city: 'Pune' });
 
+// What a new invoice is billed in. Acme is in India (active, 88.25 rupees to the dollar, 18% tax in the countries stub),
+// so a project of Acme's with no country of its own bills in rupees; any other project is in dollars by default.
+const billedInRupees = { currencyCode: 'INR', currencySymbol: '₹', exchangeRate: 88.25, taxRate: 18, source: 'client' };
+const billedInDollars = { currencyCode: 'USD', currencySymbol: '$', exchangeRate: 1, taxRate: 0, source: 'default' };
+
 const project = (fields: Row): Row =>
   record({
     description: null,
@@ -54,6 +59,9 @@ const project = (fields: Row): Row =>
     technologies: [],
     clientId: null,
     client: null,
+    countryId: null,
+    country: null,
+    billing: billedInDollars,
     billingType: 'retainer',
     projectType: 'product',
     totalValueCents: 0,
@@ -72,17 +80,31 @@ const projects = (): Row[] => [
     discountPercent: 10,
     clientId: 1,
     client: acme(),
+    billing: billedInRupees,
     projectType: 'resource_augmentation',
-    totalValueCents: 4_800_000,
-    totalOutstandingCents: 1_200_000,
+    // The two dollar invoices and the one in rupees (INV-003, $2,266.29), each at its own rate and before tax.
+    totalValueCents: 5_026_629,
+    totalOutstandingCents: 1_426_629,
   }),
   project({ id: 2, name: 'Mobile app', billingType: 'fixed_cost', totalValueCents: 3_200_000 }),
-  project({ id: 3, name: 'Legacy portal', clientId: 1, client: acme(), projectType: null, billingType: null }),
+  project({
+    id: 3,
+    name: 'Legacy portal',
+    clientId: 1,
+    client: acme(),
+    billing: billedInRupees,
+    projectType: null,
+    billingType: null,
+  }),
 ];
 
-// Every amount the service sends is whole US cents: a rate of 15000 is $150.00 an hour.
+// Every amount the service sends is whole minor units of the invoice's currency: a rate of 15000 on a dollar invoice is
+// $150.00 an hour.
 const line = (id: number, invoiceId: number, description: string, quantity: number, rateCents: number): Row =>
   record({ id, invoiceId, description, headcount: 1, quantity, rateCents, amountCents: quantity * rateCents });
+
+// Invoices from before currencies are in dollars at rate 1, with no tax.
+const dollars = { currencyCode: 'USD', currencySymbol: '$', exchangeRate: 1, taxRate: 0, taxCents: 0 };
 
 const invoices = (): Row[] => [
   record({
@@ -90,9 +112,12 @@ const invoices = (): Row[] => [
     projectId: 1,
     number: 'INV-001',
     description: 'October retainer',
+    ...dollars,
     subtotalCents: 3_600_000,
     discountPercent: 0,
     amountCents: 3_600_000,
+    totalCents: 3_600_000,
+    amountUsdCents: 3_600_000,
     issueDate: '2026-10-01',
     dueDate: '2026-10-31',
     paidDate: '2026-10-12',
@@ -105,15 +130,42 @@ const invoices = (): Row[] => [
     projectId: 1,
     number: 'INV-002',
     description: null,
+    ...dollars,
     subtotalCents: 1_200_000,
     discountPercent: 0,
     amountCents: 1_200_000,
+    totalCents: 1_200_000,
+    amountUsdCents: 1_200_000,
     issueDate: '2026-11-01',
     dueDate: null,
     paidDate: null,
     periodStart: null,
     periodEnd: null,
     lineItems: [line(3, 2, 'Ben Cho — Web', 160, 7500)],
+  }),
+  // ₹2,00,000.00 (20,000,000 paise) with 18% tax: 3,600,000 paise, 23,600,000 to pay. At 88.25 to the dollar the amount
+  // is 226,628.89 US cents, 226,629 when rounded half up.
+  record({
+    id: 3,
+    projectId: 1,
+    number: 'INV-003',
+    description: 'Mobile app build',
+    currencyCode: 'INR',
+    currencySymbol: '₹',
+    exchangeRate: 88.25,
+    taxRate: 18,
+    subtotalCents: 20_000_000,
+    discountPercent: 0,
+    amountCents: 20_000_000,
+    taxCents: 3_600_000,
+    totalCents: 23_600_000,
+    amountUsdCents: 226_629,
+    issueDate: '2026-11-02',
+    dueDate: null,
+    paidDate: null,
+    periodStart: null,
+    periodEnd: null,
+    lineItems: [line(4, 3, 'Mobile app build', 1, 20_000_000)],
   }),
 ];
 
@@ -271,12 +323,17 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
   stubCore('GET', '/invoices*', () => ({ body: envelope(invoices()) }));
   // `*` does not cross a `/`, so the draft (`/projects/1/invoice-draft`) needs its own stub; the resources call
   // carries a query string.
+  // Website bills in rupees: the resources' $150.00 and $75.00 an hour converted at 88.25 (₹13,237.50 and ₹6,618.75).
   stubCore('GET', '/projects/*/invoice-draft', () => ({
     body: envelope({
       lineItems: [
-        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rateCents: 15000 },
-        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rateCents: 7500 },
+        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rateCents: 1_323_750 },
+        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rateCents: 661_875 },
       ],
+      currencyCode: 'INR',
+      currencySymbol: '₹',
+      exchangeRate: 88.25,
+      taxRate: 18,
     }),
   }));
   stubCore('GET', '/project-resources*', () => ({ body: envelope(resources()) }));

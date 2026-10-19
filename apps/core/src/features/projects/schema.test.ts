@@ -1,5 +1,13 @@
 import { MAX_CENTS, toAmountText } from '@/lib/money';
-import { draftBody, emailDraftBody, invoiceRows, projectRows, resourceRows } from '@/test/fixtures/projects';
+import {
+  draftBody,
+  draftInrBody,
+  emailDraftBody,
+  inrInvoiceRow,
+  invoiceRows,
+  projectRows,
+  resourceRows,
+} from '@/test/fixtures/projects';
 import {
   blankLine,
   discountAmount,
@@ -22,6 +30,7 @@ import {
   resourceFormSchema,
   resourceRowsSchema,
   sortInvoices,
+  taxAmount,
   toInvoiceBody,
   toEmailFormValues,
   toInvoiceFormValues,
@@ -61,6 +70,8 @@ const invoiceForm = (over: Partial<InvoiceFormValues> = {}): InvoiceFormValues =
   ...emptyInvoiceForm,
   number: 'INV-001',
   issueDate: '2026-10-01',
+  // The draft fills the tax rate of a new invoice; the empty form has none.
+  taxRate: '0',
   lines: [lineForm()],
   ...over,
 });
@@ -124,6 +135,52 @@ describe('project row schema', () => {
     expect(projectRowsSchema.safeParse([row]).success).toBe(false);
   });
 
+  it('reads the billing country, and what a new invoice would be billed in', () => {
+    const [website, mobile, legacy] = projects;
+    // No country of its own: the client's (India) decides.
+    expect(website).toMatchObject({
+      countryId: null,
+      country: null,
+      billing: { currencyCode: 'INR', currencySymbol: '₹', exchangeRate: 88.25, taxRate: 18, source: 'client' },
+    });
+    expect(mobile).toMatchObject({
+      countryId: 80,
+      country: { id: 80, name: 'Germany', currencyCode: 'EUR', currencySymbol: '€' },
+      billing: { currencyCode: 'EUR', exchangeRate: 0.92, taxRate: 19, source: 'project' },
+    });
+    expect(legacy.billing).toEqual({
+      currencyCode: 'USD',
+      currencySymbol: '$',
+      exchangeRate: 1,
+      taxRate: 0,
+      source: 'project',
+    });
+  });
+
+  it('keeps a null exchange rate: the project’s own country has lost its rate', () => {
+    const billing = { ...projectRows[1].billing, exchangeRate: null };
+    const [row] = projectRowsSchema.parse([{ ...projectRows[1], billing }]);
+    expect(row.billing.exchangeRate).toBeNull();
+  });
+
+  it.each(['project', 'client', 'default'])('reads a billing source of %s', (source) => {
+    const billing = { ...projectRows[0].billing, source };
+    expect(projectRowsSchema.safeParse([{ ...projectRows[0], billing }]).success).toBe(true);
+  });
+
+  it.each([
+    ['a billing block', { ...projectRows[0], billing: undefined }],
+    ['a country id field', { ...projectRows[0], countryId: undefined }],
+    ['a country field', { ...projectRows[0], country: undefined }],
+    ['a currency code', { ...projectRows[0], billing: { ...projectRows[0].billing, currencyCode: undefined } }],
+    ['a tax rate', { ...projectRows[0], billing: { ...projectRows[0].billing, taxRate: undefined } }],
+    ['an exchange rate field', { ...projectRows[0], billing: { ...projectRows[0].billing, exchangeRate: undefined } }],
+    ['a known source', { ...projectRows[0], billing: { ...projectRows[0].billing, source: 'country' } }],
+    ['a country with a currency', { ...projectRows[1], country: { id: 80, name: 'Germany' } }],
+  ])('rejects a project row without %s', (_label, row) => {
+    expect(projectRowsSchema.safeParse([row]).success).toBe(false);
+  });
+
   it('rejects a bare array of the mock shape, where the client was a string', () => {
     const mock = {
       id: 1,
@@ -148,8 +205,41 @@ describe('invoice row schema', () => {
     expect(invoices[1]).toMatchObject({ description: '', dueDate: null, paidDate: null });
   });
 
+  it('reads the currency the invoice was issued in, its rate and tax, and its amounts in both currencies', () => {
+    expect(invoices[0]).toMatchObject({
+      currencyCode: 'USD',
+      currencySymbol: '$',
+      exchangeRate: 1,
+      taxRate: 0,
+      taxCents: 0,
+      totalCents: 3_600_000,
+      amountUsdCents: 3_600_000,
+    });
+    const [inr] = invoiceRowsSchema.parse([inrInvoiceRow]);
+    expect(inr).toMatchObject({
+      currencyCode: 'INR',
+      currencySymbol: '₹',
+      exchangeRate: 88.25,
+      taxRate: 18,
+      subtotalCents: 20_000_000,
+      amountCents: 20_000_000,
+      taxCents: 3_600_000,
+      totalCents: 23_600_000,
+      amountUsdCents: 226_629,
+    });
+  });
+
   it.each([
     ['a project id', { ...invoiceRows[0], projectId: undefined }],
+    ['a currency code', { ...invoiceRows[0], currencyCode: undefined }],
+    ['a currency symbol', { ...invoiceRows[0], currencySymbol: undefined }],
+    ['an exchange rate', { ...invoiceRows[0], exchangeRate: undefined }],
+    ['a rate that is a number', { ...invoiceRows[0], exchangeRate: null }],
+    ['a tax rate', { ...invoiceRows[0], taxRate: undefined }],
+    ['a tax amount', { ...invoiceRows[0], taxCents: undefined }],
+    ['a total', { ...invoiceRows[0], totalCents: undefined }],
+    ['a dollar amount', { ...invoiceRows[0], amountUsdCents: undefined }],
+    ['a whole-cent dollar amount', { ...invoiceRows[0], amountUsdCents: 1.5 }],
     ['a number', { ...invoiceRows[0], number: undefined }],
     ['an amount', { ...invoiceRows[0], amountCents: undefined }],
     ['a subtotal', { ...invoiceRows[0], subtotalCents: undefined }],
@@ -176,7 +266,7 @@ describe('sortInvoices', () => {
 });
 
 describe('overdueTotal', () => {
-  // INV-002: unpaid, $12,000.00 (1_200_000 cents). Each case changes only what the name says.
+  // INV-002: unpaid, $12,000.00 (1_200_000 cents) in dollars too. Each case changes only what the name says.
   const unpaid = invoices[1];
   const today = '2026-11-20';
 
@@ -196,11 +286,26 @@ describe('overdueTotal', () => {
       subtotalCents: 1_000_000,
       discountPercent: 10,
       amountCents: 900_000,
+      amountUsdCents: 900_000,
       dueDate: '2026-11-01',
     };
-    const later = { ...unpaid, id: 9, subtotalCents: 500_000, amountCents: 500_000, dueDate: '2026-11-10' };
-    const notYet = { ...unpaid, id: 10, amountCents: 70_000, dueDate: '2026-12-01' };
+    const later = {
+      ...unpaid,
+      id: 9,
+      subtotalCents: 500_000,
+      amountCents: 500_000,
+      amountUsdCents: 500_000,
+      dueDate: '2026-11-10',
+    };
+    const notYet = { ...unpaid, id: 10, amountCents: 70_000, amountUsdCents: 70_000, dueDate: '2026-12-01' };
     expect(overdueTotal([late, later, notYet], today)).toBe(1_400_000);
+  });
+
+  it('adds up in US dollars: an overdue invoice in rupees counts as its amount at its own rate, before tax', () => {
+    const [inr] = invoiceRowsSchema.parse([inrInvoiceRow]);
+    // ₹2,00,000.00 (20,000,000 paise) at 88.25 is $2,266.29; its 18% tax is not revenue. Due 20 Oct, so overdue on 20 Nov.
+    expect(overdueTotal([inr], today)).toBe(226_629);
+    expect(overdueTotal([inr, { ...unpaid, dueDate: '2026-11-19' }], today)).toBe(226_629 + 1_200_000);
   });
 
   it('is zero for no invoices', () => {
@@ -234,6 +339,7 @@ describe('toProjectBody', () => {
       name: 'Website',
       description: null,
       clientId: null,
+      countryId: null,
       projectType: 'product',
       billingType: 'retainer',
       key: null,
@@ -251,6 +357,33 @@ describe('toProjectBody', () => {
   });
 });
 
+describe('the billing country in the project form', () => {
+  it('starts on None: the client’s country decides', () => {
+    expect(emptyProjectForm.countryId).toBe('');
+  });
+
+  it('sends a chosen country as a number, and None as null, which clears the project’s own', () => {
+    expect(toProjectBody(projectForm({ countryId: '99' })).countryId).toBe(99);
+    expect(toProjectBody(projectForm({ countryId: '' })).countryId).toBeNull();
+  });
+
+  it('is not required', () => {
+    expect(projectMessages(projectForm({ countryId: '' }))).toEqual([]);
+    expect(projectMessages(projectForm({ countryId: '99' }))).toEqual([]);
+  });
+
+  it('opens on a project’s own country as text, and on None for one with none', () => {
+    expect(toProjectFormValues(projects[1]).countryId).toBe('80');
+    expect(toProjectFormValues(projects[0]).countryId).toBe('');
+  });
+
+  it('opens on None for a country the service no longer embeds, not on a stale id', () => {
+    const [orphan] = projectRowsSchema.parse([{ ...projectRows[1], country: null }]);
+    expect(orphan.countryId).toBe(80);
+    expect(toProjectFormValues(orphan).countryId).toBe('');
+  });
+});
+
 describe('toProjectFormValues', () => {
   it('opens empty for a new project', () => {
     expect(toProjectFormValues()).toEqual(emptyProjectForm);
@@ -263,6 +396,7 @@ describe('toProjectFormValues', () => {
       key: 'WEB',
       billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',
       clientId: '1',
+      countryId: '',
       projectType: 'resource_augmentation',
       billingType: 'retainer',
       discountPercent: '0',
@@ -328,10 +462,11 @@ describe('invoice form schema', () => {
     expect(invoiceMessages(invoiceForm())).toEqual([]);
   });
 
-  it('asks for a number, an issue date and, on the blank line, a description, quantity and rate', () => {
+  it('asks for a number, an issue date, a tax rate and, on the blank line, a description, quantity and rate', () => {
     expect(invoiceMessages(emptyInvoiceForm)).toEqual([
       'Number is required',
       'Issue date is required',
+      'Enter a tax rate, or 0 for none',
       'Description is required',
       'Quantity is required',
       'Rate is required',
@@ -404,6 +539,7 @@ describe('toInvoiceBody', () => {
       periodStart: null,
       periodEnd: null,
       discountPercent: 0,
+      taxRate: 0,
       lineItems: [{ description: 'Backend work', headcount: 1, quantity: 160, rateCents: 15000 }],
     });
   });
@@ -440,6 +576,7 @@ describe('toInvoiceFormValues', () => {
       periodStart: '2026-09-01',
       periodEnd: '2026-09-30',
       discountPercent: '0',
+      taxRate: '0',
       lines: [
         { description: 'Asha Rao — Mobile', headcount: '1', quantity: '160', rate: '150.00' },
         { description: 'Ben Cho — Web', headcount: '1', quantity: '160', rate: '75.00' },
@@ -493,19 +630,30 @@ describe('invoice rows with their lines', () => {
 });
 
 describe('invoice draft schema', () => {
-  it('reads the lines a new invoice would start with', () => {
+  it('reads the lines a new invoice would start with, and the billing terms they are in', () => {
     expect(invoiceDraftSchema.parse(draftBody)).toEqual(draftBody);
+    expect(invoiceDraftSchema.parse(draftInrBody)).toEqual(draftInrBody);
   });
 
   it('accepts an empty draft', () => {
-    expect(invoiceDraftSchema.parse({ lineItems: [] })).toEqual({ lineItems: [] });
+    const empty = { ...draftBody, lineItems: [] };
+    expect(invoiceDraftSchema.parse(empty)).toEqual(empty);
   });
 
-  it('rejects a bare array and a line with a text quantity', () => {
-    expect(invoiceDraftSchema.safeParse([]).success).toBe(false);
-    expect(
-      invoiceDraftSchema.safeParse({ lineItems: [{ description: 'x', quantity: '160', rateCents: 1 }] }).success,
-    ).toBe(false);
+  it('keeps a null exchange rate: the project’s billing country has no rate yet', () => {
+    expect(invoiceDraftSchema.parse({ ...draftInrBody, exchangeRate: null }).exchangeRate).toBeNull();
+  });
+
+  it.each([
+    ['a bare array', []],
+    ['a line with a text quantity', { ...draftBody, lineItems: [{ description: 'x', quantity: '160', rateCents: 1 }] }],
+    ['the lines alone: no billing terms', { lineItems: draftBody.lineItems }],
+    ['a currency code', { ...draftBody, currencyCode: undefined }],
+    ['a currency symbol', { ...draftBody, currencySymbol: undefined }],
+    ['an exchange rate field', { ...draftBody, exchangeRate: undefined }],
+    ['a tax rate', { ...draftBody, taxRate: undefined }],
+  ])('rejects %s', (_label, body) => {
+    expect(invoiceDraftSchema.safeParse(body).success).toBe(false);
   });
 });
 
@@ -984,42 +1132,201 @@ describe('discountAmount', () => {
   });
 });
 
+describe('taxAmount', () => {
+  // The service's own rule (`floor(amount x tax_rate / 100 + 0.5)`, in SQL): half a minor unit goes up. Done here in
+  // hundredths of a percent on BigInt, as `floor((amount x hundredths + 5000) / 10000)`. The expected figures were
+  // worked out with Python integers, not with the function under test.
+  it.each([
+    [100_000, '18', 18_000],
+    [20_000_000, '18', 3_600_000],
+    [1010, '7.5', 76], // 75.75
+    [5, '10', 1], // 0.5 goes up
+    [4, '10', 0], // 0.4
+    [1, '50', 1], // 0.5
+    [12_345, '18.5', 2_284], // 2284.325
+    [0, '18', 0],
+    [100_000, '0', 0],
+    [2_147_483_647 * 200, '18', 77_309_411_292],
+  ])('takes %i minor units at %s percent to %i, half up', (amount, percent, expected) => {
+    expect(taxAmount(amount, percent)).toBe(expected);
+  });
+
+  it('is exact on the product where a float would land on the next unit', () => {
+    // 1_801_800_215_001 x 9_999 hundredths is 18_016_200_349_794_999, past 2^53. A float answers 1_801_620_034_980.
+    expect(taxAmount(1_801_800_215_001, '99.99')).toBe(1_801_620_034_979);
+    expect(taxAmount(1_801_800_215_002, '99.99')).toBe(1_801_620_034_980);
+  });
+
+  it('reads 100 percent as the whole amount again, and spaces and a trailing zero', () => {
+    expect(taxAmount(12_345, '100')).toBe(12_345);
+    expect(taxAmount(1000, ' 18.50 ')).toBe(185);
+  });
+
+  it('is nothing for text the form refuses, which it reports on its own', () => {
+    for (const text of ['', '  ', 'abc', '1.234', '100.01', '-1', '1,5', '18%']) expect(taxAmount(1000, text)).toBe(0);
+  });
+
+  it('is nothing for an amount that is not a safe whole number, which the form is already refusing', () => {
+    expect(taxAmount(Number.MAX_SAFE_INTEGER + 2, '18')).toBe(0);
+    expect(taxAmount(Number.POSITIVE_INFINITY, '18')).toBe(0);
+  });
+});
+
 describe('invoiceTotals', () => {
-  it('gives the subtotal of the lines, the discount and the total payable, all in cents', () => {
+  it('gives the subtotal of the lines, the discount, the amount, the tax and the total payable, all in cents', () => {
     const lines = [lineForm({ quantity: '10', rate: '100' })];
 
-    expect(invoiceTotals(lines, '10')).toEqual({ subtotal: 100_000, discount: 10_000, total: 90_000 });
-    expect(invoiceTotals(lines, '0')).toEqual({ subtotal: 100_000, discount: 0, total: 100_000 });
+    expect(invoiceTotals(lines, '10')).toEqual({
+      subtotal: 100_000,
+      discount: 10_000,
+      amount: 90_000,
+      tax: 0,
+      total: 90_000,
+      usd: 90_000,
+    });
+    expect(invoiceTotals(lines, '0')).toMatchObject({ subtotal: 100_000, discount: 0, amount: 100_000, total: 100_000 });
   });
 
   it('works to the cent: 3 people for 160 hours at 12.50, ten percent off', () => {
     const lines = [{ headcount: '3', quantity: '160', rate: '12.50' }];
 
-    expect(invoiceTotals(lines, '10')).toEqual({ subtotal: 600_000, discount: 60_000, total: 540_000 });
+    expect(invoiceTotals(lines, '10')).toMatchObject({ subtotal: 600_000, discount: 60_000, total: 540_000 });
   });
 
   it('floors the discount once, on the subtotal, as the service does', () => {
     // 7.5% of 10.10 is 0.7575: 75 cents off, not 76.
     const lines = [{ headcount: '1', quantity: '1', rate: '10.10' }];
 
-    expect(invoiceTotals(lines, '7.5')).toEqual({ subtotal: 1010, discount: 75, total: 935 });
+    expect(invoiceTotals(lines, '7.5')).toMatchObject({ subtotal: 1010, discount: 75, total: 935 });
   });
 
   it('counts only the lines that have an amount', () => {
     const lines = [lineForm({ quantity: '10', rate: '100' }), lineForm({ quantity: '', rate: '' })];
 
-    expect(invoiceTotals(lines, '50')).toEqual({ subtotal: 100_000, discount: 50_000, total: 50_000 });
+    expect(invoiceTotals(lines, '50')).toMatchObject({ subtotal: 100_000, discount: 50_000, total: 50_000 });
   });
 
   it('is exact at the extreme: 200 lines at the cap, half off', () => {
     const atTheCap = { headcount: '1', quantity: '1', rate: toAmountText(MAX_CENTS) };
     const lines = Array.from({ length: 200 }, () => atTheCap);
 
-    expect(invoiceTotals(lines, '50')).toEqual({
+    expect(invoiceTotals(lines, '50')).toMatchObject({
       subtotal: 2_000_000_000_000,
       discount: 1_000_000_000_000,
       total: 1_000_000_000_000,
     });
+  });
+
+  it('taxes the amount after the discount, not the subtotal, and adds it to the total', () => {
+    // ₹10,000.00 less 10% is ₹9,000.00; 18% of that is ₹1,620.00; ₹10,620.00 to pay.
+    const lines = [{ headcount: '1', quantity: '1', rate: '10000' }];
+
+    expect(invoiceTotals(lines, '10', '18')).toMatchObject({
+      subtotal: 1_000_000,
+      discount: 100_000,
+      amount: 900_000,
+      tax: 162_000,
+      total: 1_062_000,
+    });
+  });
+
+  it('rounds the tax half up once, on the amount, whatever the lines', () => {
+    // Two lines of 0.05 at 10%: 0.10 amount, 0.01 tax; each line alone would have been 0.005, rounded up twice.
+    const lines = [
+      { headcount: '1', quantity: '1', rate: '0.05' },
+      { headcount: '1', quantity: '1', rate: '0.05' },
+    ];
+
+    expect(invoiceTotals(lines, '0', '10')).toMatchObject({ amount: 10, tax: 1, total: 11 });
+  });
+
+  it('takes no tax for 0, or for text the form refuses', () => {
+    const lines = [lineForm({ quantity: '10', rate: '100' })];
+
+    for (const tax of ['0', '', 'abc', '101']) {
+      expect(invoiceTotals(lines, '0', tax)).toMatchObject({ tax: 0, total: 100_000 });
+    }
+  });
+
+  it('works out the US dollars from the amount before tax, at the invoice’s own rate, half up', () => {
+    // ₹2,00,000.00 at 88.25 is 226,628.89 US cents: $2,266.29. The 18% tax is not part of it.
+    const lines = [{ headcount: '1', quantity: '1', rate: '200000' }];
+
+    expect(invoiceTotals(lines, '0', '18', 88.25)).toMatchObject({
+      amount: 20_000_000,
+      tax: 3_600_000,
+      total: 23_600_000,
+      usd: 226_629,
+    });
+  });
+
+  it.each([
+    ['0.01', 1.5, 1], // 1 paise at 1.5 per dollar is 0.67 cents: 1
+    ['0.01', 3, 0], // 0.33 cents: 0
+    ['0.03', 2, 2], // 1.5 cents goes up
+    ['0.05', 3, 2], // 1.67
+  ])('rounds the dollars half up: %s at %f per dollar is %i cents', (rate, exchangeRate, cents) => {
+    const lines = [{ headcount: '1', quantity: '1', rate }];
+
+    expect(invoiceTotals(lines, '0', '0', exchangeRate).usd).toBe(cents);
+  });
+
+  it('is the amount itself in dollars, at rate 1', () => {
+    const lines = [{ headcount: '1', quantity: '1', rate: '12.34' }];
+
+    expect(invoiceTotals(lines, '0', '0').usd).toBe(1234);
+    expect(invoiceTotals(lines, '0', '0', 1).usd).toBe(1234);
+  });
+});
+
+describe('the tax rate in the invoice form', () => {
+  it('starts empty, for the draft to fill: the project’s rate is not known until it arrives', () => {
+    expect(emptyInvoiceForm.taxRate).toBe('');
+  });
+
+  it.each(['0', '0.00', '18', '7.25', '7.5', '100', '100.00', ' 18 '])('accepts %j', (value) => {
+    expect(invoiceMessages(invoiceForm({ taxRate: value }))).toEqual([]);
+  });
+
+  it('asks for a rate, which is told apart from a rate of 0', () => {
+    expect(invoiceMessages(invoiceForm({ taxRate: '' }))).toEqual(['Enter a tax rate, or 0 for none']);
+    expect(invoiceMessages(invoiceForm({ taxRate: '   ' }))).toEqual(['Enter a tax rate, or 0 for none']);
+  });
+
+  it.each(['abc', '1,5', '18%', '-1', '1.234', '.5', '5.', '1e1'])('refuses %j as not a tax rate', (value) => {
+    expect(invoiceMessages(invoiceForm({ taxRate: value }))).toEqual([
+      'Enter a tax rate like 18 or 7.25, with no commas and at most two decimals',
+    ]);
+  });
+
+  it.each(['100.01', '101', '999'])('refuses %j as above 100', (value) => {
+    expect(invoiceMessages(invoiceForm({ taxRate: value }))).toEqual(['The tax rate cannot be more than 100']);
+  });
+
+  it('is reported on its own field, and still checked when the number may be left to the server', () => {
+    const result = invoiceFormSchema.safeParse(invoiceForm({ taxRate: '101' }));
+    expect(result.success ? [] : result.error.issues.map((issue) => issue.path)).toEqual([['taxRate']]);
+
+    const schema = makeInvoiceFormSchema({ numberRequired: false });
+    expect(schema.safeParse(invoiceForm({ number: '', taxRate: '' })).success).toBe(false);
+    expect(schema.safeParse(invoiceForm({ number: '', taxRate: '18' })).success).toBe(true);
+  });
+
+  it('is sent as a number, 0 included', () => {
+    expect(toInvoiceBody(invoiceForm({ taxRate: '18' })).taxRate).toBe(18);
+    expect(toInvoiceBody(invoiceForm({ taxRate: '7.50' })).taxRate).toBe(7.5);
+    expect(toInvoiceBody(invoiceForm({ taxRate: ' 12.25 ' })).taxRate).toBe(12.25);
+    expect(toInvoiceBody(invoiceForm({ taxRate: '0' })).taxRate).toBe(0);
+  });
+
+  it('opens on an invoice’s own tax rate as text, and on empty for a new invoice', () => {
+    const [inr] = invoiceRowsSchema.parse([inrInvoiceRow]);
+    const [fractional] = invoiceRowsSchema.parse([{ ...inrInvoiceRow, taxRate: 7.25 }]);
+
+    expect(toInvoiceFormValues(inr).taxRate).toBe('18');
+    expect(toInvoiceFormValues(fractional).taxRate).toBe('7.25');
+    expect(toInvoiceFormValues(invoices[0]).taxRate).toBe('0');
+    expect(toInvoiceFormValues(undefined, 10).taxRate).toBe('');
   });
 });
 

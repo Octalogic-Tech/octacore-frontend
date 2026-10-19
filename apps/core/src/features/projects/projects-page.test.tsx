@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { coreApi } from '@/lib/core-api';
 import { clientsEnvelope } from '@/test/fixtures/clients';
+import { countriesEnvelope } from '@/test/fixtures/countries';
 import { projectRows, projectsEnvelope } from '@/test/fixtures/projects';
 import { renderWithProviders } from '@/test/utils';
 import { ProjectsPage } from './projects-page';
@@ -17,6 +18,7 @@ const serve = (projects: unknown = projectsEnvelope()) =>
   vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
     if (path === '/projects') return { data: projects };
     if (path === '/clients') return { data: clientsEnvelope() };
+    if (path === '/countries') return { data: countriesEnvelope() };
     throw new Error(`unexpected GET ${path}`);
   }) as never);
 

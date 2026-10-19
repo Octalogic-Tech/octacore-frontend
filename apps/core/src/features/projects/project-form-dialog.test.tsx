@@ -3,9 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { coreApi } from '@/lib/core-api';
 import { clientsEnvelope } from '@/test/fixtures/clients';
+import { countriesEnvelope } from '@/test/fixtures/countries';
 import { projectRows } from '@/test/fixtures/projects';
 import { technologiesEnvelope } from '@/test/fixtures/technologies';
 import { renderWithProviders } from '@/test/utils';
+import { CLIENT_COUNTRY_SENTENCE, NO_RATE_SENTENCE } from './billing';
 import { ProjectFormDialog } from './project-form-dialog';
 import { projectRowsSchema, type ProjectRow } from './schema';
 
@@ -28,6 +30,7 @@ function openDialog(props: { project?: ProjectRow } = {}) {
 beforeEach(() => {
   vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
     if (path === '/clients') return { data: clientsEnvelope() };
+    if (path === '/countries') return { data: countriesEnvelope() };
     if (path === '/technologies') return { data: technologiesEnvelope() };
     throw new Error(`unexpected GET ${path}`);
   }) as never);
@@ -56,6 +59,7 @@ describe('ProjectFormDialog: adding', () => {
       name: 'Hooli',
       description: 'Search and more.',
       clientId: 1,
+      countryId: null,
       projectType: 'product',
       billingType: 'retainer',
       key: null,
@@ -81,6 +85,7 @@ describe('ProjectFormDialog: adding', () => {
       name: 'Hooli',
       description: null,
       clientId: null,
+      countryId: null,
       projectType: 'resource_augmentation',
       billingType: 'fixed_cost',
       key: null,
@@ -135,6 +140,7 @@ describe('ProjectFormDialog: editing', () => {
       name: 'Website',
       description: null,
       clientId: 1,
+      countryId: null,
       projectType: 'resource_augmentation',
       billingType: 'retainer',
       key: 'WEB',
@@ -163,6 +169,7 @@ describe('ProjectFormDialog: editing', () => {
       name: 'Legacy portal',
       description: 'Built before types.',
       clientId: 1,
+      countryId: 226,
       projectType: 'product',
       billingType: 'fixed_cost',
       key: null,
@@ -254,6 +261,7 @@ describe('ProjectFormDialog: key and billing address', () => {
       name: 'Hooli',
       description: null,
       clientId: null,
+      countryId: null,
       projectType: 'product',
       billingType: 'retainer',
       key: 'TKO',
@@ -546,5 +554,194 @@ describe('ProjectFormDialog: technologies', () => {
     }) as never);
     openDialog();
     expect(await screen.findByText('No technologies yet. Add some on the Technologies page.')).toBeInTheDocument();
+  });
+});
+
+describe('ProjectFormDialog: billing country', () => {
+  const country = () => screen.getByLabelText('Billing country');
+  const optionNames = () => within(country()).getAllByRole('option').map((option) => option.textContent);
+
+  /** Waits for the countries, which fill the select once they arrive. */
+  const loaded = () => screen.findByRole('option', { name: 'India · INR' });
+
+  const fillRequired = async (user: ReturnType<typeof userEvent.setup>) => {
+    await user.type(screen.getByLabelText('Name'), 'Hooli');
+    await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
+    await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
+  };
+
+  it('offers None and the active countries that have a rate, labelled with their currency, A to Z', async () => {
+    openDialog();
+    await loaded();
+
+    // Japan is active but has no rate yet, and Antarctica and France are switched off.
+    expect(optionNames()).toEqual(['None', 'Germany · EUR', 'India · INR', 'United States · USD']);
+    expect(country()).toHaveValue('');
+  });
+
+  it('sits under Client and before the types', async () => {
+    openDialog();
+    await loaded();
+
+    const order = ['Client', 'Billing country', 'Project type'].map((label) => screen.getByLabelText(label));
+    order.slice(1).forEach((field, i) => {
+      expect(order[i].compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+  });
+
+  it('sends None as null, so a new project bills in its client’s country', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog();
+    await loaded();
+    await fillRequired(user);
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+
+    expect(coreApi.post).toHaveBeenCalledWith('/projects', expect.objectContaining({ countryId: null }));
+  });
+
+  it('sends a chosen country as its id', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog();
+    await loaded();
+    await fillRequired(user);
+    await user.selectOptions(country(), 'United States · USD');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+
+    expect(coreApi.post).toHaveBeenCalledWith('/projects', expect.objectContaining({ countryId: 226 }));
+  });
+
+  it('opens an edit on the project’s own country, and clears it with null', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    const [, mobile] = projectRowsSchema.parse(projectRows);
+    openDialog({ project: mobile });
+    await loaded();
+    expect(country()).toHaveValue('80');
+
+    await user.selectOptions(country(), 'None');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+
+    expect(coreApi.patch).toHaveBeenCalledWith('/projects/2', expect.objectContaining({ countryId: null }));
+  });
+
+  it('keeps the project’s own country when it is saved unchanged', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ project: legacy });
+    await loaded();
+    expect(country()).toHaveValue('226');
+    // Legacy portal predates the types, which a save asks for.
+    await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
+    await user.selectOptions(screen.getByLabelText('Billing type'), 'Fixed cost');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+
+    expect(coreApi.patch).toHaveBeenCalledWith('/projects/3', expect.objectContaining({ countryId: 226 }));
+  });
+
+  it('keeps the project’s own country as an option though it is switched off, in its place A to Z', async () => {
+    const own = { id: 8, name: 'Antarctica', currencyCode: 'USD', currencySymbol: '$' };
+    const [project] = projectRowsSchema.parse([{ ...projectRows[1], countryId: 8, country: own }]);
+    openDialog({ project });
+    await loaded();
+    expect(optionNames()).toEqual(['None', 'Antarctica · USD', 'Germany · EUR', 'India · INR', 'United States · USD']);
+    expect(country()).toHaveValue('8');
+  });
+
+  it('keeps it too while the countries cannot be loaded, and says so', async () => {
+    vi.mocked(coreApi.get).mockRejectedValue(new Error('down'));
+    const [, mobile] = projectRowsSchema.parse(projectRows);
+    openDialog({ project: mobile });
+
+    expect(await screen.findByText(/Countries could not be loaded\./)).toBeInTheDocument();
+    expect(optionNames()).toEqual(['None', 'Germany · EUR']);
+    expect(country()).toHaveValue('80');
+  });
+
+  describe('the line under it', () => {
+    const sentenceOf = () => document.getElementById('project-country-hint')?.textContent;
+
+    it('says a new project’s invoices are billed in its client’s country, or in dollars', async () => {
+      openDialog();
+      await loaded();
+
+      expect(sentenceOf()).toBe(CLIENT_COUNTRY_SENTENCE);
+    });
+
+    it('says what a saved project’s invoices are billed in, from the service’s own answer: the client’s country', async () => {
+      openDialog({ project: website });
+      await loaded();
+
+      expect(sentenceOf()).toBe('New invoices are billed in INR · ₹88.25 per $1 · tax 18%, from the client’s country.');
+    });
+
+    it('says it for a country of the project’s own', async () => {
+      const [, mobile] = projectRowsSchema.parse(projectRows);
+      openDialog({ project: mobile });
+      await loaded();
+
+      expect(sentenceOf()).toBe('New invoices are billed in EUR · €0.92 per $1 · tax 19%.');
+    });
+
+    it('says so when it is the default: dollars, because no country applies', async () => {
+      const billing = { currencyCode: 'USD', currencySymbol: '$', exchangeRate: 1, taxRate: 0, source: 'default' };
+      const [project] = projectRowsSchema.parse([{ ...projectRows[1], countryId: null, country: null, billing }]);
+      openDialog({ project });
+      await loaded();
+
+      expect(sentenceOf()).toBe(
+        'New invoices are billed in US dollars, the default: no billing country is chosen, and the client’s country is not active with a rate.',
+      );
+    });
+
+    it('warns that nothing can be invoiced while the project’s country has no rate', async () => {
+      const billing = { ...projectRows[1].billing, exchangeRate: null };
+      const [project] = projectRowsSchema.parse([{ ...projectRows[1], billing }]);
+      openDialog({ project });
+      await loaded();
+
+      expect(sentenceOf()).toBe(NO_RATE_SENTENCE);
+    });
+
+    it('follows the select: a country picked and not saved yet says what it will bill in once saved', async () => {
+      const user = userEvent.setup();
+      openDialog({ project: website });
+      await loaded();
+      await user.selectOptions(country(), 'Germany · EUR');
+
+      expect(sentenceOf()).toBe('Once saved, new invoices are billed in EUR · €0.92 per $1 · tax 19%.');
+
+      await user.selectOptions(country(), 'United States · USD');
+      expect(sentenceOf()).toBe('Once saved, new invoices are billed in USD.');
+
+      // Back on what is saved, the service’s own answer is right again.
+      await user.selectOptions(country(), 'None');
+      expect(sentenceOf()).toBe('New invoices are billed in INR · ₹88.25 per $1 · tax 18%, from the client’s country.');
+    });
+
+    it('says the client’s country decides once the project’s own is cleared', async () => {
+      const user = userEvent.setup();
+      const [, mobile] = projectRowsSchema.parse(projectRows);
+      openDialog({ project: mobile });
+      await loaded();
+      await user.selectOptions(country(), 'None');
+
+      expect(sentenceOf()).toBe(CLIENT_COUNTRY_SENTENCE);
+    });
+
+    it('stops quoting the saved client’s country once the client is changed', async () => {
+      const user = userEvent.setup();
+      openDialog({ project: website });
+      await loaded();
+      await screen.findByRole('option', { name: 'Globex' });
+      await user.selectOptions(screen.getByLabelText('Client'), 'Globex');
+
+      expect(sentenceOf()).toBe(CLIENT_COUNTRY_SENTENCE);
+    });
   });
 });

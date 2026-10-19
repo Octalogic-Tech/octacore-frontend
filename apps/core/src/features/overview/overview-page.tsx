@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
 import { LinkArrow } from '@/components/ui/link-arrow';
+import { formatMoney } from '@/features/expenses/money';
 import { useAllInvoices, useProjects } from '@/features/projects/api';
 import { formatDate, pluralize } from '@/lib/format';
 import { formatUsd } from '@/lib/money';
@@ -84,7 +85,7 @@ export function OverviewPage() {
                           .join(', ')}
                       </span>
                     </span>
-                    <span className="tabular">{formatUsd(invoice.amountCents)}</span>
+                    <span className="tabular">{formatMoney(invoice.totalCents, invoice)}</span>
                   </li>
                 ))}
               </ul>
