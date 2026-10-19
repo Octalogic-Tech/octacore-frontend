@@ -194,6 +194,94 @@ const resources = (): Row[] => [
   }),
 ];
 
+const people = (): Row[] => [
+  record({
+    id: 1,
+    name: 'Asha Rao',
+    joinDate: '2024-01-15',
+    leaveDate: null,
+    email: 'asha@example.com',
+    phone: null,
+    imageLink: null,
+    contractLink: null,
+    monthlySalaryPaise: 8_500_075,
+    // By name, as the service sends them.
+    technologies: [
+      { id: 2, name: 'Nest' },
+      { id: 1, name: 'React' },
+    ],
+  }),
+  record({
+    id: 2,
+    name: 'Ben Cho',
+    joinDate: null,
+    leaveDate: null,
+    email: null,
+    phone: '+91 20 5550 0101',
+    imageLink: null,
+    contractLink: null,
+    monthlySalaryPaise: null,
+    technologies: [],
+  }),
+];
+
+// The ledger, newest first as the service sends it: Asha was on the Mobile app, then the bench, and has been on the
+// Website since 12 March 2026. Ben has no entry, so he is on the bench with no date. A null project is the bench.
+const entry = (fields: Row): Row => record({ note: null, ...fields });
+
+const allocations = (): Row[] => [
+  entry({
+    id: 3,
+    personId: 1,
+    projectId: 1,
+    effectiveDate: '2026-03-12',
+    note: 'Moves to the web build',
+    person: { id: 1, name: 'Asha Rao' },
+    project: { id: 1, name: 'Website' },
+  }),
+  entry({
+    id: 2,
+    personId: 1,
+    projectId: null,
+    effectiveDate: '2026-01-15',
+    person: { id: 1, name: 'Asha Rao' },
+    project: null,
+  }),
+  entry({
+    id: 1,
+    personId: 1,
+    projectId: 2,
+    effectiveDate: '2025-06-02',
+    person: { id: 1, name: 'Asha Rao' },
+    project: { id: 2, name: 'Mobile app' },
+  }),
+];
+
+const leaves = (): Row[] => [
+  record({
+    id: 2,
+    personId: 1,
+    person: { id: 1, name: 'Asha Rao' },
+    startDate: '2026-05-04',
+    endDate: '2026-05-04',
+    leaveType: 'sick',
+    reason: null,
+  }),
+  record({
+    id: 1,
+    personId: 1,
+    person: { id: 1, name: 'Asha Rao' },
+    startDate: '2026-03-12',
+    endDate: '2026-03-14',
+    leaveType: 'casual',
+    reason: 'Family wedding',
+  }),
+];
+
+/** Whether the row passes the list's filters: each named query parameter, when given, must equal the row's value. */
+const matchesFilter = (row: Row, query: URLSearchParams, keys: string[]) =>
+  keys.every((key) => !query.has(key) || row[key] === Number(query.get(key)));
+
 /**
  * The core service sends credentials (the refresh cookie), and a browser only accepts a credentialed cross-origin
  * answer that names the page's own origin and allows credentials.
@@ -223,7 +311,7 @@ function stubCore(
 
 /**
  * Stubs every collection: categories, technologies, clients, client contacts, projects, project resources, people,
- * invoices (and each invoice's PDF, email draft and next number), countries and users as the core service answers them, and the sign-in routes. `signedIn` says
+ * invoices (and each invoice's PDF, email draft and next number), countries, users, allocation entries and leaves as the core service answers them, and the sign-in routes. `signedIn` says
  * whether the refresh cookie is valid when the page loads; `POST /auth/login` accepts E2E_PASSWORD and signs in.
  * `/categories` and `/users` keep state so an add or a delete shows up on the next read.
  */
@@ -231,6 +319,17 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
   let rows = categories();
   let userRows = users();
   let session = signedIn;
+
+  // A request no stub below answers must never reach a real service: the default address is the one a developer's own
+  // core service listens on. This is registered first, so it is the last one tried (Cypress tries the newest first), and
+  // it answers 501 with a message that names the request, which the page shows as an error state.
+  cy.intercept({ url: `${CORE_API}/**`, resourceType: 'xhr' }, (req) => {
+    req.reply({
+      statusCode: 501,
+      body: { statusCode: 501, message: `No e2e stub for ${req.method} ${req.url}`, data: null },
+      headers: corsHeaders(req.headers.origin),
+    });
+  });
 
   // The preflight a credentialed request with an Authorization header sends first.
   cy.intercept('OPTIONS', `${CORE_API}/**`, (req) => {
@@ -337,38 +436,21 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
     }),
   }));
   stubCore('GET', '/project-resources*', () => ({ body: envelope(resources()) }));
-  stubCore('GET', '/people', () => ({
-    body: envelope([
-      record({
-        id: 1,
-        name: 'Asha Rao',
-        joinDate: '2024-01-15',
-        leaveDate: null,
-        email: 'asha@example.com',
-        phone: null,
-        imageLink: null,
-        contractLink: null,
-        monthlySalaryPaise: 8_500_075,
-        // By name, as the service sends them.
-        technologies: [
-          { id: 2, name: 'Nest' },
-          { id: 1, name: 'React' },
-        ],
-      }),
-      record({
-        id: 2,
-        name: 'Ben Cho',
-        joinDate: null,
-        leaveDate: null,
-        email: null,
-        phone: '+91 20 5550 0101',
-        imageLink: null,
-        contractLink: null,
-        monthlySalaryPaise: null,
-        technologies: [],
-      }),
-    ]),
-  }));
+  stubCore('GET', '/people', () => ({ body: envelope(people()) }));
+  // One person, for their own page; `*` does not cross a `/`, so the list's stub does not answer it.
+  stubCore('GET', '/people/*', ({ url }) => {
+    const found = people().find((person) => person.id === Number(url.split('/').pop()));
+    return found ? { body: envelope(found) } : { statusCode: 404, body: envelope(null, 404) };
+  });
+  // Both lists carry a query string (`?personId=1`), hence the trailing `*`, and are filtered like the service does.
+  stubCore('GET', '/allocations*', ({ url }) => {
+    const query = new URL(url).searchParams;
+    return { body: envelope(allocations().filter((row) => matchesFilter(row, query, ['personId', 'projectId']))) };
+  });
+  stubCore('GET', '/leaves*', ({ url }) => {
+    const query = new URL(url).searchParams;
+    return { body: envelope(leaves().filter((row) => matchesFilter(row, query, ['personId']))) };
+  });
 
   // `*` does not cross a `/`: each invoice document route and the next-number route needs its own stub.
   stubCore('GET', '/invoices/*/pdf', () => ({ body: '%PDF-1.4\n%%EOF' }));

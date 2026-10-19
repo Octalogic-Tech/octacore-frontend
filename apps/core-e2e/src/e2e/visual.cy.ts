@@ -8,6 +8,12 @@ const pages = [
   ['project-invoices', '/projects/1?tab=invoices'],
   ['project-resources', '/projects/1?tab=resources'],
   ['people', '/resources/people'],
+  ['person', '/resources/people/1'],
+  ['person-allocations', '/resources/people/1?tab=allocations'],
+  ['person-leave', '/resources/people/1?tab=leave'],
+  ['allocation-board', '/resources/allocation'],
+  ['allocation-ledger', '/resources/allocation?tab=ledger'],
+  ['leave', '/resources/leave'],
   ['invoices', '/finance/invoices'],
   ['categories', '/categories'],
   ['technologies', '/technologies'],
@@ -31,7 +37,8 @@ describe('visual captures', () => {
         cy.viewport(width, height);
         cy.visit(path);
         cy.get('main h1').should('be.visible');
-        cy.get('[role="status"]').should('not.exist');
+        // The loading state, not every live region: the board's drag-and-drop announcer is one too, and is always there.
+        cy.get('[role="status"][aria-label="Loading"]').should('not.exist');
         cy.screenshot(`${name}-${width}`, { capture: 'fullPage' });
       });
     }

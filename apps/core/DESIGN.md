@@ -194,7 +194,7 @@ Every corner is square (radius 0). The one non-rectangular silhouette is the 45 
 A label and a square arm cell, 52px tall; one primary per screen. Hover and keyboard focus fill the cell teal and swing the arm into an arrow (220ms and 320ms). The quiet variant is plain text, 44px tall, with a teal underline on hover and focus; it is used for Cancel, Previous and Next. A table row's actions (Edit, Delete, Preview and the like) are icon buttons instead: one Lucide mark in a 44px square with no text, named by its `aria-label` and tooltip ("Edit Acme"), and a teal bar under the mark on hover and focus.
 
 ### Navigation
-Logo, then three groups of text links (Work, Finance, Reference data). Group names are Small, uppercase and tracked, in Mist. The current page is white with a teal arm and `aria-current="page"`; other links are Mist with a Mist arm that lengthens and turns teal on hover.
+Logo, then groups of text links (Work, Resources, Finance, Reference data, and for admins Admin and Planned). Group names are Small, uppercase and tracked, in Mist. The current page is white with a teal arm and `aria-current="page"`; other links are Mist with a Mist arm that lengthens and turns teal on hover.
 
 ### Account
 At the foot of the sidebar and the menu sheet, a single 44px button: the person's initials in a square Night Navy tile (first letter of the first and last word of the name), the name, and a drawn chevron. It opens a popover upward, as wide as the button, with the email and then Change password and Sign out as quiet buttons. The popover is a grey object with a 1px navy frame: flat, no scrim, and it closes on Escape, an outside click or a choice. Change password closes it and opens its dialog, and focus comes back to the name button.
@@ -204,6 +204,9 @@ Underline fields: no box, no fill. A 1px Muted Navy rule that turns navy on hove
 
 ### Tabs
 A page with more than one subject splits into tabs: text only (the icon set is for row actions), 44px tall, on a navy rule the width of the content. Labels are Slate Navy; hover, keyboard focus and the selected tab turn them Octalogic Navy, and the selected tab also carries a 3px teal bar on the rule. A count follows the name in regular weight ("Invoices 4") once it is known. The selected tab lives in the address (`?tab=`, bare for the first tab), replacing the history entry so Back leaves the page; an unknown value opens the first tab. Only the open tab is on the page.
+
+### Board
+The allocation board is the registry's Kanban component restyled to the tokens: each column is a Soft Hairline well in a Hairline frame, 288px wide, with its name, head count and monthly cost under a Hairline; a card is a flat Paper Grey object in a Hairline frame with the person's name as a link and a native Move to select. A card is picked up by a 44px handle that holds a drawn grip mark (two columns of three squares, like the other marks, not an icon from the set); the card in flight is an outlined navy card, with no shadow, and the keyboard can pick one up too. The board scrolls sideways inside its own frame, never the page.
 
 ### Panels and tables
 A framed panel (grey, 1px navy frame, one cut corner) holds a table: a navy rule under the heads, Hairline between rows, rows at least 44px, amounts right-aligned in tabular figures, a pager at the foot (rows per page, range, Previous and Next).
