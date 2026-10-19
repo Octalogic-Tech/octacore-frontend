@@ -99,34 +99,60 @@ describe('quoteTotals', () => {
     expect(totals.finalQuoteCents).toBe(0);
   });
 
-  it('a huge quote does not overflow', () => {
-    // 200 lines of 100,000 units at 10,000 hours each, every rate at its maximum and every percent at 100 %: the product
-    // passes 2^53 several times over, where a float would round it.
-    const lines: CalcLine[] = Array.from({ length: 200 }, () => ({ units: 100_000, hoursHundredths: 1_000_000 }));
+  it('one division gives the elapsed months: the build over the developers and the month together', () => {
+    // 1.49 hours, two developers, 150 hours a month: 149 / 300 is 0 months. Dividing by the developers first (149 / 2 is 75
+    // half up) and then by the month (75 / 150 is 0.5, 1 half up) would give 1. The service has the same test.
+    const totals = quoteTotals({ ...defaults, developerCount: 2, hoursPerMonth: 150 }, [
+      { units: 1, hoursHundredths: 149 },
+    ]);
+    expect(totals.buildHours).toBe(149);
+    expect(totals.elapsedMonths).toBe(0);
+  });
+
+  it('a huge quote is exact, where a float would not be', () => {
+    // 200 lines of 99,999 units at 9,999.99 hours, every rate at 99,999.99 an hour and every percent at 99.99 %: a quote at
+    // the limits, but not a round one. The base is 2 x 10^13 hundredths of an hour, which a float holds, but the steps after
+    // it (the base times 9,999, hours times a rate) pass 2^53 (about 9 x 10^15), where a float loses the half. The values
+    // are the service's own (`compute_totals` in the backend on the same inputs, its hours in hundredths), not this file's.
+    // The costs and the final quote come to more than 2^53, so they come back as the nearest `Number`; a float calculation
+    // lands on a different one for the developer and manager costs and the final quote.
+    const lines: CalcLine[] = Array.from({ length: 200 }, () => ({ units: 99_999, hoursHundredths: 999_999 }));
     const settings: CalcSettings = {
       developerCount: 1,
-      developerRateCents: 10_000_000,
+      developerRateCents: 9_999_999,
       managerCount: 1,
-      managerRateCents: 10_000_000,
+      managerRateCents: 9_999_999,
       testerCount: 1,
-      testerRateCents: 10_000_000,
-      negotiationBufferBp: 10_000,
-      managementBp: 10_000,
-      testingBp: 10_000,
-      bugFixBp: 10_000,
+      testerRateCents: 9_999_999,
+      negotiationBufferBp: 9_999,
+      managementBp: 9_999,
+      testingBp: 9_999,
+      bugFixBp: 9_999,
       hoursPerDay: 1,
       hoursPerMonth: 1,
     };
 
-    let totals: QuoteTotals | undefined;
-    expect(() => {
-      totals = quoteTotals(settings, lines);
-    }).not.toThrow();
-    for (const [name, value] of Object.entries(totals as QuoteTotals)) {
-      expect(Number.isFinite(value), name).toBe(true);
-    }
-    expect((totals as QuoteTotals).baseHours).toBe(200 * 100_000 * 1_000_000);
-    expect((totals as QuoteTotals).finalQuoteCents).toBeGreaterThan(10_000_000_000);
+    const expected: QuoteTotals = {
+      baseHours: 19_999_780_000_200,
+      testingHours: 19_997_780_022_200,
+      bugFixHours: 19_997_780_022_200,
+      developmentHours: 39_997_560_022_400,
+      buildHours: 59_995_340_044_600,
+      managementHours: 59_989_340_510_596,
+      totalHours: 119_984_680_555_196,
+      developmentHoursPerPerson: 39_997_560_022_400,
+      managementHoursPerPerson: 59_989_340_510_596,
+      testingHoursPerPerson: 19_997_780_022_200,
+      personDays: 119_984_680_555_196,
+      elapsedMonths: 59_995_340_044_600,
+      developmentCostCents: Number(3_999_755_602_264_399_776n),
+      managementCostCents: Number(5_998_933_451_166_194_894n),
+      testingCostCents: Number(1_999_777_802_242_199_778n),
+      subtotalCents: Number(11_998_466_855_672_794_448n),
+      negotiationBufferCents: Number(11_997_267_008_987_227_169n),
+      finalQuoteCents: Number(23_995_733_864_660_021_617n),
+    };
+    expect(quoteTotals(settings, lines)).toEqual(expected);
   });
 });
 

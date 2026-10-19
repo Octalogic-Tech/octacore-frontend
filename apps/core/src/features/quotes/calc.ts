@@ -1,9 +1,10 @@
 /**
  * The quotation calculation, mirrored from the service (`app/core/quoting.py`) so the editor's live totals equal what the
  * service stores. Both sides work on integers: hours in hundredths (`118800` is 1,188 hours), percents in hundredths of a
- * percent (`2500` is 25 %), money in cents, and every division rounds half up. Every product and division runs on `BigInt`
- * (200 lines of 100,000 units at 10,000 hours pass 2^53 several times over, where a float would round) and becomes a
- * `Number` only at the end.
+ * percent (`2500` is 25 %), money in cents, and every division rounds half up. Every product and division runs on `BigInt`:
+ * the largest quote's base is 2 x 10^13 hundredths of an hour, which a float holds, but the steps after it (the base times
+ * a percent in hundredths, hours times a rate) pass 2^53, where a float would lose the half. The result becomes a `Number`
+ * only at the end.
  *
  * Every input is a whole number, the counts and the hours per day and per month at least 1: the form checks them first and
  * does not ask for totals until they are valid (a zero divisor or a fraction throws, as `BigInt` does).
