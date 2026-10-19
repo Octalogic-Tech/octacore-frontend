@@ -8,12 +8,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useExpenseTypes } from '@/features/expense-types/api';
 import { usePeople } from '@/features/people/api';
 import { useProjects } from '@/features/projects/api';
+import { formatUsd } from '@/lib/money';
 import { useExpenses } from './api';
 import { DeleteExpenseDialog } from './delete-expense-dialog';
 import { ExpenseFormDialog } from './expense-form-dialog';
 import { ExpenseTable } from './expense-table';
 import { NO_OVERVIEW_FILTERS, hasOverviewFilters, toOverviewQuery, type OverviewFilters } from './filters';
-import { formatUsd } from './money';
 import { monthLabel, shiftMonth } from './months';
 import { monthFigures } from './overview';
 import type { ExpenseRow } from './schema';

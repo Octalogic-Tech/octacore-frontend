@@ -4,7 +4,8 @@ import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { PRIMARY_CURRENCY, type CurrencyRow } from '@/features/currencies/schema';
-import { amountProblem, convertToCents, formatRate, formatUsd, parseAmount } from './money';
+import { amountProblem, formatUsd, parseAmount } from '@/lib/money';
+import { convertToCents, formatRate } from './money';
 import { withCurrent } from './options';
 
 interface AmountFieldProps {

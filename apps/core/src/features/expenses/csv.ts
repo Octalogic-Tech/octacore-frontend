@@ -1,5 +1,5 @@
 import { neutraliseFormula, toCsv } from '@/lib/csv';
-import { toAmountText } from './money';
+import { toAmountText } from '@/lib/money';
 import type { ExpenseRow } from './schema';
 
 const HEADERS = [
