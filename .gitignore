@@ -37,3 +37,13 @@ testem.log
 # System Files
 .DS_Store
 Thumbs.db
+
+vite.config.*.timestamp*
+
+# Nx
+.nx/cache
+.nx/workspace-data
+
+.claude/worktrees
+.nx/polygraph
+.nx/self-healing

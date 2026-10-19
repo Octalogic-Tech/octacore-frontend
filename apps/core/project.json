@@ -37,15 +37,15 @@
       }
     },
     "test": {
-      "executor": "@nx/vite:test",
-      "outputs": ["coverage/apps/core"],
+      "executor": "@nx/vitest:test",
+      "outputs": ["{workspaceRoot}/coverage/apps/core"],
       "options": {
         "passWithNoTests": true,
         "reportsDirectory": "../../coverage/apps/core"
       }
     },
     "lint": {
-      "executor": "@nx/linter:eslint",
+      "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": { "lintFilePatterns": ["apps/core/**/*.{ts,tsx,js,jsx}"] }
     },
