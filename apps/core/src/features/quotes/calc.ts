@@ -53,7 +53,7 @@ export interface QuoteTotals {
   finalQuoteCents: number;
 }
 
-/** `n / d` rounded half up, for a non-negative `n` and a positive `d`. */
+/** `n / d` with halves going up, for a non-negative `n` and a positive `d`. */
 function divHalfUp(n: bigint, d: bigint): bigint {
   return (2n * n + d) / (2n * d);
 }
