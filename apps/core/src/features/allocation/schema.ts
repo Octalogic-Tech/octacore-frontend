@@ -26,6 +26,13 @@ export const allocationRowsSchema = z.array(allocationRowSchema);
 
 export type AllocationRow = z.output<typeof allocationRowSchema>;
 
+/** The ledger's search: the text is in the person's name or the project's, or is part of "Bench" for an entry on the bench. */
+export function allocationMatches(row: AllocationRow, query: string): boolean {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return true;
+  return [row.person.name, row.project?.name ?? 'Bench'].some((text) => text.toLowerCase().includes(needle));
+}
+
 // Every field is text, so a blank field can be told from a typed one: `personId` is '' until one is chosen, `projectId`
 // is `BENCH` or the id, and the date is what a date input holds, `YYYY-MM-DD`.
 export const allocationFormSchema = z.object({

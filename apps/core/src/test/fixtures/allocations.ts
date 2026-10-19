@@ -4,7 +4,7 @@
 // note is an entry saved without one. Each embeds the person and the project as { id, name }; the project keeps its name
 // when it was deleted later, so history stays readable. The people and projects are the ones in fixtures/people.ts and
 // fixtures/projects.ts: Ada (1) is on the bench from 3 Nov 2025 and on Website (1) from 12 Mar 2026, Grace (2) is on
-// Mobile app (2) from 5 Jan 2026 and back on the bench from 1 Sep 2026.
+// Mobile app (2) from 5 Jan 2026 and back on the bench from 3 Aug 2026.
 const stamp = '2026-10-15T09:30:00.000000Z';
 const audit = { status: 1, createdDate: stamp, updatedDate: stamp, deletedDate: null };
 
@@ -19,7 +19,7 @@ export const allocationRows = [
     id: 4,
     personId: 2,
     projectId: null,
-    effectiveDate: '2026-09-01',
+    effectiveDate: '2026-08-03',
     note: 'Between projects',
     person: grace,
     project: null,

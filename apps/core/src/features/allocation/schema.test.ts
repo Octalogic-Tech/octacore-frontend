@@ -1,6 +1,7 @@
 import { allocationRows } from '@/test/fixtures/allocations';
 import {
   allocationFormSchema,
+  allocationMatches,
   allocationRowsSchema,
   toAllocationBody,
   toAllocationFormValues,
@@ -104,7 +105,7 @@ describe('toAllocationFormValues', () => {
     expect(toAllocationFormValues(graceToBench)).toEqual({
       personId: '2',
       projectId: 'bench',
-      effectiveDate: '2026-09-01',
+      effectiveDate: '2026-08-03',
       note: 'Between projects',
     });
   });
@@ -142,4 +143,30 @@ describe('toAllocationBody', () => {
       });
     },
   );
+});
+
+describe('allocationMatches', () => {
+  it('finds an entry by the person, whatever the case', () => {
+    expect(allocationMatches(adaOnWebsite, 'ada')).toBe(true);
+    expect(allocationMatches(adaOnWebsite, 'LOVELACE')).toBe(true);
+    expect(allocationMatches(adaOnWebsite, 'grace')).toBe(false);
+  });
+
+  it('finds an entry by the project, or by Bench when it is on the bench', () => {
+    expect(allocationMatches(adaOnWebsite, 'web')).toBe(true);
+    expect(allocationMatches(adaOnWebsite, 'bench')).toBe(false);
+    expect(allocationMatches(adaOnBench, 'bench')).toBe(true);
+    expect(allocationMatches(adaOnBench, 'web')).toBe(false);
+  });
+
+  it('matches everything for a blank query, and nothing for text that is nowhere on the entry', () => {
+    expect(allocationMatches(adaOnWebsite, '')).toBe(true);
+    expect(allocationMatches(adaOnBench, '   ')).toBe(true);
+    expect(allocationMatches(adaOnWebsite, 'zzz')).toBe(false);
+  });
+
+  it('does not search the note or the date', () => {
+    expect(allocationMatches(graceToBench, 'between')).toBe(false);
+    expect(allocationMatches(adaOnWebsite, '2026')).toBe(false);
+  });
 });
