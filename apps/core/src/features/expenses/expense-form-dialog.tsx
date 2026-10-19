@@ -7,8 +7,8 @@ import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useCurrencies } from '@/features/currencies/api';
-import { PRIMARY_CURRENCY } from '@/features/currencies/schema';
+import { useCountries } from '@/features/countries/api';
+import { dollarCountry } from '@/features/countries/options';
 import { useExpenseTypes } from '@/features/expense-types/api';
 import { usePeople } from '@/features/people/api';
 import { useProjects } from '@/features/projects/api';
@@ -43,7 +43,7 @@ export function ExpenseFormDialog({
   fallbackFocusId = 'expense-search',
 }: ExpenseFormDialogProps) {
   const types = useExpenseTypes();
-  const currencies = useCurrencies();
+  const countries = useCountries();
   const projects = useProjects();
   const people = usePeople();
   const save = useSaveExpense();
@@ -58,7 +58,7 @@ export function ExpenseFormDialog({
     formState: { errors, isSubmitting },
   } = useForm<ExpenseFormValues>({ resolver: zodResolver(expenseFormSchema), defaultValues: emptyExpenseForm });
 
-  const usdId = currencies.data?.find((currency) => currency.code === PRIMARY_CURRENCY)?.id;
+  const usdId = dollarCountry(countries.data ?? [])?.id;
 
   useEffect(() => {
     if (open) {
@@ -67,9 +67,9 @@ export function ExpenseFormDialog({
     }
   }, [open, expense, reset]);
 
-  // US dollars are the starting currency, once the list is here to say which row that is.
+  // US dollars are the starting currency, once the list is here to say which country that is.
   useEffect(() => {
-    if (open && usdId !== undefined && getValues('currencyId') === '') setValue('currencyId', String(usdId));
+    if (open && usdId !== undefined && getValues('countryId') === '') setValue('countryId', String(usdId));
   }, [open, usdId, expense, getValues, setValue]);
 
   // The expense's own type and project are always options, so an edit cannot blank a select whose list is loading.
@@ -105,7 +105,7 @@ export function ExpenseFormDialog({
       const shown = expense ? shownAmount(expense, usdId) : undefined;
       await save.mutateAsync({ id: expense?.id, body: toExpenseBody(values, shown) });
     } catch (error) {
-      // A 422 (an amount under one US cent, an unknown currency) carries a message written for people.
+      // A 422 (an amount under one US cent, a country with no rate) carries a message written for people.
       setFailure(serviceMessage(error) ?? 'That did not save. Try again.');
       return;
     }
@@ -149,15 +149,15 @@ export function ExpenseFormDialog({
           </Field>
           <AmountField
             idPrefix="expense"
-            currencies={currencies.data ?? []}
-            current={expense?.originalCurrency ?? undefined}
-            currencyProps={register('currencyId')}
+            countries={countries.data ?? []}
+            current={expense?.originalCountry ?? undefined}
+            countryProps={register('countryId')}
             amountProps={register('amount')}
-            currencyId={watch('currencyId')}
+            countryId={watch('countryId')}
             amount={watch('amount')}
-            currencyError={errors.currencyId?.message}
+            countryError={errors.countryId?.message}
             amountError={errors.amount?.message}
-            currenciesFailed={currencies.isError}
+            countriesFailed={countries.isError}
           />
           <Field
             label="Project"

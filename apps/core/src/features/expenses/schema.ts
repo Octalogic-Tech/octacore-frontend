@@ -5,7 +5,13 @@ const nullToEmpty = (text: string | null) => text ?? '';
 const orNull = (text: string) => (text === '' ? null : text);
 
 const refSchema = z.object({ id: z.number().int(), name: z.string() });
-const currencyRefSchema = z.object({ id: z.number().int(), code: z.string(), symbol: z.string() });
+// The country a charge was typed under, with the currency it brings: `name` is the country's own.
+const countryRefSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  currencyCode: z.string(),
+  currencySymbol: z.string(),
+});
 
 // Only what the pages use. The service also sends `status` and the audit dates; unknown keys are dropped.
 export const expenseRowSchema = z.object({
@@ -22,8 +28,9 @@ export const expenseRowSchema = z.object({
   chargeDate: z.iso.date(),
   // US cents: what every total adds up.
   amountCents: z.number().int(),
-  // Set only for a charge typed in a currency other than USD: what was typed and the rate used.
-  originalCurrency: currencyRefSchema.nullable(),
+  // Set only for a charge typed in a currency other than USD: the country it was typed under, what was typed and the
+  // rate used.
+  originalCountry: countryRefSchema.nullable(),
   originalAmount: z.number().int().nullable(),
   exchangeRate: z.number().nullable(),
   // Set on an expense the service made from a recurring expense.
@@ -79,9 +86,9 @@ export const recurringRowSchema = z.object({
   // The person the expense is for; kept by name even after the person is deleted.
   personId: z.number().int().nullable(),
   person: refSchema.nullable(),
-  currencyId: z.number().int(),
-  currency: currencyRefSchema,
-  // One charge in the currency's own minor units.
+  countryId: z.number().int(),
+  country: countryRefSchema,
+  // One charge in its country's currency, in minor units.
   amount: z.number().int(),
   frequency: frequencySchema,
   startDate: z.iso.date(),
@@ -89,7 +96,7 @@ export const recurringRowSchema = z.object({
   state: stateSchema,
   nextChargeDate: z.iso.date().nullable(),
   lastChargeDate: z.iso.date().nullable(),
-  // Calculated by the service from the amount and the currency's current rate, in US cents.
+  // Calculated by the service from the amount and the country's current rate, in US cents.
   amountCents: z.number().int(),
   monthlyCostCents: z.number().int(),
   yearlyCostCents: z.number().int(),
@@ -108,7 +115,7 @@ export const expenseFormSchema = z
     projectId: z.string(),
     personId: z.string(),
     chargeDate: z.string().min(1, 'Charge date is required'),
-    currencyId: z.string().min(1, 'Choose a currency'),
+    countryId: z.string().min(1, 'Choose a country'),
     amount: z.string(),
     notes: z.string().trim(),
   })
@@ -125,14 +132,14 @@ export const emptyExpenseForm: ExpenseFormValues = {
   projectId: '',
   personId: '',
   chargeDate: '',
-  currencyId: '',
+  countryId: '',
   amount: '',
   notes: '',
 };
 
 /**
- * The form for a new expense (today as the charge date) or for an edit. A dollar expense leaves the currency empty:
- * the dialog fills in US dollars once the currency list says which row that is.
+ * The form for a new expense (today as the charge date) or for an edit. A dollar expense leaves the country empty:
+ * the dialog fills in a US dollar country once the country list says which one that is.
  */
 export function toExpenseFormValues(expense: ExpenseRow | undefined, today: string): ExpenseFormValues {
   if (!expense) return { ...emptyExpenseForm, chargeDate: today };
@@ -142,20 +149,20 @@ export function toExpenseFormValues(expense: ExpenseRow | undefined, today: stri
     projectId: expense.projectId === null ? '' : String(expense.projectId),
     personId: expense.personId === null ? '' : String(expense.personId),
     chargeDate: expense.chargeDate,
-    currencyId: expense.originalCurrency ? String(expense.originalCurrency.id) : '',
+    countryId: expense.originalCountry ? String(expense.originalCountry.id) : '',
     amount: toAmountText(expense.originalAmount ?? expense.amountCents),
     notes: expense.notes,
   };
 }
 
-/** The currency and amount an expense is shown with (what was typed), or undefined while US dollars are unknown. */
+/** The country and amount an expense is shown with (what was typed), or undefined while US dollars are unknown. */
 export function shownAmount(
   expense: ExpenseRow,
-  usdId: number | undefined,
-): { currencyId: number; amount: number } | undefined {
-  const currencyId = expense.originalCurrency?.id ?? usdId;
-  if (currencyId === undefined) return undefined;
-  return { currencyId, amount: expense.originalAmount ?? expense.amountCents };
+  dollarCountryId: number | undefined,
+): { countryId: number; amount: number } | undefined {
+  const countryId = expense.originalCountry?.id ?? dollarCountryId;
+  if (countryId === undefined) return undefined;
+  return { countryId, amount: expense.originalAmount ?? expense.amountCents };
 }
 
 export interface ExpenseBody {
@@ -165,20 +172,20 @@ export interface ExpenseBody {
   projectId: number | null;
   personId: number | null;
   chargeDate: string;
-  currencyId?: number;
+  countryId?: number;
   amount?: number;
 }
 
 /**
- * The body to send. On an edit, pass what the expense is shown with: the currency and amount are then sent only when
+ * The body to send. On an edit, pass what the expense is shown with: the country and amount are then sent only when
  * one of them changed, because the service converts again at today's rate whenever it receives them, and an edit of
  * the notes must not rewrite a saved rupee charge.
  */
 export function toExpenseBody(
   values: ExpenseFormValues,
-  shown?: { currencyId: number; amount: number },
+  shown?: { countryId: number; amount: number },
 ): ExpenseBody {
-  const currencyId = Number(values.currencyId);
+  const countryId = Number(values.countryId);
   const amount = parseAmount(values.amount);
   const body: ExpenseBody = {
     name: values.name,
@@ -188,8 +195,8 @@ export function toExpenseBody(
     personId: values.personId === '' ? null : Number(values.personId),
     chargeDate: values.chargeDate,
   };
-  if (!shown || shown.currencyId !== currencyId || shown.amount !== amount) {
-    body.currencyId = currencyId;
+  if (!shown || shown.countryId !== countryId || shown.amount !== amount) {
+    body.countryId = countryId;
     body.amount = amount;
   }
   return body;
@@ -214,7 +221,7 @@ export const recurringFormSchema = z
     frequency: z.string().min(1, 'Choose how often it is charged'),
     startDate: z.string().min(1, 'Start date is required'),
     endDate: z.string(),
-    currencyId: z.string().min(1, 'Choose a currency'),
+    countryId: z.string().min(1, 'Choose a country'),
     amount: z.string(),
     notes: z.string().trim(),
   })
@@ -241,7 +248,7 @@ export const emptyRecurringForm: RecurringFormValues = {
   frequency: 'monthly',
   startDate: '',
   endDate: '',
-  currencyId: '',
+  countryId: '',
   amount: '',
   notes: '',
 };
@@ -256,7 +263,7 @@ export function toRecurringFormValues(row: RecurringRow | undefined, today: stri
     frequency: row.frequency,
     startDate: row.startDate,
     endDate: row.endDate ?? '',
-    currencyId: String(row.currencyId),
+    countryId: String(row.countryId),
     amount: toAmountText(row.amount),
     notes: row.notes,
   };
@@ -268,7 +275,7 @@ export interface RecurringBody {
   expenseTypeId: number;
   projectId: number | null;
   personId: number | null;
-  currencyId: number;
+  countryId: number;
   amount: number;
   frequency: Frequency;
   startDate: string;
@@ -283,7 +290,7 @@ export function toRecurringBody(values: RecurringFormValues): RecurringBody {
     expenseTypeId: Number(values.expenseTypeId),
     projectId: values.projectId === '' ? null : Number(values.projectId),
     personId: values.personId === '' ? null : Number(values.personId),
-    currencyId: Number(values.currencyId),
+    countryId: Number(values.countryId),
     amount: parseAmount(values.amount),
     frequency: frequencySchema.parse(values.frequency),
     startDate: values.startDate,

@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PRIMARY_CURRENCY } from '@/features/countries/schema';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { serviceMessage } from '@/lib/core-api';
 import { formatDate, pluralize } from '@/lib/format';
@@ -134,11 +135,11 @@ export function RecurringTab() {
                   <TableCell>{expense.expenseType.name}</TableCell>
                   <TableCell>{expense.person?.name ?? NONE}</TableCell>
                   <TableCell className="tabular text-right">
-                    {expense.currency.code === 'USD' ? (
+                    {expense.country.currencyCode === PRIMARY_CURRENCY ? (
                       formatUsd(expense.amountCents)
                     ) : (
                       <>
-                        {formatMoney(expense.amount, expense.currency)}
+                        {formatMoney(expense.amount, expense.country)}
                         <div className="text-small text-navy-72">about {formatUsd(expense.amountCents)}</div>
                       </>
                     )}

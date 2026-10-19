@@ -1,9 +1,9 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { coreApi } from '@/lib/core-api';
+import { countryRows } from '@/test/fixtures/countries';
 import {
   answering,
-  currencyRows,
   expenseRows,
   expenseTypeRows,
   expensesEnvelope,
@@ -31,7 +31,7 @@ beforeEach(() => {
     answering({
       '/expense-types': expenseTypeRows,
       '/projects': projectRows,
-      '/currencies': currencyRows,
+      '/countries': countryRows,
       '/people': personRows,
     }),
   );
@@ -44,8 +44,8 @@ afterEach(() => {
 
 async function openDialog(expense?: ExpenseRow) {
   renderWithProviders(<ExpenseFormDialog open onOpenChange={onOpenChange} expense={expense} />);
-  // US dollars are chosen once the currency list is here.
-  await waitFor(() => expect(screen.getByRole('option', { name: 'USD · US dollar' })).toBeInTheDocument());
+  // US dollars are chosen once the country list is here.
+  await waitFor(() => expect(screen.getByRole('option', { name: 'United States · USD' })).toBeInTheDocument());
 }
 
 describe('ExpenseFormDialog: adding', () => {
@@ -53,7 +53,42 @@ describe('ExpenseFormDialog: adding', () => {
     await openDialog();
     expect(screen.getByRole('dialog', { name: 'New expense' })).toBeInTheDocument();
     expect(screen.getByLabelText('Charge date')).toHaveValue('2026-10-16');
-    await waitFor(() => expect(screen.getByLabelText('Currency')).toHaveValue('1'));
+    await waitFor(() => expect(screen.getByLabelText('Country')).toHaveValue('226'));
+  });
+
+  it('offers the active countries that have a rate, labelled with their currency, A to Z', async () => {
+    await openDialog();
+    const options = screen.getAllByRole('option', { name: /·/ }).map((option) => option.textContent);
+    // Japan is active but has no rate yet, and the United Kingdom, France and Antarctica are switched off.
+    expect(options).toEqual(['Germany · EUR', 'India · INR', 'United States · USD']);
+  });
+
+  it('starts on the United States, not on another country that uses dollars', async () => {
+    vi.mocked(coreApi.get).mockImplementation(
+      answering({
+        '/expense-types': expenseTypeRows,
+        '/projects': projectRows,
+        '/countries': countryRows.map((row) => (row.iso === 'AQ' ? { ...row, active: true } : row)),
+        '/people': personRows,
+      }),
+    );
+    await openDialog();
+    expect(screen.getByLabelText('Country')).toHaveValue('226');
+  });
+
+  it('starts on the first active country that uses dollars when the United States is not one', async () => {
+    vi.mocked(coreApi.get).mockImplementation(
+      answering({
+        '/expense-types': expenseTypeRows,
+        '/projects': projectRows,
+        '/countries': countryRows.map((row) =>
+          row.iso === 'US' ? { ...row, active: false } : row.iso === 'AQ' ? { ...row, active: true } : row,
+        ),
+        '/people': personRows,
+      }),
+    );
+    renderWithProviders(<ExpenseFormDialog open onOpenChange={onOpenChange} />);
+    await waitFor(() => expect(screen.getByLabelText('Country')).toHaveValue('8'));
   });
 
   it('creates the expense with its amount in minor units', async () => {
@@ -72,7 +107,7 @@ describe('ExpenseFormDialog: adding', () => {
       projectId: null,
       personId: null,
       chargeDate: '2026-10-16',
-      currencyId: 1,
+      countryId: 226,
       amount: 1500,
     });
   });
@@ -97,7 +132,7 @@ describe('ExpenseFormDialog: adding', () => {
   it('shows what a rupee amount comes to in dollars as it is typed', async () => {
     const user = userEvent.setup();
     await openDialog();
-    await user.selectOptions(screen.getByLabelText('Currency'), '2');
+    await user.selectOptions(screen.getByLabelText('Country'), '99');
     expect(screen.getByText(/In INR, like 7.20/)).toBeInTheDocument();
     await user.type(screen.getByLabelText('Amount'), '8825');
     expect(screen.getByText('About $100.00 at 88.25 INR per $1.')).toBeInTheDocument();
@@ -106,24 +141,24 @@ describe('ExpenseFormDialog: adding', () => {
   it('warns when a rupee amount is under one US cent', async () => {
     const user = userEvent.setup();
     await openDialog();
-    await user.selectOptions(screen.getByLabelText('Currency'), '2');
+    await user.selectOptions(screen.getByLabelText('Country'), '99');
     await user.type(screen.getByLabelText('Amount'), '0.01');
     expect(screen.getByText('Less than one US cent at 88.25 INR per $1.')).toBeInTheDocument();
   });
 
-  it('sends the rupee amount and its currency, for the service to convert', async () => {
+  it('sends the rupee amount and its country, for the service to convert', async () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
     await openDialog();
     await user.type(screen.getByLabelText('Name'), 'Desk');
     await user.selectOptions(screen.getByLabelText('Type'), '2');
-    await user.selectOptions(screen.getByLabelText('Currency'), '2');
+    await user.selectOptions(screen.getByLabelText('Country'), '99');
     await user.type(screen.getByLabelText('Amount'), '8825');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(coreApi.post).toHaveBeenCalled());
     expect(coreApi.post).toHaveBeenCalledWith(
       '/expenses',
-      expect.objectContaining({ currencyId: 2, amount: 882500 }),
+      expect.objectContaining({ countryId: 99, amount: 882500 }),
     );
   });
 
@@ -150,7 +185,7 @@ describe('ExpenseFormDialog: adding', () => {
 
   it('shows the service’s own message and stays open when it refuses the amount', async () => {
     vi.mocked(coreApi.post).mockRejectedValue(
-      rejection(422, 'That amount is less than one US cent at this currency’s rate'),
+      rejection(422, 'That amount is less than one US cent at this country’s rate'),
     );
     const user = userEvent.setup();
     await openDialog();
@@ -158,7 +193,7 @@ describe('ExpenseFormDialog: adding', () => {
     await user.selectOptions(screen.getByLabelText('Type'), '1');
     await user.type(screen.getByLabelText('Amount'), '15');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('That amount is less than one US cent at this currency’s rate')).toBeInTheDocument();
+    expect(await screen.findByText('That amount is less than one US cent at this country’s rate')).toBeInTheDocument();
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
@@ -183,13 +218,13 @@ describe('ExpenseFormDialog: editing', () => {
     expect(screen.getByLabelText('Project')).toHaveValue('1');
     expect(screen.getByLabelText('Person')).toHaveValue('1');
     expect(screen.getByLabelText('Charge date')).toHaveValue('2026-09-15');
-    expect(screen.getByLabelText('Currency')).toHaveValue('2');
+    expect(screen.getByLabelText('Country')).toHaveValue('99');
     expect(screen.getByLabelText('Amount')).toHaveValue('8825.00');
     expect(screen.getByLabelText('Notes')).toHaveValue('Pune');
   });
 
-  // The service converts again, at today's rate, whenever it is sent a currency and an amount.
-  it('does not send the amount or the currency when only the notes changed', async () => {
+  // The service converts again, at today's rate, whenever it is sent a country and an amount.
+  it('does not send the amount or the country when only the notes changed', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     await openDialog(desk);
@@ -207,7 +242,7 @@ describe('ExpenseFormDialog: editing', () => {
     });
   });
 
-  it('sends the currency and the amount when the amount changed', async () => {
+  it('sends the country and the amount when the amount changed', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     await openDialog(desk);
@@ -217,29 +252,29 @@ describe('ExpenseFormDialog: editing', () => {
     await waitFor(() => expect(coreApi.patch).toHaveBeenCalled());
     expect(coreApi.patch).toHaveBeenCalledWith(
       '/expenses/2',
-      expect.objectContaining({ currencyId: 2, amount: 900000 }),
+      expect.objectContaining({ countryId: 99, amount: 900000 }),
     );
   });
 
-  it('switches a rupee charge to dollars by sending the dollar currency and amount', async () => {
+  it('switches a rupee charge to dollars by sending the dollar country and amount', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     await openDialog(desk);
-    await user.selectOptions(screen.getByLabelText('Currency'), '1');
+    await user.selectOptions(screen.getByLabelText('Country'), '226');
     await user.clear(screen.getByLabelText('Amount'));
     await user.type(screen.getByLabelText('Amount'), '99.99');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(coreApi.patch).toHaveBeenCalled());
     expect(coreApi.patch).toHaveBeenCalledWith(
       '/expenses/2',
-      expect.objectContaining({ currencyId: 1, amount: 9999 }),
+      expect.objectContaining({ countryId: 226, amount: 9999 }),
     );
   });
 
   it('leaves a dollar charge’s amount alone when only the date changed', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     await openDialog(figma);
-    await waitFor(() => expect(screen.getByLabelText('Currency')).toHaveValue('1'));
+    await waitFor(() => expect(screen.getByLabelText('Country')).toHaveValue('226'));
     fireEvent.change(screen.getByLabelText('Charge date'), { target: { value: '2026-10-03' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(coreApi.patch).toHaveBeenCalled());
@@ -253,12 +288,33 @@ describe('ExpenseFormDialog: editing', () => {
     });
   });
 
+  // The service lets an expense keep a country that has since been switched off, so the edit must not blank it.
+  it('keeps the expense’s own country in the list after it was switched off, and does not resend it', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    const pound = { id: 225, name: 'United Kingdom', currencyCode: 'GBP', currencySymbol: '£' };
+    await openDialog({ ...desk, originalCountry: pound });
+    expect(screen.getByRole('option', { name: 'United Kingdom · GBP' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Country')).toHaveValue('225');
+    await user.type(screen.getByLabelText('Notes'), '!');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(coreApi.patch).toHaveBeenCalled());
+    // Only the notes changed, so neither the country nor the amount goes.
+    expect(coreApi.patch).toHaveBeenCalledWith('/expenses/2', expect.not.objectContaining({ countryId: expect.anything() }));
+  });
+
+  it('opens a dollar expense on the United States', async () => {
+    await openDialog(figma);
+    await waitFor(() => expect(screen.getByLabelText('Country')).toHaveValue('226'));
+    expect(screen.getByText('In US dollars, like 7.20.')).toBeInTheDocument();
+  });
+
   it('keeps the expense’s own type and project in the lists while they are still loading', async () => {
     vi.mocked(coreApi.get).mockReturnValue(new Promise(() => undefined));
     renderWithProviders(<ExpenseFormDialog open onOpenChange={onOpenChange} expense={desk} />);
     expect(screen.getByLabelText('Type')).toHaveValue('2');
     expect(screen.getByLabelText('Project')).toHaveValue('1');
-    expect(screen.getByLabelText('Currency')).toHaveValue('2');
+    expect(screen.getByLabelText('Country')).toHaveValue('99');
   });
 });
 

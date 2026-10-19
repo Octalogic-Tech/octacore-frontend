@@ -10,7 +10,7 @@ import {
   type ContactStep,
 } from './schema';
 
-const CLIENTS = ['clients'] as const;
+export const CLIENTS = ['clients'] as const;
 const CONTACTS = ['client-contacts'] as const;
 
 // Only the id is read from a created client: once the service has saved it, a schema mismatch on the rest of the

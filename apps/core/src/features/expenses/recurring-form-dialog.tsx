@@ -7,8 +7,8 @@ import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { useCurrencies } from '@/features/currencies/api';
-import { PRIMARY_CURRENCY } from '@/features/currencies/schema';
+import { useCountries } from '@/features/countries/api';
+import { dollarCountry } from '@/features/countries/options';
 import { useExpenseTypes } from '@/features/expense-types/api';
 import { usePeople } from '@/features/people/api';
 import { useProjects } from '@/features/projects/api';
@@ -38,7 +38,7 @@ interface RecurringFormDialogProps {
 
 export function RecurringFormDialog({ open, onOpenChange, expense, onSaved }: RecurringFormDialogProps) {
   const types = useExpenseTypes();
-  const currencies = useCurrencies();
+  const countries = useCountries();
   const projects = useProjects();
   const people = usePeople();
   const save = useSaveRecurring();
@@ -53,7 +53,7 @@ export function RecurringFormDialog({ open, onOpenChange, expense, onSaved }: Re
     formState: { errors, isSubmitting },
   } = useForm<RecurringFormValues>({ resolver: zodResolver(recurringFormSchema), defaultValues: emptyRecurringForm });
 
-  const usdId = currencies.data?.find((currency) => currency.code === PRIMARY_CURRENCY)?.id;
+  const usdId = dollarCountry(countries.data ?? [])?.id;
   // The start date anchors the schedule: the service refuses to move it once a charge exists.
   const startLocked = expense !== undefined && expense.lastChargeDate !== null;
 
@@ -64,9 +64,9 @@ export function RecurringFormDialog({ open, onOpenChange, expense, onSaved }: Re
     }
   }, [open, expense, reset]);
 
-  // US dollars are the starting currency, once the list is here to say which row that is.
+  // US dollars are the starting currency, once the list is here to say which country that is.
   useEffect(() => {
-    if (open && usdId !== undefined && getValues('currencyId') === '') setValue('currencyId', String(usdId));
+    if (open && usdId !== undefined && getValues('countryId') === '') setValue('countryId', String(usdId));
   }, [open, usdId, expense, getValues, setValue]);
 
   const typeOptions = useMemo(
@@ -182,15 +182,15 @@ export function RecurringFormDialog({ open, onOpenChange, expense, onSaved }: Re
           </Field>
           <AmountField
             idPrefix="recurring"
-            currencies={currencies.data ?? []}
-            current={expense?.currency}
-            currencyProps={register('currencyId')}
+            countries={countries.data ?? []}
+            current={expense?.country}
+            countryProps={register('countryId')}
             amountProps={register('amount')}
-            currencyId={watch('currencyId')}
+            countryId={watch('countryId')}
             amount={watch('amount')}
-            currencyError={errors.currencyId?.message}
+            countryError={errors.countryId?.message}
             amountError={errors.amount?.message}
-            currenciesFailed={currencies.isError}
+            countriesFailed={countries.isError}
           />
           <Field
             label="Project"

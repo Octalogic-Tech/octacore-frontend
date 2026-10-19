@@ -123,6 +123,23 @@ describe('ClientFormDialog: adding', () => {
   });
 });
 
+describe('ClientFormDialog: the country choices', () => {
+  const optionNames = () => screen.getAllByRole('option').map((option) => option.textContent);
+
+  it('offers only the active countries, A to Z, and None', async () => {
+    openDialog();
+    await screen.findByRole('option', { name: 'India' });
+    expect(optionNames()).toEqual(['None', 'Germany', 'India', 'Japan', 'United States']);
+  });
+
+  it('adds the client’s own country when it has been switched off, and keeps it selected', async () => {
+    openDialog({ client: { ...acme, countryId: 225, countryName: 'United Kingdom' }, contact: ada });
+    await screen.findByRole('option', { name: 'India' });
+    expect(optionNames()).toEqual(['None', 'Germany', 'India', 'Japan', 'United Kingdom', 'United States']);
+    expect(screen.getByLabelText('Country')).toHaveValue('225');
+  });
+});
+
 describe('ClientFormDialog: editing', () => {
   it('opens on the client and its contact', () => {
     openDialog({ client: acme, contact: ada });

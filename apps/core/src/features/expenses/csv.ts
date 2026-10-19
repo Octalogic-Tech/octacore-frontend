@@ -31,7 +31,7 @@ export function expensesToCsv(expenses: readonly ExpenseRow[]): string {
       expense.recurringExpenseId === null ? 'One-time' : 'Recurring',
       toAmountText(expense.amountCents),
       expense.originalAmount === null ? '' : toAmountText(expense.originalAmount),
-      expense.originalCurrency?.code ?? '',
+      expense.originalCountry?.currencyCode ?? '',
       expense.exchangeRate === null ? '' : String(expense.exchangeRate),
       neutraliseFormula(expense.notes),
       neutraliseFormula(expense.person?.name ?? ''),

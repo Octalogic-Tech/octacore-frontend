@@ -35,7 +35,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'Technologies', to: '/technologies' },
       { label: 'Countries', to: '/countries' },
       { label: 'Expense types', to: '/expense-types' },
-      { label: 'Currencies', to: '/currencies' },
     ],
   },
   {

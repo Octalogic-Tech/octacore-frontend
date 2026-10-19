@@ -78,6 +78,26 @@ describe('ConfirmDialog', () => {
     expect(screen.getByRole('button', { name: 'Delete category' })).toBeEnabled();
   });
 
+  it('shows the message the service wrote when it is asked to, and the general one when there is none', async () => {
+    const failureMessage = vi.fn((error: unknown) => (error instanceof Error && error.message === 'in use' ? 'It is in use.' : undefined));
+    const onConfirm = vi.fn().mockRejectedValueOnce(new Error('in use')).mockRejectedValueOnce(new Error('network'));
+    render(
+      <ConfirmDialog
+        open
+        onOpenChange={vi.fn()}
+        title="Delete category “Web”?"
+        description="This cannot be undone."
+        confirmLabel="Delete category"
+        onConfirm={onConfirm}
+        failureMessage={failureMessage}
+      />,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Delete category' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('It is in use.');
+    await userEvent.click(screen.getByRole('button', { name: 'Delete category' }));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('That did not work. Try again.'));
+  });
+
   it('cancels without confirming', async () => {
     const onConfirm = vi.fn().mockResolvedValue(undefined);
     const onOpenChange = setup(onConfirm);

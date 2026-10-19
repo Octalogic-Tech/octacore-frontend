@@ -9,11 +9,6 @@ export const expenseTypeRows = [
   { id: 2, ...audit, name: 'Travel', description: null },
 ];
 
-export const currencyRows = [
-  { id: 1, ...audit, code: 'USD', name: 'US dollar', symbol: '$', rate: 1 },
-  { id: 2, ...audit, code: 'INR', name: 'Indian rupee', symbol: '₹', rate: 88.25 },
-];
-
 export const expenseRows = [
   {
     id: 1,
@@ -28,8 +23,8 @@ export const expenseRows = [
     person: null,
     chargeDate: '2026-10-01',
     amountCents: 1500,
-    originalCurrencyId: null,
-    originalCurrency: null,
+    originalCountryId: null,
+    originalCountry: null,
     originalAmount: null,
     exchangeRate: null,
     recurringExpenseId: 7,
@@ -47,8 +42,8 @@ export const expenseRows = [
     person: { id: 1, name: 'Ada Lovelace' },
     chargeDate: '2026-09-15',
     amountCents: 10000,
-    originalCurrencyId: 2,
-    originalCurrency: { id: 2, code: 'INR', symbol: '₹' },
+    originalCountryId: 99,
+    originalCountry: { id: 99, name: 'India', currencyCode: 'INR', currencySymbol: '₹' },
     originalAmount: 882500,
     exchangeRate: 88.25,
     recurringExpenseId: null,
@@ -67,8 +62,8 @@ export const recurringRows = [
     project: null,
     personId: null,
     person: null,
-    currencyId: 1,
-    currency: { id: 1, code: 'USD', symbol: '$' },
+    countryId: 226,
+    country: { id: 226, name: 'United States', currencyCode: 'USD', currencySymbol: '$' },
     amount: 1500,
     frequency: 'monthly',
     startDate: '2026-07-01',
@@ -91,8 +86,8 @@ export const recurringRows = [
     project: null,
     personId: 1,
     person: { id: 1, name: 'Ada Lovelace' },
-    currencyId: 2,
-    currency: { id: 2, code: 'INR', symbol: '₹' },
+    countryId: 99,
+    country: { id: 99, name: 'India', currencyCode: 'INR', currencySymbol: '₹' },
     amount: 882500,
     frequency: 'monthly',
     startDate: '2026-08-15',
@@ -115,8 +110,8 @@ export const recurringRows = [
     project: null,
     personId: null,
     person: null,
-    currencyId: 1,
-    currency: { id: 1, code: 'USD', symbol: '$' },
+    countryId: 226,
+    country: { id: 226, name: 'United States', currencyCode: 'USD', currencySymbol: '$' },
     amount: 900,
     frequency: 'quarterly',
     startDate: '2026-01-10',
@@ -154,7 +149,7 @@ export const rejection = (status: number, message: string) =>
 
 /**
  * A `coreApi.get` implementation that answers by path, in the service's envelope, and fails loudly on a path the
- * test did not expect: `vi.mocked(coreApi.get).mockImplementation(answering({ '/currencies': currencyRows }))`.
+ * test did not expect: `vi.mocked(coreApi.get).mockImplementation(answering({ '/countries': countryRows }))`.
  */
 export const answering = (answers: Record<string, unknown>) => async (url: string) => {
   if (!(url in answers)) throw new Error(`Unexpected GET ${url}`);

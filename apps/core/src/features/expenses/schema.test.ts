@@ -1,4 +1,4 @@
-import { currencyRows, expenseRows, recurringRows } from '@/test/fixtures/expenses';
+import { expenseRows, recurringRows } from '@/test/fixtures/expenses';
 import {
   emptyExpenseForm,
   emptyRecurringForm,
@@ -25,7 +25,7 @@ const valid: ExpenseFormValues = {
   projectId: '',
   personId: '',
   chargeDate: '2026-10-01',
-  currencyId: '1',
+  countryId: '226',
   amount: '15.00',
   notes: '',
 };
@@ -39,7 +39,7 @@ describe('the expense form', () => {
     ['name', { name: '   ' }, 'Name is required'],
     ['expenseTypeId', { expenseTypeId: '' }, 'Choose a type'],
     ['chargeDate', { chargeDate: '' }, 'Charge date is required'],
-    ['currencyId', { currencyId: '' }, 'Choose a currency'],
+    ['countryId', { countryId: '' }, 'Choose a country'],
     ['amount', { amount: '' }, 'Enter an amount'],
     ['amount', { amount: '1,000' }, 'Enter an amount like 7.20, with no commas or signs'],
     ['amount', { amount: '0' }, 'The amount must be more than zero'],
@@ -52,7 +52,7 @@ describe('the expense form', () => {
 });
 
 describe('the expense body', () => {
-  it('sends the currency and the amount in minor units on a create', () => {
+  it('sends the country and the amount in minor units on a create', () => {
     expect(toExpenseBody({ ...valid, projectId: '3', notes: ' Seats ' })).toEqual({
       name: 'Figma',
       notes: 'Seats',
@@ -60,7 +60,7 @@ describe('the expense body', () => {
       projectId: 3,
       personId: null,
       chargeDate: '2026-10-01',
-      currencyId: 1,
+      countryId: 226,
       amount: 1500,
     });
   });
@@ -76,24 +76,24 @@ describe('the expense body', () => {
     expect(toExpenseBody({ ...valid, personId: '2' }).personId).toBe(2);
   });
 
-  // The service converts again, at today's rate, whenever it is sent a currency and an amount.
+  // The service converts again, at today's rate, whenever it is sent a country and an amount.
   describe('on an edit', () => {
-    const shown = { currencyId: 2, amount: 882500 };
-    const form = { ...valid, currencyId: '2', amount: '8825.00' };
+    const shown = { countryId: 99, amount: 882500 };
+    const form = { ...valid, countryId: '99', amount: '8825.00' };
 
-    it('leaves the amount out when neither it nor the currency changed', () => {
+    it('leaves the amount out when neither it nor the country changed', () => {
       const body = toExpenseBody({ ...form, notes: 'Rent' }, shown);
-      expect('currencyId' in body).toBe(false);
+      expect('countryId' in body).toBe(false);
       expect('amount' in body).toBe(false);
       expect(body.notes).toBe('Rent');
     });
 
     it('sends both when the amount changed', () => {
-      expect(toExpenseBody({ ...form, amount: '9000.00' }, shown)).toMatchObject({ currencyId: 2, amount: 900000 });
+      expect(toExpenseBody({ ...form, amount: '9000.00' }, shown)).toMatchObject({ countryId: 99, amount: 900000 });
     });
 
-    it('sends both when the currency changed', () => {
-      expect(toExpenseBody({ ...form, currencyId: '1' }, shown)).toMatchObject({ currencyId: 1, amount: 882500 });
+    it('sends both when the country changed', () => {
+      expect(toExpenseBody({ ...form, countryId: '226' }, shown)).toMatchObject({ countryId: 226, amount: 882500 });
     });
 
     it('treats 8825 and 8825.00 as the same amount', () => {
@@ -104,16 +104,16 @@ describe('the expense body', () => {
 
 describe('what an expense is shown with', () => {
   it('is the rupee amount typed, for a rupee expense', () => {
-    expect(shownAmount(expense, 1)).toEqual({ currencyId: 2, amount: 882500 });
+    expect(shownAmount(expense, 226)).toEqual({ countryId: 99, amount: 882500 });
   });
 
   it('is the dollar amount, for a dollar expense', () => {
-    expect(shownAmount(dollarExpense, 1)).toEqual({ currencyId: 1, amount: 1500 });
+    expect(shownAmount(dollarExpense, 226)).toEqual({ countryId: 226, amount: 1500 });
   });
 
-  it('is unknown while the dollar currency has not loaded', () => {
+  it('is unknown while the dollar country has not loaded', () => {
     expect(shownAmount(dollarExpense, undefined)).toBeUndefined();
-    expect(shownAmount(expense, undefined)).toEqual({ currencyId: 2, amount: 882500 });
+    expect(shownAmount(expense, undefined)).toEqual({ countryId: 99, amount: 882500 });
   });
 });
 
@@ -128,7 +128,7 @@ describe('the expense form values', () => {
   it('show a rupee expense in rupees', () => {
     expect(toExpenseFormValues(expense, '2026-10-16')).toMatchObject({
       name: 'Co-working desk',
-      currencyId: '2',
+      countryId: '99',
       amount: '8825.00',
       projectId: '1',
       personId: '1',
@@ -136,8 +136,8 @@ describe('the expense form values', () => {
     });
   });
 
-  it('leave the currency of a dollar expense for the form to fill in', () => {
-    expect(toExpenseFormValues(dollarExpense, '2026-10-16')).toMatchObject({ currencyId: '', amount: '15.00' });
+  it('leave the country of a dollar expense for the form to fill in', () => {
+    expect(toExpenseFormValues(dollarExpense, '2026-10-16')).toMatchObject({ countryId: '', amount: '15.00' });
   });
 });
 
@@ -149,7 +149,7 @@ const validRecurring: RecurringFormValues = {
   frequency: 'monthly',
   startDate: '2026-07-01',
   endDate: '',
-  currencyId: '1',
+  countryId: '226',
   amount: '15.00',
   notes: '',
 };
@@ -182,7 +182,7 @@ describe('the recurring form', () => {
       expenseTypeId: 1,
       projectId: 3,
       personId: null,
-      currencyId: 1,
+      countryId: 226,
       amount: 1500,
       frequency: 'monthly',
       startDate: '2026-07-01',
@@ -204,7 +204,7 @@ describe('the recurring form', () => {
       frequency: 'monthly',
       startDate: '2026-07-01',
       endDate: '',
-      currencyId: '1',
+      countryId: '226',
       amount: '15.00',
     });
   });
@@ -223,7 +223,23 @@ describe('the rows', () => {
     expect(recurringRowSchema.safeParse({ ...recurringRows[0], frequency: 'weekly' }).success).toBe(false);
   });
 
-  it('are built from rows with a currency to show', () => {
-    expect(currencyRows.map((row) => row.code)).toEqual(['USD', 'INR']);
+  it('read the country a charge was typed under, with the currency it brings', () => {
+    expect(expense.originalCountry).toEqual({ id: 99, name: 'India', currencyCode: 'INR', currencySymbol: '₹' });
+    expect(dollarExpense.originalCountry).toBeNull();
+    expect(recurring.country).toEqual({ id: 226, name: 'United States', currencyCode: 'USD', currencySymbol: '$' });
+    expect(recurring.countryId).toBe(226);
+  });
+
+  it('refuse a row that still names a currency, as the service did before this change', () => {
+    const without = (row: object, ...keys: string[]) =>
+      Object.fromEntries(Object.entries(row).filter(([key]) => !keys.includes(key)));
+    const oldExpense = { ...without(expenseRows[1], 'originalCountry'), originalCurrency: { id: 2, code: 'INR', symbol: '₹' } };
+    expect(expenseRowSchema.safeParse(oldExpense).success).toBe(false);
+    const oldRecurring = {
+      ...without(recurringRows[0], 'countryId', 'country'),
+      currencyId: 1,
+      currency: { id: 1, code: 'USD', symbol: '$' },
+    };
+    expect(recurringRowSchema.safeParse(oldRecurring).success).toBe(false);
   });
 });

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCountries } from '@/features/countries/api';
+import { countryPickerOptions } from '@/features/countries/options';
 import { contactChangedElsewhere, useSaveClient, useSaveContact } from './api';
 import {
   clientFormSchema,
@@ -53,17 +54,18 @@ export function ClientFormDialog({ open, onOpenChange, client, contact }: Client
     }
   }, [open, client, contact, reset]);
 
-  // The client's own country is always an option, so a countries request that is still loading or has failed
-  // cannot blank the select and erase the country on save.
-  const countryOptions = useMemo(() => {
-    const options = (countries.data ?? []).map((country) => ({ id: country.id, label: country.nicename }));
-    const current =
-      client && client.countryId !== null && client.countryName !== ''
-        ? { id: client.countryId, label: client.countryName }
-        : undefined;
-    if (current && !options.some((option) => option.id === current.id)) options.push(current);
-    return options;
-  }, [countries.data, client]);
+  // The client's own country is always an option, even once switched off, so a countries request that is still
+  // loading or has failed cannot blank the select and erase the country on save.
+  const countryOptions = useMemo(
+    () =>
+      countryPickerOptions(countries.data ?? [], {
+        current:
+          client && client.countryId !== null && client.countryName !== ''
+            ? { id: client.countryId, name: client.countryName }
+            : undefined,
+      }),
+    [countries.data, client],
+  );
 
   const submit = handleSubmit(async (values) => {
     setFailure(null);

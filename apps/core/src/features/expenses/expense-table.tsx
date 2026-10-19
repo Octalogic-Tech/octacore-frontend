@@ -55,9 +55,9 @@ export function ExpenseTable({ rows, onEdit, onDelete }: ExpenseTableProps) {
               <TableCell>{expense.person?.name ?? NONE}</TableCell>
               <TableCell className="tabular text-right">
                 {formatUsd(expense.amountCents)}
-                {expense.originalCurrency && expense.originalAmount !== null && expense.exchangeRate !== null ? (
+                {expense.originalCountry && expense.originalAmount !== null && expense.exchangeRate !== null ? (
                   <div className="text-small text-navy-72">
-                    {formatMoney(expense.originalAmount, expense.originalCurrency)} at {formatRate(expense.exchangeRate)}
+                    {formatMoney(expense.originalAmount, expense.originalCountry)} at {formatRate(expense.exchangeRate)}
                   </div>
                 ) : null}
               </TableCell>

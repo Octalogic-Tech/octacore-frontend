@@ -30,12 +30,12 @@ function stubCore(
 }
 
 const softwareType = record({ id: 1, name: 'Software subscription', description: 'Tools we pay for' });
-const dollars = record({ id: 1, code: 'USD', name: 'US dollar', symbol: '$', rate: 1 });
-const rupees = record({ id: 2, code: 'INR', name: 'Indian rupee', symbol: '₹', rate: 88.25 });
 
 /**
  * Everything `stubApi` stubs, plus the expense routes. They start empty and keep state, so adding a recurring expense
- * (which the stub answers by creating three monthly charges, August to October 2026) shows up on the next read.
+ * (which the stub answers by creating three monthly charges, August to October 2026) shows up on the next read. The
+ * countries come from `stubApi`: the United States (id 226, US dollars) and India (id 99, 88.25 rupees per dollar) are
+ * the active ones with a rate, so those are what an expense can be charged in.
  */
 export function stubExpenses() {
   stubApi();
@@ -43,7 +43,6 @@ export function stubExpenses() {
   let expenses: Row[] = [];
 
   stubCore('GET', '/expense-types', () => ({ body: envelope([softwareType]) }));
-  stubCore('GET', '/currencies', () => ({ body: envelope([dollars, rupees]) }));
   stubCore('GET', '/recurring-expenses', () => ({ body: envelope(recurring) }));
   // `*` does not cross a `/`, and the list carries a query string, hence the trailing `*`.
   stubCore('GET', '/expenses*', ({ url }) => {
@@ -69,7 +68,7 @@ export function stubExpenses() {
       nextChargeDate: '2026-11-01',
       lastChargeDate: '2026-10-01',
       expenseType: softwareType,
-      currency: { id: 1, code: 'USD', symbol: '$' },
+      country: { id: 226, name: 'United States', currencyCode: 'USD', currencySymbol: '$' },
       amountCents: fields.amount,
       monthlyCostCents: fields.amount,
       yearlyCostCents: (fields.amount as number) * 12,
@@ -89,7 +88,8 @@ export function stubExpenses() {
         person: null,
         chargeDate,
         amountCents: fields.amount,
-        originalCurrency: null,
+        originalCountryId: null,
+        originalCountry: null,
         originalAmount: null,
         exchangeRate: null,
         recurringExpenseId: 7,
