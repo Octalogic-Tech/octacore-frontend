@@ -54,15 +54,15 @@
       }
     },
     "test": {
-      "executor": "@nx/vite:test",
-      "outputs": ["coverage/apps/external/portfolio"],
+      "executor": "@nx/vitest:test",
+      "outputs": ["{workspaceRoot}/coverage/apps/external/portfolio"],
       "options": {
         "passWithNoTests": true,
         "reportsDirectory": "../../../coverage/apps/external/portfolio"
       }
     },
     "lint": {
-      "executor": "@nx/linter:eslint",
+      "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],
       "options": {
         "lintFilePatterns": ["apps/external//portfolio/**/*.{ts,tsx,js,jsx}"]

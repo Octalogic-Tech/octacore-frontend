@@ -51,8 +51,8 @@ console.warn = (...args: unknown[]) => {
   warn(...args);
 };
 
-// jsdom has no object URLs. The preview creates one per file it shows, so tests get inert, replaceable stand-ins.
-if (!URL.createObjectURL) {
-  URL.createObjectURL = vi.fn(() => 'blob:octacore-test');
-  URL.revokeObjectURL = vi.fn();
-}
+// jsdom has no object URLs, and under Vitest 4 `URL` is Node's own, whose native createObjectURL would hand out real
+// blob URLs that tests cannot stub. The preview creates one per file it shows, so tests always get inert, replaceable
+// stand-ins.
+URL.createObjectURL = vi.fn(() => 'blob:octacore-test');
+URL.revokeObjectURL = vi.fn();

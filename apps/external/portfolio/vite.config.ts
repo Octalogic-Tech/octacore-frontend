@@ -1,9 +1,10 @@
-/// <reference types="vitest" />
+/// <reference types="vitest/config" />
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import viteTsConfigPaths from 'vite-tsconfig-paths';
 
 export default defineConfig({
+  root: __dirname,
   cacheDir: '../../../node_modules/.vite/external--portfolio',
 
   server: {
@@ -34,9 +35,6 @@ export default defineConfig({
 
   test: {
     globals: true,
-    cache: {
-      dir: '../../../node_modules/.vitest',
-    },
     environment: 'jsdom',
     include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
   },

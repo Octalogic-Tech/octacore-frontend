@@ -7,4 +7,5 @@ allowBuilds:
   esbuild: true
   nx: true
   styled-components: true
+  unrs-resolver: false
   vue-demi: true
