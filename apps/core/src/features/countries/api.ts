@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CLIENTS } from '@/features/clients/api';
 import { EXPENSES_KEY, RECURRING_KEY } from '@/features/expenses/api';
+import { PROJECTS } from '@/features/projects/api';
 import { coreApi, unwrap } from '@/lib/core-api';
 import { countriesSchema, syncResultSchema, type CountryBody } from './schema';
 
@@ -17,7 +18,8 @@ export function useCountries() {
 /**
  * A recurring expense reads its US cost from its country's current rate, so a change makes that list stale. An
  * expense keeps the rate it was saved with, but its rows embed the country's currency code and symbol, and a client's
- * row its country's name, so those lists refetch too.
+ * row its country's name, so those lists refetch too. A project's billing terms (currency, rate and tax rate) are its
+ * country's current ones, so the projects refetch; an invoice keeps its own snapshot and does not.
  */
 function useRefresh() {
   const client = useQueryClient();
@@ -27,6 +29,7 @@ function useRefresh() {
       client.invalidateQueries({ queryKey: RECURRING_KEY }),
       client.invalidateQueries({ queryKey: EXPENSES_KEY }),
       client.invalidateQueries({ queryKey: CLIENTS }),
+      client.invalidateQueries({ queryKey: PROJECTS }),
     ]);
 }
 

@@ -5,13 +5,19 @@ const LIST_LENGTH = 5;
 
 export interface OverviewSummary {
   projectCount: number;
-  /** The two totals, in whole US cents like every amount the service sends. */
+  /**
+   * The two totals, in whole US cents: the service adds up each project's invoices at their own rates (`amountUsdCents`,
+   * before tax), so projects billed in different currencies add up here.
+   */
   totalValue: number;
   totalOutstanding: number;
   /** Up to five projects, largest outstanding amount first. Settled projects are left out. */
   topOutstanding: ProjectRow[];
   unpaidCount: number;
-  /** Up to five unpaid invoices, the one due soonest first. Those with no due date come last. */
+  /**
+   * Up to five unpaid invoices, the one due soonest first. Those with no due date come last. Each keeps its own currency,
+   * which the page shows its amount in.
+   */
   unpaidInvoices: InvoiceListRow[];
 }
 

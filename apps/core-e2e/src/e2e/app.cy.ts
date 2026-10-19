@@ -2,6 +2,12 @@ import { stubApi } from '../support/api';
 
 const nav = 'nav[aria-label="Main"]';
 
+/** Scrolls the invoice dialog to the text and checks it is shown: the dialog is taller than the viewport. */
+const seen = (text: string) => {
+  cy.contains(text).scrollIntoView();
+  cy.contains(text).should('be.visible');
+};
+
 describe('core', () => {
   beforeEach(() => {
     stubApi();
@@ -47,7 +53,8 @@ describe('core', () => {
     cy.contains('td', 'Legacy portal').should('be.visible');
     cy.contains('a', 'Website').click();
     cy.contains('h1', 'Website');
-    cy.contains('p', '$12,000.00 outstanding of $48,000.00 invoiced.').should('be.visible');
+    // The totals are in dollars: the invoice in rupees counts as its amount at its own rate, before tax.
+    cy.contains('p', '$14,266.29 outstanding of $50,266.29 invoiced.').should('be.visible');
     cy.contains('dt', 'Discount').next().should('have.text', '10%');
     // The overview holds the facts and what is owed; the tables are one tab each, and the tab is in the address.
     cy.contains('td', 'INV-001').should('not.exist');
@@ -56,6 +63,9 @@ describe('core', () => {
     cy.contains('td', 'INV-001').should('be.visible');
     cy.contains('Paid 12 Oct 2026').should('be.visible');
     cy.contains('Unpaid').should('be.visible');
+    // Each invoice is in its own currency.
+    cy.contains('td', '$36,000.00').should('be.visible');
+    cy.contains('td', '₹2,36,000.00').should('be.visible');
     cy.contains('[role="tab"]', 'Resources').click();
     cy.location('search').should('eq', '?tab=resources');
     cy.contains('h2', 'Resources').should('be.visible');
@@ -66,14 +76,24 @@ describe('core', () => {
     cy.get('[role="dialog"]').invoke('outerWidth').should('be.gt', 1000);
     cy.get('[role="dialog"]').within(() => {
       cy.get('input[aria-label="Line 1 description"]').should('have.value', 'Asha Rao — Mobile');
-      // The project's 10% starts the invoice's discount, and the total is after it.
+      // Acme is in India: the invoice is billed in rupees with the country's 18% tax, and the rates are typed in rupees.
+      cy.contains('Billed in INR · ₹88.25 per $1 · tax 18%').should('be.visible');
+      cy.contains('Rate (INR)').should('be.visible');
+      cy.get('input[aria-label="Line 1 rate"]').should('have.value', '13237.50');
+      cy.get('#invoice-tax-rate').should('have.value', '18');
+      // The project's 10% starts the invoice's discount; the tax is on what is left, and the dollars are before tax.
       cy.get('#invoice-discount').should('have.value', '10');
-      cy.contains('Subtotal $36,000.00').should('be.visible');
-      cy.contains('Discount (10%) -$3,600.00').should('be.visible');
-      cy.contains('Total $32,400.00').should('be.visible');
+      seen('Subtotal ₹31,77,000.00');
+      seen('Discount (10%) -₹3,17,700.00');
+      seen('Tax (18%) ₹5,14,674.00');
+      seen('Total ₹33,73,974.00');
+      seen('About $32,400.00 in US dollars, before tax');
       cy.get('#invoice-discount').clear();
       cy.get('#invoice-discount').type('0');
-      cy.contains('Total $36,000.00').should('be.visible');
+      seen('Total ₹37,48,860.00');
+      cy.get('#invoice-tax-rate').clear();
+      cy.get('#invoice-tax-rate').type('0');
+      seen('Total ₹31,77,000.00');
       cy.contains('button', 'Cancel').click();
     });
     cy.get('[role="dialog"]').should('not.exist');
@@ -91,6 +111,33 @@ describe('core', () => {
     });
     cy.get('[role="dialog"]').should('not.exist');
     cy.get(`${nav} a[aria-current="page"]`).should('have.length', 1).and('contain', 'Projects');
+  });
+
+  it('names a project’s billing country and says what a new invoice would be billed in', () => {
+    cy.get(nav).contains('a', 'Projects').click();
+    cy.contains('a', 'Website').click();
+    cy.contains('button', 'Edit project').click();
+    cy.get('[role="dialog"]').within(() => {
+      // None: the client's country decides, and the service says it is India's.
+      cy.get('#project-country').should('have.value', '');
+      cy.get('#project-country-hint').should(
+        'have.text',
+        'New invoices are billed in INR · ₹88.25 per $1 · tax 18%, from the client’s country.',
+      );
+      // The active countries with a rate, labelled with their currency; Japan has none yet.
+      cy.get('#project-country option').then((options) => {
+        expect([...options].map((option) => option.textContent)).to.deep.equal([
+          'None',
+          'Germany · EUR',
+          'India · INR',
+          'United States · USD',
+        ]);
+      });
+      cy.get('#project-country').select('United States · USD');
+      cy.get('#project-country-hint').should('have.text', 'Once saved, new invoices are billed in USD.');
+      cy.contains('button', 'Cancel').click();
+    });
+    cy.get('[role="dialog"]').should('not.exist');
   });
 
   it('adds a category and deletes it through the confirmation', () => {
@@ -142,6 +189,9 @@ describe('core', () => {
     cy.contains('h1', 'Invoices');
     cy.get('#invoices-status').should('have.value', 'active');
     cy.contains('td', 'INV-002').should('be.visible');
+    // Each invoice is listed at what its client pays, in its own currency.
+    cy.contains('td', 'INV-002').parent('tr').contains('$12,000.00').should('be.visible');
+    cy.contains('td', 'INV-003').parent('tr').contains('₹2,36,000.00').should('be.visible');
     cy.contains('td', 'INV-001').should('not.exist');
     cy.get('#invoices-status').select('Paid');
     cy.contains('td', 'INV-001').should('be.visible');
@@ -152,8 +202,10 @@ describe('core', () => {
     cy.get(nav).contains('a', 'Invoices').click();
     cy.contains('button', 'Export CSV').click();
     cy.readFile(`${Cypress.config('downloadsFolder')}/invoices.csv`)
-      .should('contain', 'Number,Client,Project,Issued,Due,Paid,Amount,Status')
-      .and('contain', 'INV-002,Acme,Website,2026-11-01,,,12000.00,Unpaid')
+      .should('contain', 'Number,Client,Project,Issued,Due,Paid,Amount,Tax,Total,Currency,Status')
+      .and('contain', 'INV-002,Acme,Website,2026-11-01,,,12000.00,0.00,12000.00,USD,Unpaid')
+      // The amount before tax, the tax and the total stay in the invoice's own currency, with its code beside them.
+      .and('contain', 'INV-003,Acme,Website,2026-11-02,,,200000.00,36000.00,236000.00,INR,Unpaid')
       .and('not.contain', 'INV-001');
   });
 });

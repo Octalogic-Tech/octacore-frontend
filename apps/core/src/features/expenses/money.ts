@@ -7,12 +7,18 @@ import { toAmountText } from '@/lib/money';
 
 const RATE_SCALE = 1_000_000n;
 
-/** An amount in its own currency with its symbol. Rupees are grouped the Indian way (₹1,23,456.78). */
+/**
+ * An amount in its own currency with its symbol. Rupees are grouped the Indian way (₹1,23,456.78). Always two
+ * decimals: every amount is held in hundredths, and the browser's own count (none for yen, three for dinars) would
+ * round or pad it.
+ */
 export function formatMoney(minor: number, currency: { currencyCode: string; currencySymbol: string }): string {
   try {
     return new Intl.NumberFormat(currency.currencyCode === 'INR' ? 'en-IN' : 'en-US', {
       style: 'currency',
       currency: currency.currencyCode,
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(minor / 100);
   } catch {
     // A code the browser does not recognise: the symbol and plain digits.

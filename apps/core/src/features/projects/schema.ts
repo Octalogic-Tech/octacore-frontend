@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { taxRateProblem } from '@/features/countries/schema';
+import { convertToCents } from '@/features/expenses/money';
 import { MAX_CENTS, amountProblem, parseAmount, toAmountText } from '@/lib/money';
 
 const nullToEmpty = (text: string | null) => text ?? '';
@@ -42,9 +44,30 @@ export const projectStatusOptions = projectStatusSchema.options.map((value) => (
   label: PROJECT_STATUS_LABELS[value],
 }));
 
+/**
+ * The currency an invoice is issued in and the tax it carries, copied from a country: what a project bills in
+ * (`billing`), what the invoice draft starts from and what an invoice keeps. `exchangeRate` is units of the currency per
+ * US dollar (1 for dollars), and null only when the project's own country has lost its rate: nothing can be invoiced then.
+ */
+export const billingTermsSchema = z.object({
+  currencyCode: z.string(),
+  currencySymbol: z.string(),
+  exchangeRate: z.number().nullable(),
+  // A percentage, 0 to 100.
+  taxRate: z.number(),
+});
+
+export type BillingTerms = z.output<typeof billingTermsSchema>;
+
+/** Where a project's billing terms come from: its own country, its client's, or neither (US dollars, no tax). */
+export const billingSourceSchema = z.enum(['project', 'client', 'default']);
+
+export type BillingSource = z.output<typeof billingSourceSchema>;
+
 // Only what the pages use. The service also sends `status`, the audit dates and the embedded client's other
 // fields; unknown keys are dropped. `client` is null with no client, or with a soft-deleted one while `clientId`
-// is still set. Both types are null on a project saved before they existed.
+// is still set. Both types are null on a project saved before they existed. `country` is the project's own billing
+// country, null while it bills in its client's.
 export const projectRowSchema = z
   .object({
     id: z.number().int(),
@@ -63,9 +86,20 @@ export const projectRowSchema = z
     technologies: z.array(z.object({ id: z.number().int(), name: z.string() })),
     clientId: z.number().int().nullable(),
     client: z.object({ name: z.string() }).nullable(),
+    countryId: z.number().int().nullable(),
+    country: z
+      .object({
+        id: z.number().int(),
+        name: z.string(),
+        currencyCode: z.string(),
+        currencySymbol: z.string(),
+      })
+      .nullable(),
+    // What a new invoice would be billed in.
+    billing: billingTermsSchema.extend({ source: billingSourceSchema }),
     projectType: projectTypeSchema.nullable(),
     billingType: billingTypeSchema.nullable(),
-    // Whole US cents.
+    // Whole US cents: the sum of the project's invoices at their own rates, before tax.
     totalValueCents: z.number().int(),
     totalOutstandingCents: z.number().int(),
   })
@@ -87,7 +121,7 @@ export const lineItemRowSchema = z.object({
   description: z.string(),
   headcount: z.number().int(),
   quantity: z.number().int(),
-  // Whole US cents, like every amount the service sends.
+  // Whole minor units of the invoice's currency (cents, paise), like every amount the service sends.
   rateCents: z.number().int(),
   amountCents: z.number().int(),
 });
@@ -97,11 +131,21 @@ export const invoiceRowSchema = z.object({
   projectId: z.number().int(),
   number: z.string(),
   description: z.string().nullable().transform(nullToEmpty),
-  // Calculated by the service from the lines; never sent. `amountCents` is what the client pays: the subtotal less
-  // the invoice's own discount.
+  // The currency the invoice was issued in, the rate (units per US dollar) and the tax rate (a percentage), kept as they
+  // were when it was made: a later sync of the rates never changes them. Dollars are rate 1.
+  currencyCode: z.string(),
+  currencySymbol: z.string(),
+  exchangeRate: z.number(),
+  taxRate: z.number(),
+  // Calculated by the service from the lines; never sent. Whole minor units of the invoice's currency. `amountCents`
+  // is the subtotal less the invoice's own discount, `taxCents` the tax on it and `totalCents` what the client pays;
+  // `amountUsdCents` is `amountCents` in US cents at the invoice's own rate: what every total adds up.
   subtotalCents: z.number().int(),
   discountPercent: z.number(),
   amountCents: z.number().int(),
+  taxCents: z.number().int(),
+  totalCents: z.number().int(),
+  amountUsdCents: z.number().int(),
   issueDate: z.iso.date(),
   dueDate: z.iso.date().nullable(),
   paidDate: z.iso.date().nullable(),
@@ -121,13 +165,14 @@ export function sortInvoices(rows: readonly InvoiceRow[]): InvoiceRow[] {
 }
 
 /**
- * What the client still owes, in cents, on invoices whose due date has passed: unpaid, and due before `today`
- * (`YYYY-MM-DD`). An invoice with no due date is never overdue, and one due today is not yet.
+ * What the client still owes, in US cents, on invoices whose due date has passed: unpaid, and due before `today`
+ * (`YYYY-MM-DD`). An invoice with no due date is never overdue, and one due today is not yet. Each counts as its
+ * `amountUsdCents`, so invoices in different currencies add up, before tax like every total.
  */
 export function overdueTotal(rows: readonly InvoiceRow[], today: string): number {
   return rows
     .filter((invoice) => !invoice.paidDate && invoice.dueDate !== null && invoice.dueDate < today)
-    .reduce((total, invoice) => total + invoice.amountCents, 0);
+    .reduce((total, invoice) => total + invoice.amountUsdCents, 0);
 }
 
 /** A percentage field, as text: empty means none, otherwise 0 to 50 with up to two decimals. */
@@ -144,7 +189,7 @@ const discountField = z
 /** The percentage a field holds, for a request body: empty is 0. */
 const percentOf = (text: string) => (text.trim() === '' ? 0 : Number(text));
 
-// Every field is text, so a blank field can be told from a typed one; `clientId` is '' for None.
+// Every field is text, so a blank field can be told from a typed one; `clientId` and `countryId` are '' for None.
 export const projectFormSchema = z
   .object({
     name: z.string().trim().min(1, 'Name is required'),
@@ -154,6 +199,8 @@ export const projectFormSchema = z
     billingAddress: z.string().trim().max(1000, 'Keep the address under 1,000 characters'),
     discountPercent: discountField,
     clientId: z.string(),
+    // The billing country; '' is None, and then the client's country decides.
+    countryId: z.string(),
     projectType: z.string().refine((value) => projectTypeSchema.safeParse(value).success, 'Choose a project type'),
     billingType: z.string().refine((value) => billingTypeSchema.safeParse(value).success, 'Choose a billing type'),
     projectStatus: z.string().refine((value) => projectStatusSchema.safeParse(value).success, 'Choose a status'),
@@ -178,6 +225,7 @@ export const emptyProjectForm: ProjectFormValues = {
   billingAddress: '',
   discountPercent: '0',
   clientId: '',
+  countryId: '',
   projectType: '',
   billingType: '',
   projectStatus: 'active',
@@ -196,6 +244,8 @@ export function toProjectFormValues(project?: ProjectRow): ProjectFormValues {
     discountPercent: String(project.discountPercent),
     // A client the service no longer embeds comes back as null: the form opens on None, not on a stale id.
     clientId: project.clientId !== null && project.clientName !== '' ? String(project.clientId) : '',
+    // Likewise a country the service no longer embeds.
+    countryId: project.countryId !== null && project.country !== null ? String(project.countryId) : '',
     // A legacy project has no types yet: the selects open on "Choose" and saving asks for a pick.
     projectType: project.projectType ?? '',
     billingType: project.billingType ?? '',
@@ -210,6 +260,8 @@ export interface ProjectBody {
   name: string;
   description: string | null;
   clientId: number | null;
+  /** The billing country; null clears it, and the client's country decides again. */
+  countryId: number | null;
   projectType: ProjectType;
   billingType: BillingType;
   key: string | null;
@@ -230,6 +282,7 @@ export function toProjectBody(values: ProjectFormValues): ProjectBody {
     name: values.name,
     description: orNull(values.description),
     clientId: values.clientId === '' ? null : Number(values.clientId),
+    countryId: values.countryId === '' ? null : Number(values.countryId),
     projectType: projectTypeSchema.parse(values.projectType),
     billingType: billingTypeSchema.parse(values.billingType),
     key: values.key.trim() === '' ? null : values.key.trim().toUpperCase(),
@@ -253,8 +306,8 @@ interface LineFigures {
 }
 
 /**
- * A line's amount in cents, Qty x hours x rate, from its text fields: null until Qty and hours are whole numbers and
- * the rate (dollars and cents, as typed) is an amount the form accepts.
+ * A line's amount in minor units of the invoice's currency, Qty x hours x rate, from its text fields: null until Qty
+ * and hours are whole numbers and the rate (units and hundredths, as typed) is an amount the form accepts.
  */
 export function lineAmount(line: LineFigures): number | null {
   const headcount = line.headcount.trim();
@@ -270,9 +323,15 @@ export function linesTotal(lines: readonly LineFigures[]): number {
   return lines.reduce((sum, line) => sum + (lineAmount(line) ?? 0), 0);
 }
 
+/** The hundredths of a percent that text already known to be a percentage with at most two decimals spells. */
+function hundredthsOf(text: string): number {
+  const [whole, fraction = ''] = text.split('.');
+  return Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
+}
+
 /**
- * The cents a discount takes off a subtotal given in cents, floored: the service's own rule (floored once, on the
- * subtotal), so the preview never differs from what is saved. Done in hundredths of a percent, as integers, and the
+ * The minor units a discount takes off a subtotal given in minor units, floored: the service's own rule (floored once,
+ * on the subtotal), so the preview never differs from what is saved. Done in hundredths of a percent, as integers, and the
  * product in `BigInt`: a subtotal times hundredths can pass 2^53, where a float rounds the product (1_801_800_215_001
  * at 49.99% is one such, a cent off in a float). The largest case, 200 lines at the cap at 50%, is 10^16 before the
  * division, which a number still holds exactly. Text the form refuses (empty, not a percentage, above 50) takes
@@ -283,19 +342,36 @@ export function discountAmount(subtotalCents: number, percent: string): number {
   const text = percent.trim();
   if (!PERCENT_TEXT.test(text) || Number(text) > MAX_DISCOUNT_PERCENT) return 0;
   if (!Number.isSafeInteger(subtotalCents)) return 0;
-  const [whole, fraction = ''] = text.split('.');
-  const hundredths = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
-  return Number((BigInt(subtotalCents) * BigInt(hundredths)) / 10000n);
+  return Number((BigInt(subtotalCents) * BigInt(hundredthsOf(text))) / 10000n);
 }
 
-/** What an invoice of these lines comes to: the subtotal, the discount and the total the client pays. */
-export function invoiceTotals(lines: readonly LineFigures[], percent: string) {
+/**
+ * The tax on an amount (after the discount) in minor units, half up: the service's own rule, once per invoice,
+ * `floor(amount x rate / 100 + 0.5)`. Done in hundredths of a percent on `BigInt`, as
+ * `floor((amount x hundredths + 5000) / 10000)`, so the preview never differs from what is saved, even where the product
+ * passes 2^53 and a float would round it. Text the form refuses (empty, not a percentage, above 100) takes nothing, and
+ * neither does an amount that is not a safe whole number; the form reports those on its own.
+ */
+export function taxAmount(amountCents: number, percent: string): number {
+  const text = percent.trim();
+  if (taxRateProblem(text) !== null || !Number.isSafeInteger(amountCents)) return 0;
+  return Number((BigInt(amountCents) * BigInt(hundredthsOf(text)) + 5000n) / 10000n);
+}
+
+/**
+ * What an invoice of these lines comes to, in minor units of its currency: the subtotal, the discount, the amount
+ * after it, the tax on that, and the total the client pays. `usd` is the amount in US cents at `exchangeRate` (units per
+ * dollar), half up: what the service keeps as `amountUsdCents`, before tax.
+ */
+export function invoiceTotals(lines: readonly LineFigures[], discountPercent: string, taxPercent = '0', exchangeRate = 1) {
   const subtotal = linesTotal(lines);
-  const discount = discountAmount(subtotal, percent);
-  return { subtotal, discount, total: subtotal - discount };
+  const discount = discountAmount(subtotal, discountPercent);
+  const amount = subtotal - discount;
+  const tax = taxAmount(amount, taxPercent);
+  return { subtotal, discount, amount, tax, total: amount + tax, usd: convertToCents(amount, exchangeRate) };
 }
 
-// A rate is text in dollars and cents, so a blank field can be told from a typed one and a comma, a currency sign or
+// A rate is text in units and hundredths of the invoice's currency, so a blank field can be told from a typed one and a comma, a currency sign or
 // a third decimal is told what is wrong, not dropped. 0 is a fair rate.
 const rateField = z
   .string()
@@ -362,6 +438,12 @@ export function makeInvoiceFormSchema({ numberRequired }: { numberRequired: bool
       periodStart: z.string(),
       periodEnd: z.string(),
       discountPercent: discountField,
+      // 0 to 100. Unlike the discount an empty field is told, not read as 0: 0 means no tax, and empty would leave the
+      // service to guess.
+      taxRate: z.string().trim().superRefine((text, context) => {
+        const problem = taxRateProblem(text);
+        if (problem !== null) context.addIssue({ code: 'custom', message: problem });
+      }),
       lines: z.array(lineFormSchema).min(1, 'Add at least one line'),
     })
     .superRefine((values, context) => {
@@ -393,12 +475,14 @@ export const emptyInvoiceForm: InvoiceFormValues = {
   periodEnd: '',
   // The dialog replaces this with the project's discount when it adds an invoice.
   discountPercent: '0',
+  // The dialog fills this from the invoice draft once it arrives, and not before: the draft says the billing country's rate.
+  taxRate: '',
   lines: [{ ...blankLine }],
 };
 
 /**
  * A new invoice starts from its project's discount and can change it; a saved invoice keeps the one it was given,
- * whatever its project has now.
+ * whatever its project has now, and the tax rate it was issued with.
  */
 export function toInvoiceFormValues(invoice?: InvoiceRow, projectDiscountPercent = 0): InvoiceFormValues {
   if (!invoice) return { ...emptyInvoiceForm, discountPercent: String(projectDiscountPercent) };
@@ -411,6 +495,7 @@ export function toInvoiceFormValues(invoice?: InvoiceRow, projectDiscountPercent
     periodStart: invoice.periodStart ?? '',
     periodEnd: invoice.periodEnd ?? '',
     discountPercent: String(invoice.discountPercent),
+    taxRate: String(invoice.taxRate),
     lines:
       invoice.lineItems.length > 0
         ? invoice.lineItems.map((item) => ({
@@ -427,7 +512,7 @@ export interface LineItemBody {
   description: string;
   headcount: number;
   quantity: number;
-  /** Whole US cents; the form holds dollars and cents. */
+  /** Whole minor units of the invoice's currency; the form holds units and hundredths. */
   rateCents: number;
 }
 
@@ -442,6 +527,8 @@ export interface InvoiceBody {
   periodEnd: string | null;
   /** 0 to 50; an empty field is 0. Always sent, so the invoice keeps the figure shown, not its project's. */
   discountPercent: number;
+  /** 0 to 100; 0 is no tax. Always sent, so the invoice keeps the figure shown, not its project's. */
+  taxRate: number;
   /** The whole set: the service replaces the invoice's lines with these. */
   lineItems: LineItemBody[];
 }
@@ -457,6 +544,7 @@ export function toInvoiceBody(values: InvoiceFormValues): InvoiceBody {
     periodStart: orNull(values.periodStart),
     periodEnd: orNull(values.periodEnd),
     discountPercent: percentOf(values.discountPercent),
+    taxRate: Number(values.taxRate.trim()),
     lineItems: values.lines.map((line) => ({
       description: line.description,
       headcount: Number(line.headcount),
@@ -466,8 +554,11 @@ export function toInvoiceBody(values: InvoiceFormValues): InvoiceBody {
   };
 }
 
-/** The lines a new invoice would start with (GET /projects/:id/invoice-draft). Quantity is hours on a retainer. */
-export const invoiceDraftSchema = z.object({
+/**
+ * The lines a new invoice would start with, and the billing terms they are in (GET /projects/:id/invoice-draft).
+ * Quantity is hours on a retainer; a rate is in minor units of the billing currency.
+ */
+export const invoiceDraftSchema = billingTermsSchema.extend({
   lineItems: z.array(
     z.object({
       description: z.string(),
