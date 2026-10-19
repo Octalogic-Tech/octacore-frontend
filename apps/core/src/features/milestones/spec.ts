@@ -20,7 +20,7 @@ export const milestonesSpec: PlannedSpec = {
   surface: 'page',
   home: 'Project page › Milestones tab',
   size: 'M',
-  needs: ['money-in-cents'],
+  needs: [],
   does: [
     'An ordered list of milestones on each fixed-cost project: name, amount, due date and state.',
     'Their total is the project’s agreed price, shown against what has been invoiced and paid.',

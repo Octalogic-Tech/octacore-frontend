@@ -58,7 +58,7 @@ export default function App() {
               </RequireRole>
             }
           />
-          {/* Work that is described but not built. Money in cents has no page, so it is on the index only. */}
+          {/* Work that is described but not built. */}
           <Route
             path="planned"
             element={

@@ -25,7 +25,7 @@ export const currencyTaxSpec: PlannedSpec = {
   surface: 'page',
   home: 'Finance › Currency and tax',
   size: 'M–L',
-  needs: ['money-in-cents'],
+  needs: [],
   does: [
     'Each project has a billing currency. An invoice shows its subtotal, discount, tax lines and total in it.',
     'A list of tax rates (GST, VAT, TDS) that apply by the client’s country, added to an invoice or withheld by the client.',

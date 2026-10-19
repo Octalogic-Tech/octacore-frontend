@@ -27,7 +27,7 @@ export const recurringInvoicesSpec: PlannedSpec = {
   surface: 'page',
   home: 'Finance › Recurring invoices',
   size: 'S',
-  needs: ['money-in-cents'],
+  needs: [],
   does: [
     'A schedule per retainer project: the day of the month and the period to bill.',
     'On the day, a draft is made from the project’s resources at 160 hours each, with the project’s discount.',

@@ -27,7 +27,7 @@ export const profitLossSpec: PlannedSpec = {
   surface: 'page',
   home: 'Finance › Profit and loss',
   size: 'M',
-  needs: ['money-in-cents', 'currency-tax', 'allocation'],
+  needs: ['currency-tax', 'allocation'],
   does: [
     'A monthly table of revenue, payroll, other expenses and profit.',
     'A project and client view: revenue against the payroll of the people allocated to them.',
