@@ -1,10 +1,11 @@
 import { usePeople } from '@/features/people/api';
-import { formatCurrency, pluralize } from '@/lib/format';
+import { pluralize } from '@/lib/format';
+import { formatUsd } from '@/lib/money';
 import type { ResourceRow } from './schema';
 import { teamMargin } from './team-margin';
 
-function Figure({ amount }: { amount: number }) {
-  return <span className="tabular font-semibold">{formatCurrency(amount)}</span>;
+function Figure({ cents }: { cents: number }) {
+  return <span className="tabular font-semibold">{formatUsd(cents)}</span>;
 }
 
 /**
@@ -25,9 +26,9 @@ export function TeamMarginNote({ resources }: { resources: readonly ResourceRow[
         ) : (
           <>
             At current salaries, {margin.counted} of {pluralize(margin.total, 'resource')}{' '}
-            {margin.counted === 1 ? 'bills' : 'bill'} <Figure amount={margin.billed} /> a month against{' '}
-            <Figure amount={margin.cost} /> in salary: {margin.margin >= 0 ? 'a margin' : 'a shortfall'} of{' '}
-            <Figure amount={Math.abs(margin.margin)} />
+            {margin.counted === 1 ? 'bills' : 'bill'} <Figure cents={margin.billed} /> a month against{' '}
+            <Figure cents={margin.cost} /> in salary: {margin.margin >= 0 ? 'a margin' : 'a shortfall'} of{' '}
+            <Figure cents={Math.abs(margin.margin)} />
             {margin.percent === null ? null : ` (${margin.percent}%)`}.
           </>
         )}

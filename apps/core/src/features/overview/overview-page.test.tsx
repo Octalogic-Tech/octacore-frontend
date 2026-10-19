@@ -10,8 +10,8 @@ vi.mock('@/lib/core-api', async (importOriginal) => ({
   coreApi: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
-// Projects and invoices come from the core service, with the totals already calculated.
-const project = (id: number, clientName: string, totalValue: number, totalOutstanding: number) => ({
+// Projects and invoices come from the core service, with the totals already calculated, in whole US cents.
+const project = (id: number, clientName: string, totalValueCents: number, totalOutstandingCents: number) => ({
   id,
   name: `Project ${id}`,
   description: null,
@@ -26,14 +26,14 @@ const project = (id: number, clientName: string, totalValue: number, totalOutsta
   client: { name: clientName },
   projectType: 'product',
   billingType: 'retainer',
-  totalValue,
-  totalOutstanding,
+  totalValueCents,
+  totalOutstandingCents,
 });
 
 const projects = [
-  project(1, 'Client A', 48000, 12000),
-  project(2, 'Client B', 32000, 0),
-  project(3, 'Client C', 20000, 25000),
+  project(1, 'Client A', 4_800_000, 1_200_000),
+  project(2, 'Client B', 3_200_000, 0),
+  project(3, 'Client C', 2_000_000, 2_500_000),
 ];
 
 const invoice = (id: number, projectId: number, dueDate: string | null, paidDate: string | null) => ({
@@ -41,9 +41,9 @@ const invoice = (id: number, projectId: number, dueDate: string | null, paidDate
   projectId,
   number: `INV-00${id}`,
   description: null,
-  subtotal: 1000 * id,
+  subtotalCents: 100_000 * id,
   discountPercent: 0,
-  amount: 1000 * id,
+  amountCents: 100_000 * id,
   issueDate: '2026-10-01',
   dueDate,
   paidDate,
@@ -79,7 +79,7 @@ describe('OverviewPage', () => {
     serve({});
     renderWithProviders(<OverviewPage />);
     expect(
-      await screen.findByText(sentence('$37,000 outstanding across 3 projects, of $100,000 in total.')),
+      await screen.findByText(sentence('$37,000.00 outstanding across 3 projects, of $100,000.00 in total.')),
     ).toBeInTheDocument();
     expect(screen.getByText(sentence('2 invoices are unpaid.'))).toBeInTheDocument();
   });
@@ -88,7 +88,7 @@ describe('OverviewPage', () => {
     serve({ projects: [projects[0]], invoices: [invoice(1, 1, null, null)] });
     renderWithProviders(<OverviewPage />);
     expect(
-      await screen.findByText(sentence('$12,000 outstanding across 1 project, of $48,000 in total.')),
+      await screen.findByText(sentence('$12,000.00 outstanding across 1 project, of $48,000.00 in total.')),
     ).toBeInTheDocument();
     expect(screen.getByText(sentence('1 invoice is unpaid.'))).toBeInTheDocument();
   });
@@ -106,7 +106,7 @@ describe('OverviewPage', () => {
     const items = within(largest).getAllByRole('listitem');
     expect(items).toHaveLength(2);
     expect(within(items[0]).getByText('Project 3')).toBeInTheDocument();
-    expect(within(items[0]).getByText('$25,000')).toBeInTheDocument();
+    expect(within(items[0]).getByText('$25,000.00')).toBeInTheDocument();
     expect(within(items[1]).getByText('Project 1')).toBeInTheDocument();
 
     const unpaid = screen.getByRole('heading', { name: 'Unpaid invoices' }).closest('section') as HTMLElement;
@@ -114,7 +114,7 @@ describe('OverviewPage', () => {
     expect(rows).toHaveLength(2);
     expect(within(rows[0]).getByText('INV-003')).toBeInTheDocument();
     expect(within(rows[0]).getByText('Project 3, due 20 Nov 2026')).toBeInTheDocument();
-    expect(within(rows[0]).getByText('$3,000')).toBeInTheDocument();
+    expect(within(rows[0]).getByText('$3,000.00')).toBeInTheDocument();
     expect(within(rows[1]).getByText('INV-002')).toBeInTheDocument();
     expect(within(rows[1]).getByText('Project 1, due 15 Dec 2026')).toBeInTheDocument();
   });
@@ -145,7 +145,7 @@ describe('OverviewPage', () => {
   it('copes with no projects and no invoices', async () => {
     serve({ projects: [], invoices: [] });
     renderWithProviders(<OverviewPage />);
-    expect(await screen.findByText(sentence('$0 outstanding across 0 projects, of $0 in total.'))).toBeInTheDocument();
+    expect(await screen.findByText(sentence('$0.00 outstanding across 0 projects, of $0.00 in total.'))).toBeInTheDocument();
     expect(screen.getByText('Nothing is outstanding.')).toBeInTheDocument();
     expect(screen.getByText('No invoices are unpaid.', { selector: 'p.text-statement' })).toBeInTheDocument();
     expect(screen.getByText('Nothing is unpaid.')).toBeInTheDocument();

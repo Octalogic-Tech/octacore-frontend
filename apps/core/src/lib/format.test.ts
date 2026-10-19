@@ -1,15 +1,4 @@
-import { addMonths, endOfMonth, formatCurrency, formatDate, localToday, pluralize } from './format';
-
-describe('formatCurrency', () => {
-  it('drops the cents on whole amounts', () => {
-    expect(formatCurrency(5600)).toBe('$5,600');
-    expect(formatCurrency(0)).toBe('$0');
-  });
-
-  it('keeps two decimals otherwise', () => {
-    expect(formatCurrency(12.5)).toBe('$12.50');
-  });
-});
+import { addMonths, endOfMonth, formatDate, localToday, pluralize } from './format';
 
 describe('formatDate', () => {
   it('formats an ISO date without shifting the day', () => {

@@ -433,7 +433,7 @@ describe.skipIf(!base)('the discount, on a service with its migration applied', 
         });
         expect(saved.status).toBe(201);
         const row = unwrap(await saved.json(), invoiceRowSchema);
-        expect(row.amount, `${rate} at ${percent}%`).toBe(invoiceTotals(lines, percent).total);
+        expect(row.amountCents, `${rate} at ${percent}%`).toBe(invoiceTotals(lines, percent).total);
       }
     } finally {
       await send('DELETE', `/projects/${project.id}`);

@@ -6,7 +6,7 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { formatCurrency } from '@/lib/format';
+import { formatUsd } from '@/lib/money';
 import { useDeleteResource, useProjectResources } from './api';
 import { ResourceFormDialog } from './resource-form-dialog';
 import type { BillingType, ResourceRow } from './schema';
@@ -75,7 +75,7 @@ export function ResourcesPanel({ projectId, billingType }: ResourcesPanelProps) 
                   <TableCell>{resource.categoryName || NONE}</TableCell>
                   <TableCell>{resource.personName || NONE}</TableCell>
                   <TableCell className="tabular text-right">{resource.headcount}</TableCell>
-                  <TableCell className="tabular text-right">{formatCurrency(resource.rate)}</TableCell>
+                  <TableCell className="tabular text-right">{formatUsd(resource.rateCents)}</TableCell>
                   <TableCell className="whitespace-nowrap text-right">
                     <IconButton
                       label={`Edit ${resource.name}`}

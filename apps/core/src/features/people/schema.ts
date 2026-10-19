@@ -1,7 +1,5 @@
 import { z } from 'zod';
-
-const INT32_MAX = 2_147_483_647;
-const WHOLE_NUMBER = /^\d+$/;
+import { amountProblem, parseAmount, toAmountText } from '@/lib/money';
 
 const nullToEmpty = (text: string | null) => text ?? '';
 const orNull = (text: string) => (text === '' ? null : text);
@@ -18,8 +16,8 @@ export const personRowSchema = z.object({
   phone: z.string().nullable().transform(nullToEmpty),
   imageLink: z.string().nullable().transform(nullToEmpty),
   contractLink: z.string().nullable().transform(nullToEmpty),
-  // Whole dollars per month.
-  monthlySalary: z.number().int().nullable(),
+  // Whole US cents per month.
+  monthlySalaryCents: z.number().int().nullable(),
 });
 
 export const personRowsSchema = z.array(personRowSchema);
@@ -37,7 +35,8 @@ export const personFormSchema = z
     leaveDate: z.string(),
     imageLink: z.string().trim(),
     contractLink: z.string().trim(),
-    // Text, not a number input: a comma, a currency sign or a decimal point must be told what is wrong, not dropped.
+    // Dollars and cents, as text, not a number input: a comma or a currency sign must be told what is wrong, not
+    // dropped. Empty means none on file.
     monthlySalary: z.string().trim(),
   })
   .superRefine((values, context) => {
@@ -45,11 +44,8 @@ export const personFormSchema = z
       context.addIssue({ code: 'custom', path: ['email'], message: 'Enter a valid email address' });
     }
     if (values.monthlySalary === '') return;
-    if (!WHOLE_NUMBER.test(values.monthlySalary)) {
-      context.addIssue({ code: 'custom', path: ['monthlySalary'], message: 'Enter a whole number, like 5600' });
-    } else if (Number(values.monthlySalary) > INT32_MAX) {
-      context.addIssue({ code: 'custom', path: ['monthlySalary'], message: 'Salary is too large' });
-    }
+    const problem = amountProblem(values.monthlySalary, { allowZero: true });
+    if (problem !== null) context.addIssue({ code: 'custom', path: ['monthlySalary'], message: problem });
   });
 
 export type PersonFormValues = z.infer<typeof personFormSchema>;
@@ -75,7 +71,7 @@ export function toFormValues(person?: PersonRow): PersonFormValues {
     leaveDate: person.leaveDate,
     imageLink: person.imageLink,
     contractLink: person.contractLink,
-    monthlySalary: person.monthlySalary === null ? '' : String(person.monthlySalary),
+    monthlySalary: person.monthlySalaryCents === null ? '' : toAmountText(person.monthlySalaryCents),
   };
 }
 
@@ -87,7 +83,8 @@ export interface PersonBody {
   leaveDate: string | null;
   imageLink: string | null;
   contractLink: string | null;
-  monthlySalary: number | null;
+  /** Whole US cents; the form holds dollars and cents. */
+  monthlySalaryCents: number | null;
 }
 
 /** Empty optional fields go as null: PATCH changes only what it is sent, and null clears. */
@@ -100,6 +97,6 @@ export function toPersonBody(values: PersonFormValues): PersonBody {
     leaveDate: orNull(values.leaveDate),
     imageLink: orNull(values.imageLink),
     contractLink: orNull(values.contractLink),
-    monthlySalary: values.monthlySalary === '' ? null : Number(values.monthlySalary),
+    monthlySalaryCents: values.monthlySalary === '' ? null : parseAmount(values.monthlySalary),
   };
 }

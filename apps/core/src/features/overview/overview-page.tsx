@@ -3,7 +3,8 @@ import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
 import { LinkArrow } from '@/components/ui/link-arrow';
 import { useAllInvoices, useProjects } from '@/features/projects/api';
-import { formatCurrency, formatDate, pluralize } from '@/lib/format';
+import { formatDate, pluralize } from '@/lib/format';
+import { formatUsd } from '@/lib/money';
 import { summarize } from './summary';
 
 export function OverviewPage() {
@@ -27,9 +28,9 @@ export function OverviewPage() {
         <div className="border-t border-navy">
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-b border-rule py-5">
             <p className="max-w-[64ch] text-statement">
-              <span className="tabular font-semibold">{formatCurrency(summary.totalOutstanding)}</span> outstanding
+              <span className="tabular font-semibold">{formatUsd(summary.totalOutstanding)}</span> outstanding
               across {pluralize(summary.projectCount, 'project')}, of{' '}
-              <span className="tabular font-semibold">{formatCurrency(summary.totalValue)}</span> in total.
+              <span className="tabular font-semibold">{formatUsd(summary.totalValue)}</span> in total.
             </p>
             <LinkArrow to="/projects">All projects</LinkArrow>
           </div>
@@ -58,7 +59,7 @@ export function OverviewPage() {
                       <span className="block font-semibold">{project.name}</span>
                       <span className="block text-small text-navy-80">{project.clientName}</span>
                     </span>
-                    <span className="tabular">{formatCurrency(project.totalOutstanding)}</span>
+                    <span className="tabular">{formatUsd(project.totalOutstandingCents)}</span>
                   </li>
                 ))}
               </ul>
@@ -83,7 +84,7 @@ export function OverviewPage() {
                           .join(', ')}
                       </span>
                     </span>
-                    <span className="tabular">{formatCurrency(invoice.amount)}</span>
+                    <span className="tabular">{formatUsd(invoice.amountCents)}</span>
                   </li>
                 ))}
               </ul>

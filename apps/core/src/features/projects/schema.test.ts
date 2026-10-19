@@ -1,3 +1,4 @@
+import { MAX_CENTS, toAmountText } from '@/lib/money';
 import { draftBody, emailDraftBody, invoiceRows, projectRows, resourceRows } from '@/test/fixtures/projects';
 import {
   blankLine,
@@ -87,8 +88,8 @@ describe('project row schema', () => {
       billingType: 'retainer',
       projectTypeLabel: 'Resource augmentation',
       billingTypeLabel: 'Retainer',
-      totalValue: 48000,
-      totalOutstanding: 12000,
+      totalValueCents: 4_800_000,
+      totalOutstandingCents: 1_200_000,
     });
     expect(website).not.toHaveProperty('client');
     expect(mobile).toMatchObject({ description: '', clientId: null, clientName: '' });
@@ -113,31 +114,45 @@ describe('project row schema', () => {
     ['an id', { ...projectRows[0], id: undefined }],
     ['a name', { ...projectRows[0], name: undefined }],
     ['a billing type field', { ...projectRows[0], billingType: undefined }],
-    ['a total value', { ...projectRows[0], totalValue: undefined }],
-    ['a total outstanding', { ...projectRows[0], totalOutstanding: undefined }],
+    ['a total value', { ...projectRows[0], totalValueCents: undefined }],
+    ['a total outstanding', { ...projectRows[0], totalOutstandingCents: undefined }],
     ['a known billing type', { ...projectRows[0], billingType: 'monthly' }],
     ['a known project type', { ...projectRows[0], projectType: 'service' }],
-    ['a numeric total', { ...projectRows[0], totalValue: '48000' }],
+    ['a numeric total', { ...projectRows[0], totalValueCents: '4800000' }],
+    ['a whole-cent total', { ...projectRows[0], totalValueCents: 4_800_000.5 }],
   ])('rejects a project row without %s', (_label, row) => {
     expect(projectRowsSchema.safeParse([row]).success).toBe(false);
   });
 
   it('rejects a bare array of the mock shape, where the client was a string', () => {
-    const mock = { id: 1, name: 'Project 1', description: '', client: 'Client A', totalValue: 1, totalOutstanding: 0 };
+    const mock = {
+      id: 1,
+      name: 'Project 1',
+      description: '',
+      client: 'Client A',
+      totalValueCents: 1,
+      totalOutstandingCents: 0,
+    };
     expect(projectRowsSchema.safeParse([mock]).success).toBe(false);
   });
 });
 
 describe('invoice row schema', () => {
   it('turns a null description into empty text and keeps null dates', () => {
-    expect(invoices[0]).toMatchObject({ number: 'INV-001', amount: 36000, dueDate: '2026-10-31', paidDate: '2026-10-12' });
+    expect(invoices[0]).toMatchObject({
+      number: 'INV-001',
+      amountCents: 3_600_000,
+      dueDate: '2026-10-31',
+      paidDate: '2026-10-12',
+    });
     expect(invoices[1]).toMatchObject({ description: '', dueDate: null, paidDate: null });
   });
 
   it.each([
     ['a project id', { ...invoiceRows[0], projectId: undefined }],
     ['a number', { ...invoiceRows[0], number: undefined }],
-    ['an amount', { ...invoiceRows[0], amount: undefined }],
+    ['an amount', { ...invoiceRows[0], amountCents: undefined }],
+    ['a subtotal', { ...invoiceRows[0], subtotalCents: undefined }],
     ['a readable issue date', { ...invoiceRows[0], issueDate: '15/10/2026' }],
     ['a readable paid date', { ...invoiceRows[0], paidDate: 'yesterday' }],
   ])('rejects an invoice row without %s', (_label, row) => {
@@ -161,12 +176,12 @@ describe('sortInvoices', () => {
 });
 
 describe('overdueTotal', () => {
-  // INV-002: unpaid, $12,000. Each case changes only what the name says.
+  // INV-002: unpaid, $12,000.00 (1_200_000 cents). Each case changes only what the name says.
   const unpaid = invoices[1];
   const today = '2026-11-20';
 
   it.each([
-    ['unpaid and due yesterday', { dueDate: '2026-11-19' }, 12000],
+    ['unpaid and due yesterday', { dueDate: '2026-11-19' }, 1_200_000],
     ['unpaid and due today', { dueDate: '2026-11-20' }, 0],
     ['unpaid and due tomorrow', { dueDate: '2026-11-21' }, 0],
     ['unpaid with no due date', { dueDate: null }, 0],
@@ -176,10 +191,16 @@ describe('overdueTotal', () => {
   });
 
   it('adds up what each overdue invoice asks of the client, after its discount', () => {
-    const late = { ...unpaid, subtotal: 10000, discountPercent: 10, amount: 9000, dueDate: '2026-11-01' };
-    const later = { ...unpaid, id: 9, subtotal: 5000, amount: 5000, dueDate: '2026-11-10' };
-    const notYet = { ...unpaid, id: 10, amount: 700, dueDate: '2026-12-01' };
-    expect(overdueTotal([late, later, notYet], today)).toBe(14000);
+    const late = {
+      ...unpaid,
+      subtotalCents: 1_000_000,
+      discountPercent: 10,
+      amountCents: 900_000,
+      dueDate: '2026-11-01',
+    };
+    const later = { ...unpaid, id: 9, subtotalCents: 500_000, amountCents: 500_000, dueDate: '2026-11-10' };
+    const notYet = { ...unpaid, id: 10, amountCents: 70_000, dueDate: '2026-12-01' };
+    expect(overdueTotal([late, later, notYet], today)).toBe(1_400_000);
   });
 
   it('is zero for no invoices', () => {
@@ -263,13 +284,26 @@ describe('toProjectFormValues', () => {
 });
 
 describe('line helpers', () => {
-  it('multiplies whole numbers and gives null for anything else', () => {
-    expect(lineAmount({ headcount: '1', quantity: '160', rate: '150' })).toBe(24000);
+  it('multiplies whole numbers by a rate in dollars and cents, and gives the amount in cents', () => {
+    expect(lineAmount({ headcount: '1', quantity: '160', rate: '150' })).toBe(2_400_000);
+    expect(lineAmount({ headcount: '3', quantity: '160', rate: '12.50' })).toBe(600_000);
     expect(lineAmount({ headcount: '1', quantity: ' 2 ', rate: '0' })).toBe(0);
+  });
+
+  it('reads the rate on its digits, not through a float', () => {
+    expect(lineAmount({ headcount: '1', quantity: '1', rate: '4.35' })).toBe(435);
+    expect(lineAmount({ headcount: '1', quantity: '1', rate: '0.07' })).toBe(7);
+  });
+
+  it('gives null for a quantity that is not whole and for a rate the form refuses', () => {
     for (const bad of [
       { headcount: '1', quantity: '', rate: '5' },
       { headcount: '1', quantity: '1.5', rate: '5' },
       { headcount: '1', quantity: '3', rate: '$5' },
+      { headcount: '1', quantity: '3', rate: '12.505' },
+      { headcount: '1', quantity: '3', rate: '1,200' },
+      { headcount: '1', quantity: '3', rate: '' },
+      { headcount: '1', quantity: '3', rate: '100000000.01' },
     ]) {
       expect(lineAmount(bad)).toBeNull();
     }
@@ -277,14 +311,14 @@ describe('line helpers', () => {
 
   it('totals only the lines that have an amount', () => {
     expect(linesTotal([lineForm(), lineForm({ quantity: '', rate: '' }), lineForm({ quantity: '1', rate: '5' })])).toBe(
-      24005,
+      2_400_500,
     );
   });
 
-  it('turns the draft into text fields', () => {
+  it('turns the draft into text fields, the rate as dollars and cents', () => {
     expect(draftToLines(draftBody)).toEqual([
-      { description: 'Asha Rao — Mobile', headcount: '1', quantity: '160', rate: '150' },
-      { description: 'Ben Cho — Web', headcount: '1', quantity: '160', rate: '75' },
+      { description: 'Asha Rao — Mobile', headcount: '1', quantity: '160', rate: '150.00' },
+      { description: 'Ben Cho — Web', headcount: '1', quantity: '160', rate: '75.00' },
     ]);
   });
 });
@@ -313,11 +347,20 @@ describe('invoice form schema', () => {
     expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity })] }))).toEqual(['Enter a whole number, like 160']);
   });
 
-  it.each(['1,200', '$85', '42.50', '-5', '1e3', 'lots'])('says a rate of %s is not a whole number', (rate) => {
-    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ rate })] }))).toEqual(['Enter a whole number, like 85']);
+  it.each(['1,200', '$85', '12.505', '-5', '1e3', 'lots', '.5', '5.'])(
+    'says a rate of %s is not dollars and cents',
+    (rate) => {
+      expect(invoiceMessages(invoiceForm({ lines: [lineForm({ rate })] }))).toEqual([
+        'Enter an amount like 7.20, with no commas or signs',
+      ]);
+    },
+  );
+
+  it.each(['12.50', '12.5', '85', '0', '0.00', '0.05'])('accepts a rate of %s', (rate) => {
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ rate })] }))).toEqual([]);
   });
 
-  it('keeps the quantity from 1 to 100,000 and the rate to the service’s limit', () => {
+  it('keeps the quantity from 1 to 100,000 and the rate to the cap', () => {
     expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '1', rate: '0' })] }))).toEqual([]);
     expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '0' })] }))).toEqual([
       'Quantity must be from 1 to 100,000',
@@ -325,16 +368,28 @@ describe('invoice form schema', () => {
     expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '100001' })] }))).toEqual([
       'Quantity must be from 1 to 100,000',
     ]);
-    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '1', rate: '2147483647' })] }))).toEqual([]);
-    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '1', rate: '2147483648' })] }))).toEqual([
-      'Rate is too large',
+    const atTheCap = lineForm({ quantity: '1', rate: toAmountText(MAX_CENTS) });
+    expect(invoiceMessages(invoiceForm({ lines: [atTheCap] }))).toEqual([]);
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '1', rate: '100000000.01' })] }))).toEqual([
+      'The amount is too large',
     ]);
   });
 
-  it('refuses a line whose amount would pass the limit, though each field is in range', () => {
-    const line = lineForm({ quantity: '100000', rate: '21475' });
+  it('asks for a rate, which is told apart from a rate of 0', () => {
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ rate: '' })] }))).toEqual(['Rate is required']);
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ rate: '   ' })] }))).toEqual(['Rate is required']);
+  });
+
+  it('refuses a line whose amount would pass the cap, though each field is in range', () => {
+    // 100,000 hours at $1,000.01 is 10,000,100,000 cents, a hundred cents over MAX_CENTS.
+    const line = lineForm({ quantity: '100000', rate: '1000.01' });
     expect(invoiceMessages(invoiceForm({ lines: [line] }))).toEqual(['This line is too large']);
-    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '100000', rate: '21474' })] }))).toEqual([]);
+    expect(invoiceMessages(invoiceForm({ lines: [lineForm({ quantity: '100000', rate: '1000' })] }))).toEqual([]);
+  });
+
+  it('reports a rate above the cap once, not again as a large line', () => {
+    const line = lineForm({ quantity: '100000', rate: '100000000.01' });
+    expect(invoiceMessages(invoiceForm({ lines: [line] }))).toEqual(['The amount is too large']);
   });
 });
 
@@ -349,13 +404,18 @@ describe('toInvoiceBody', () => {
       periodStart: null,
       periodEnd: null,
       discountPercent: 0,
-      lineItems: [{ description: 'Backend work', headcount: 1, quantity: 160, rate: 150 }],
+      lineItems: [{ description: 'Backend work', headcount: 1, quantity: 160, rateCents: 15000 }],
     });
+  });
+
+  it('sends a rate of 12.50 as 1250 cents, and each line with only the keys the service takes', () => {
+    const body = toInvoiceBody(invoiceForm({ lines: [lineForm({ rate: '12.50' })] }));
+    expect(body.lineItems).toEqual([{ description: 'Backend work', headcount: 1, quantity: 160, rateCents: 1250 }]);
   });
 
   it('reads leading zeros as the number they spell', () => {
     const body = toInvoiceBody(invoiceForm({ lines: [lineForm({ quantity: '007', rate: '085' })] }));
-    expect(body.lineItems).toEqual([{ description: 'Backend work', headcount: 1, quantity: 7, rate: 85 }]);
+    expect(body.lineItems).toEqual([{ description: 'Backend work', headcount: 1, quantity: 7, rateCents: 8500 }]);
   });
 
   it('carries the optional dates and description when they are filled', () => {
@@ -381,8 +441,8 @@ describe('toInvoiceFormValues', () => {
       periodEnd: '2026-09-30',
       discountPercent: '0',
       lines: [
-        { description: 'Asha Rao — Mobile', headcount: '1', quantity: '160', rate: '150' },
-        { description: 'Ben Cho — Web', headcount: '1', quantity: '160', rate: '75' },
+        { description: 'Asha Rao — Mobile', headcount: '1', quantity: '160', rate: '150.00' },
+        { description: 'Ben Cho — Web', headcount: '1', quantity: '160', rate: '75.00' },
       ],
     });
     expect(toInvoiceFormValues(invoices[1])).toMatchObject({
@@ -393,13 +453,33 @@ describe('toInvoiceFormValues', () => {
       periodEnd: '',
     });
   });
+
+  it.each([0, 1, 5, 1250, 15000, MAX_CENTS])(
+    'sends a saved line at %i cents back as the same cents, so saving it unchanged cannot drift',
+    (cents) => {
+      const [invoice] = invoiceRowsSchema.parse([
+        { ...invoiceRows[0], lineItems: [{ ...invoiceRows[0].lineItems[0], rateCents: cents }] },
+      ]);
+      const values = toInvoiceFormValues(invoice);
+
+      // Quantity 1 keeps the line at or under the cap even at a rate of MAX_CENTS.
+      const line = { ...values.lines[0], quantity: '1' };
+      expect(invoiceMessages({ ...values, lines: [line] })).toEqual([]);
+      expect(toInvoiceBody({ ...values, lines: [line] }).lineItems[0].rateCents).toBe(cents);
+    },
+  );
 });
 
 describe('invoice rows with their lines', () => {
   it('keeps the lines and the calculated amount', () => {
     expect(invoices[0].lineItems).toHaveLength(2);
-    expect(invoices[0].lineItems[0]).toMatchObject({ description: 'Asha Rao — Mobile', quantity: 160, rate: 150, amount: 24000 });
-    expect(invoices[0].amount).toBe(36000);
+    expect(invoices[0].lineItems[0]).toMatchObject({
+      description: 'Asha Rao — Mobile',
+      quantity: 160,
+      rateCents: 15000,
+      amountCents: 2_400_000,
+    });
+    expect(invoices[0].amountCents).toBe(3_600_000);
   });
 
   it('rejects an invoice row without its lines', () => {
@@ -407,7 +487,7 @@ describe('invoice rows with their lines', () => {
   });
 
   it('rejects a line without a rate', () => {
-    const line = { ...invoiceRows[0].lineItems[0], rate: undefined };
+    const line = { ...invoiceRows[0].lineItems[0], rateCents: undefined };
     expect(invoiceRowsSchema.safeParse([{ ...invoiceRows[0], lineItems: [line] }]).success).toBe(false);
   });
 });
@@ -423,9 +503,9 @@ describe('invoice draft schema', () => {
 
   it('rejects a bare array and a line with a text quantity', () => {
     expect(invoiceDraftSchema.safeParse([]).success).toBe(false);
-    expect(invoiceDraftSchema.safeParse({ lineItems: [{ description: 'x', quantity: '160', rate: 1 }] }).success).toBe(
-      false,
-    );
+    expect(
+      invoiceDraftSchema.safeParse({ lineItems: [{ description: 'x', quantity: '160', rateCents: 1 }] }).success,
+    ).toBe(false);
   });
 });
 
@@ -437,7 +517,7 @@ describe('resource row schema', () => {
       personId: 1,
       categoryId: 2,
       name: 'Asha Rao',
-      rate: 150,
+      rateCents: 15000,
       personName: 'Asha Rao',
       categoryName: 'Mobile',
     });
@@ -457,8 +537,8 @@ describe('resource row schema', () => {
   it.each([
     ['an id', { ...resourceRows[0], id: undefined }],
     ['a name', { ...resourceRows[0], name: undefined }],
-    ['a rate', { ...resourceRows[0], rate: undefined }],
-    ['a whole-number rate', { ...resourceRows[0], rate: 42.5 }],
+    ['a rate', { ...resourceRows[0], rateCents: undefined }],
+    ['a whole-number rate', { ...resourceRows[0], rateCents: 42.5 }],
     ['a category id', { ...resourceRows[0], categoryId: undefined }],
   ])('rejects a resource row without %s', (_label, row) => {
     expect(resourceRowsSchema.safeParse([row]).success).toBe(false);
@@ -495,31 +575,46 @@ describe('resource form schema', () => {
     expect(resourceMessages(resourceForm({ name: '   ' }))).toEqual(['Name is required']);
   });
 
-  it.each(['1,200', '$85', '42.50', '-5', '1e3', 'lots', '١٢٣'])('says a rate of %s is not a whole number', (rate) => {
-    expect(resourceMessages(resourceForm({ rate }))).toEqual(['Enter a whole number, like 85']);
+  it.each(['1,200', '$85', '12.505', '-5', '1e3', 'lots', '١٢٣', '.5', '5.'])(
+    'says a rate of %s is not dollars and cents',
+    (rate) => {
+      expect(resourceMessages(resourceForm({ rate }))).toEqual(['Enter an amount like 7.20, with no commas or signs']);
+    },
+  );
+
+  it.each(['12.50', '12.5', '85', '0', '0.00', '0.05', toAmountText(MAX_CENTS)])('accepts a rate of %s', (rate) => {
+    expect(resourceMessages(resourceForm({ rate }))).toEqual([]);
   });
 
-  it('accepts a rate of 0 and 1,000,000 and refuses one above', () => {
-    expect(resourceMessages(resourceForm({ rate: '0' }))).toEqual([]);
-    expect(resourceMessages(resourceForm({ rate: '1000000' }))).toEqual([]);
-    expect(resourceMessages(resourceForm({ rate: '1000001' }))).toEqual(['Rate is too large']);
+  it('refuses a rate above the cap', () => {
+    expect(resourceMessages(resourceForm({ rate: '100000000.01' }))).toEqual(['The amount is too large']);
+  });
+
+  it('asks for a rate, which is told apart from a rate of 0', () => {
+    expect(resourceMessages(resourceForm({ rate: '' }))).toEqual(['Rate is required']);
+    expect(resourceMessages(resourceForm({ rate: '  ' }))).toEqual(['Rate is required']);
   });
 });
 
 describe('toResourceBody', () => {
-  it('sends an empty person as null and the ids and rate as numbers', () => {
+  it('sends an empty person as null and the ids and the rate in cents as numbers, and nothing else', () => {
+    // Exactly these keys: the service refuses an unknown one, and an update must not carry a projectId.
     expect(toResourceBody(resourceForm())).toEqual({
       name: 'Asha Rao',
       personId: null,
       categoryId: 2,
       headcount: 1,
-      rate: 150,
+      rateCents: 15000,
     });
     expect(toResourceBody(resourceForm({ personId: '7' }))).toMatchObject({ personId: 7 });
   });
 
+  it('sends a rate of 12.50 as 1250 cents', () => {
+    expect(toResourceBody(resourceForm({ rate: '12.50' })).rateCents).toBe(1250);
+  });
+
   it('reads leading zeros as the number they spell', () => {
-    expect(toResourceBody(resourceForm({ rate: '085' })).rate).toBe(85);
+    expect(toResourceBody(resourceForm({ rate: '085' })).rateCents).toBe(8500);
   });
 });
 
@@ -534,10 +629,21 @@ describe('toResourceFormValues', () => {
       personId: '1',
       categoryId: '2',
       headcount: '1',
-      rate: '150',
+      rate: '150.00',
     });
     expect(toResourceFormValues(resources[1])).toMatchObject({ personId: '' });
   });
+
+  it.each([0, 1, 5, 1250, 15000, MAX_CENTS])(
+    'sends a saved resource at %i cents back as the same cents, so saving it unchanged cannot drift',
+    (cents) => {
+      const [row] = resourceRowsSchema.parse([{ ...resourceRows[0], rateCents: cents }]);
+      const values = toResourceFormValues(row);
+
+      expect(resourceMessages(values)).toEqual([]);
+      expect(toResourceBody(values).rateCents).toBe(cents);
+    },
+  );
 
   it('opens on None and Choose for a person and a category the service no longer embeds', () => {
     const [orphan] = resourceRowsSchema.parse([{ ...resourceRows[0], person: null, category: null }]);
@@ -632,7 +738,7 @@ describe('resource headcount in the form', () => {
 
 describe('Qty on a line', () => {
   it('multiplies Qty, hours and rate', () => {
-    expect(lineAmount({ headcount: '3', quantity: '160', rate: '27' })).toBe(12_960);
+    expect(lineAmount({ headcount: '3', quantity: '160', rate: '27' })).toBe(1_296_000);
     expect(lineAmount({ headcount: '', quantity: '160', rate: '27' })).toBeNull();
   });
 
@@ -642,7 +748,7 @@ describe('Qty on a line', () => {
         { headcount: '3', quantity: '160', rate: '27' },
         { headcount: '1', quantity: '160', rate: '54' },
       ]),
-    ).toBe(21_600);
+    ).toBe(2_160_000);
   });
 
   it.each(['1', '3', '1000'])('accepts a Qty of %s', (headcount) => {
@@ -661,8 +767,9 @@ describe('Qty on a line', () => {
   });
 
   it('counts the Qty in the line limit', () => {
-    const big = lineForm({ headcount: '1000', quantity: '100', rate: '21475' });
-    const fine = lineForm({ headcount: '1000', quantity: '100', rate: '21474' });
+    // 1,000 people for 100 hours at $1,000.01 is 10,000,100,000 cents; at $1,000.00 it is exactly the cap.
+    const big = lineForm({ headcount: '1000', quantity: '100', rate: '1000.01' });
+    const fine = lineForm({ headcount: '1000', quantity: '100', rate: '1000' });
 
     expect(invoiceMessages(invoiceForm({ lines: [big] }))).toEqual(['This line is too large']);
     expect(invoiceMessages(invoiceForm({ lines: [fine] }))).toEqual([]);
@@ -671,7 +778,7 @@ describe('Qty on a line', () => {
   it('sends the Qty as a number', () => {
     const body = toInvoiceBody(invoiceForm({ lines: [lineForm({ headcount: '3' })] }));
 
-    expect(body.lineItems).toEqual([{ description: 'Backend work', headcount: 3, quantity: 160, rate: 150 }]);
+    expect(body.lineItems).toEqual([{ description: 'Backend work', headcount: 3, quantity: 160, rateCents: 15000 }]);
   });
 });
 
@@ -806,18 +913,18 @@ describe('the discount: rows', () => {
   it('reads a project’s discount and an invoice’s subtotal and discount', () => {
     const [discounted] = projectRowsSchema.parse([{ ...projectRows[0], discountPercent: 7.5 }]);
     const [invoice] = invoiceRowsSchema.parse([
-      { ...invoiceRows[0], subtotal: 40000, discountPercent: 10, amount: 36000 },
+      { ...invoiceRows[0], subtotalCents: 4_000_000, discountPercent: 10, amountCents: 3_600_000 },
     ]);
 
     expect(discounted.discountPercent).toBe(7.5);
-    expect(invoice).toMatchObject({ subtotal: 40000, discountPercent: 10, amount: 36000 });
+    expect(invoice).toMatchObject({ subtotalCents: 4_000_000, discountPercent: 10, amountCents: 3_600_000 });
   });
 
   it('reads no discount as zero on the fixtures', () => {
     expect(projects.map((project) => project.discountPercent)).toEqual([0, 0, 0]);
-    expect(invoices.map((invoice) => [invoice.subtotal, invoice.discountPercent])).toEqual([
-      [36000, 0],
-      [12000, 0],
+    expect(invoices.map((invoice) => [invoice.subtotalCents, invoice.discountPercent])).toEqual([
+      [3_600_000, 0],
+      [1_200_000, 0],
     ]);
   });
 
@@ -832,22 +939,31 @@ describe('the discount: rows', () => {
 
 describe('discountAmount', () => {
   // The same cases as the service's own table (octacore-backend tests/test_discount.py): the dialog's preview
-  // must never differ from the amount the service saves.
+  // must never differ from the amount the service saves. The subtotal and the answer are in cents, and the answer
+  // is floored: 7.5% of 1010 is 75.75, so 75.
   it.each([
     [1000, '10', 100],
     [1000, '7.5', 75],
     [1005, '7.5', 75],
-    [1010, '7.5', 76],
-    [5, '10', 1],
-    [15, '10', 2],
-    [25, '10', 3],
-    [1, '50', 1],
+    [1010, '7.5', 75],
+    [5, '10', 0],
+    [25, '10', 2],
+    [1, '50', 0],
     [0, '50', 0],
     [1000, '0', 0],
     [21_600, '12.25', 2_646],
     [2_147_483_647 * 200, '50', 214_748_364_700],
-  ])('takes %i at %s%% down by %i whole dollars, half a dollar rounding up', (subtotal, percent, expected) => {
+    // 200 lines at the cap, half off: the product with 5,000 hundredths is 10^16, past what a number holds exactly.
+    [2_000_000_000_000, '50', 1_000_000_000_000],
+  ])('takes %i cents at %s percent down by %i cents, floored', (subtotal, percent, expected) => {
     expect(discountAmount(subtotal, percent)).toBe(expected);
+  });
+
+  it('floors on the exact product where a float would land on the next cent', () => {
+    // 1_801_800_215_001 x 4_999 hundredths of a percent is exactly 9_007_199_274_789_999, past 2^53, and the floor of
+    // that over 10_000 is 900_719_927_478. A float rounds the product up to 9_007_199_274_790_000 and answers
+    // 900_719_927_479, a cent too much. Worked out with Python integers, not with the function under test.
+    expect(discountAmount(1_801_800_215_001, '49.99')).toBe(900_719_927_478);
   });
 
   it('takes nothing off for an empty or unreadable percentage, which the form reports on its own', () => {
@@ -857,23 +973,52 @@ describe('discountAmount', () => {
     expect(discountAmount(1000, '1.234')).toBe(0);
   });
 
+  it('takes nothing off a subtotal that is not a safe whole number, which the form is already refusing', () => {
+    expect(discountAmount(Number.MAX_SAFE_INTEGER + 2, '10')).toBe(0);
+    expect(discountAmount(Number.POSITIVE_INFINITY, '10')).toBe(0);
+  });
+
   it('reads spaces around the percentage and a trailing zero', () => {
     expect(discountAmount(1000, ' 7.50 ')).toBe(75);
   });
 });
 
 describe('invoiceTotals', () => {
-  it('gives the subtotal of the lines, the discount and the total payable', () => {
+  it('gives the subtotal of the lines, the discount and the total payable, all in cents', () => {
     const lines = [lineForm({ quantity: '10', rate: '100' })];
 
-    expect(invoiceTotals(lines, '10')).toEqual({ subtotal: 1000, discount: 100, total: 900 });
-    expect(invoiceTotals(lines, '0')).toEqual({ subtotal: 1000, discount: 0, total: 1000 });
+    expect(invoiceTotals(lines, '10')).toEqual({ subtotal: 100_000, discount: 10_000, total: 90_000 });
+    expect(invoiceTotals(lines, '0')).toEqual({ subtotal: 100_000, discount: 0, total: 100_000 });
+  });
+
+  it('works to the cent: 3 people for 160 hours at 12.50, ten percent off', () => {
+    const lines = [{ headcount: '3', quantity: '160', rate: '12.50' }];
+
+    expect(invoiceTotals(lines, '10')).toEqual({ subtotal: 600_000, discount: 60_000, total: 540_000 });
+  });
+
+  it('floors the discount once, on the subtotal, as the service does', () => {
+    // 7.5% of 10.10 is 0.7575: 75 cents off, not 76.
+    const lines = [{ headcount: '1', quantity: '1', rate: '10.10' }];
+
+    expect(invoiceTotals(lines, '7.5')).toEqual({ subtotal: 1010, discount: 75, total: 935 });
   });
 
   it('counts only the lines that have an amount', () => {
     const lines = [lineForm({ quantity: '10', rate: '100' }), lineForm({ quantity: '', rate: '' })];
 
-    expect(invoiceTotals(lines, '50')).toEqual({ subtotal: 1000, discount: 500, total: 500 });
+    expect(invoiceTotals(lines, '50')).toEqual({ subtotal: 100_000, discount: 50_000, total: 50_000 });
+  });
+
+  it('is exact at the extreme: 200 lines at the cap, half off', () => {
+    const atTheCap = { headcount: '1', quantity: '1', rate: toAmountText(MAX_CENTS) };
+    const lines = Array.from({ length: 200 }, () => atTheCap);
+
+    expect(invoiceTotals(lines, '50')).toEqual({
+      subtotal: 2_000_000_000_000,
+      discount: 1_000_000_000_000,
+      total: 1_000_000_000_000,
+    });
   });
 });
 

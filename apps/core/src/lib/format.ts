@@ -1,13 +1,3 @@
-export function formatCurrency(amount: number): string {
-  const whole = Number.isInteger(amount);
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: whole ? 0 : 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
-
 const shortDate = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
 /** Formats `YYYY-MM-DD` from the parts, so the day never shifts with the time zone. */

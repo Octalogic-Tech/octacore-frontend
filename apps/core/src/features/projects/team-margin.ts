@@ -8,7 +8,7 @@ export interface TeamMargin {
   /** The resources that could be counted, and how many there are in all. */
   counted: number;
   total: number;
-  /** A month's billing and salary cost of the counted resources, in whole dollars. */
+  /** A month's billing and salary cost of the counted resources, in whole US cents. */
   billed: number;
   cost: number;
   /** Billed less cost; negative when the salaries are more than the billing. */
@@ -23,7 +23,7 @@ export interface TeamMargin {
  * `people` (deleted) has no known salary.
  */
 export function teamMargin(resources: readonly ResourceRow[], people: readonly PersonRow[]): TeamMargin {
-  const salaryOf = new Map(people.map((person) => [person.id, person.monthlySalary]));
+  const salaryOf = new Map(people.map((person) => [person.id, person.monthlySalaryCents]));
   let counted = 0;
   let billed = 0;
   let cost = 0;
@@ -31,7 +31,7 @@ export function teamMargin(resources: readonly ResourceRow[], people: readonly P
     const salary = resource.personId === null ? null : (salaryOf.get(resource.personId) ?? null);
     if (salary === null || resource.headcount !== 1) continue;
     counted += 1;
-    billed += resource.rate * RETAINER_HOURS;
+    billed += resource.rateCents * RETAINER_HOURS;
     cost += salary;
   }
   const margin = billed - cost;

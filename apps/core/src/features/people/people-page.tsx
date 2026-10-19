@@ -11,7 +11,8 @@ import { Panel } from '@/components/ui/panel';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { filterBy } from '@/lib/filter';
-import { formatCurrency, formatDate } from '@/lib/format';
+import { formatDate } from '@/lib/format';
+import { formatUsd } from '@/lib/money';
 import { useDeletePerson, usePeople } from './api';
 import { PersonFormDialog } from './person-form-dialog';
 import type { PersonRow } from './schema';
@@ -86,7 +87,7 @@ export function PeoplePage() {
                       <TableCell className="tabular whitespace-nowrap">{formatDate(person.joinDate)}</TableCell>
                       <TableCell className="tabular whitespace-nowrap">{formatDate(person.leaveDate)}</TableCell>
                       <TableCell className="tabular whitespace-nowrap text-right">
-                        {person.monthlySalary === null ? '' : formatCurrency(person.monthlySalary)}
+                        {person.monthlySalaryCents === null ? '' : formatUsd(person.monthlySalaryCents)}
                       </TableCell>
                       <TableCell>
                         {person.contractLink ? (

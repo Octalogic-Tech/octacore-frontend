@@ -13,7 +13,8 @@ import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { downloadCsv } from '@/lib/csv';
-import { formatCurrency, formatDate, localToday } from '@/lib/format';
+import { formatDate, localToday } from '@/lib/format';
+import { formatUsd } from '@/lib/money';
 import { useAllInvoices, useProjects } from '@/features/projects/api';
 import { invoicesToCsv } from './csv';
 import {
@@ -205,7 +206,7 @@ export function InvoicesPage() {
                       <TableCell className="tabular whitespace-nowrap">
                         {invoice.dueDate ? formatDate(invoice.dueDate) : NONE}
                       </TableCell>
-                      <TableCell className="tabular text-right">{formatCurrency(invoice.amount)}</TableCell>
+                      <TableCell className="tabular text-right">{formatUsd(invoice.amountCents)}</TableCell>
                       <TableCell>
                         <StatusBadge invoice={invoice} today={today} />
                       </TableCell>
