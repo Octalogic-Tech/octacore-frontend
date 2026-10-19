@@ -3,7 +3,7 @@ import { coreApi, unwrap } from '@/lib/core-api';
 import { personRowSchema, personRowsSchema, type PersonBody } from './schema';
 
 // The list and a person's own page sit under one prefix, so a change refetches both.
-const PEOPLE = ['people'] as const;
+export const PEOPLE = ['people'] as const;
 const PERSON_LIST = [...PEOPLE, 'list'] as const;
 const personDetail = (id: number) => [...PEOPLE, 'detail', id] as const;
 // The key the project pages hold resources under (features/projects/api.ts).

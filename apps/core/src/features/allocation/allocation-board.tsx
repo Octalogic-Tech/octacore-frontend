@@ -1,4 +1,4 @@
-import type { Announcements, DragEndEvent, UniqueIdentifier } from '@dnd-kit/core';
+import type { Announcements, DragCancelEvent, DragEndEvent, DragStartEvent, UniqueIdentifier } from '@dnd-kit/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { QueryBoundary } from '@/components/query-boundary';
@@ -9,7 +9,7 @@ import { GripMark } from '@/components/ui/marks';
 import { Select } from '@/components/ui/select';
 import { usePeople } from '@/features/people/api';
 import { useProjects } from '@/features/projects/api';
-import { formatDate, localToday, pluralize } from '@/lib/format';
+import { formatDate, localToday } from '@/lib/format';
 import { formatInr } from '@/lib/money';
 import { useAllocations, useMoveAllocation } from './api';
 import { buildBoard, byPerson, columnTotals, type BoardCard, type BoardColumn } from './board';
@@ -23,6 +23,35 @@ const toColumns = (board: readonly BoardColumn[]): Columns =>
 /** The key of the column that holds the card, or null. */
 const columnHolding = (columns: Columns, cardKey: string): string | null =>
   Object.keys(columns).find((key) => columns[key].some((card) => card.key === cardKey)) ?? null;
+
+/**
+ * The columns with the card taken out of wherever it is and put in the column `to`, by name. The other columns are
+ * untouched. A column that is not there leaves `columns` as they were.
+ */
+function place(columns: Columns, card: BoardCard, to: string): Columns {
+  if (!(to in columns)) return columns;
+  const without = Object.fromEntries(
+    Object.entries(columns).map(([key, cards]) => [key, cards.filter((candidate) => candidate.key !== card.key)])
+  );
+  return { ...without, [to]: [...without[to], card].sort(byPerson) };
+}
+
+/**
+ * The service's columns, except that a card with a save in flight stays in the column it shows in: what the service
+ * says now does not yet include its move (or, once the save has landed, says the same). A card that is gone, or whose
+ * column is gone, follows the service.
+ */
+function keepSaving(fromService: Columns, shown: Columns, saving: ReadonlySet<string>): Columns {
+  let next = fromService;
+  for (const cardKey of saving) {
+    const home = columnHolding(fromService, cardKey);
+    const showing = columnHolding(shown, cardKey);
+    if (home === null || showing === null || showing === home) continue;
+    const card = fromService[home].find((candidate) => candidate.key === cardKey);
+    if (card) next = place(next, card, showing);
+  }
+  return next;
+}
 
 /** Whether two lists hold the same cards, whatever their order. */
 const sameCards = (a: readonly BoardCard[] = [], b: readonly BoardCard[] = []) =>
@@ -58,16 +87,23 @@ export function AllocationBoard() {
   const fromService = useMemo(() => toColumns(board), [board]);
 
   // The cards as they sit on screen. A card dragged over another column moves there at once, before anything is
-  // saved, so they differ from the service's until a save is read back (or fails, or the drag is cancelled).
+  // saved, so they differ from the service's until the save is read back (or fails, or the drag is cancelled). A card
+  // whose save is in flight is locked, so it is never moved twice at once, and stays where it shows when the entries
+  // are read again meanwhile; every other card follows the service.
   const [columns, setColumns] = useState<Columns>(fromService);
   const [shown, setShown] = useState(fromService);
+  const [saving, setSaving] = useState<ReadonlySet<string>>(() => new Set());
   if (shown !== fromService) {
     setShown(fromService);
-    setColumns(fromService);
+    setColumns(keepSaving(fromService, columns, saving));
   }
 
+  // The same set, readable at once: two changes in one tick see each other, where state would not have updated yet.
+  const savingNow = useRef(new Set<string>());
   const latest = useRef({ board, fromService });
   const refocus = useRef<string | null>(null);
+  // The column a drag began from, which a drop on that column (or on nothing) puts the card back to.
+  const dragFrom = useRef<{ cardKey: string; column: string | null } | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -75,33 +111,39 @@ export function AllocationBoard() {
   }, [board, fromService]);
 
   // A card that changes column is a new element in a new place, so the select that was used (and had focus) is
-  // replaced: focus goes to its successor, or the keyboard user loses their place.
+  // replaced: focus goes to its successor, or the keyboard user loses their place. The successor is locked until its
+  // save settles, and a locked select cannot take focus, so this waits for it.
   useEffect(() => {
     if (refocus.current === null) return;
-    document.getElementById(refocus.current)?.focus();
+    const target = document.getElementById(refocus.current);
+    if (!target || (target as HTMLSelectElement).disabled) return;
+    target.focus();
     refocus.current = null;
   });
 
+  function lock(cardKey: string, locked: boolean) {
+    if (locked) savingNow.current.add(cardKey);
+    else savingNow.current.delete(cardKey);
+    setSaving(new Set(savingNow.current));
+  }
+
   /**
-   * Saves the card as on the column `targetKey` from today, and shows it there. Nothing is saved for the column it is
-   * on already (by the service's account). When the save fails the cards go back to the service's and the board says so.
+   * Saves the card as on the column `targetKey` from today, and shows it there; `from` is the column it was in. Nothing
+   * is saved for the column it is in already. The card is locked until the save settles. When the save fails the card,
+   * and only that card, goes back (to where the service has it, by name) and the board says so.
    */
-  async function moveCard(cardKey: string, targetKey: string, focusSelect = false) {
-    const { board: current, fromService: saved } = latest.current;
-    const origin = columnHolding(saved, cardKey);
-    const target = current.find((column) => column.key === targetKey);
-    const card = origin === null ? undefined : saved[origin].find((candidate) => candidate.key === cardKey);
-    if (!card || !target || origin === targetKey) return;
+  async function moveCard(cardKey: string, targetKey: string, from: string | null, focusSelect = false) {
+    const target = latest.current.board.find((column) => column.key === targetKey);
+    const card = Object.values(columns)
+      .flat()
+      .find((candidate) => candidate.key === cardKey);
+    if (!card || !target || from === targetKey || savingNow.current.has(cardKey)) return;
 
     const selectId = `move-${cardKey}`;
+    lock(cardKey, true);
     setFailed(false);
     if (focusSelect) refocus.current = selectId;
-    setColumns((now) => {
-      const without = Object.fromEntries(
-        Object.entries(now).map(([key, cards]) => [key, cards.filter((c) => c.key !== cardKey)])
-      );
-      return { ...without, [targetKey]: [...without[targetKey], card].sort(byPerson) };
-    });
+    setColumns((now) => place(now, card, targetKey));
     try {
       await move.mutateAsync({
         personId: card.person.id,
@@ -110,9 +152,23 @@ export function AllocationBoard() {
       });
     } catch {
       if (focusSelect) refocus.current = selectId;
-      setColumns(latest.current.fromService);
+      const back = columnHolding(latest.current.fromService, cardKey) ?? from;
+      if (back !== null) setColumns((now) => place(now, card, back));
       setFailed(true);
+    } finally {
+      lock(cardKey, false);
     }
+  }
+
+  /** Puts a card that was being dragged back where the drag began (or where the service has it): only that card. */
+  function dropBack(cardKey: string) {
+    const from = dragFrom.current?.cardKey === cardKey ? dragFrom.current.column : null;
+    const back = from ?? columnHolding(latest.current.fromService, cardKey);
+    const card = Object.values(columns)
+      .flat()
+      .find((candidate) => candidate.key === cardKey);
+    if (card && back !== null) setColumns((now) => place(now, card, back));
+    dragFrom.current = null;
   }
 
   // The Kanban moves a card into the column it is over while it is dragged, and reorders a column's cards on a drop
@@ -121,15 +177,30 @@ export function AllocationBoard() {
     if (Object.keys(next).some((key) => !sameCards(columns[key], next[key]))) setColumns(next);
   }
 
+  function onDragStart({ active }: DragStartEvent) {
+    const cardKey = String(active.id);
+    dragFrom.current = { cardKey, column: columnHolding(columns, cardKey) };
+  }
+
   // The card is where it was dropped, which the Kanban has shown since it went over that column; saving is a move there.
+  // A card that is saving is locked and cannot be dragged, so a drop of one is not its own.
   function onDragEnd({ active, over }: DragEndEvent) {
     const cardKey = String(active.id);
+    if (savingNow.current.has(cardKey)) return;
     const now = columnHolding(columns, cardKey);
-    if (!over || now === null || now === columnHolding(fromService, cardKey)) {
-      setColumns(fromService);
+    const from =
+      (dragFrom.current?.cardKey === cardKey ? dragFrom.current.column : null) ??
+      columnHolding(latest.current.fromService, cardKey);
+    if (!over || now === null || now === from) {
+      dropBack(cardKey);
       return;
     }
-    void moveCard(cardKey, now);
+    dragFrom.current = null;
+    void moveCard(cardKey, now, from);
+  }
+
+  function onDragCancel({ active }: DragCancelEvent) {
+    if (!savingNow.current.has(String(active.id))) dropBack(String(active.id));
   }
 
   const nameOf = (id: UniqueIdentifier) =>
@@ -180,8 +251,9 @@ export function AllocationBoard() {
           value={columns}
           onValueChange={onValueChange}
           getItemValue={(card) => card.key}
+          onDragStart={onDragStart}
           onDragEnd={onDragEnd}
-          onDragCancel={() => setColumns(fromService)}
+          onDragCancel={onDragCancel}
           accessibility={{ announcements, screenReaderInstructions: { draggable: INSTRUCTIONS } }}
         >
           <KanbanBoard>
@@ -209,8 +281,9 @@ export function AllocationBoard() {
                         'Bench'
                       )}
                     </h2>
-                    <p className="tabular text-small">
-                      {pluralize(cards.length, 'person', 'people')}, {formatInr(monthlyCostPaise)} a month
+                    <p className="text-small">
+                      <span className="tabular">{cards.length}</span> {cards.length === 1 ? 'person' : 'people'},{' '}
+                      <span className="tabular">{formatInr(monthlyCostPaise)}</span> a month
                     </p>
                     {withoutSalary > 0 ? (
                       <p className="text-small text-navy-80">{withoutSalary} without a salary</p>
@@ -224,7 +297,7 @@ export function AllocationBoard() {
                   ) : (
                     <ul className="grid gap-2">
                       {cards.map((card) => (
-                        <KanbanItem key={card.key} value={card.key} asChild>
+                        <KanbanItem key={card.key} value={card.key} disabled={saving.has(card.key)} asChild>
                           <li className="border border-rule bg-background p-2">
                             <div className="flex items-start gap-1">
                               <KanbanItemHandle
@@ -252,7 +325,10 @@ export function AllocationBoard() {
                               aria-label={`Move ${card.person.name} to`}
                               value=""
                               className="min-h-11 text-small"
-                              onChange={(event) => void moveCard(card.key, event.target.value, true)}
+                              disabled={saving.has(card.key)}
+                              onChange={(event) =>
+                                void moveCard(card.key, event.target.value, columnHolding(columns, card.key), true)
+                              }
                             >
                               <option value="" disabled>
                                 Move to…

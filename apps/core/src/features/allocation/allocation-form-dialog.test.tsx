@@ -259,7 +259,7 @@ describe('AllocationFormDialog: editing', () => {
     expect(screen.getByLabelText('Note')).toHaveValue('');
   });
 
-  it('changes the entry with PATCH under its id, and sends the project, the date and the note but not the person', async () => {
+  it('changes the entry with PATCH under its id, and sends the new project, the date and the note but not the person', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     openDialog({ entry: adaOnWebsite });
@@ -279,17 +279,38 @@ describe('AllocationFormDialog: editing', () => {
     });
   });
 
-  it('sends the entry back as it was when it is saved without a change', async () => {
+  it('sends the entry back as it was when it is saved without a change: the project is not named, since it did not change', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     openDialog({ entry: adaOnWebsite });
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.patch).toHaveBeenCalledWith('/allocations/3', {
-      projectId: 1,
       effectiveDate: '2026-03-12',
       note: null,
     });
+  });
+
+  it('sends the project when another one is chosen, and null for the bench', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ entry: adaOnWebsite });
+    await screen.findByRole('option', { name: 'Legacy portal' });
+    await user.selectOptions(screen.getByLabelText('Project'), 'Legacy portal');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenLastCalledWith('/allocations/3', expect.objectContaining({ projectId: 3 }));
+  });
+
+  it('sends the project when an entry on the bench is put on a project', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ entry: adaOnBench });
+    await screen.findByRole('option', { name: 'Website' });
+    await user.selectOptions(screen.getByLabelText('Project'), 'Website');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/1', expect.objectContaining({ projectId: 1 }));
   });
 
   it('sends a null note to clear it when the field is emptied', async () => {
@@ -299,10 +320,10 @@ describe('AllocationFormDialog: editing', () => {
     await user.clear(screen.getByLabelText('Note'));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/1', expect.objectContaining({ projectId: null, note: null }));
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/1', { effectiveDate: '2025-11-03', note: null });
   });
 
-  it('still offers and keeps a project that has since been deleted, so an edit cannot move the entry off it', async () => {
+  it('still offers and keeps a project that has since been deleted, and does not name it, which the service would refuse', async () => {
     const retired = { ...allocationRows[1], projectId: 99, project: { id: 99, name: 'Retired project' } };
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
@@ -312,7 +333,31 @@ describe('AllocationFormDialog: editing', () => {
     expect(screen.getByRole('option', { name: 'Retired project' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/3', expect.objectContaining({ projectId: 99 }));
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/3', { effectiveDate: '2026-03-12', note: null });
+    expect(vi.mocked(coreApi.patch).mock.calls[0][1]).not.toHaveProperty('projectId');
+  });
+
+  it('changes only the note of an entry of a deleted project without naming the project', async () => {
+    const retired = { ...allocationRows[1], projectId: 99, project: { id: 99, name: 'Retired project' } };
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ entry: allocationRowsSchema.parse([retired])[0] });
+    await user.type(screen.getByLabelText('Note'), 'Handed over');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/3', { effectiveDate: '2026-03-12', note: 'Handed over' });
+  });
+
+  it('moves an entry of a deleted project to a live one, or to the bench, by naming that', async () => {
+    const retired = { ...allocationRows[1], projectId: 99, project: { id: 99, name: 'Retired project' } };
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ entry: allocationRowsSchema.parse([retired])[0] });
+    await screen.findByRole('option', { name: 'Website' });
+    await user.selectOptions(screen.getByLabelText('Project'), 'Bench');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/3', expect.objectContaining({ projectId: null }));
   });
 
   it('keeps the project of the entry chosen while the projects fail to load', async () => {

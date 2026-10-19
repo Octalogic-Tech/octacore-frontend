@@ -85,7 +85,11 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
   const submit = handleSubmit(async (values) => {
     setFailure(null);
     try {
-      await save.mutateAsync({ id: entry?.id, body: toAllocationBody(values) });
+      await save.mutateAsync({
+        id: entry?.id,
+        body: toAllocationBody(values),
+        currentProjectId: entry?.projectId,
+      });
     } catch (error) {
       const status = statusOf(error);
       const message = serviceMessage(error);

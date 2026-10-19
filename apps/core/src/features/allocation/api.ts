@@ -32,15 +32,29 @@ function useRefreshAllocations() {
  * returned row must not look like a failed save (a retry would add the entry twice, and the service would refuse the
  * second as a clash on the date). An edit leaves the person out: the person of an entry cannot change, and the service
  * refuses a body that names one.
+ *
+ * An edit names the project only when it is not the entry's own (`currentProjectId`, null for the bench): the service
+ * checks every key of the body against the live records, so naming a project that was deleted since the entry was
+ * written would be refused even by an edit of the note or the date, and an omitted project is left as it is. Without
+ * `currentProjectId` the project is always named.
  */
 export function useSaveAllocation() {
   const refresh = useRefreshAllocations();
   return useMutation({
-    mutationFn: async ({ id, body }: { id?: number; body: AllocationBody }) => {
+    mutationFn: async ({
+      id,
+      body,
+      currentProjectId,
+    }: {
+      id?: number;
+      body: AllocationBody;
+      currentProjectId?: number | null;
+    }) => {
       if (id === undefined) await coreApi.post('/allocations', body);
       else {
         const { projectId, effectiveDate, note } = body;
-        await coreApi.patch(`/allocations/${id}`, { projectId, effectiveDate, note });
+        const changes = projectId === currentProjectId ? { effectiveDate, note } : { projectId, effectiveDate, note };
+        await coreApi.patch(`/allocations/${id}`, changes);
       }
     },
     onSuccess: refresh,

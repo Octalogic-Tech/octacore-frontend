@@ -111,6 +111,66 @@ describe('useSaveAllocation', () => {
     expect(sentBody(adapter)).toEqual({ projectId: null, effectiveDate: '2026-10-20', note: 'Rolled off' });
   });
 
+  describe('on a PATCH, the project', () => {
+    // The service checks every key of a PATCH body against the live records, so a project that was deleted since the
+    // entry was written is refused (409) as soon as it is named, even by an edit that only changes the note.
+    it('is left out when it is the entry’s own, so an entry of a deleted project can still change its note and date', async () => {
+      const adapter = serve({ status: 200, data: allocationEnvelope() });
+      const { result } = setup(() => useSaveAllocation());
+      await act(() =>
+        result.current.mutateAsync({ id: 3, body: { ...body, projectId: 99, note: 'Corrected' }, currentProjectId: 99 })
+      );
+      expect(sentBody(adapter)).toEqual({ effectiveDate: '2026-10-20', note: 'Corrected' });
+      expect(sentBody(adapter)).not.toHaveProperty('projectId');
+    });
+
+    it('is left out when it is the bench and the entry is on the bench already', async () => {
+      const adapter = serve({ status: 200, data: allocationEnvelope() });
+      const { result } = setup(() => useSaveAllocation());
+      await act(() =>
+        result.current.mutateAsync({ id: 3, body: { ...body, projectId: null }, currentProjectId: null })
+      );
+      expect(sentBody(adapter)).not.toHaveProperty('projectId');
+    });
+
+    it('is sent when it is another project', async () => {
+      const adapter = serve({ status: 200, data: allocationEnvelope() });
+      const { result } = setup(() => useSaveAllocation());
+      await act(() => result.current.mutateAsync({ id: 3, body: { ...body, projectId: 2 }, currentProjectId: 99 }));
+      expect(sentBody(adapter)).toEqual({ projectId: 2, effectiveDate: '2026-10-20', note: null });
+    });
+
+    it('is sent as null when the entry moves to the bench', async () => {
+      const adapter = serve({ status: 200, data: allocationEnvelope() });
+      const { result } = setup(() => useSaveAllocation());
+      await act(() => result.current.mutateAsync({ id: 3, body: { ...body, projectId: null }, currentProjectId: 2 }));
+      expect(sentBody(adapter)).toEqual({ projectId: null, effectiveDate: '2026-10-20', note: null });
+    });
+
+    it('is sent when the entry is on the bench and moves to a project', async () => {
+      const adapter = serve({ status: 200, data: allocationEnvelope() });
+      const { result } = setup(() => useSaveAllocation());
+      await act(() => result.current.mutateAsync({ id: 3, body: { ...body, projectId: 2 }, currentProjectId: null }));
+      expect(sentBody(adapter)).toHaveProperty('projectId', 2);
+    });
+
+    it('never sends the person, whether or not the project is sent', async () => {
+      const adapter = serve({ status: 200, data: allocationEnvelope() });
+      const { result } = setup(() => useSaveAllocation());
+      await act(() => result.current.mutateAsync({ id: 3, body, currentProjectId: 2 }));
+      await act(() => result.current.mutateAsync({ id: 3, body, currentProjectId: 7 }));
+      expect(sentBody(adapter, 0)).not.toHaveProperty('personId');
+      expect(sentBody(adapter, 1)).not.toHaveProperty('personId');
+    });
+
+    it('is always sent on an add', async () => {
+      const adapter = serve({ status: 201, data: allocationEnvelope() });
+      const { result } = setup(() => useSaveAllocation());
+      await act(() => result.current.mutateAsync({ id: undefined, body: { ...body, projectId: null } }));
+      expect(sentBody(adapter)).toHaveProperty('projectId', null);
+    });
+  });
+
   it('sends a null note on a PATCH, so an emptied note is cleared', async () => {
     const adapter = serve({ status: 200, data: allocationEnvelope() });
     const { result } = setup(() => useSaveAllocation());

@@ -265,8 +265,8 @@ describe('AllocationLedger: adding, editing and deleting', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(coreApi.post).not.toHaveBeenCalled();
+    // The project did not change, so it is not named.
     expect(coreApi.patch).toHaveBeenCalledWith('/allocations/3', {
-      projectId: 1,
       effectiveDate: '2026-03-12',
       note: 'Moved to the web team',
     });

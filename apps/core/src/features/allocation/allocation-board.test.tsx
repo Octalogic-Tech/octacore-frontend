@@ -93,6 +93,9 @@ const saved = { data: allocationEnvelope() };
 const column = (name: string) => within(screen.getByRole('group', { name }));
 const cardOf = (name: string) => screen.getByRole('link', { name }).closest('li') as HTMLElement;
 const moveSelect = (name: string) => screen.getByLabelText(`Move ${name} to`);
+/** A column head, whose figures are in spans of their own: the text of the paragraph as a whole. */
+const headline = (text: string) => (_: string, element: Element | null) =>
+  element?.tagName === 'P' && element.textContent === text;
 const namesIn = (name: string) =>
   column(name)
     .queryAllByRole('listitem')
@@ -146,22 +149,29 @@ describe('AllocationBoard: the columns', () => {
 
   it('shows a column’s head count and monthly cost in rupees', async () => {
     await renderBoard();
-    expect(column('Website').getByText('1 person, ₹85,000.00 a month')).toBeInTheDocument();
-    expect(column('Mobile app').getByText('1 person, ₹1,15,000.00 a month')).toBeInTheDocument();
+    expect(column('Website').getByText(headline('1 person, ₹85,000.00 a month'))).toBeInTheDocument();
+    expect(column('Mobile app').getByText(headline('1 person, ₹1,15,000.00 a month'))).toBeInTheDocument();
+  });
+
+  it('sets the figures of a head in tabular numerals, and the words and commas between them in the ordinary face', async () => {
+    await renderBoard();
+    const head = column('Website').getByText(headline('1 person, ₹85,000.00 a month'));
+    expect(head).not.toHaveClass('tabular');
+    expect([...head.querySelectorAll('.tabular')].map((figure) => figure.textContent)).toEqual(['1', '₹85,000.00']);
   });
 
   it('adds up the people of a column in Indian grouping, and counts heads in the plural', async () => {
     serve({ entries: [adaOnWebsite, { ...graceOnMobile, projectId: 1, project: { id: 1, name: 'Website' } }] });
     await renderBoard();
-    expect(column('Website').getByText('2 people, ₹2,00,000.00 a month')).toBeInTheDocument();
-    expect(column('Mobile app').getByText('0 people, ₹0.00 a month')).toBeInTheDocument();
+    expect(column('Website').getByText(headline('2 people, ₹2,00,000.00 a month'))).toBeInTheDocument();
+    expect(column('Mobile app').getByText(headline('0 people, ₹0.00 a month'))).toBeInTheDocument();
   });
 
   it('counts a person with no salary as nothing, and says how many have none, only where there is one', async () => {
     const mary = { ...linus, id: 4, name: 'Mary Seacole' };
     serve({ people: [ada, grace, linus, mary] });
     await renderBoard();
-    expect(column('Bench').getByText('2 people, ₹0.00 a month')).toBeInTheDocument();
+    expect(column('Bench').getByText(headline('2 people, ₹0.00 a month'))).toBeInTheDocument();
     expect(column('Bench').getByText('2 without a salary')).toBeInTheDocument();
     expect(column('Website').queryByText(/without a salary/)).not.toBeInTheDocument();
   });
@@ -238,6 +248,32 @@ describe('AllocationBoard: a card', () => {
   });
 });
 
+/** What the Kanban hands over while a card is over another column: the card taken out and put at the end of it. */
+const carry = (key: string, to: string) => {
+  const next: Record<string, BoardCard[]> = {};
+  let card: BoardCard | undefined;
+  for (const [columnKey, cards] of Object.entries(kanban.value)) {
+    card = card ?? cards.find((candidate) => candidate.key === key);
+    next[columnKey] = cards.filter((candidate) => candidate.key !== key);
+  }
+  next[to] = [...(next[to] ?? []), card as BoardCard];
+  return next;
+};
+
+const dropEvent = (active: string, over: string | null) =>
+  ({ active: { id: active }, over: over === null ? null : { id: over } } as never);
+
+/** A promise the test settles by hand, to hold a save in flight. */
+function deferred() {
+  let resolve!: (value: unknown) => void;
+  let reject!: (reason: unknown) => void;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
 describe('AllocationBoard: moving with the select', () => {
   it('saves a move to a project with today’s date, and shows the card there at once', async () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
@@ -296,7 +332,7 @@ describe('AllocationBoard: moving with the select', () => {
     await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
     await waitFor(() => expect(within(cardOf('Linus Torvalds')).getByText('since 20 Oct 2026')).toBeInTheDocument());
     expect(namesIn('Website')).toEqual(['Ada Lovelace', 'Linus Torvalds']);
-    expect(column('Website').getByText('2 people, ₹85,000.00 a month')).toBeInTheDocument();
+    expect(column('Website').getByText(headline('2 people, ₹85,000.00 a month'))).toBeInTheDocument();
   });
 
   it('keeps focus on the card’s select, which is in its new column', async () => {
@@ -333,21 +369,6 @@ describe('AllocationBoard: moving with the select', () => {
 });
 
 describe('AllocationBoard: dragging', () => {
-  /** What the Kanban hands over while a card is over another column: the card taken out and put at the end of it. */
-  const carry = (key: string, to: string) => {
-    const next: Record<string, BoardCard[]> = {};
-    let card: BoardCard | undefined;
-    for (const [columnKey, cards] of Object.entries(kanban.value)) {
-      card = card ?? cards.find((candidate) => candidate.key === key);
-      next[columnKey] = cards.filter((candidate) => candidate.key !== key);
-    }
-    next[to] = [...(next[to] ?? []), card as BoardCard];
-    return next;
-  };
-
-  const dropEvent = (active: string, over: string | null) =>
-    ({ active: { id: active }, over: over === null ? null : { id: over } } as never);
-
   it('uses prefixed keys, so a card’s id cannot be a column’s', async () => {
     await renderBoard();
     expect(Object.keys(kanban.value)).toEqual(['col-bench', 'col-2', 'col-1']);
@@ -443,9 +464,9 @@ describe('AllocationBoard: dragging', () => {
   it('moves the head count and the cost with the card while it is over another column', async () => {
     await renderBoard();
     act(() => kanban.onValueChange?.(carry('person-3', 'col-1')));
-    expect(column('Website').getByText('2 people, ₹85,000.00 a month')).toBeInTheDocument();
+    expect(column('Website').getByText(headline('2 people, ₹85,000.00 a month'))).toBeInTheDocument();
     expect(column('Website').getByText('1 without a salary')).toBeInTheDocument();
-    expect(column('Bench').getByText('0 people, ₹0.00 a month')).toBeInTheDocument();
+    expect(column('Bench').getByText(headline('0 people, ₹0.00 a month'))).toBeInTheDocument();
     expect(column('Bench').queryByText(/without a salary/)).not.toBeInTheDocument();
   });
 
@@ -484,6 +505,190 @@ describe('AllocationBoard: dragging', () => {
     await act(() => client.invalidateQueries({ queryKey: ['allocations'] }));
     await waitFor(() => expect(namesIn('Mobile app')).toEqual(['Grace Hopper', 'Linus Torvalds']));
     expect(namesIn('Bench')).toEqual([]);
+  });
+});
+
+describe('AllocationBoard: saves in flight', () => {
+  const graceOnWebsite = { ...graceOnMobile, projectId: 1, project: { id: 1, name: 'Website' } };
+
+  it('locks a card while its move is being saved, so it cannot be moved a second time', async () => {
+    const first = deferred();
+    vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
+    const user = userEvent.setup();
+    await renderBoard();
+    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    expect(moveSelect('Linus Torvalds')).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Drag Linus Torvalds' })).toBeDisabled();
+    // The other cards are free.
+    expect(moveSelect('Ada Lovelace')).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Drag Ada Lovelace' })).toBeEnabled();
+    // A stray drop of the locked card changes nothing and sends nothing.
+    act(() => kanban.onDragEnd?.(dropEvent('person-3', 'col-bench')));
+    expect(coreApi.post).toHaveBeenCalledTimes(1);
+    expect(namesIn('Website')).toEqual(['Ada Lovelace', 'Linus Torvalds']);
+    first.resolve(saved);
+    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
+    expect(screen.getByRole('button', { name: 'Drag Linus Torvalds' })).toBeEnabled();
+  });
+
+  it('unlocks the card, and puts it back, when its save fails', async () => {
+    const first = deferred();
+    vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
+    const user = userEvent.setup();
+    await renderBoard();
+    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    first.reject(failure(500));
+    expect(await screen.findByRole('alert')).toHaveTextContent('That did not save');
+    expect(moveSelect('Linus Torvalds')).toBeEnabled();
+    expect(namesIn('Bench')).toEqual(['Linus Torvalds']);
+  });
+
+  it('compares a move with where the card shows now: back to where it was is a move, the same column is not', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    await renderBoard();
+    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
+    // The stand-in service has not changed, so the entries read back still say Bench; the card shows Website.
+    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    expect(coreApi.post).toHaveBeenCalledTimes(1);
+    await user.selectOptions(moveSelect('Linus Torvalds'), 'Bench');
+    expect(coreApi.post).toHaveBeenCalledTimes(2);
+    expect(coreApi.post).toHaveBeenLastCalledWith('/allocations/move', {
+      personId: 3,
+      projectId: null,
+      effectiveDate: '2026-10-20',
+    });
+    expect(namesIn('Bench')).toEqual(['Linus Torvalds']);
+  });
+
+  it('puts back only the card whose save failed, and leaves the move of another that is still saving', async () => {
+    const first = deferred();
+    vi.mocked(coreApi.post)
+      .mockImplementationOnce(() => first.promise as never)
+      .mockRejectedValueOnce(failure(500));
+    const user = userEvent.setup();
+    await renderBoard();
+    await user.selectOptions(moveSelect('Linus Torvalds'), 'Mobile app');
+    await user.selectOptions(moveSelect('Ada Lovelace'), 'Bench');
+    expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. The card is back where it was.');
+    expect(namesIn('Website')).toEqual(['Ada Lovelace']);
+    expect(namesIn('Mobile app')).toEqual(['Grace Hopper', 'Linus Torvalds']);
+    expect(namesIn('Bench')).toEqual([]);
+    expect(moveSelect('Linus Torvalds')).toBeDisabled();
+    expect(moveSelect('Ada Lovelace')).toBeEnabled();
+    state.entries = [
+      {
+        ...adaOnWebsite,
+        id: 9,
+        personId: 3,
+        projectId: 2,
+        person: { id: 3, name: 'Linus Torvalds' },
+        project: { id: 2, name: 'Mobile app' },
+      },
+      adaOnWebsite,
+      graceOnMobile,
+    ];
+    first.resolve(saved);
+    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
+    expect(namesIn('Mobile app')).toEqual(['Grace Hopper', 'Linus Torvalds']);
+    expect(namesIn('Website')).toEqual(['Ada Lovelace']);
+  });
+
+  it('does not move a card back when the entries are read again while its save is pending', async () => {
+    const first = deferred();
+    vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
+    const user = userEvent.setup();
+    const { client } = await renderBoard();
+    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    // Someone else puts Grace on Website; the board reads the entries again while Linus's save is still on its way.
+    serve({ entries: [adaOnWebsite, graceOnWebsite] });
+    await act(() => client.invalidateQueries({ queryKey: ['allocations'] }));
+    await waitFor(() => expect(namesIn('Website')).toEqual(['Ada Lovelace', 'Grace Hopper', 'Linus Torvalds']));
+    expect(namesIn('Mobile app')).toEqual([]);
+    expect(namesIn('Bench')).toEqual([]);
+    expect(column('Website').getByText(headline('3 people, ₹2,00,000.00 a month'))).toBeInTheDocument();
+    first.resolve(saved);
+    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
+    expect(namesIn('Website')).toEqual(['Ada Lovelace', 'Grace Hopper', 'Linus Torvalds']);
+  });
+
+  it('follows the entries for the cards that are not saving, when they are read again', async () => {
+    const first = deferred();
+    vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
+    const user = userEvent.setup();
+    const { client } = await renderBoard();
+    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    serve({ entries: [adaOnWebsite, graceOnWebsite] });
+    await act(() => client.invalidateQueries({ queryKey: ['allocations'] }));
+    await waitFor(() => expect(namesIn('Mobile app')).toEqual([]));
+    first.resolve(saved);
+    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
+  });
+
+  it('forgets a card that is saving when it is gone from the people when they are read again', async () => {
+    const first = deferred();
+    vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
+    const user = userEvent.setup();
+    const { client } = await renderBoard();
+    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    serve({ people: [ada, grace] });
+    await act(() => client.invalidateQueries({ queryKey: ['people'] }));
+    await waitFor(() => expect(screen.queryByRole('link', { name: 'Linus Torvalds' })).not.toBeInTheDocument());
+    first.resolve(saved);
+    await waitFor(() => expect(namesIn('Website')).toEqual(['Ada Lovelace']));
+  });
+
+  it('puts back only the dragged card when a drag is cancelled, not a card that is saving', async () => {
+    const first = deferred();
+    vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
+    const user = userEvent.setup();
+    await renderBoard();
+    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    act(() => kanban.onDragStart?.({ active: { id: 'person-1' } } as never));
+    act(() => kanban.onValueChange?.(carry('person-1', 'col-bench')));
+    expect(namesIn('Bench')).toEqual(['Ada Lovelace']);
+    act(() => kanban.onDragCancel?.({ active: { id: 'person-1' }, over: null } as never));
+    expect(namesIn('Website')).toEqual(['Ada Lovelace', 'Linus Torvalds']);
+    expect(namesIn('Bench')).toEqual([]);
+    first.resolve(saved);
+    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
+  });
+
+  it('puts back only the dragged card when it is dropped on its own column or on nothing, not a card that is saving', async () => {
+    const first = deferred();
+    vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
+    const user = userEvent.setup();
+    await renderBoard();
+    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    act(() => kanban.onDragStart?.({ active: { id: 'person-1' } } as never));
+    act(() => kanban.onValueChange?.(carry('person-1', 'col-bench')));
+    act(() => kanban.onValueChange?.(carry('person-1', 'col-1')));
+    act(() => kanban.onDragEnd?.(dropEvent('person-1', 'person-1')));
+    expect(namesIn('Website')).toEqual(['Ada Lovelace', 'Linus Torvalds']);
+    act(() => kanban.onDragStart?.({ active: { id: 'person-1' } } as never));
+    act(() => kanban.onValueChange?.(carry('person-1', 'col-bench')));
+    act(() => kanban.onDragEnd?.(dropEvent('person-1', null)));
+    expect(namesIn('Website')).toEqual(['Ada Lovelace', 'Linus Torvalds']);
+    expect(namesIn('Bench')).toEqual([]);
+    expect(coreApi.post).toHaveBeenCalledTimes(1);
+    first.resolve(saved);
+    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
+  });
+
+  it('saves a drag that starts from where the card was and ends elsewhere, with the drag start known', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    await renderBoard();
+    act(() => kanban.onDragStart?.({ active: { id: 'person-3' } } as never));
+    act(() => kanban.onValueChange?.(carry('person-3', 'col-1')));
+    act(() => kanban.onDragEnd?.(dropEvent('person-3', 'col-1')));
+    await waitFor(() =>
+      expect(coreApi.post).toHaveBeenCalledWith('/allocations/move', {
+        personId: 3,
+        projectId: 1,
+        effectiveDate: '2026-10-20',
+      })
+    );
   });
 });
 
