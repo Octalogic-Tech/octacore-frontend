@@ -34,7 +34,7 @@ describe('App shell', () => {
   it('lists every page in five groups', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    for (const label of ['Overview', 'Clients', 'Projects', 'People', 'Invoices', 'Expenses', 'Categories', 'Technologies', 'Countries', 'Expense types', 'Users']) {
+    for (const label of ['Overview', 'Clients', 'Projects', 'People', 'Allocation', 'Invoices', 'Expenses', 'Categories', 'Technologies', 'Countries', 'Expense types', 'Users']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
     for (const group of ['Work', 'Resources', 'Finance', 'Reference data', 'Admin']) {
@@ -46,12 +46,13 @@ describe('App shell', () => {
     expect(within(nav).queryByRole('link', { name: 'Currencies' })).not.toBeInTheDocument();
   });
 
-  it('puts People in the Resources group, not under Work', () => {
+  it('puts People and Allocation in the Resources group, not under Work', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
     const resources = within(within(nav).getByRole('list', { name: 'Resources' }));
-    expect(resources.getAllByRole('link').map((link) => link.textContent)).toEqual(['People']);
+    expect(resources.getAllByRole('link').map((link) => link.textContent)).toEqual(['People', 'Allocation']);
     expect(resources.getByRole('link', { name: 'People' })).toHaveAttribute('href', '/resources/people');
+    expect(resources.getByRole('link', { name: 'Allocation' })).toHaveAttribute('href', '/resources/allocation');
     const work = within(within(nav).getByRole('list', { name: 'Work' }));
     expect(work.queryByRole('link', { name: 'People' })).not.toBeInTheDocument();
   });
@@ -85,6 +86,7 @@ describe('App shell', () => {
     ['/clients', 'Clients'],
     ['/projects', 'Projects'],
     ['/resources/people', 'People'],
+    ['/resources/allocation', 'Allocation'],
     ['/finance/invoices', 'Invoices'],
     ['/finance/expenses', 'Expenses'],
     ['/categories', 'Categories'],
@@ -102,6 +104,18 @@ describe('App shell', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'People' })).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: 'Main' });
     expect(within(nav).getByRole('link', { name: 'People' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('keeps Allocation current on its page, and not People', () => {
+    renderAt('/resources/allocation');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'Allocation' })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('link', { name: 'People' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('no longer has a Planned page for Allocation, which is built', () => {
+    renderAt('/planned/allocation');
+    expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
   });
 
   it('no longer has a Currencies page', () => {

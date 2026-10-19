@@ -38,6 +38,7 @@ export default function App() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
           <Route path="resources/people" element={<PeoplePage />} />
+          <Route path="resources/allocation" element={<AllocationPage />} />
           {/* People moved into Resources: a saved link still lands on it. */}
           <Route path="people" element={<Navigate to="/resources/people" replace />} />
           <Route path="finance/invoices" element={<InvoicesPage />} />
@@ -71,7 +72,6 @@ export default function App() {
             <Route path="currency-tax" element={<CurrencyTaxPage />} />
             <Route path="milestones" element={<MilestonesPage />} />
             <Route path="recurring-invoices" element={<RecurringInvoicesPage />} />
-            <Route path="allocation" element={<AllocationPage />} />
             <Route path="skills" element={<SkillsPage />} />
             <Route path="cash-flow" element={<CashFlowPage />} />
             <Route path="profit-loss" element={<ProfitLossPage />} />

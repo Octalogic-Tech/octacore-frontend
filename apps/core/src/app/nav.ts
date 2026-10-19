@@ -22,8 +22,11 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     label: 'Resources',
-    // Allocation and Leave join People here when their pages are built.
-    items: [{ label: 'People', to: '/resources/people' }],
+    // Leave joins them when its page is built.
+    items: [
+      { label: 'People', to: '/resources/people' },
+      { label: 'Allocation', to: '/resources/allocation' },
+    ],
   },
   {
     label: 'Finance',

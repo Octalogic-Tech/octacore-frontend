@@ -57,9 +57,27 @@ export function currentEntry(entries: readonly AllocationRow[], personId: number
   return current;
 }
 
+/**
+ * What the people on `cards` are paid in a month, in whole INR paise, and how many of them have no salary on file (they
+ * add 0). A salary of zero is a salary. The board's heads read this from the cards a column holds now, which a card
+ * being dragged changes before anything is saved.
+ */
+export function columnTotals(cards: readonly BoardCard[]): Pick<BoardColumn, 'monthlyCostPaise' | 'withoutSalary'> {
+  let monthlyCostPaise = 0;
+  let withoutSalary = 0;
+  for (const { person } of cards) {
+    if (person.monthlySalaryPaise === null) withoutSalary += 1;
+    else monthlyCostPaise += person.monthlySalaryPaise;
+  }
+  return { monthlyCostPaise, withoutSalary };
+}
+
 /** By name, whatever the case, then by id. */
 const byName = <T extends { id: number }>(name: (item: T) => string) => (a: T, b: T) =>
   name(a).toLowerCase().localeCompare(name(b).toLowerCase()) || a.id - b.id;
+
+/** The order of the cards in a column: by the person's name, then id. */
+export const byPerson = (a: BoardCard, b: BoardCard) => byName((person: PersonRow) => person.name)(a.person, b.person);
 
 /**
  * The board for `today`: the bench first, then a column for each active project, by name. A person is on it when they
@@ -109,9 +127,8 @@ export function buildBoard({
     }
 
     column.cards.push(card);
-    if (person.monthlySalaryPaise === null) column.withoutSalary += 1;
-    else column.monthlyCostPaise += person.monthlySalaryPaise;
   }
 
+  for (const column of columns.values()) Object.assign(column, columnTotals(column.cards));
   return [...columns.values()];
 }

@@ -25,7 +25,6 @@ const IN_ORDER = [
   ['currency-tax', 'Currency and tax'],
   ['milestones', 'Milestone schedule'],
   ['recurring-invoices', 'Recurring retainer drafts'],
-  ['allocation', 'Allocation and bench'],
   ['skills', 'Skills matrix'],
   ['cash-flow', 'Cash-flow forecast'],
   ['profit-loss', 'Profit and loss'],
@@ -38,7 +37,6 @@ const DIALOGS = [
   ['milestones', 'Preview the milestone dialog', 'Milestone'],
   ['currency-tax', 'Preview the tax rate dialog', 'Tax rate'],
   ['profit-loss', 'Preview the expense dialog', 'Add an expense'],
-  ['allocation', 'Preview the allocation dialog', 'Allocate a person'],
   ['skills', 'Preview the skills dialog', 'Edit skills'],
   ['quotes', 'Preview the quote dialog', 'New quote'],
   ['portfolio', 'Preview the case study dialog', 'Case study'],
@@ -46,7 +44,7 @@ const DIALOGS = [
 ] as const;
 
 describe('the planned registry', () => {
-  it('lists the nine pieces in the suggested build order', () => {
+  it('lists the eight pieces in the suggested build order', () => {
     expect(PLANNED.map((spec) => [spec.id, spec.title])).toEqual(IN_ORDER);
   });
 

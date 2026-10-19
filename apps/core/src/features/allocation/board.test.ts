@@ -3,7 +3,7 @@ import { projectRowSchema, type ProjectRow } from '@/features/projects/schema';
 import { allocationRows } from '@/test/fixtures/allocations';
 import { personRows } from '@/test/fixtures/people';
 import { projectRows } from '@/test/fixtures/projects';
-import { buildBoard, currentEntry, isOnStaff, type BoardColumn } from './board';
+import { buildBoard, byPerson, columnTotals, currentEntry, isOnStaff, type BoardColumn } from './board';
 import { allocationRowSchema, type AllocationRow } from './schema';
 
 const TODAY = '2026-10-20';
@@ -456,5 +456,44 @@ describe('buildBoard: the cards', () => {
     const before = JSON.stringify({ people, projects, entries });
     buildBoard({ people, projects, entries, today: TODAY });
     expect(JSON.stringify({ people, projects, entries })).toBe(before);
+  });
+});
+
+describe('columnTotals', () => {
+  const cardsOf = (...people: PersonRow[]) =>
+    columnOf(buildBoard({ people, projects: [], entries: [], today: TODAY }), 'col-bench')?.cards ?? [];
+
+  it('adds up the monthly salaries and counts the people with none', () => {
+    expect(columnTotals(cardsOf(ada, grace, linus))).toEqual({ monthlyCostPaise: 20_000_000, withoutSalary: 1 });
+  });
+
+  it('is nothing for no cards', () => {
+    expect(columnTotals([])).toEqual({ monthlyCostPaise: 0, withoutSalary: 0 });
+  });
+
+  it('counts a salary of zero as a salary', () => {
+    expect(columnTotals(cardsOf(person(5, 'Intern', { monthlySalaryPaise: 0 })))).toEqual({
+      monthlyCostPaise: 0,
+      withoutSalary: 0,
+    });
+  });
+
+  it('is what a column of the board carries', () => {
+    const board = buildBoard({ people: [ada, linus], projects: [], entries: [], today: TODAY });
+    const bench = columnOf(board, 'col-bench');
+    expect(bench).toMatchObject(columnTotals(bench?.cards ?? []));
+  });
+});
+
+describe('byPerson', () => {
+  it('orders cards the way a column lists them: by name whatever the case, then by id', () => {
+    const board = buildBoard({
+      people: [person(3, 'zoe'), person(2, 'Bea'), person(1, 'bea'), person(4, 'Adam')],
+      projects: [],
+      entries: [],
+      today: TODAY,
+    });
+    const cards = columnOf(board, 'col-bench')?.cards ?? [];
+    expect([...cards].reverse().sort(byPerson).map((card) => card.key)).toEqual(cards.map((card) => card.key));
   });
 });
