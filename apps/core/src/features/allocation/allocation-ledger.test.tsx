@@ -317,7 +317,7 @@ describe('AllocationLedger: adding, editing and deleting', () => {
     vi.mocked(coreApi.post).mockRejectedValue(
       new AxiosError('failed', 'ERR_BAD_REQUEST', undefined, null, {
         status: 409,
-        data: { statusCode: 409, message: 'This person already has an entry on that date; edit it instead', data: null },
+        data: { statusCode: 409, message: 'This person already has an entry for that card on that date; edit it instead', data: null },
         statusText: '409',
         headers: {},
         config: {} as never,
@@ -330,7 +330,7 @@ describe('AllocationLedger: adding, editing and deleting', () => {
     await user.selectOptions(screen.getByLabelText('Person'), 'Ada Lovelace');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(
-      await screen.findByText('This person already has an entry on that date; edit it instead'),
+      await screen.findByText('This person already has an entry for that card on that date; edit it instead'),
     ).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: 'New allocation entry' })).toBeInTheDocument();
   });

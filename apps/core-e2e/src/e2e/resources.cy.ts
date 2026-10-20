@@ -303,7 +303,7 @@ interface Named {
       cy.get('#allocation-date').clear();
       cy.get('#allocation-date').type('2026-03-12');
       cy.contains('button', 'Save').click();
-      cy.contains('This person already has an entry on that date; edit it instead').should('be.visible');
+      cy.contains('This person already has an entry for that card on that date; edit it instead').should('be.visible');
       // A backfilled entry on an earlier day: Ada was on the bench before the project.
       cy.get('#allocation-date').clear();
       cy.get('#allocation-date').type('2026-01-05');
@@ -329,12 +329,12 @@ interface Named {
     });
 
     // The card's menu does what the drag does. Two moves on one day leave one entry, so the ledger stays at three. A press
-    // on the menu button is a click and not the start of a drag, and the menu offers every column but the one she is in.
+    // on the menu button is a click and not the start of a drag, and the menu offers every column but the one she is in, then Duplicate and Delete card.
     cy.get(`button[aria-label="Actions for ${ada}"]`).click();
     cy.get('[role="menu"]').within(() => {
       cy.contains('Move to').should('be.visible');
       cy.get('[role="menuitem"]').then((items) => {
-        expect([...items].map((item) => item.textContent)).to.deep.equal([APOLLO, BOREALIS]);
+        expect([...items].map((item) => item.textContent)).to.deep.equal([APOLLO, BOREALIS, 'Duplicate', 'Delete card']);
       });
       cy.contains('[role="menuitem"]', APOLLO).click();
     });
