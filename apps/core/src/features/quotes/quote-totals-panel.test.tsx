@@ -195,6 +195,23 @@ describe('QuoteTotalsPanel', () => {
     });
   });
 
+  it('shows no discount row while the discount comes to no cents, rather than a minus sign before 0.00', () => {
+    // 0.01 % of 99.99 is 0.9999 of a cent: the discount is floored to 0, so there is nothing to show as taken off.
+    const tiny: CalcSettings = {
+      ...settings,
+      developerRateCents: 9999,
+      managementBp: 0,
+      negotiationBufferBp: 0,
+      discountBp: 1,
+    };
+    const totals = quoteTotals(tiny, [{ units: 1, hoursHundredths: 100 }]);
+    expect(totals.discountCents).toBe(0);
+    render(<QuoteTotalsPanel settings={tiny} totals={totals} lineHours={100} currencyCode="INR" />);
+    expect(screen.queryByText(/Discount/)).toBeNull();
+    expect(screen.getByRole('region', { name: 'Cost' }).textContent).not.toMatch(/−/);
+    expect(valuesOf('Cost', 'Final quote')).toEqual(['₹99.99']);
+  });
+
   it('lays its sections side by side from `md`, and one under another in the column beside the lines from `xl`', () => {
     render(<QuoteTotalsPanel settings={settings} totals={workbook} lineHours={118_800} currencyCode="INR" />);
     const sections = screen.getByRole('region', { name: 'Time' }).parentElement;

@@ -116,7 +116,8 @@ export function QuoteTotalsPanel({ settings, totals, lineHours, currencyCode }: 
               label={`Negotiation buffer (${settings.negotiationBufferBp / 100}%)`}
               value={money(totals.negotiationBufferCents)}
             />
-            {settings.discountBp > 0 ? (
+            {/* Not at 0 %, nor while it comes to no cents (floored): a minus sign before 0.00 says nothing was taken off. */}
+            {settings.discountBp > 0 && totals.discountCents > 0 ? (
               <Row
                 label={`Discount (${settings.discountBp / 100}%)`}
                 value={`${MINUS}${money(totals.discountCents)}`}

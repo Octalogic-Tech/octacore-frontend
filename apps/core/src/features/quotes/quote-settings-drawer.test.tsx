@@ -111,7 +111,9 @@ describe('QuoteSettingsDrawer', () => {
     ).toBeInTheDocument();
     expect(within(percentages).getByText('Taken off after the negotiation buffer is added.')).toBeInTheDocument();
     expect(within(percentages).getByText('Of the build hours: the lines, testing and bug fixing.')).toBeInTheDocument();
-    expect(within(percentages).getAllByText('Of the base hours from the lines.')).toHaveLength(2);
+    // Testing and bug fixing are percentages of the hours with the time buffer, not of the lines' own hours.
+    expect(within(percentages).getAllByText('Of the hours from the lines, with the time buffer.')).toHaveLength(2);
+    expect(within(percentages).queryByText(/base hours/)).toBeNull();
     expect(within(drawer()).getByText('Rates are per hour, in INR.')).toBeInTheDocument();
   });
 

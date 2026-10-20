@@ -54,8 +54,18 @@ const PERCENTAGES = [
     label: 'Management (%)',
     hint: 'Of the build hours: the lines, testing and bug fixing.',
   },
-  { name: 'testingPercent', id: 'quote-testing', label: 'Testing (%)', hint: 'Of the base hours from the lines.' },
-  { name: 'bugFixPercent', id: 'quote-bug-fixing', label: 'Bug fixing (%)', hint: 'Of the base hours from the lines.' },
+  {
+    name: 'testingPercent',
+    id: 'quote-testing',
+    label: 'Testing (%)',
+    hint: 'Of the hours from the lines, with the time buffer.',
+  },
+  {
+    name: 'bugFixPercent',
+    id: 'quote-bug-fixing',
+    label: 'Bug fixing (%)',
+    hint: 'Of the hours from the lines, with the time buffer.',
+  },
 ] as const;
 
 const TIME = [
