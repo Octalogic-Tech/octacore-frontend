@@ -42,7 +42,7 @@ const DIALOGS = [
 ] as const;
 
 describe('the planned registry', () => {
-  it('lists the eight pieces in the suggested build order', () => {
+  it('lists the seven pieces in the suggested build order', () => {
     expect(PLANNED.map((spec) => [spec.id, spec.title])).toEqual(IN_ORDER);
   });
 
