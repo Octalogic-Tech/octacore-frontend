@@ -47,3 +47,15 @@ export function dollarCountry(countries: readonly Country[]): Country | undefine
   const dollars = countries.filter((country) => country.active && country.currencyCode === PRIMARY_CURRENCY);
   return dollars.find((country) => country.iso === 'US') ?? dollars[0];
 }
+
+/**
+ * India's rate: the rupees to one US dollar that a salary in paise is counted at. The service's own lookup: the
+ * lowest-id country whose currency is INR, that is active and has a rate. Null when there is none, and then nothing
+ * that needs rupees turned into dollars can be worked out.
+ */
+export function indiaRate(countries: readonly Country[]): number | null {
+  const india = countries
+    .filter((country) => country.currencyCode === 'INR' && country.active && country.rate !== null)
+    .sort((a, b) => a.id - b.id)[0];
+  return india?.rate ?? null;
+}

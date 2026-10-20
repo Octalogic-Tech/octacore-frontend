@@ -1,8 +1,13 @@
+import { useCountries } from '@/features/countries/api';
+import { indiaRate } from '@/features/countries/options';
 import { usePeople } from '@/features/people/api';
 import { pluralize } from '@/lib/format';
 import { formatUsd } from '@/lib/money';
 import type { ResourceRow } from './schema';
 import { teamMargin } from './team-margin';
+
+const NO_RATE = "Set India's rate on the Countries page to see the team margin.";
+const RATE_FAILED = "India's rate could not be loaded.";
 
 function Figure({ cents }: { cents: number }) {
   return <span className="tabular font-semibold">{formatUsd(cents)}</span>;
@@ -10,14 +15,21 @@ function Figure({ cents }: { cents: number }) {
 
 /**
  * What the retainer's team bills a month against what its people are paid, in one sentence, with the rule it was worked
- * out by. Only the total is shown, never one person's salary.
+ * out by. Only the total is shown, never one person's salary. Salaries are in rupees and the billing in dollars, so the
+ * sentence needs India's rate; without one it says to set it.
  */
 export function TeamMarginNote({ resources }: { resources: readonly ResourceRow[] }) {
   const people = usePeople();
-  if (people.isLoading) return null;
+  const countries = useCountries();
+  if (people.isLoading || countries.isLoading) return null;
   if (people.data === undefined) return <p className="mt-4 text-small text-navy-72">Salaries could not be loaded.</p>;
+  if (countries.data === undefined) return <p className="mt-4 text-small text-navy-72">{RATE_FAILED}</p>;
 
-  const margin = teamMargin(resources, people.data);
+  const rate = indiaRate(countries.data);
+  if (rate === null) {
+    return <p className="mt-4 text-small text-navy-72">{NO_RATE}</p>;
+  }
+  const margin = teamMargin(resources, people.data, rate);
   return (
     <div className="mt-4 grid max-w-[64ch] gap-1">
       <p className="text-body">

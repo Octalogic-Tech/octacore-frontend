@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react';
-import { Arm, ArmArrow, CheckMark, ChevronDownMark, CloseMark } from './marks';
+import { Arm, ArmArrow, CheckMark, ChevronDownMark, CloseMark, MoreMark } from './marks';
 
 describe('marks', () => {
   it('hides every drawn mark from assistive technology', () => {
@@ -10,9 +10,10 @@ describe('marks', () => {
         <CheckMark />
         <ChevronDownMark />
         <CloseMark />
+        <MoreMark />
       </>,
     );
-    expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(5);
+    expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(6);
   });
 
   it('lets the caller size and colour a mark', () => {

@@ -31,14 +31,75 @@ function renderAt(route: string) {
   );
 }
 
+/** The page's own area, which a page can ask to be the whole height and width left beside the sidebar. */
+const main = () => screen.getByRole('main');
+
+describe('App shell: the main area', () => {
+  it('is the usual centred column on every page', () => {
+    for (const route of ['/', '/resources/people', '/resources/leave', '/projects']) {
+      const { unmount } = renderAt(route);
+      expect(main()).toHaveAttribute('data-layout', 'page');
+      expect(main()).toHaveClass('max-w-[75rem]');
+      unmount();
+    }
+  });
+
+  it('is the whole area beside the sidebar, edge to edge and down to the bottom, on the allocation board', () => {
+    renderAt('/resources/allocation');
+    expect(main()).toHaveAttribute('data-layout', 'full');
+    expect(main()).not.toHaveClass('max-w-[75rem]');
+    expect(main()).toHaveClass('flex', 'min-h-0', 'flex-1', 'flex-col');
+  });
+
+  it('is the usual column again on the allocation ledger', () => {
+    renderAt('/resources/allocation?tab=ledger');
+    expect(main()).toHaveAttribute('data-layout', 'page');
+    expect(main()).toHaveClass('max-w-[75rem]');
+  });
+
+  it('follows the tab: full on the board, usual on the ledger, and full again back on the board', async () => {
+    const user = userEvent.setup();
+    renderAt('/resources/allocation');
+    expect(main()).toHaveAttribute('data-layout', 'full');
+    await user.click(screen.getByRole('tab', { name: 'Ledger' }));
+    expect(main()).toHaveAttribute('data-layout', 'page');
+    await user.click(screen.getByRole('tab', { name: 'Board' }));
+    expect(main()).toHaveAttribute('data-layout', 'full');
+  });
+
+  it('goes back to the usual column when the board is left for another page', async () => {
+    const user = userEvent.setup();
+    renderAt('/resources/allocation');
+    expect(main()).toHaveAttribute('data-layout', 'full');
+    await user.click(within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', { name: 'People' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'People' })).toBeInTheDocument();
+    expect(main()).toHaveAttribute('data-layout', 'page');
+  });
+
+  it('keeps the shell as tall as the window, not taller, while the board is up, so only the board scrolls', () => {
+    const { container } = renderAt('/resources/allocation');
+    expect(container.firstElementChild).toHaveClass('h-dvh');
+    expect(container.firstElementChild).not.toHaveClass('min-h-dvh');
+    // The column beside the sidebar (the header, on a phone, and the main area) is that tall too, not as tall as its content.
+    expect(main().parentElement).toHaveClass('h-full', 'min-h-0');
+  });
+
+  it('keeps the usual page at least as tall as the window, free to grow', () => {
+    const { container } = renderAt('/resources/leave');
+    expect(container.firstElementChild).toHaveClass('min-h-dvh');
+    expect(container.firstElementChild).not.toHaveClass('h-dvh');
+    expect(main().parentElement).not.toHaveClass('h-full');
+  });
+});
+
 describe('App shell', () => {
-  it('lists every page in four groups', () => {
+  it('lists every page in five groups', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    for (const label of ['Overview', 'Clients', 'Projects', 'Quotes', 'People', 'Invoices', 'Expenses', 'Categories', 'Technologies', 'Countries', 'Expense types', 'Users']) {
+    for (const label of ['Overview', 'Clients', 'Projects', 'Quotes', 'People', 'Allocation', 'Leave', 'Invoices', 'Expenses', 'Categories', 'Technologies', 'Countries', 'Expense types', 'Users']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
-    for (const group of ['Work', 'Finance', 'Reference data', 'Admin']) {
+    for (const group of ['Work', 'Resources', 'Finance', 'Reference data', 'Admin']) {
       expect(within(nav).getByText(group)).toBeInTheDocument();
     }
     // Recurring expenses are a tab of Expenses, not a page of their own.
@@ -47,7 +108,7 @@ describe('App shell', () => {
     expect(within(nav).queryByRole('link', { name: 'Currencies' })).not.toBeInTheDocument();
   });
 
-  it('puts Quotes in the Work group, between Projects and People', () => {
+  it('puts Quotes in the Work group, after Projects', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
     const work = within(nav).getByRole('list', { name: 'Work' });
@@ -56,9 +117,20 @@ describe('App shell', () => {
       'Clients',
       'Projects',
       'Quotes',
-      'People',
     ]);
     expect(within(work).getByRole('link', { name: 'Quotes' })).toHaveAttribute('href', '/quotes');
+  });
+
+  it('puts People, Allocation and Leave in the Resources group, not under Work', () => {
+    renderAt('/');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    const resources = within(within(nav).getByRole('list', { name: 'Resources' }));
+    expect(resources.getAllByRole('link').map((link) => link.textContent)).toEqual(['People', 'Allocation', 'Leave']);
+    expect(resources.getByRole('link', { name: 'People' })).toHaveAttribute('href', '/resources/people');
+    expect(resources.getByRole('link', { name: 'Allocation' })).toHaveAttribute('href', '/resources/allocation');
+    expect(resources.getByRole('link', { name: 'Leave' })).toHaveAttribute('href', '/resources/leave');
+    const work = within(within(nav).getByRole('list', { name: 'Work' }));
+    expect(work.queryByRole('link', { name: 'People' })).not.toBeInTheDocument();
   });
 
   it('shows who is signed in, with Change password and Sign out in a popover on the name', async () => {
@@ -143,7 +215,9 @@ describe('App shell', () => {
     ['/', 'Overview'],
     ['/clients', 'Clients'],
     ['/projects', 'Projects'],
-    ['/people', 'People'],
+    ['/resources/people', 'People'],
+    ['/resources/allocation', 'Allocation'],
+    ['/resources/leave', 'Leave'],
     ['/finance/invoices', 'Invoices'],
     ['/finance/expenses', 'Expenses'],
     ['/categories', 'Categories'],
@@ -154,6 +228,39 @@ describe('App shell', () => {
   ])('shows the page title for %s', (route, title) => {
     renderAt(route);
     expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();
+  });
+
+  it('sends the old /people address to the People page in Resources', () => {
+    renderAt('/people');
+    expect(screen.getByRole('heading', { level: 1, name: 'People' })).toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'People' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('keeps Allocation current on its page, and not People', () => {
+    renderAt('/resources/allocation');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'Allocation' })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('link', { name: 'People' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('keeps People current on a person’s page', () => {
+    renderAt('/resources/people/1');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'People' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('heading', { level: 1, name: 'Person' })).toBeInTheDocument();
+  });
+
+  it('keeps Leave current on its page', () => {
+    renderAt('/resources/leave');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'Leave' })).toHaveAttribute('aria-current', 'page');
+    expect(within(nav).getByRole('link', { name: 'Allocation' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('no longer has a Planned page for Allocation, which is built', () => {
+    renderAt('/planned/allocation');
+    expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
   });
 
   it('no longer has a Currencies page', () => {

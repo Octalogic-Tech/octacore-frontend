@@ -1,4 +1,4 @@
-import { MAX_CENTS, amountProblem, formatUsd, parseAmount, toAmountText } from './money';
+import { MAX_CENTS, amountProblem, formatInr, formatUsd, parseAmount, toAmountText } from './money';
 
 describe('MAX_CENTS', () => {
   it('is one hundred million dollars', () => {
@@ -14,6 +14,17 @@ describe('formatUsd', () => {
     expect(formatUsd(150_000)).toBe('$1,500.00');
     expect(formatUsd(4_800_000)).toBe('$48,000.00');
     expect(formatUsd(10_000_000_000)).toBe('$100,000,000.00');
+  });
+});
+
+describe('formatInr', () => {
+  it('shows paise as rupees with Indian grouping, always with two decimals', () => {
+    expect(formatInr(12_345_678)).toBe('₹1,23,456.78');
+    expect(formatInr(0)).toBe('₹0.00');
+    expect(formatInr(5)).toBe('₹0.05');
+    expect(formatInr(8_500_000)).toBe('₹85,000.00');
+    expect(formatInr(20_000_000)).toBe('₹2,00,000.00');
+    expect(formatInr(10_000_000_000)).toBe('₹10,00,00,000.00');
   });
 });
 

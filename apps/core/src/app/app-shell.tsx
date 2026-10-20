@@ -3,16 +3,20 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { PageWidthProvider } from '@/app/page-width';
 import { SidebarNav } from '@/app/sidebar-nav';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { FullMainContext } from '@/components/full-main';
 import { Logo, LogoMark } from '@/components/logo';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 
 /**
- * A navy sidebar from 1024px; below that a header with a menu button that opens the same navigation in a sheet. Pages
- * are capped at 75rem, unless one asks for the full width (`useFullWidthPage`).
+ * A navy sidebar from 1024px; below that a header with a menu button that opens the same navigation in a sheet. The
+ * main area is a centred column, capped at 75rem, that grows with its page. A page can drop the cap and keep the usual
+ * flow (`useFullWidthPage`: the quote editor), or ask for the whole area (`useFullMain`): then it is the window's height
+ * less the header, with small gutters, and the page inside scrolls only where it chooses to.
  */
 export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [full, setFull] = useState(false);
   const { pathname } = useLocation();
 
   useEffect(() => {
@@ -20,7 +24,7 @@ export function AppShell() {
   }, [pathname]);
 
   return (
-    <div className="min-h-dvh lg:grid lg:grid-cols-[16rem_1fr]">
+    <div className={cn('lg:grid lg:grid-cols-[16rem_1fr]', full ? 'h-dvh lg:grid-rows-[minmax(0,1fr)]' : 'min-h-dvh')}>
       <a href="#main" className="skip-link">
         Skip to content
       </a>
@@ -29,7 +33,7 @@ export function AppShell() {
           <SidebarNav />
         </div>
       </aside>
-      <div className="flex min-w-0 flex-col">
+      <div className={cn('flex min-h-0 min-w-0 flex-col', full && 'h-full')}>
         <header className="flex h-16 items-center justify-between border-b border-rule px-5 md:px-8 lg:hidden">
           <Link to="/" aria-label="Octalogic Tech home" className="inline-flex min-h-11 items-center">
             <Logo height={30} className="hidden sm:inline-flex" />
@@ -50,11 +54,19 @@ export function AppShell() {
           {(fullWidth) => (
             <main
               id="main"
-              className={cn('mx-auto w-full flex-1 px-5 py-8 md:px-8 lg:py-12 xl:px-10', !fullWidth && 'max-w-[75rem]')}
+              data-layout={full ? 'full' : 'page'}
+              className={cn(
+                'w-full flex-1',
+                full
+                  ? 'flex min-h-0 flex-col px-3 pb-3 pt-5 md:px-4 lg:pt-6'
+                  : cn('mx-auto px-5 py-8 md:px-8 lg:py-12 xl:px-10', !fullWidth && 'max-w-[75rem]'),
+              )}
             >
-              <ErrorBoundary key={pathname}>
-                <Outlet />
-              </ErrorBoundary>
+              <FullMainContext.Provider value={setFull}>
+                <ErrorBoundary key={pathname}>
+                  <Outlet />
+                </ErrorBoundary>
+              </FullMainContext.Provider>
             </main>
           )}
         </PageWidthProvider>
