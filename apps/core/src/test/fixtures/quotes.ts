@@ -24,7 +24,13 @@ const workbookHours: [hours: number, lines: number][] = [
 
 const workbookLines = workbookHours
   .flatMap(([hours, count]) => Array.from({ length: count }, () => hours))
-  .map((hoursPerUnit, index) => ({ id: index + 1, description: `Workbook item ${index + 1}`, units: 1, hoursPerUnit }));
+  .map((hoursPerUnit, index) => ({
+    id: index + 1,
+    title: `Workbook item ${index + 1}`,
+    description: `What workbook item ${index + 1} covers`,
+    units: 1,
+    hoursPerUnit,
+  }));
 
 export const quoteRows = [
   {
@@ -85,9 +91,9 @@ export const quoteRows = [
     hoursPerDay: 7,
     hoursPerMonth: 150,
     lines: [
-      { id: 54, description: 'Sign-in screens', units: 2, hoursPerUnit: 7.5 },
-      { id: 55, description: 'Chart tiles', units: 3, hoursPerUnit: 0.25 },
-      { id: 56, description: 'Export to CSV', units: 1, hoursPerUnit: 12.34 },
+      { id: 54, title: 'Sign-in screens', description: 'Email and password, with a reset link', units: 2, hoursPerUnit: 7.5 },
+      { id: 55, title: 'Chart tiles', description: 'Revenue, hours and margin', units: 3, hoursPerUnit: 0.25 },
+      { id: 56, title: 'Export to CSV', description: 'Every table, as shown', units: 1, hoursPerUnit: 12.34 },
     ],
     totals: {
       baseHours: 28.09,

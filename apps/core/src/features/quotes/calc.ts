@@ -115,6 +115,14 @@ export function quoteTotals(settings: CalcSettings, lines: readonly CalcLine[]):
   };
 }
 
+/**
+ * A line's hours with the negotiation buffer on top, as the workbook's "Hours with negotiation buffer" column shows them:
+ * `hours x (10000 + bp) / 10000`, half up, in hundredths. Display only: the service applies the buffer to the cost.
+ */
+export function bufferedHours(hoursHundredths: number, bufferBp: number): number {
+  return Number(divHalfUp(BigInt(hoursHundredths) * BigInt(10_000 + bufferBp), 10_000n));
+}
+
 /** The hundredths that text already known to be a number with at most two decimals spells: `"7.5"` is `750`. */
 export function hundredthsOf(text: string): number {
   const [whole, fraction = ''] = text.split('.');

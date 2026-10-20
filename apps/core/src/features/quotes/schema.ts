@@ -107,6 +107,7 @@ function textField(problem: (text: string) => string | null) {
 
 const quoteLineRowSchema = z.object({
   id: z.number().int(),
+  title: z.string(),
   description: z.string(),
   units: z.number().int(),
   hoursPerUnit: z.number(),
@@ -181,7 +182,9 @@ const settingsShape = {
 
 const settingsSchema = z.object(settingsShape);
 
+// A line's title is its short name ("Login (JWT)"); the description says what it covers. The service needs both.
 const quoteLineSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required'),
   description: z.string().trim().min(1, 'Description is required'),
   units: textField(unitsProblem),
   hoursPerUnit: textField(hoursProblem),
@@ -207,7 +210,12 @@ export type QuoteFormValues = z.infer<typeof quoteFormSchema>;
 /** Every field the settings drawer holds: all but the title and the lines. */
 export const SETTINGS_FIELDS = Object.keys(settingsShape) as readonly (keyof QuoteFormValues)[];
 
-export const blankQuoteLine: QuoteFormValues['lines'][number] = { description: '', units: '1', hoursPerUnit: '' };
+export const blankQuoteLine: QuoteFormValues['lines'][number] = {
+  title: '',
+  description: '',
+  units: '1',
+  hoursPerUnit: '',
+};
 
 export const emptyQuoteForm: QuoteFormValues = {
   title: '',
@@ -247,6 +255,7 @@ export function toQuoteFormValues(row?: QuoteRow): QuoteFormValues {
     lines:
       row.lines.length > 0
         ? row.lines.map((line) => ({
+            title: line.title,
             description: line.description,
             units: String(line.units),
             hoursPerUnit: String(line.hoursPerUnit),
@@ -256,6 +265,7 @@ export function toQuoteFormValues(row?: QuoteRow): QuoteFormValues {
 }
 
 export interface QuoteLineBody {
+  title: string;
   description: string;
   units: number;
   hoursPerUnit: number;
@@ -300,6 +310,7 @@ export function toQuoteBody(values: QuoteFormValues): QuoteBody {
     hoursPerDay: number(values.hoursPerDay),
     hoursPerMonth: number(values.hoursPerMonth),
     lines: values.lines.map((line) => ({
+      title: line.title.trim(),
       description: line.description.trim(),
       units: number(line.units),
       hoursPerUnit: number(line.hoursPerUnit),

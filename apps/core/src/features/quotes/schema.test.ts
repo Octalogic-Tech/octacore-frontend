@@ -22,7 +22,8 @@ const TOO_LARGE = 'The quote comes to more than 100,000,000.00. Reduce the hours
 type LineValues = QuoteFormValues['lines'][number];
 
 const line = (over: Partial<LineValues> = {}): LineValues => ({
-  description: 'Home page',
+  title: 'Home page',
+  description: 'The hero, the services and the contact form',
   units: '1',
   hoursPerUnit: '16',
   ...over,
@@ -63,7 +64,13 @@ describe('quote row schema', () => {
       hoursPerMonth: 160,
     });
     expect(workbook.lines).toHaveLength(53);
-    expect(workbook.lines[0]).toEqual({ id: 1, description: 'Workbook item 1', units: 1, hoursPerUnit: 16 });
+    expect(workbook.lines[0]).toEqual({
+      id: 1,
+      title: 'Workbook item 1',
+      description: 'What workbook item 1 covers',
+      units: 1,
+      hoursPerUnit: 16,
+    });
     expect(workbook.totals).toMatchObject({ baseHours: 1188, elapsedMonths: 2.48, finalQuoteCents: 571_725_000 });
     expect(rounding.negotiationBufferPercent).toBe(7.5);
     expect(rounding.lines[2].hoursPerUnit).toBe(12.34);
@@ -77,6 +84,11 @@ describe('quote row schema', () => {
   it('refuses a row whose totals or lines are missing or of the wrong type', () => {
     expect(quoteRowSchema.safeParse({ ...quoteRows[0], totals: undefined }).success).toBe(false);
     expect(quoteRowSchema.safeParse({ ...quoteRows[0], lines: undefined }).success).toBe(false);
+    // A line without its title is not a line of this service.
+    const [first, ...rest] = quoteRows[0].lines;
+    const { title: _title, ...untitled } = first;
+    void _title;
+    expect(quoteRowSchema.safeParse({ ...quoteRows[0], lines: [untitled, ...rest] }).success).toBe(false);
     expect(
       quoteRowSchema.safeParse({ ...quoteRows[0], totals: { ...quoteRows[0].totals, finalQuoteCents: '571725000' } })
         .success,
@@ -116,9 +128,9 @@ describe('the new quote form', () => {
       bugFixPercent: '0',
       hoursPerDay: '6',
       hoursPerMonth: '160',
-      lines: [{ description: '', units: '1', hoursPerUnit: '' }],
+      lines: [{ title: '', description: '', units: '1', hoursPerUnit: '' }],
     });
-    expect(blankQuoteLine).toEqual({ description: '', units: '1', hoursPerUnit: '' });
+    expect(blankQuoteLine).toEqual({ title: '', description: '', units: '1', hoursPerUnit: '' });
   });
 
   it('opens a new quote on the defaults, with a line of its own that editing cannot share', () => {
@@ -150,7 +162,7 @@ describe('toQuoteBody', () => {
         testerRate: '0.00',
         negotiationBufferPercent: '7.5',
         managementPercent: ' 25 ',
-        lines: [line({ description: '  Home page ', units: ' 2 ', hoursPerUnit: ' 7.5 ' })],
+        lines: [line({ title: '  Home page ', description: ' The hero  ', units: ' 2 ', hoursPerUnit: ' 7.5 ' })],
       }),
     );
     expect(body).toEqual({
@@ -168,8 +180,10 @@ describe('toQuoteBody', () => {
       bugFixPercent: 0,
       hoursPerDay: 6,
       hoursPerMonth: 160,
-      lines: [{ description: 'Home page', units: 2, hoursPerUnit: 7.5 }],
+      lines: [{ title: 'Home page', description: 'The hero', units: 2, hoursPerUnit: 7.5 }],
     });
+    // The title goes first on the wire, as the service lists a line's fields.
+    expect(Object.keys(body.lines[0])).toEqual(['title', 'description', 'units', 'hoursPerUnit']);
   });
 
   it('is the fixture row, flat, once the row is made into form values and back', () => {
@@ -189,7 +203,7 @@ describe('toQuoteBody', () => {
         bugFixPercent: row.bugFixPercent,
         hoursPerDay: row.hoursPerDay,
         hoursPerMonth: row.hoursPerMonth,
-        lines: row.lines.map(({ description, units, hoursPerUnit }) => ({ description, units, hoursPerUnit })),
+        lines: row.lines.map(({ title, description, units, hoursPerUnit }) => ({ title, description, units, hoursPerUnit })),
       });
     }
   });
@@ -209,7 +223,8 @@ describe('toQuoteFormValues', () => {
     });
     expect(toQuoteFormValues(workbook).lines).toHaveLength(53);
     expect(toQuoteFormValues(workbook).lines[0]).toEqual({
-      description: 'Workbook item 1',
+      title: 'Workbook item 1',
+      description: 'What workbook item 1 covers',
       units: '1',
       hoursPerUnit: '16',
     });
@@ -250,6 +265,22 @@ describe('quoteFormSchema', () => {
 
   it('asks for a description on a line', () => {
     expect(messagesOf(form({ lines: [line({ description: ' ' })] }))).toEqual(['Description is required']);
+  });
+
+  it('asks for a title on a line, a blank one or one of spaces alike', () => {
+    for (const title of ['', '   ']) {
+      const issues = issuesOf(form({ lines: [line(), line({ title })] }));
+      expect(issues.map((issue) => issue.message)).toEqual(['Title is required']);
+      expect(issues[0].path).toEqual(['lines', 1, 'title']);
+    }
+  });
+
+  it('tells a line with neither a title nor a description both', () => {
+    const issues = issuesOf(form({ lines: [line({ title: '', description: '' })] }));
+    expect(issues.map((issue) => [issue.path, issue.message])).toEqual([
+      [['lines', 0, 'title'], 'Title is required'],
+      [['lines', 0, 'description'], 'Description is required'],
+    ]);
   });
 
   describe('units', () => {
@@ -517,8 +548,8 @@ describe('toCalcInput', () => {
     ]);
   });
 
-  it('counts a line whose description is still blank, because only units and hours move the totals', () => {
-    expect(toCalcInput(form({ lines: [line({ description: '' })] })).lines).toHaveLength(1);
+  it('counts a line whose title or description is still blank, because only units and hours move the totals', () => {
+    expect(toCalcInput(form({ lines: [line({ title: '', description: '' })] })).lines).toHaveLength(1);
   });
 
   it('gives the mirror what the saved totals say', () => {

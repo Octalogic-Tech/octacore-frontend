@@ -27,12 +27,14 @@ function fillNewQuote() {
   cy.contains('h1', 'New quote');
 
   cy.get('#quote-title').type('Website rebuild');
-  // The units start at 1: clear them before typing.
-  cy.get('#line-1-description').type('Home page');
+  // Each line is a title and the figures, with the description under them. The units start at 1: clear them first.
+  cy.get('#line-1-title').type('Home page');
+  cy.get('#line-1-description').type('The hero, the services and the contact form');
   replaceText('#line-1-units', '2');
   cy.get('#line-1-hoursPerUnit').type('7.5');
   cy.contains('button', 'Add line').click();
-  cy.get('#line-2-description').type('Checkout');
+  cy.get('#line-2-title').type('Checkout');
+  cy.get('#line-2-description').type('Cart, address and payment');
   replaceText('#line-2-units', '3');
   cy.get('#line-2-hoursPerUnit').type('4');
 
@@ -76,6 +78,9 @@ describe('quotes', () => {
     // The quote now comes from the service's answer: the title, both lines, the changed rate and the figure.
     cy.contains('h1', 'Website rebuild');
     cy.get('#quote-title').should('have.value', 'Website rebuild');
+    cy.get('#line-1-title').should('have.value', 'Home page');
+    cy.get('#line-1-description').should('have.value', 'The hero, the services and the contact form');
+    cy.get('#line-2-title').should('have.value', 'Checkout');
     cy.get('#line-1-units').should('have.value', '2');
     cy.get('#line-2-hoursPerUnit').should('have.value', '4');
     finalQuote().should('have.text', AT_NEW_RATE);

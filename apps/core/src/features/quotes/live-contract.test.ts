@@ -38,7 +38,12 @@ function quoteForm(
     ...emptyQuoteForm,
     ...settings,
     title,
-    lines: lines.map(([units, hoursPerUnit], index) => ({ description: `Line ${index + 1}`, units, hoursPerUnit })),
+    lines: lines.map(([units, hoursPerUnit], index) => ({
+      title: `Line ${index + 1}`,
+      description: `What line ${index + 1} covers`,
+      units,
+      hoursPerUnit,
+    })),
   };
 }
 
@@ -138,10 +143,10 @@ describe.skipIf(!base)('the running core service, quotations', () => {
       const patched = await send('PATCH', `/quotations/${quote.id}`, toQuoteBody(edited));
       expect(patched.status).toBe(200);
       const patchedQuote = unwrap(await patched.json(), quoteRowSchema);
-      expect(patchedQuote.lines.map((line) => [line.units, line.hoursPerUnit])).toEqual([
-        [1, 16],
-        [5, 2.5],
-        [1, 0.01],
+      expect(patchedQuote.lines.map((line) => [line.title, line.description, line.units, line.hoursPerUnit])).toEqual([
+        ['Line 1', 'What line 1 covers', 1, 16],
+        ['Line 2', 'What line 2 covers', 5, 2.5],
+        ['Line 3', 'What line 3 covers', 1, 0.01],
       ]);
       expect(patchedQuote).toMatchObject({ title: 'Workbook check, edited', developerRateCents: 320_000 });
       expectTotalsToMatch(patchedQuote, edited);
@@ -191,7 +196,7 @@ describe.skipIf(!base)('the running core service, quotations', () => {
         ...form,
         testingPercent: '0',
         bugFixPercent: '0',
-        lines: [{ description: 'Only line', units: '1', hoursPerUnit: '1.49' }],
+        lines: [{ title: 'Only line', description: 'The one thing left to build', units: '1', hoursPerUnit: '1.49' }],
       };
       expect(quoteFormSchema.safeParse(edited).success).toBe(true);
       const patched = await send('PATCH', `/quotations/${quote.id}`, toQuoteBody(edited));

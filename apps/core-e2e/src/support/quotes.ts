@@ -79,7 +79,10 @@ function totalsOf(quote: Row): Row {
   };
 }
 
-/** A quote as the service answers it: the lines get ids, and the totals are worked out from what is stored. */
+/**
+ * A quote as the service answers it: the lines get ids (each keeps the title and description it was sent with), and the
+ * totals are worked out from what is stored.
+ */
 function stored(id: number, fields: Row): Row {
   const lines = (fields.lines as Row[]).map((line, index) => ({ id: id * 100 + index + 1, ...line }));
   const quote = { ...fields, lines };

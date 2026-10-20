@@ -66,15 +66,50 @@ describe('QuoteTotalsPanel', () => {
     expect(valuesOf('Time', 'Person-days')).toEqual(['1.25', 'at 1 hour a day']);
   });
 
+  it("adds the lines' hours with the buffer under the hours from the lines, when it is given", () => {
+    const { rerender } = render(
+      <QuoteTotalsPanel
+        settings={settings}
+        totals={workbook}
+        lineHours={9650}
+        bufferedLineHours={12_063}
+        currencyCode="INR"
+      />,
+    );
+    expect(valuesOf('Hours', 'With negotiation buffer (25%)')).toEqual(['120.63 hours']);
+    const hours = within(screen.getByRole('region', { name: 'Hours' }));
+    const terms = hours.getAllByRole('term').map((term) => term.textContent);
+    expect(terms.slice(0, 2)).toEqual(['From the lines', 'With negotiation buffer (25%)']);
+
+    rerender(
+      <QuoteTotalsPanel
+        settings={settings}
+        totals={workbook}
+        lineHours={0}
+        bufferedLineHours={null}
+        currencyCode="INR"
+      />,
+    );
+    expect(hours.queryByText(/With negotiation buffer/)).toBeNull();
+  });
+
+  it('lays its sections side by side from `md`, and one under another in the column beside the lines from `xl`', () => {
+    render(<QuoteTotalsPanel settings={settings} totals={workbook} lineHours={118_800} currencyCode="INR" />);
+    const sections = screen.getByRole('region', { name: 'Time' }).parentElement;
+    expect(sections).toContainElement(screen.getByRole('region', { name: 'Cost' }));
+    expect(sections).toHaveClass('grid', 'md:grid-cols-3', 'xl:grid-cols-1');
+  });
+
   it('asks for the settings instead of totals while they are invalid, and keeps the hours from the lines', () => {
     const { container } = render(
-      <QuoteTotalsPanel settings={null} totals={null} lineHours={1500} currencyCode="abc" />,
+      <QuoteTotalsPanel settings={null} totals={null} lineHours={1500} bufferedLineHours={1875} currencyCode="abc" />,
     );
     expect(screen.getByText('Check the settings to see the totals.')).toBeInTheDocument();
     expect(valuesOf('Hours', 'From the lines')).toEqual(['15 hours']);
     expect(screen.queryByRole('region', { name: 'Time' })).not.toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Cost' })).not.toBeInTheDocument();
     expect(screen.queryByText('Final quote')).not.toBeInTheDocument();
+    expect(screen.queryByText(/With negotiation buffer/)).not.toBeInTheDocument();
     expect(container.textContent).not.toMatch(/NaN|₹/);
   });
 });

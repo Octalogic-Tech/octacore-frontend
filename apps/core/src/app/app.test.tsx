@@ -109,6 +109,36 @@ describe('App shell', () => {
     expect(within(nav).getByRole('link', { name: 'Quotes' })).toHaveAttribute('aria-current', 'page');
   });
 
+  it('caps every page at the content width but lets the quote editor use the full width', async () => {
+    const user = userEvent.setup();
+    renderAt('/quotes');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Quotes' })).toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveClass('max-w-[75rem]');
+
+    await user.click(screen.getByRole('button', { name: 'New quote' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'New quote' })).toBeInTheDocument();
+    expect(screen.getByRole('main')).not.toHaveClass('max-w-[75rem]');
+
+    await user.click(screen.getByRole('link', { name: 'Back to quotes' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Quotes' })).toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveClass('max-w-[75rem]');
+  });
+
+  it.each(['/quotes/3', '/quotes/abc'])('lets %s use the full width while it loads or is not found', async (route) => {
+    // The quote never arrives, so /quotes/3 stays loading.
+    coreApi.defaults.adapter = fakeAdapter((config) =>
+      config.url === '/quotations/3' ? new Promise(() => undefined) : { status: 200, data: envelope([]) },
+    );
+    renderAt(route);
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole('main')).not.toHaveClass('max-w-[75rem]');
+  });
+
+  it.each(['/', '/projects', '/projects/1', '/finance/invoices', '/nope'])('keeps %s at the content width', (route) => {
+    renderAt(route);
+    expect(screen.getByRole('main')).toHaveClass('max-w-[75rem]');
+  });
+
   it.each([
     ['/', 'Overview'],
     ['/clients', 'Clients'],

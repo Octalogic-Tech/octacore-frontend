@@ -1,4 +1,4 @@
-import { formatHours, hundredthsOf, quoteTotals, type CalcLine, type CalcSettings, type QuoteTotals } from './calc';
+import { bufferedHours, formatHours, hundredthsOf, quoteTotals, type CalcLine, type CalcSettings, type QuoteTotals } from './calc';
 
 /** The service's defaults (`DEFAULT_SETTINGS` in `app/core/quoting.py`): 3 developers at 3,100.00, a manager at 3,000.00. */
 const defaults: CalcSettings = {
@@ -153,6 +153,31 @@ describe('quoteTotals', () => {
       finalQuoteCents: Number(23_995_733_864_660_021_617n),
     };
     expect(quoteTotals(settings, lines)).toEqual(expected);
+  });
+});
+
+describe('bufferedHours', () => {
+  it('adds the negotiation buffer to a line\'s hours, half up', () => {
+    // The plan's example at the default 25 %: 24, 2 x 28 and 16.5 hours.
+    expect(bufferedHours(2400, 2500)).toBe(3000);
+    expect(bufferedHours(5600, 2500)).toBe(7000);
+    // 16.5 x 1.25 is 20.625: the half goes up.
+    expect(bufferedHours(1650, 2500)).toBe(2063);
+    // 1.5 x 1.25 is 1.875 hours, 187.5 hundredths: a tie, rounded up.
+    expect(bufferedHours(150, 2500)).toBe(188);
+    expect(bufferedHours(2400, 1000)).toBe(2640);
+    expect(bufferedHours(1650, 1000)).toBe(1815);
+  });
+
+  it('leaves the hours alone at 0 % and doubles them at 100 %', () => {
+    expect(bufferedHours(1650, 0)).toBe(1650);
+    expect(bufferedHours(1650, 10_000)).toBe(3300);
+    expect(bufferedHours(0, 2500)).toBe(0);
+  });
+
+  it('is exact for the largest line the form allows (100,000 units of 10,000 hours) at 100 %', () => {
+    expect(bufferedHours(100_000 * 1_000_000, 10_000)).toBe(200_000_000_000);
+    expect(bufferedHours(100_000 * 1_000_000 + 1, 2500)).toBe(125_000_000_001);
   });
 });
 

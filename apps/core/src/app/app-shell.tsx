@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
+import { PageWidthProvider } from '@/app/page-width';
 import { SidebarNav } from '@/app/sidebar-nav';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Logo, LogoMark } from '@/components/logo';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { cn } from '@/lib/utils';
 
-/** A navy sidebar from 1024px; below that a header with a menu button that opens the same navigation in a sheet. */
+/**
+ * A navy sidebar from 1024px; below that a header with a menu button that opens the same navigation in a sheet. Pages
+ * are capped at 75rem, unless one asks for the full width (`useFullWidthPage`).
+ */
 export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { pathname } = useLocation();
@@ -41,11 +46,18 @@ export function AppShell() {
             <span aria-hidden="true" className="block h-0.5 w-5 bg-on-navy" />
           </button>
         </header>
-        <main id="main" className="mx-auto w-full max-w-[75rem] flex-1 px-5 py-8 md:px-8 lg:py-12 xl:px-10">
-          <ErrorBoundary key={pathname}>
-            <Outlet />
-          </ErrorBoundary>
-        </main>
+        <PageWidthProvider>
+          {(fullWidth) => (
+            <main
+              id="main"
+              className={cn('mx-auto w-full flex-1 px-5 py-8 md:px-8 lg:py-12 xl:px-10', !fullWidth && 'max-w-[75rem]')}
+            >
+              <ErrorBoundary key={pathname}>
+                <Outlet />
+              </ErrorBoundary>
+            </main>
+          )}
+        </PageWidthProvider>
       </div>
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent title="Menu">
