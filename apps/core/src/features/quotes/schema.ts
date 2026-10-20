@@ -4,6 +4,7 @@ import { hundredthsOf, quoteTotals, type CalcLine, type CalcSettings } from './c
 
 // The limits of the service (`app/core/quoting.py`), so the form refuses what it would answer with a 422.
 export const MAX_LINES = 200;
+export const MAX_SECTIONS = 50;
 const MAX_UNITS = 100_000;
 const MAX_HOURS_HUNDREDTHS = 1_000_000; // 10,000 hours
 const MAX_COUNT = 1_000;
@@ -122,6 +123,12 @@ const quoteLineRowSchema = z.object({
   hoursPerUnit: z.number(),
 });
 
+const quoteSectionRowSchema = z.object({
+  id: z.number().int(),
+  title: z.string(),
+  lines: z.array(quoteLineRowSchema),
+});
+
 // Hours, person-days and months are decimal numbers on the wire (1188, 2.48); every cost is whole minor units.
 const quoteTotalsRowSchema = z.object({
   baseHours: z.number(),
@@ -168,7 +175,8 @@ export const quoteRowSchema = z.object({
   hoursPerDay: z.number().int(),
   hoursPerMonth: z.number().int(),
   updatedDate: z.string(),
-  lines: z.array(quoteLineRowSchema),
+  // In the order written; the lines of every section make up the quote.
+  sections: z.array(quoteSectionRowSchema),
   totals: quoteTotalsRowSchema,
 });
 
@@ -176,7 +184,7 @@ export const quoteRowsSchema = z.array(quoteRowSchema);
 
 export type QuoteRow = z.output<typeof quoteRowSchema>;
 
-// Every field is text, so a blank field can be told from a typed one. The settings are in the form with the lines, so a
+// Every field is text, so a blank field can be told from a typed one. The settings are in the form with the sections, so a
 // drawer that closes keeps what was typed and one save stores it all.
 const settingsShape = {
   currencyCode: textField(currencyProblem),
@@ -198,40 +206,81 @@ const settingsShape = {
 
 const settingsSchema = z.object(settingsShape);
 
-// A line's title is its short name ("Login (JWT)"); the description says what it covers. The service needs both.
+// A line's title is its short name ("Login (JWT)"); the description, behind a button, says what it covers and may be
+// left empty.
 const quoteLineSchema = z.object({
   title: z.string().trim().min(1, 'Title is required'),
-  description: z.string().trim().min(1, 'Description is required'),
+  description: z.string(),
   units: textField(unitsProblem),
   hoursPerUnit: textField(hoursProblem),
+});
+
+// A section only groups lines. It may be empty while the quote is being built; the quote as a whole needs a line.
+const quoteSectionSchema = z.object({
+  title: z.string().trim().min(1, 'Section title is required'),
+  // At most 200 lines, told in the quote's own check below, beside the count for the whole quote.
+  lines: z.array(quoteLineSchema),
 });
 
 export const quoteFormSchema = z
   .object({
     title: z.string().trim().min(1, 'Title is required'),
     ...settingsShape,
-    lines: z
-      .array(quoteLineSchema)
-      .min(1, 'Add at least one line')
-      .max(MAX_LINES, `A quote can have up to ${MAX_LINES} lines`),
+    sections: z
+      .array(quoteSectionSchema)
+      .min(1, 'Add at least one section')
+      .max(MAX_SECTIONS, `A quote has at most ${MAX_SECTIONS} sections`),
   })
   .superRefine((values, context) => {
+    // The count of lines and the size of the quote are the quote's, not one section's: said once, on the sections.
+    values.sections.forEach((section, index) => {
+      if (section.lines.length > MAX_LINES) {
+        const message = `A section has at most ${MAX_LINES} lines`;
+        context.addIssue({ code: 'custom', path: ['sections', index, 'lines'], message });
+      }
+    });
+    const count = lineCount(values);
+    // With no section at all, that is what is said.
+    if (count === 0 && values.sections.length > 0) {
+      context.addIssue({ code: 'custom', path: ['sections'], message: 'Add at least one line' });
+    }
+    if (count > MAX_LINES) {
+      context.addIssue({ code: 'custom', path: ['sections'], message: `A quote has at most ${MAX_LINES} lines` });
+    }
     // Each field can be in range while the quote is not: the service refuses a final quote above the largest amount. Said
-    // once, on the lines (they are what to reduce, with the rates), and only while the settings are valid.
-    if (quoteTooLarge(values)) context.addIssue({ code: 'custom', path: ['lines'], message: TOO_LARGE });
+    // once (the lines are what to reduce, with the rates), and only while the settings are valid.
+    if (quoteTooLarge(values)) context.addIssue({ code: 'custom', path: ['sections'], message: TOO_LARGE });
   });
 
 export type QuoteFormValues = z.infer<typeof quoteFormSchema>;
+export type SectionFormValues = QuoteFormValues['sections'][number];
+export type LineFormValues = SectionFormValues['lines'][number];
 
-/** Every field the settings drawer holds: all but the title and the lines. */
+/** Every field the settings drawer holds: all but the title and the sections. */
 export const SETTINGS_FIELDS = Object.keys(settingsShape) as readonly (keyof QuoteFormValues)[];
 
-export const blankQuoteLine: QuoteFormValues['lines'][number] = {
+export const blankQuoteLine: LineFormValues = {
   title: '',
   description: '',
   units: '1',
   hoursPerUnit: '',
 };
+
+/** The first section of a new quote. */
+export const FIRST_SECTION_TITLE = 'General';
+
+/** How many lines the quote has, over all its sections. */
+export function lineCount(values: Pick<QuoteFormValues, 'sections'>): number {
+  return values.sections.reduce((sum, section) => sum + section.lines.length, 0);
+}
+
+/** A line's units x hours per unit, in hundredths of an hour, or null while either is blank or invalid. */
+export function lineHours(line: LineFormValues | undefined): number | null {
+  if (line === undefined) return null;
+  const units = line.units.trim();
+  const hours = line.hoursPerUnit.trim();
+  return unitsProblem(units) === null && hoursProblem(hours) === null ? Number(units) * hundredthsOf(hours) : null;
+}
 
 export const emptyQuoteForm: QuoteFormValues = {
   title: '',
@@ -250,11 +299,12 @@ export const emptyQuoteForm: QuoteFormValues = {
   bugFixPercent: '0',
   hoursPerDay: '6',
   hoursPerMonth: '160',
-  lines: [{ ...blankQuoteLine }],
+  sections: [{ title: FIRST_SECTION_TITLE, lines: [{ ...blankQuoteLine }] }],
 };
 
 export function toQuoteFormValues(row?: QuoteRow): QuoteFormValues {
-  if (!row) return { ...emptyQuoteForm, lines: [{ ...blankQuoteLine }] };
+  const firstSection = () => [{ title: FIRST_SECTION_TITLE, lines: [{ ...blankQuoteLine }] }];
+  if (!row) return { ...emptyQuoteForm, sections: firstSection() };
   return {
     title: row.title,
     currencyCode: row.currencyCode,
@@ -272,23 +322,32 @@ export function toQuoteFormValues(row?: QuoteRow): QuoteFormValues {
     bugFixPercent: String(row.bugFixPercent),
     hoursPerDay: String(row.hoursPerDay),
     hoursPerMonth: String(row.hoursPerMonth),
-    lines:
-      row.lines.length > 0
-        ? row.lines.map((line) => ({
-            title: line.title,
-            description: line.description,
-            units: String(line.units),
-            hoursPerUnit: String(line.hoursPerUnit),
+    sections:
+      row.sections.length > 0
+        ? row.sections.map((section) => ({
+            title: section.title,
+            lines: section.lines.map((line) => ({
+              title: line.title,
+              description: line.description,
+              units: String(line.units),
+              hoursPerUnit: String(line.hoursPerUnit),
+            })),
           }))
-        : [{ ...blankQuoteLine }],
+        : firstSection(),
   };
 }
 
 export interface QuoteLineBody {
   title: string;
+  /** Empty text when the line has none. */
   description: string;
   units: number;
   hoursPerUnit: number;
+}
+
+export interface QuoteSectionBody {
+  title: string;
+  lines: QuoteLineBody[];
 }
 
 export interface QuoteBody {
@@ -309,8 +368,8 @@ export interface QuoteBody {
   bugFixPercent: number;
   hoursPerDay: number;
   hoursPerMonth: number;
-  /** The whole set: the service replaces the quote's lines with these. */
-  lines: QuoteLineBody[];
+  /** The whole set: the service replaces the quote's sections and their lines with these. */
+  sections: QuoteSectionBody[];
 }
 
 /** The form as a create or update body. Call it once `quoteFormSchema` has accepted the values. */
@@ -333,11 +392,15 @@ export function toQuoteBody(values: QuoteFormValues): QuoteBody {
     bugFixPercent: number(values.bugFixPercent),
     hoursPerDay: number(values.hoursPerDay),
     hoursPerMonth: number(values.hoursPerMonth),
-    lines: values.lines.map((line) => ({
-      title: line.title.trim(),
-      description: line.description.trim(),
-      units: number(line.units),
-      hoursPerUnit: number(line.hoursPerUnit),
+    sections: values.sections.map((section) => ({
+      title: section.title.trim(),
+      lines: section.lines.map((line) => ({
+        title: line.title.trim(),
+        // Blank or spaces alike are sent as empty text.
+        description: line.description.trim(),
+        units: number(line.units),
+        hoursPerUnit: number(line.hoursPerUnit),
+      })),
     })),
   };
 }
@@ -345,17 +408,17 @@ export function toQuoteBody(values: QuoteFormValues): QuoteBody {
 /**
  * What the totals are calculated from, as the form stands. `settings` is null while any settings field is invalid: the
  * mirror throws on a zero count, day or month and on a fraction, and the money is formatted in the currency, so a blank
- * or wrong setting means no totals, never a wrong or broken one. A line whose units or hours are invalid is left out, as
- * if they were zero.
+ * or wrong setting means no totals, never a wrong or broken one. The lines are those of every section, in order; a line
+ * whose units or hours are invalid is left out, as if they were zero.
  */
 export function toCalcInput(values: QuoteFormValues): { settings: CalcSettings | null; lines: CalcLine[] } {
-  const lines = values.lines.flatMap((line) => {
-    const units = line.units.trim();
-    const hours = line.hoursPerUnit.trim();
-    return unitsProblem(units) === null && hoursProblem(hours) === null
-      ? [{ units: Number(units), hoursHundredths: hundredthsOf(hours) }]
-      : [];
-  });
+  const lines = values.sections.flatMap((section) =>
+    section.lines.flatMap((line) =>
+      lineHours(line) === null
+        ? []
+        : [{ units: Number(line.units.trim()), hoursHundredths: hundredthsOf(line.hoursPerUnit.trim()) }],
+    ),
+  );
   if (!settingsSchema.safeParse(values).success) return { settings: null, lines };
 
   const whole = (text: string) => Number(text.trim());

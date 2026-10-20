@@ -6,7 +6,7 @@ import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import type { QuoteFormValues } from './schema';
 
-type SettingName = Exclude<keyof QuoteFormValues, 'title' | 'lines'>;
+type SettingName = Exclude<keyof QuoteFormValues, 'title' | 'sections'>;
 
 interface QuoteSettingsDrawerProps {
   open: boolean;

@@ -55,8 +55,8 @@ export function QuoteTotalsPanel({ settings, totals, lineHours, currencyCode }: 
 
   return (
     <Panel>
-      {/* One column in the narrow column beside the lines (`xl`); under them, the sections side by side from `md`. */}
-      <div className="grid items-start gap-6 p-6 md:grid-cols-3 xl:grid-cols-1">
+      {/* One column in the narrow column beside the lines (`2xl`); under them, the sections side by side from `md`. */}
+      <div className="grid items-start gap-6 p-6 md:grid-cols-3 2xl:grid-cols-1">
         {ready ? (
           <Section id="quote-totals-time" title="Time">
             <Row label="Total effort" value={counted(totals.totalHours, 'hour')} />

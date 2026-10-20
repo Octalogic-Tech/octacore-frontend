@@ -63,6 +63,7 @@ describe('QuotesPage', () => {
     expect(coreApi.get).toHaveBeenCalledWith('/quotations');
   });
 
+  // Both rows have two sections: the Lines column counts the lines of all of them (30 + 23, and 2 + 1).
   it('lists each quote with its lines, hours, final quote in its own currency, and last update', async () => {
     renderPage();
     const acme = await rowOf('Acme storefront');

@@ -39,7 +39,10 @@ const halfUp = (n: number, d: number) => Math.floor((2 * n + d) / (2 * d));
  * the two checks the app's calculation.
  */
 function totalsOf(quote: Row): Row {
-  const lines = quote.lines as { units: number; hoursPerUnit: number }[];
+  // The lines of every section: sections only group them.
+  const lines = (quote.sections as { lines: { units: number; hoursPerUnit: number }[] }[]).flatMap(
+    (section) => section.lines,
+  );
   const count = (key: string) => quote[key] as number;
   // The time buffer and the discount are 0 for a quote saved without them, as they are in the service.
   const percent = (key: string) => (quote[key] as number | undefined) ?? 0;
@@ -93,13 +96,22 @@ function totalsOf(quote: Row): Row {
 }
 
 /**
- * A quote as the service answers it: the lines get ids (each keeps the title and description it was sent with), and the
- * totals are worked out from what is stored.
+ * A quote as the service answers it: the sections and their lines get ids, ascending in the order written (each keeps the
+ * title it was sent with, and each line its description, empty text when it was sent without one), and the totals are
+ * worked out from what is stored.
  */
 function stored(id: number, fields: Row): Row {
-  const lines = (fields.lines as Row[]).map((line, index) => ({ id: id * 100 + index + 1, ...line }));
+  let lineId = id * 1000;
+  const sections = (fields.sections as Row[]).map((section, sectionIndex) => ({
+    id: id * 100 + sectionIndex + 1,
+    title: section.title,
+    lines: (section.lines as Row[]).map((line) => {
+      lineId += 1;
+      return { id: lineId, description: '', ...line };
+    }),
+  }));
   // A body without the time buffer or the discount is stored with 0, which is what the service's defaults are.
-  const quote = { timeBufferPercent: 0, discountPercent: 0, ...fields, lines };
+  const quote = { timeBufferPercent: 0, discountPercent: 0, ...fields, sections };
   return record({ id, ...quote, totals: totalsOf(quote) });
 }
 
@@ -109,7 +121,7 @@ export const FIRST_QUOTE_ID = 12;
 /**
  * Everything `stubApi` stubs, plus the quotation routes. They start empty and keep state: a quote the page creates is
  * answered with the id 12 (then 13, ...), shows up on the next read of the list and of its own address, and an edit
- * replaces its lines and settings and works its totals out again, as the service does.
+ * replaces its sections, their lines and its settings and works its totals out again, as the service does.
  */
 export function stubQuotes() {
   stubApi();
@@ -135,7 +147,8 @@ export function stubQuotes() {
     const id = idOf(url);
     const existing = quotes.find((row) => row.id === id);
     if (!existing) return notFound();
-    // Totals are never stored: they are worked out again from what the edit leaves. A PATCH without `lines` keeps the old ones.
+    // Totals are never stored: they are worked out again from what the edit leaves. A PATCH without `sections` keeps the old
+    // ones (as the service would, with their ids: here they are numbered again, which no spec reads).
     const { totals, ...kept } = existing;
     void totals;
     const edited = stored(id, { ...kept, ...(body as Row) });

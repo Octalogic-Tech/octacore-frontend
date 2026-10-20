@@ -1,6 +1,6 @@
 // Rows shaped like GET http://localhost:5001/api/v1/quotations (octacore-backend, FastAPI), in the service's own envelope;
-// the names and dates are made up, the figures are real. Each row carries its settings flat, its lines and the `totals`
-// the service calculates from them: hours and months as decimal numbers (1188, 2.48), every cost in whole minor units.
+// the names and dates are made up, the figures are real. Each row carries its settings flat, its sections (each with its
+// lines, in the order written) and the `totals` the service calculates from the lines of every section: hours and months as decimal numbers (1188, 2.48), every cost in whole minor units.
 // Neither row uses the time buffer or the discount (both 0), so the padded hours equal the lines' and nothing is taken off.
 //
 // Quote 1 is the workbook of the design's section 3.4: 53 lines of one unit each (1,188 hours) at the default settings
@@ -53,7 +53,11 @@ export const quoteRows = [
     bugFixPercent: 0,
     hoursPerDay: 6,
     hoursPerMonth: 160,
-    lines: workbookLines,
+    // Split over two sections: sections only group lines, so the totals are the workbook's.
+    sections: [
+      { id: 1, title: 'Storefront', lines: workbookLines.slice(0, 30) },
+      { id: 2, title: 'Back office', lines: workbookLines.slice(30) },
+    ],
     totals: {
       baseHours: 1188,
       timeBufferHours: 0,
@@ -98,10 +102,20 @@ export const quoteRows = [
     bugFixPercent: 5,
     hoursPerDay: 7,
     hoursPerMonth: 150,
-    lines: [
-      { id: 54, title: 'Sign-in screens', description: 'Email and password, with a reset link', units: 2, hoursPerUnit: 7.5 },
-      { id: 55, title: 'Chart tiles', description: 'Revenue, hours and margin', units: 3, hoursPerUnit: 0.25 },
-      { id: 56, title: 'Export to CSV', description: 'Every table, as shown', units: 1, hoursPerUnit: 12.34 },
+    sections: [
+      {
+        id: 10,
+        title: 'Screens',
+        lines: [
+          { id: 54, title: 'Sign-in screens', description: 'Email and password, with a reset link', units: 2, hoursPerUnit: 7.5 },
+          { id: 55, title: 'Chart tiles', description: 'Revenue, hours and margin', units: 3, hoursPerUnit: 0.25 },
+        ],
+      },
+      {
+        id: 11,
+        title: 'Reports',
+        lines: [{ id: 56, title: 'Export to CSV', description: 'Every table, as shown', units: 1, hoursPerUnit: 12.34 }],
+      },
     ],
     totals: {
       baseHours: 28.09,
@@ -152,11 +166,24 @@ export const bufferedQuoteRow = {
   bugFixPercent: 5,
   hoursPerDay: 8,
   hoursPerMonth: 160,
-  lines: [
-    { id: 57, title: 'Discovery', description: 'Interviews and a written brief', units: 1, hoursPerUnit: 10.12 },
-    { id: 58, title: 'Workshops', description: 'Three sessions with the team', units: 3, hoursPerUnit: 2.5 },
-    { id: 59, title: 'Wireframes', description: 'Two flows, low fidelity', units: 2, hoursPerUnit: 7.25 },
-    { id: 60, title: 'Hand-over', description: 'A short call to walk through it', units: 1, hoursPerUnit: 0.2 },
+  sections: [
+    {
+      id: 12,
+      title: 'Discovery',
+      lines: [
+        { id: 57, title: 'Discovery', description: 'Interviews and a written brief', units: 1, hoursPerUnit: 10.12 },
+        { id: 58, title: 'Workshops', description: 'Three sessions with the team', units: 3, hoursPerUnit: 2.5 },
+      ],
+    },
+    {
+      id: 13,
+      title: 'Design',
+      lines: [
+        { id: 59, title: 'Wireframes', description: 'Two flows, low fidelity', units: 2, hoursPerUnit: 7.25 },
+        // No description: it is optional, and the service sends it as empty text.
+        { id: 60, title: 'Hand-over', description: '', units: 1, hoursPerUnit: 0.2 },
+      ],
+    },
   ],
   totals: {
     baseHours: 32.32,

@@ -27,14 +27,24 @@ function fillNewQuote() {
   cy.contains('h1', 'New quote');
 
   cy.get('#quote-title').type('Website rebuild');
-  // Each line is a title and the figures, with the description under them. The units start at 1: clear them first.
+  // A new quote starts with one section, General, holding one blank line: fill that line.
+  cy.get('#section-1-title').should('have.value', 'General');
+  // Each line is a title and the figures in one row; the units start at 1: clear them first.
   cy.get('#line-1-title').type('Home page');
-  cy.get('#line-1-description').type('The hero, the services and the contact form');
   replaceText('#line-1-units', '2');
   cy.get('#line-1-hoursPerUnit').type('7.5');
+  // The description lives in a dialog, opened from the line's own button.
+  cy.get('button[aria-label="Add description to line 1"]').click();
+  cy.get('[role="dialog"]').within(() => {
+    cy.get('#line-1-description').type('The hero, the services and the contact form');
+    cy.contains('button', 'Done').click();
+  });
+  cy.get('[role="dialog"]').should('not.exist');
+  cy.get('button[aria-label="Edit description of line 1"]').should('be.visible');
+  // Add line puts the new line in the same section and moves to its title. This one has no description.
   cy.contains('button', 'Add line').click();
+  cy.focused().should('have.id', 'line-2-title');
   cy.get('#line-2-title').type('Checkout');
-  cy.get('#line-2-description').type('Cart, address and payment');
   replaceText('#line-2-units', '3');
   cy.get('#line-2-hoursPerUnit').type('4');
 
@@ -75,11 +85,15 @@ describe('quotes', () => {
 
     cy.contains('button', 'Save').click();
     cy.location('pathname').should('eq', `/quotes/${FIRST_QUOTE_ID}`);
-    // The quote now comes from the service's answer: the title, both lines, the changed rate and the figure.
+    // The quote now comes from the service's answer: the title, the section, both lines, the changed rate and the figure.
     cy.contains('h1', 'Website rebuild');
     cy.get('#quote-title').should('have.value', 'Website rebuild');
+    cy.get('#section-1-title').should('have.value', 'General');
     cy.get('#line-1-title').should('have.value', 'Home page');
+    cy.get('button[aria-label="Edit description of line 1"]').click();
     cy.get('#line-1-description').should('have.value', 'The hero, the services and the contact form');
+    cy.contains('[role="dialog"] button', 'Done').click();
+    cy.get('button[aria-label="Add description to line 2"]').should('be.visible');
     cy.get('#line-2-title').should('have.value', 'Checkout');
     cy.get('#line-1-units').should('have.value', '2');
     cy.get('#line-2-hoursPerUnit').should('have.value', '4');

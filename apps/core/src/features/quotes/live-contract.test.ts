@@ -28,34 +28,45 @@ const createdSchema = z.object({ id: z.number().int() });
 const readQuote = async (id: number) => unwrap(await (await send('GET', `/quotations/${id}`)).json(), quoteRowSchema);
 const listedQuotes = async () => unwrap(await (await send('GET', '/quotations')).json(), quoteRowsSchema);
 
-/** A form with the defaults and the given title, settings and lines (units and hours per unit as typed). */
+/** Every line of a read quote, the sections' in order. */
+const linesOf = (row: QuoteRow) => row.sections.flatMap((section) => section.lines);
+
+/**
+ * A form with the defaults and the given title, settings and lines (units and hours per unit as typed), split into
+ * sections of `perSection` lines (all in one by default). Sections only group lines, so the split changes no total.
+ */
 function quoteForm(
   title: string,
   lines: [units: string, hours: string][],
   settings: Partial<QuoteFormValues> = {},
+  perSection = lines.length,
 ): QuoteFormValues {
-  return {
-    ...emptyQuoteForm,
-    ...settings,
-    title,
-    lines: lines.map(([units, hoursPerUnit], index) => ({
-      title: `Line ${index + 1}`,
-      description: `What line ${index + 1} covers`,
-      units,
-      hoursPerUnit,
-    })),
-  };
+  const all = lines.map(([units, hoursPerUnit], index) => ({
+    title: `Line ${index + 1}`,
+    // Every third line has none: the description is optional.
+    description: index % 3 === 2 ? '' : `What line ${index + 1} covers`,
+    units,
+    hoursPerUnit,
+  }));
+  const sections = Array.from({ length: Math.max(1, Math.ceil(all.length / perSection)) }, (_unused, index) => ({
+    title: `Section ${index + 1}`,
+    lines: all.slice(index * perSection, (index + 1) * perSection),
+  }));
+  return { ...emptyQuoteForm, ...settings, title, sections };
 }
 
 // The workbook's 53 lines of one unit each: the hours per line and how many lines have them (1,188 hours in all).
 const WORKBOOK_HOURS_BY_COUNT: Record<number, number> = { 16: 24, 24: 14, 32: 4, 8: 3, 20: 3, 48: 3, 56: 2 };
 
+// In sections of 20 lines: 20, 20 and 13.
 const workbookForm = (): QuoteFormValues =>
   quoteForm(
     'Workbook check',
     Object.entries(WORKBOOK_HOURS_BY_COUNT).flatMap(([hours, count]) =>
       Array.from({ length: count }, (): [string, string] => ['1', hours]),
     ),
+    {},
+    20,
   );
 
 // The second vector: every step lands on a half or near it, and every setting is off its default.
@@ -111,6 +122,7 @@ const thirdForm = (): QuoteFormValues =>
       timeBufferPercent: '12.5',
       discountPercent: '7.5',
     },
+    2,
   );
 
 /** What the third vector comes to, as the service sends it: hours as decimal numbers, every cost in whole cents. */
@@ -171,11 +183,22 @@ describe.skipIf(!base)('the running core service, quotations', () => {
 
   it('the workbook vector: the service and the mirror agree, through a create, an edit and a delete', async () => {
     const form = workbookForm();
-    expect(form.lines).toHaveLength(53);
+    expect(form.sections.map((section) => section.lines.length)).toEqual([20, 20, 13]);
     const quote = await createFrom(form);
     try {
       expect(quote).toMatchObject({ title: 'Workbook check', currencyCode: 'INR', developerCount: 3, developerRateCents: 310_000 });
-      expect(quote.lines).toHaveLength(53);
+      // The sections come back in the order written, each with its lines in order, and every id ascending.
+      expect(quote.sections.map((section) => [section.title, section.lines.length])).toEqual([
+        ['Section 1', 20],
+        ['Section 2', 20],
+        ['Section 3', 13],
+      ]);
+      expect(linesOf(quote).map((line) => line.title)).toEqual(form.sections.flatMap((s) => s.lines.map((l) => l.title)));
+      const sectionIds = quote.sections.map((section) => section.id);
+      const lineIds = linesOf(quote).map((line) => line.id);
+      expect(sectionIds).toEqual([...sectionIds].sort((a, b) => a - b));
+      expect(lineIds).toEqual([...lineIds].sort((a, b) => a - b));
+      expect(linesOf(quote)[2].description).toBe('');
       expect(quote.totals.finalQuoteCents).toBe(571_725_000);
       expectTotalsToMatch(quote, form);
 
@@ -185,7 +208,8 @@ describe.skipIf(!base)('the running core service, quotations', () => {
       const listed = await listedQuotes();
       expect(listed.find((row) => row.id === quote.id)).toMatchObject({ title: 'Workbook check' });
 
-      // Edit: the lines are replaced as a set and one setting changes (a developer costs 3,200.00 an hour now).
+      // Edit: the sections and their lines are replaced as a set and one setting changes (a developer costs 3,200.00 an
+      // hour now). Two lines in the first section, one in the second.
       const edited = quoteForm(
         'Workbook check, edited',
         [
@@ -194,15 +218,26 @@ describe.skipIf(!base)('the running core service, quotations', () => {
           ['1', '0.01'],
         ],
         { developerRate: '3200.00' },
+        2,
       );
       expect(quoteFormSchema.safeParse(edited).success).toBe(true);
       const patched = await send('PATCH', `/quotations/${quote.id}`, toQuoteBody(edited));
       expect(patched.status).toBe(200);
       const patchedQuote = unwrap(await patched.json(), quoteRowSchema);
-      expect(patchedQuote.lines.map((line) => [line.title, line.description, line.units, line.hoursPerUnit])).toEqual([
-        ['Line 1', 'What line 1 covers', 1, 16],
-        ['Line 2', 'What line 2 covers', 5, 2.5],
-        ['Line 3', 'What line 3 covers', 1, 0.01],
+      expect(
+        patchedQuote.sections.map((section) => [
+          section.title,
+          section.lines.map((line) => [line.title, line.description, line.units, line.hoursPerUnit]),
+        ]),
+      ).toEqual([
+        [
+          'Section 1',
+          [
+            ['Line 1', 'What line 1 covers', 1, 16],
+            ['Line 2', 'What line 2 covers', 5, 2.5],
+          ],
+        ],
+        ['Section 2', [['Line 3', '', 1, 0.01]]],
       ]);
       expect(patchedQuote).toMatchObject({ title: 'Workbook check, edited', developerRateCents: 320_000 });
       expectTotalsToMatch(patchedQuote, edited);
@@ -211,12 +246,12 @@ describe.skipIf(!base)('the running core service, quotations', () => {
       expect(reread.totals).toEqual(patchedQuote.totals);
       expectTotalsToMatch(reread, edited);
 
-      // One setting alone leaves the lines as they are.
+      // One setting alone leaves the sections and their lines as they are.
       const settingOnly = await send('PATCH', `/quotations/${quote.id}`, { managementPercent: 30 });
       expect(settingOnly.status).toBe(200);
       const settingForm = { ...edited, managementPercent: '30' };
       const afterSetting = await readQuote(quote.id);
-      expect(afterSetting.lines).toHaveLength(3);
+      expect(afterSetting.sections.map((section) => section.lines.length)).toEqual([2, 1]);
       expectTotalsToMatch(afterSetting, settingForm);
     } finally {
       const deleted = await send('DELETE', `/quotations/${quote.id}`);
@@ -255,12 +290,23 @@ describe.skipIf(!base)('the running core service, quotations', () => {
         ...form,
         testingPercent: '0',
         bugFixPercent: '0',
-        lines: [{ title: 'Only line', description: 'The one thing left to build', units: '1', hoursPerUnit: '1.49' }],
+        sections: [
+          {
+            title: 'What is left',
+            lines: [{ title: 'Only line', description: 'The one thing left to build', units: '1', hoursPerUnit: '1.49' }],
+          },
+          // A section may be empty while the quote has a line.
+          { title: 'Nothing yet', lines: [] },
+        ],
       };
       expect(quoteFormSchema.safeParse(edited).success).toBe(true);
       const patched = await send('PATCH', `/quotations/${quote.id}`, toQuoteBody(edited));
       expect(patched.status).toBe(200);
       const patchedQuote = unwrap(await patched.json(), quoteRowSchema);
+      expect(patchedQuote.sections.map((section) => [section.title, section.lines.length])).toEqual([
+        ['What is left', 1],
+        ['Nothing yet', 0],
+      ]);
       expect(patchedQuote.totals).toMatchObject({ buildHours: 1.49, elapsedMonths: 0 });
       expectTotalsToMatch(patchedQuote, edited);
       expectTotalsToMatch(await readQuote(quote.id), edited);
@@ -328,10 +374,10 @@ describe.skipIf(!base)('the running core service, quotations', () => {
 
     const quote = await createFrom(quoteForm('Small then large', [['1', '8']]));
     try {
-      const refusedEdit = await send('PATCH', `/quotations/${quote.id}`, { lines: toQuoteBody(huge).lines });
+      const refusedEdit = await send('PATCH', `/quotations/${quote.id}`, { sections: toQuoteBody(huge).sections });
       expect(refusedEdit.status).toBe(422);
       // The quote is as it was.
-      expect((await readQuote(quote.id)).lines).toHaveLength(1);
+      expect(linesOf(await readQuote(quote.id))).toHaveLength(1);
     } finally {
       await send('DELETE', `/quotations/${quote.id}`);
     }

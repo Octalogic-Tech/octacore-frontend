@@ -13,7 +13,7 @@ vi.mock('@/lib/core-api', async (importOriginal) => ({
   coreApi: { get: vi.fn(), post: vi.fn(), patch: vi.fn(), delete: vi.fn() },
 }));
 
-// Quote 2 of the fixture (dollars, three lines, every setting off its default), as quote 7.
+// Quote 2 of the fixture (dollars, three lines in two sections, every setting off its default), as quote 7.
 const saved = { ...quoteRows[1], id: 7 };
 
 /** GETs answer with these bodies, in the service's envelope. */
@@ -73,6 +73,14 @@ const columnSum = (count: number) =>
     0,
   );
 const settingsButton = () => screen.getByRole('button', { name: /^Settings/ });
+const sectionGroup = (number: number) => screen.getByRole('group', { name: `Section ${number}` });
+const lineGroup = (number: number) => screen.getByRole('group', { name: `Line ${number}` });
+/** The description button of a line, whichever name it has. */
+const descriptionButton = (number: number) =>
+  screen.getByRole('button', { name: new RegExp(`^(Add description to|Edit description of) line ${number}$`) });
+/** The small mark on the description button that says the line has one. */
+const markerOf = (number: number) => lineGroup(number).querySelector('[data-slot="description-marker"]');
+const descriptionDialog = () => screen.getByRole('dialog', { name: 'Description' });
 const drawer = () => screen.getByRole('dialog', { name: 'Quote settings' });
 
 /** Replaces a field's text: a new line's units start at 1, so typing alone would append. */
@@ -81,11 +89,26 @@ async function retype(user: UserEvent, input: HTMLElement, text: string) {
   if (text !== '') await user.type(input, text);
 }
 
+/** Opens a line's description, types it in place of what it had (if anything) and closes it with Done. */
+async function describeLine(user: UserEvent, number: number, text: string) {
+  await user.click(descriptionButton(number));
+  await retype(user, within(descriptionDialog()).getByLabelText('Description'), text);
+  await user.click(within(descriptionDialog()).getByRole('button', { name: 'Done' }));
+}
+
+/** What a line's description holds, read from its dialog, which is closed again with Done. */
+async function descriptionOf(user: UserEvent, number: number) {
+  await user.click(descriptionButton(number));
+  const value = (within(descriptionDialog()).getByLabelText('Description') as HTMLTextAreaElement).value;
+  await user.click(within(descriptionDialog()).getByRole('button', { name: 'Done' }));
+  return value;
+}
+
 /** Line one as `units` of `hours`, with a title and a description, so the quote can be saved. */
 async function fillQuote(user: UserEvent, units = '2', hours = '7.5') {
   await user.type(screen.getByLabelText('Title'), 'Website build');
   await user.type(screen.getByLabelText('Line 1 title'), 'Sign-in screens');
-  await user.type(screen.getByLabelText('Line 1 description'), 'Email and password, with a reset link');
+  await describeLine(user, 1, 'Email and password, with a reset link');
   await retype(user, screen.getByLabelText('Line 1 units'), units);
   await retype(user, screen.getByLabelText('Line 1 hours per unit'), hours);
 }
@@ -114,7 +137,12 @@ const fullNewBody = {
   bugFixPercent: 0,
   hoursPerDay: 6,
   hoursPerMonth: 160,
-  lines: [{ title: 'Sign-in screens', description: 'Email and password, with a reset link', units: 2, hoursPerUnit: 7.5 }],
+  sections: [
+    {
+      title: 'General',
+      lines: [{ title: 'Sign-in screens', description: 'Email and password, with a reset link', units: 2, hoursPerUnit: 7.5 }],
+    },
+  ],
 };
 
 beforeEach(() => {
@@ -126,15 +154,24 @@ afterEach(() => {
 });
 
 describe('QuoteEditorPage, a new quote', () => {
-  it('starts from the defaults with one line', async () => {
+  it('starts from the defaults with one General section holding one blank line', async () => {
     renderEditor('/quotes/new');
     expect(screen.getByRole('heading', { level: 1, name: 'New quote' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Back to quotes' })).toHaveAttribute('href', '/quotes');
     expect(screen.getByLabelText('Title')).toHaveValue('');
     expect(screen.getByLabelText('Currency')).toHaveValue('INR');
+    expect(screen.getAllByRole('group', { name: /^Section \d+$/ })).toHaveLength(1);
+    expect(within(sectionGroup(1)).getByLabelText('Section 1 title')).toHaveValue('General');
+    expect(screen.getByLabelText('Section 1 title')).toHaveAttribute('id', 'section-1-title');
     expect(screen.getAllByRole('group', { name: /^Line \d+$/ })).toHaveLength(1);
+    expect(sectionGroup(1)).toContainElement(lineGroup(1));
     expect(screen.getByLabelText('Line 1 title')).toHaveValue('');
-    expect(screen.getByLabelText('Line 1 description')).toHaveValue('');
+    // The description is behind a button, empty: no text area anywhere until it is opened.
+    expect(screen.getByRole('button', { name: 'Add description to line 1' })).toBeInTheDocument();
+    expect(markerOf(1)).toBeNull();
+    expect(screen.queryByRole('textbox', { name: /description/i })).toBeNull();
+    expect(document.querySelector('textarea')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Remove section 1' })).toBeDisabled();
     expect(screen.getByLabelText('Line 1 units')).toHaveValue('1');
     expect(screen.getByLabelText('Line 1 hours per unit')).toHaveValue('');
     expect(lineTotal(1)).toHaveTextContent('Line 1 total hours —');
@@ -185,20 +222,291 @@ describe('QuoteEditorPage, a new quote', () => {
     await user.click(screen.getByRole('button', { name: 'Add line' }));
     expect(screen.getAllByRole('group', { name: /^Line \d+$/ })).toHaveLength(2);
     expect(screen.getByLabelText('Line 2 units')).toHaveValue('1');
+    expect(screen.getByLabelText('Line 2 title')).toHaveFocus();
     expect(screen.getByRole('button', { name: 'Remove line 1' })).toBeEnabled();
 
     await user.type(screen.getByLabelText('Line 2 title'), 'Second');
-    await user.type(screen.getByLabelText('Line 2 description'), 'The second item');
+    await describeLine(user, 2, 'The second item');
     await user.click(screen.getByRole('button', { name: 'Remove line 1' }));
     expect(screen.getAllByRole('group', { name: /^Line \d+$/ })).toHaveLength(1);
     expect(screen.getByLabelText('Line 1 title')).toHaveValue('Second');
-    expect(screen.getByLabelText('Line 1 description')).toHaveValue('The second item');
+    expect(await descriptionOf(user, 1)).toBe('The second item');
     expect(screen.getByRole('button', { name: 'Remove line 1' })).toBeDisabled();
+  });
+
+  it('adds a section after the last with an empty title and one blank line, and focuses its title', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/new');
+    await user.click(screen.getByRole('button', { name: 'Add section' }));
+    expect(screen.getAllByRole('group', { name: /^Section \d+$/ })).toHaveLength(2);
+    const title = screen.getByLabelText('Section 2 title');
+    expect(title).toHaveValue('');
+    expect(title).toHaveAttribute('id', 'section-2-title');
+    expect(title).toHaveFocus();
+    expect(sectionGroup(2)).toContainElement(lineGroup(2));
+    expect(screen.getByLabelText('Line 2 units')).toHaveValue('1');
+    // With two sections either can go; each line can too, as there are two.
+    expect(screen.getByRole('button', { name: 'Remove section 1' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Remove section 2' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Remove line 1' })).toBeEnabled();
+  });
+
+  it('removes a section with nothing typed in its lines at once, without asking', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/new');
+    await user.type(screen.getByLabelText('Line 1 title'), 'Kept');
+    await user.click(screen.getByRole('button', { name: 'Add section' }));
+    await user.type(screen.getByLabelText('Section 2 title'), 'Spare');
+    await user.click(screen.getByRole('button', { name: 'Remove section 2' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getAllByRole('group', { name: /^Section \d+$/ })).toHaveLength(1);
+    expect(screen.getAllByRole('group', { name: /^Line \d+$/ })).toHaveLength(1);
+    expect(screen.getByLabelText('Line 1 title')).toHaveValue('Kept');
+    expect(screen.getByRole('button', { name: 'Remove section 1' })).toBeDisabled();
+  });
+
+  it('asks before removing a section whose lines have text or hours, and keeps it on Cancel', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/new');
+    await user.type(screen.getByLabelText('Line 1 title'), 'Home page');
+    await user.click(screen.getByRole('button', { name: 'Add section' }));
+    await user.type(screen.getByLabelText('Section 2 title'), 'Checkout');
+    await user.type(screen.getByLabelText('Line 2 hours per unit'), '4');
+
+    // The first section: a title typed in its line.
+    await user.click(screen.getByRole('button', { name: 'Remove section 1' }));
+    const ask = screen.getByRole('alertdialog', { name: 'Remove section 1?' });
+    expect(ask).toHaveTextContent('Its lines are removed with it.');
+    await user.click(within(ask).getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('alertdialog')).toBeNull();
+    expect(screen.getAllByRole('group', { name: /^Section \d+$/ })).toHaveLength(2);
+
+    // The second: only hours typed. Confirmed, it goes, and the lines after it are counted again.
+    await user.click(screen.getByRole('button', { name: 'Remove section 2' }));
+    await user.click(
+      within(screen.getByRole('alertdialog', { name: 'Remove section 2?' })).getByRole('button', { name: 'Remove section' }),
+    );
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).toBeNull());
+    expect(screen.getAllByRole('group', { name: /^Section \d+$/ })).toHaveLength(1);
+    expect(screen.getByLabelText('Section 1 title')).toHaveValue('General');
+    expect(screen.getByLabelText('Line 1 title')).toHaveValue('Home page');
+    expect(screen.queryByLabelText('Line 2 title')).toBeNull();
+  });
+
+  it('asks before removing a section whose only text is a line’s description', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/new');
+    await user.click(screen.getByRole('button', { name: 'Add section' }));
+    await describeLine(user, 2, 'Notes only');
+    await user.click(screen.getByRole('button', { name: 'Remove section 2' }));
+    expect(screen.getByRole('alertdialog', { name: 'Remove section 2?' })).toBeInTheDocument();
+  });
+
+  it('adds a line at the end of its own section and focuses its title', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/new');
+    await user.type(screen.getByLabelText('Line 1 title'), 'First');
+    await user.click(screen.getByRole('button', { name: 'Add section' }));
+    await user.type(screen.getByLabelText('Line 2 title'), 'In section two');
+
+    await user.click(within(sectionGroup(1)).getByRole('button', { name: 'Add line' }));
+    // The new line is the second of section 1; the line of section 2 is now line 3.
+    expect(sectionGroup(1)).toContainElement(lineGroup(2));
+    expect(screen.getByLabelText('Line 2 title')).toHaveValue('');
+    expect(screen.getByLabelText('Line 2 title')).toHaveFocus();
+    expect(sectionGroup(2)).toContainElement(lineGroup(3));
+    expect(screen.getByLabelText('Line 3 title')).toHaveValue('In section two');
+
+    await user.click(within(sectionGroup(2)).getByRole('button', { name: 'Add line' }));
+    expect(sectionGroup(2)).toContainElement(lineGroup(4));
+    expect(screen.getByLabelText('Line 4 title')).toHaveFocus();
+  });
+
+  it('never removes the last line of the whole quote, and lets a section be left without lines', async () => {
+    const user = userEvent.setup();
+    vi.mocked(coreApi.post).mockResolvedValue({ data: quoteEnvelope({ id: 12 }) });
+    renderEditor('/quotes/new');
+    await fillQuote(user);
+    await user.click(screen.getByRole('button', { name: 'Add section' }));
+    await user.type(screen.getByLabelText('Section 2 title'), 'Later');
+    // Two lines in two sections: either can go, and the one left cannot.
+    expect(screen.getByRole('button', { name: 'Remove line 1' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Remove line 2' }));
+    expect(within(sectionGroup(2)).queryByRole('group', { name: /^Line \d+$/ })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Remove line 1' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(coreApi.post).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(coreApi.post).mock.calls[0][1]).toMatchObject({
+      sections: [{ title: 'General', lines: [{ title: 'Sign-in screens' }] }, { title: 'Later', lines: [] }],
+    });
+  });
+
+  it('refuses a save with a blank section title, telling that section, and sends nothing', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/new');
+    await fillQuote(user);
+    // Spaces are not a title.
+    await retype(user, screen.getByLabelText('Section 1 title'), '   ');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    const message = await within(sectionGroup(1)).findByText('Section title is required');
+    expect(message).toHaveAttribute('id', 'section-1-title-error');
+    expect(message).toHaveAttribute('role', 'alert');
+    const title = screen.getByLabelText('Section 1 title');
+    expect(title).toHaveAttribute('aria-invalid', 'true');
+    expect(title).toHaveAttribute('aria-describedby', 'section-1-title-error');
+    expect(title).toHaveAccessibleDescription('Section title is required');
+    expect(coreApi.post).not.toHaveBeenCalled();
+  });
+
+  it('posts the sections with their titles trimmed, and an empty description when none or only spaces', async () => {
+    const user = userEvent.setup();
+    vi.mocked(coreApi.post).mockResolvedValue({ data: quoteEnvelope({ id: 12 }) });
+    renderEditor('/quotes/new');
+    await user.type(screen.getByLabelText('Title'), '  Website build ');
+    await retype(user, screen.getByLabelText('Section 1 title'), '  Pages  ');
+    await user.type(screen.getByLabelText('Line 1 title'), '  Home ');
+    await user.type(screen.getByLabelText('Line 1 hours per unit'), '8');
+    await user.click(screen.getByRole('button', { name: 'Add section' }));
+    await user.type(screen.getByLabelText('Section 2 title'), 'Shop');
+    await user.type(screen.getByLabelText('Line 2 title'), 'Cart');
+    await describeLine(user, 2, '   ');
+    await user.type(screen.getByLabelText('Line 2 hours per unit'), '4');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+
+    await waitFor(() => expect(coreApi.post).toHaveBeenCalledTimes(1));
+    const body = vi.mocked(coreApi.post).mock.calls[0][1] as Record<string, unknown>;
+    expect(body).not.toHaveProperty('lines');
+    expect(body).toMatchObject({
+      title: 'Website build',
+      sections: [
+        { title: 'Pages', lines: [{ title: 'Home', description: '', units: 1, hoursPerUnit: 8 }] },
+        { title: 'Shop', lines: [{ title: 'Cart', description: '', units: 1, hoursPerUnit: 4 }] },
+      ],
+    });
+  });
+
+  describe('the description dialog', () => {
+    it('opens from the line, edits the same form, keeps the text on Escape and gives focus back', async () => {
+      const user = userEvent.setup();
+      vi.mocked(coreApi.post).mockResolvedValue({ data: quoteEnvelope({ id: 12 }) });
+      renderEditor('/quotes/new');
+      await user.type(screen.getByLabelText('Title'), 'Website build');
+      await user.click(screen.getByRole('button', { name: 'Add description to line 1' }));
+
+      const dialog = descriptionDialog();
+      // Named for a line without a title yet.
+      expect(dialog).toHaveAccessibleDescription('Line 1: untitled');
+      const text = within(dialog).getByLabelText('Description');
+      expect(text.tagName).toBe('TEXTAREA');
+      expect(text).toHaveAttribute('id', 'line-1-description');
+      expect(text).toHaveAttribute('rows', '6');
+      expect(text).toHaveValue('');
+      await user.type(text, 'The hero and the contact form');
+      await user.keyboard('{Escape}');
+
+      expect(screen.queryByRole('dialog')).toBeNull();
+      const button = screen.getByRole('button', { name: 'Edit description of line 1' });
+      expect(button).toHaveFocus();
+      expect(markerOf(1)).not.toBeNull();
+      // Only the dialog ever holds the text area.
+      expect(document.querySelector('textarea')).toBeNull();
+
+      await user.type(screen.getByLabelText('Line 1 title'), 'Home page');
+      await user.type(screen.getByLabelText('Line 1 hours per unit'), '8');
+      await user.click(button);
+      expect(descriptionDialog()).toHaveAccessibleDescription('Line 1: Home page');
+      expect(within(descriptionDialog()).getByLabelText('Description')).toHaveValue('The hero and the contact form');
+      await user.click(within(descriptionDialog()).getByRole('button', { name: 'Close' }));
+      expect(screen.getByRole('button', { name: 'Edit description of line 1' })).toHaveFocus();
+
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() => expect(coreApi.post).toHaveBeenCalledTimes(1));
+      expect(vi.mocked(coreApi.post).mock.calls[0][1]).toMatchObject({
+        sections: [{ lines: [{ title: 'Home page', description: 'The hero and the contact form' }] }],
+      });
+    });
+
+    it('drops the marker once the text is cleared, or is only spaces', async () => {
+      const user = userEvent.setup();
+      renderEditor('/quotes/new');
+      await describeLine(user, 1, 'Something');
+      expect(markerOf(1)).not.toBeNull();
+      expect(screen.getByRole('button', { name: 'Edit description of line 1' })).toHaveFocus();
+
+      await describeLine(user, 1, '   ');
+      expect(markerOf(1)).toBeNull();
+      expect(screen.getByRole('button', { name: 'Add description to line 1' })).toBeInTheDocument();
+
+      await describeLine(user, 1, 'Back');
+      expect(markerOf(1)).not.toBeNull();
+      await describeLine(user, 1, '');
+      expect(markerOf(1)).toBeNull();
+    });
+
+    it('draws the marker in the brand’s teal, square, with no shadow', async () => {
+      const user = userEvent.setup();
+      renderEditor('/quotes/new');
+      await describeLine(user, 1, 'Something');
+      const marker = markerOf(1) as HTMLElement;
+      expect(marker).toHaveAttribute('aria-hidden', 'true');
+      expect(marker).toHaveClass('bg-teal');
+      expect(marker.className).not.toMatch(/rounded|shadow/);
+    });
+
+    it('opens on the line it belongs to, in any section', async () => {
+      const user = userEvent.setup();
+      renderEditor('/quotes/7');
+      await user.click(await screen.findByRole('button', { name: 'Edit description of line 3' }));
+      expect(descriptionDialog()).toHaveAccessibleDescription('Line 3: Export to CSV');
+      expect(within(descriptionDialog()).getByLabelText('Description')).toHaveValue('Every table, as shown');
+    });
+  });
+
+  it('shows each section’s hours and hours with the buffer, the sums of its lines', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/3');
+    await screen.findByLabelText('Line 4 hours per unit');
+    // Section 1: 10.12 and 3 x 2.5 hours, 11.39 and 8.44 with the 12.5 % buffer. Section 2: 2 x 7.25 and 0.2, 16.31 and 0.23.
+    const first = within(sectionGroup(1));
+    const second = within(sectionGroup(2));
+    expect(first.getByText('17.62 hours')).toBeInTheDocument();
+    expect(first.getByText('19.83 with buffer')).toBeInTheDocument();
+    expect(second.getByText('14.7 hours')).toBeInTheDocument();
+    expect(second.getByText('16.54 with buffer')).toBeInTheDocument();
+    // Together, the panel's figures.
+    expect(valuesOf('Hours', 'From the lines')).toEqual(['32.32 hours']);
+    expect(valuesOf('Hours', 'With time buffer')).toEqual(['36.37 hours']);
+
+    // A wrong line is left out of its section's sums; a wrong setting leaves no buffered figure.
+    await retype(user, screen.getByLabelText('Line 2 hours per unit'), '2,5');
+    expect(first.getByText('10.12 hours')).toBeInTheDocument();
+    expect(first.getByText('11.39 with buffer')).toBeInTheDocument();
+    await setSetting(user, 'Percentages', 'Time buffer (%)', 'abc');
+    expect(first.getByText('10.12 hours')).toBeInTheDocument();
+    expect(first.getByText('— with buffer')).toBeInTheDocument();
+    expect(second.getByText('— with buffer')).toBeInTheDocument();
+  });
+
+  it('comes to the same totals whether the lines are in one section or three', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/new');
+    // The lines of the time buffer test below, 24, 2 x 28 and 16.5 hours, now one to a section.
+    await user.type(screen.getByLabelText('Line 1 hours per unit'), '24');
+    await user.click(screen.getByRole('button', { name: 'Add section' }));
+    await retype(user, screen.getByLabelText('Line 2 units'), '2');
+    await user.type(screen.getByLabelText('Line 2 hours per unit'), '28');
+    await user.click(screen.getByRole('button', { name: 'Add section' }));
+    await user.type(screen.getByLabelText('Line 3 hours per unit'), '16.5');
+    expect(valuesOf('Hours', 'From the lines')).toEqual(['96.5 hours']);
+    expect(valuesOf('Cost', 'Final quote')).toEqual(['₹4,64,425.00']);
+    expect(within(sectionGroup(2)).getByText('56 hours')).toBeInTheDocument();
   });
 
   it('names each line field and its total on a narrow screen, where the column headings are hidden', async () => {
     renderEditor('/quotes/new');
-    const line = within(screen.getByRole('group', { name: 'Line 1' }));
+    const line = within(lineGroup(1));
     const cells = [
       ['Title', screen.getByLabelText('Line 1 title')],
       ['Units', screen.getByLabelText('Line 1 units')],
@@ -208,21 +516,18 @@ describe('QuoteEditorPage, a new quote', () => {
     ] as const;
     for (const [text, cell] of cells) {
       const label = line.getByText(text);
-      // Shown below `sm` and hidden from it up, where the column headings say the same; the inputs keep their own names.
-      expect(label).toHaveClass('sm:hidden', 'text-small', 'font-semibold', 'text-navy-80');
+      // Shown below `md` and hidden from it up, where the column headings say the same; the inputs keep their own names.
+      expect(label).toHaveClass('md:hidden', 'text-small', 'font-semibold', 'text-navy-80');
       expect(label).not.toHaveClass('hidden');
       expect(label).toHaveAttribute('aria-hidden', 'true');
       expect(label.parentElement).toContainElement(cell);
     }
-    // The description has its row to itself at every width, so its small label shows at every width too.
-    const description = line.getByText('Description');
-    expect(description).toHaveClass('text-small', 'font-semibold', 'text-navy-80');
-    expect(description).not.toHaveClass('sm:hidden');
-    expect(description).toHaveAttribute('aria-hidden', 'true');
-    expect(description.parentElement).toContainElement(screen.getByLabelText('Line 1 description'));
-    // The column headings, from `sm` up, are as they were: one row above the lines, not repeated in them.
-    const [heading, rowLabel] = screen.getAllByText('Hours per unit');
-    expect(heading.parentElement).toHaveClass('hidden', 'sm:grid');
+    // No description in the line: it is behind its button.
+    expect(line.queryByText('Description')).toBeNull();
+    // The column headings, from `md` up: one small row at the top of the section's table, not repeated in the lines.
+    const [heading, rowLabel] = within(sectionGroup(1)).getAllByText('Hours per unit');
+    expect(heading.parentElement).toHaveClass('hidden', 'md:grid', 'text-navy-80');
+    expect(heading.parentElement).toHaveAttribute('aria-hidden', 'true');
     expect(rowLabel).toBe(line.getByText('Hours per unit'));
     expect(Array.from(heading.parentElement?.children ?? []).map((cell) => cell.textContent)).toEqual([
       'Title',
@@ -231,30 +536,52 @@ describe('QuoteEditorPage, a new quote', () => {
       'Total hours',
       'Hours with buffer',
       '',
+      '',
     ]);
   });
 
-  it('lays each line out as two rows: the title and the figures, then the description across the whole width', () => {
+  it('lays each line out as one compact row from `md`: the title, the figures and two icon buttons', () => {
     renderEditor('/quotes/new');
-    const line = screen.getByRole('group', { name: 'Line 1' });
+    const line = lineGroup(1);
     const title = within(line).getByRole('textbox', { name: 'Line 1 title' });
-    const description = within(line).getByRole('textbox', { name: 'Line 1 description' });
     expect(title.tagName).toBe('INPUT');
     expect(title).toHaveAttribute('id', 'line-1-title');
     expect(title).toHaveAttribute('placeholder', 'Title');
-    expect(description.tagName).toBe('TEXTAREA');
-    expect(description).toHaveAttribute('id', 'line-1-description');
-    expect(description).toHaveAttribute('rows', '2');
-    expect(description).toHaveAttribute('placeholder', 'Description');
+    // No description text area in the row.
+    expect(within(line).queryAllByRole('textbox').map((box) => box.getAttribute('aria-label'))).toEqual([
+      'Line 1 title',
+      'Line 1 units',
+      'Line 1 hours per unit',
+    ]);
 
-    // Row one holds the title with the figures and Remove, in the column template of the headings.
-    const rowOne = title.parentElement?.parentElement as HTMLElement;
-    expect(rowOne).toHaveClass('sm:grid-cols-[minmax(0,1fr)_5.5rem_7rem_6rem_7rem_5.5rem]');
-    expect(rowOne).toContainElement(screen.getByLabelText('Line 1 units'));
-    expect(rowOne).toContainElement(within(line).getByRole('button', { name: 'Remove line 1' }));
-    expect(rowOne).not.toContainElement(description);
-    // Lines are told apart by a hairline, never a shadow or a box.
-    expect(line).toHaveClass('border-b', 'border-rule');
+    // The row holds the title with the figures and both buttons, in the column template of the headings.
+    const row = title.parentElement?.parentElement as HTMLElement;
+    const columns = 'md:grid-cols-[minmax(0,1fr)_5rem_6.5rem_5.5rem_7rem_2rem_2rem]';
+    expect(row).toHaveClass('grid', columns);
+    const [heading] = within(sectionGroup(1)).getAllByText('Hours per unit');
+    expect(heading.parentElement).toHaveClass(columns);
+    expect(row).toContainElement(screen.getByLabelText('Line 1 units'));
+    expect(row).toContainElement(within(line).getByRole('button', { name: 'Remove line 1' }));
+    expect(row).toContainElement(within(line).getByRole('button', { name: 'Add description to line 1' }));
+
+    // Compact from `md` only: 2rem fields in a smaller font; below it the fields keep the usual size.
+    for (const name of ['title', 'units', 'hours per unit']) {
+      const input = screen.getByLabelText(`Line 1 ${name}`);
+      expect(input).toHaveClass('md:h-8', 'md:min-h-0', 'md:text-[0.8125rem]', 'min-h-12', 'text-lead');
+    }
+    expect(screen.getByLabelText('Line 1 units')).toHaveClass('tabular', 'md:text-right');
+    expect(screen.getByLabelText('Line 1 hours per unit')).toHaveClass('tabular', 'md:text-right');
+    expect(lineTotal(1)).toHaveClass('tabular', 'md:text-right', 'md:text-[0.8125rem]');
+    expect(lineBuffered(1)).toHaveClass('tabular', 'md:text-right', 'md:text-[0.8125rem]');
+    // The row's buttons shrink with it from `md`; the section's own controls keep the usual 44px.
+    expect(within(line).getByRole('button', { name: 'Remove line 1' })).toHaveClass('size-11', 'md:size-8');
+    expect(within(line).getByRole('button', { name: 'Add description to line 1' })).toHaveClass('size-11', 'md:size-8');
+    expect(screen.getByRole('button', { name: 'Remove section 1' })).toHaveClass('size-11');
+    expect(screen.getByRole('button', { name: 'Remove section 1' })).not.toHaveClass('md:size-8');
+    expect(screen.getByLabelText('Section 1 title')).not.toHaveClass('md:h-8');
+    // Lines are told apart by a hairline with little room around it, never a shadow or a box.
+    expect(line).toHaveClass('border-b', 'border-rule', 'md:py-1');
+    expect(line.className).not.toMatch(/shadow|rounded/);
   });
 
   it('works out each line with the time buffer, and the panel takes the column’s sum from the totals', async () => {
@@ -402,18 +729,21 @@ describe('QuoteEditorPage, a new quote', () => {
     expect(screen.getByText('Check the settings to see the totals.')).toBeInTheDocument();
   });
 
-  it('puts the totals under the lines, beside them only from `xl`, and keeps them in sight there', async () => {
+  it('puts the totals under the sections, beside them only from `2xl`, and keeps them in sight there', async () => {
     renderEditor('/quotes/new');
     const totals = screen.getByRole('complementary', { name: 'Quote totals' });
     expect(within(totals).getByRole('region', { name: 'Hours' })).toBeInTheDocument();
     expect(within(totals).getByRole('region', { name: 'Cost' })).toBeInTheDocument();
-    // jsdom cannot apply a breakpoint: the classes are the contract. One column, then a 22rem column from `xl`.
-    expect(totals.parentElement).toHaveClass('grid', 'xl:grid-cols-[minmax(0,1fr)_22rem]');
-    expect(totals.parentElement?.className).not.toMatch(/(^|\s)lg:grid-cols/);
-    expect(totals).toHaveClass('xl:sticky', 'xl:top-6', 'xl:self-start');
-    // Under the lines the three sections sit side by side from `md`, and stack again in the narrow `xl` column.
+    // jsdom cannot apply a breakpoint: the classes are the contract. One column, then a 22rem column from `2xl`.
+    expect(totals.parentElement).toHaveClass('grid', '2xl:grid-cols-[minmax(0,1fr)_22rem]');
+    expect(totals.parentElement?.className).not.toMatch(/(^|\s)(lg|xl):grid-cols/);
+    expect(totals.parentElement).toContainElement(sectionGroup(1));
+    expect(totals).toHaveClass('2xl:sticky', '2xl:top-6', '2xl:self-start');
+    expect(totals.className).not.toMatch(/(^|\s)xl:/);
+    // Under the sections the panel's three sections sit side by side from `md`, and stack again in the `2xl` column.
     const sections = within(totals).getByRole('region', { name: 'Time' }).parentElement;
-    expect(sections).toHaveClass('md:grid-cols-3', 'xl:grid-cols-1');
+    expect(sections).toHaveClass('md:grid-cols-3', '2xl:grid-cols-1');
+    expect(sections?.className).not.toMatch(/(^|\s)xl:/);
   });
 
   it('saves the time buffer and the discount with the quote', async () => {
@@ -535,16 +865,15 @@ describe('QuoteEditorPage, a new quote', () => {
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
-  it('refuses a save without a title or a description', async () => {
+  it('refuses a save without a title, and never asks for a description', async () => {
     const user = userEvent.setup();
     renderEditor('/quotes/new');
     await user.type(screen.getByLabelText('Line 1 hours per unit'), '4');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByLabelText('Title')).toHaveAccessibleDescription('Title is required');
-    const line = within(screen.getByRole('group', { name: 'Line 1' }));
-    expect(line.getByText('Description is required')).toBeInTheDocument();
+    const line = within(lineGroup(1));
     expect(line.getByLabelText('Line 1 title')).toHaveAccessibleDescription('Title is required');
-    expect(line.getByLabelText('Line 1 description')).toHaveAccessibleDescription('Description is required');
+    expect(screen.queryByText('Description is required')).toBeNull();
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
@@ -555,7 +884,7 @@ describe('QuoteEditorPage, a new quote', () => {
     await user.click(screen.getByRole('button', { name: 'Add line' }));
     // Spaces are not a title.
     await user.type(screen.getByLabelText('Line 2 title'), '   ');
-    await user.type(screen.getByLabelText('Line 2 description'), 'Pages for the shop');
+    await describeLine(user, 2, 'Pages for the shop');
     await user.type(screen.getByLabelText('Line 2 hours per unit'), '3');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
@@ -589,7 +918,7 @@ describe('QuoteEditorPage, a new quote', () => {
     await fillQuote(user, '1', hours);
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(coreApi.post).toHaveBeenCalledTimes(1));
-    expect(vi.mocked(coreApi.post).mock.calls[0][1]).toMatchObject({ lines: [{ hoursPerUnit: sent }] });
+    expect(vi.mocked(coreApi.post).mock.calls[0][1]).toMatchObject({ sections: [{ lines: [{ hoursPerUnit: sent }] }] });
   });
 
   it('refuses a quote above 100,000,000.00 and still shows finite totals', async () => {
@@ -672,7 +1001,7 @@ describe('QuoteEditorPage, a new quote', () => {
     expect(screen.getByTestId('where')).toHaveTextContent('/quotes/new');
     expect(screen.getByLabelText('Title')).toHaveValue('Website build');
     expect(screen.getByLabelText('Line 1 title')).toHaveValue('Sign-in screens');
-    expect(screen.getByLabelText('Line 1 description')).toHaveValue('Email and password, with a reset link');
+    expect(await descriptionOf(user, 1)).toBe('Email and password, with a reset link');
     expect(screen.getByLabelText('Line 1 units')).toHaveValue('2');
     expect(screen.getByLabelText('Line 1 hours per unit')).toHaveValue('7.5');
     await user.click(settingsButton());
@@ -683,7 +1012,7 @@ describe('QuoteEditorPage, a new quote', () => {
 });
 
 describe('QuoteEditorPage, a saved quote', () => {
-  it('loads the quote and fills the title, the lines and the settings', async () => {
+  it('loads the quote and fills the title, the sections with their lines in written order, and the settings', async () => {
     const user = userEvent.setup();
     renderEditor('/quotes/7');
     expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard refresh' })).toBeInTheDocument();
@@ -691,11 +1020,27 @@ describe('QuoteEditorPage, a saved quote', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Title')).toHaveValue('Dashboard refresh');
     expect(screen.getByLabelText('Currency')).toHaveValue('USD');
+    expect(screen.getAllByRole('group', { name: /^Section \d+$/ })).toHaveLength(2);
+    expect(screen.getByLabelText('Section 1 title')).toHaveValue('Screens');
+    expect(screen.getByLabelText('Section 2 title')).toHaveValue('Reports');
     expect(screen.getAllByRole('group', { name: /^Line \d+$/ })).toHaveLength(3);
+    // Lines are counted across the whole quote: 1 and 2 in the first section, 3 in the second.
+    expect(
+      within(sectionGroup(1))
+        .getAllByRole('group', { name: /^Line \d+$/ })
+        .map((group) => group.getAttribute('aria-label')),
+    ).toEqual(['Line 1', 'Line 2']);
+    expect(within(sectionGroup(2)).getByRole('group', { name: 'Line 3' })).toBeInTheDocument();
     expect(screen.getByLabelText('Line 1 title')).toHaveValue('Sign-in screens');
-    expect(screen.getByLabelText('Line 1 description')).toHaveValue('Email and password, with a reset link');
+    expect(screen.getByLabelText('Line 2 title')).toHaveValue('Chart tiles');
     expect(screen.getByLabelText('Line 3 title')).toHaveValue('Export to CSV');
-    expect(screen.getByLabelText('Line 3 description')).toHaveValue('Every table, as shown');
+    // Every saved line has a description: each button says Edit and carries the marker.
+    for (const number of [1, 2, 3]) {
+      expect(screen.getByRole('button', { name: `Edit description of line ${number}` })).toBeInTheDocument();
+      expect(markerOf(number)).not.toBeNull();
+    }
+    expect(await descriptionOf(user, 1)).toBe('Email and password, with a reset link');
+    expect(await descriptionOf(user, 3)).toBe('Every table, as shown');
     expect(screen.getByLabelText('Line 1 units')).toHaveValue('2');
     expect(screen.getByLabelText('Line 1 hours per unit')).toHaveValue('7.5');
     expect(screen.getByLabelText('Line 3 hours per unit')).toHaveValue('12.34');
@@ -754,10 +1099,18 @@ describe('QuoteEditorPage, a saved quote', () => {
       bugFixPercent: 5,
       hoursPerDay: 7,
       hoursPerMonth: 150,
-      lines: [
-        { title: 'Sign-in screens', description: 'Email and password, with a reset link', units: 2, hoursPerUnit: 7.5 },
-        { title: 'Chart tiles', description: 'Revenue, hours and margin', units: 3, hoursPerUnit: 0.25 },
-        { title: 'Export to CSV', description: 'Every table, as shown', units: 1, hoursPerUnit: 12.34 },
+      sections: [
+        {
+          title: 'Screens',
+          lines: [
+            { title: 'Sign-in screens', description: 'Email and password, with a reset link', units: 2, hoursPerUnit: 7.5 },
+            { title: 'Chart tiles', description: 'Revenue, hours and margin', units: 3, hoursPerUnit: 0.25 },
+          ],
+        },
+        {
+          title: 'Reports',
+          lines: [{ title: 'Export to CSV', description: 'Every table, as shown', units: 1, hoursPerUnit: 12.34 }],
+        },
       ],
     });
     expect(coreApi.post).not.toHaveBeenCalled();
@@ -795,7 +1148,7 @@ describe('QuoteEditorPage, a saved quote', () => {
       const save = await saveAndWait(user);
       await user.type(screen.getByLabelText('Title'), '!');
       await retype(user, screen.getByLabelText('Line 3 hours per unit'), '20');
-      await user.click(screen.getByRole('button', { name: 'Add line' }));
+      await user.click(within(sectionGroup(2)).getByRole('button', { name: 'Add line' }));
       await user.click(screen.getByRole('button', { name: 'Remove line 1' }));
       await save.answered();
 
@@ -830,7 +1183,9 @@ describe('QuoteEditorPage, a saved quote', () => {
       const save = await saveAndWait(user);
       await save.answered();
       expect(screen.getByRole('status')).toHaveTextContent('Saved');
-      await user.type(screen.getByLabelText('Line 2 description'), '!');
+      // An edit made in the description dialog is an edit like any other.
+      await user.click(descriptionButton(2));
+      await user.type(within(descriptionDialog()).getByLabelText('Description'), '!');
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
     });
 

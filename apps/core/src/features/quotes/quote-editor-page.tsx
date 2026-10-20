@@ -10,16 +10,17 @@ import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { LinkArrow } from '@/components/ui/link-arrow';
 import { Panel } from '@/components/ui/panel';
-import { Textarea } from '@/components/ui/textarea';
 import { serviceMessage, statusOf } from '@/lib/core-api';
 import { useQuote, useSaveQuote } from './api';
-import { bufferedHours, formatHours, hundredthsOf, quoteTotals } from './calc';
+import { quoteTotals } from './calc';
+import { QuoteSection } from './quote-section';
 import { CurrencyInput, QuoteSettingsDrawer } from './quote-settings-drawer';
 import { QuoteTotalsPanel } from './quote-totals-panel';
 import {
-  MAX_LINES,
+  MAX_SECTIONS,
   SETTINGS_FIELDS,
   blankQuoteLine,
+  lineCount,
   quoteFormSchema,
   toCalcInput,
   toQuoteBody,
@@ -28,34 +29,12 @@ import {
   type QuoteRow,
 } from './schema';
 
-const NONE = '—';
 const INT32_MAX = 2_147_483_647;
 const SETTINGS_BUTTON = 'quote-settings-button';
-// Row one of a line from `sm` up: the title takes the free width; units, hours per unit, total hours, hours with buffer
-// and Remove have fixed columns. The description is row two, across the whole width.
-const COLUMNS = 'sm:grid-cols-[minmax(0,1fr)_5.5rem_7rem_6rem_7rem_5.5rem]';
-const ROW_ONE_FIELDS = ['title', 'units', 'hoursPerUnit'] as const;
-const LINE_NAMES = { title: 'title', units: 'units', hoursPerUnit: 'hours per unit' } as const;
-const PLACEHOLDERS = { title: 'Title', units: 'Units', hoursPerUnit: 'Hours' } as const;
-const LINE_LABELS = { title: 'Title', units: 'Units', hoursPerUnit: 'Hours per unit' } as const;
-const INPUT_MODES = { title: undefined, units: 'numeric', hoursPerUnit: 'decimal' } as const;
+const ADD_SECTION_BUTTON = 'quote-add-section';
 
 const backLink =
   'mb-4 inline-flex min-h-11 items-center font-semibold decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline';
-
-// Above each field of a stacked line, where the column headings are hidden; from `sm` up the headings say it and these go.
-const lineLabel = 'text-small font-semibold text-navy-80';
-const narrowLabel = `${lineLabel} sm:hidden`;
-
-const lineShape = quoteFormSchema.shape.lines.element.shape;
-
-/** A line's units x hours per unit, in hundredths of an hour, or null while either is blank or invalid. */
-function lineTotal(line: QuoteFormValues['lines'][number] | undefined): number | null {
-  if (line === undefined) return null;
-  const units = lineShape.units.safeParse(line.units);
-  const hours = lineShape.hoursPerUnit.safeParse(line.hoursPerUnit);
-  return units.success && hours.success ? Number(units.data) * hundredthsOf(hours.data) : null;
-}
 
 function BackToQuotes() {
   return (
@@ -79,7 +58,7 @@ function QuoteNotFound() {
   );
 }
 
-/** `/quotes/new` and `/quotes/:id`: a quotation's lines, its live totals and its settings, saved together. */
+/** `/quotes/new` and `/quotes/:id`: a quotation's sections of lines, its live totals and its settings, saved together. */
 export function QuoteEditorPage() {
   // The lines need the room: the editor, loading and not found alike, drops the shell's 75rem cap.
   useFullWidthPage();
@@ -141,7 +120,7 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
     mode: 'onTouched',
     defaultValues: toQuoteFormValues(quote),
   });
-  const { fields, append, remove } = useFieldArray({ control, name: 'lines' });
+  const sectionFields = useFieldArray({ control, name: 'sections' });
 
   // "Saved" holds until the next edit. The edits are counted too, so a save answered after more were made can tell.
   const edits = useRef(0);
@@ -163,15 +142,24 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
   // Never asked for while a setting is invalid: the mirror throws on a zero count, day or month.
   const totals = calc.settings ? quoteTotals(calc.settings, calc.lines) : null;
   const lineHours = calc.lines.reduce((sum, line) => sum + line.units * line.hoursHundredths, 0);
-  // Each line's hours with the time buffer, or null while the line or the settings (the buffer) are invalid. The panel's
-  // hours with the buffer are `totals.bufferedBaseHours`, which pads each valid line the same way, so the two agree.
+  // Null while the settings, the time buffer among them, are invalid: then no line or section shows hours with the buffer.
   const bufferBp = calc.settings?.timeBufferBp ?? null;
-  const lineTotals = fields.map((_field, index) => lineTotal(values.lines[index]));
-  const lineBuffered = lineTotals.map((total) =>
-    total === null || bufferBp === null ? null : bufferedHours(total, bufferBp),
-  );
   const settingsWrong = calc.settings === null || SETTINGS_FIELDS.some((name) => errors[name] !== undefined);
-  const linesMessage = errors.lines?.root?.message ?? errors.lines?.message;
+  // The quote's own messages (a line in all, at most 200, too large) go under the sections.
+  const sectionsMessage = errors.sections?.root?.message ?? errors.sections?.message;
+  const lines = lineCount(values);
+  // Lines are numbered across the whole quote: each section starts after the lines of those before it.
+  const firstLineNumbers: number[] = [];
+  values.sections.reduce((next, section) => {
+    firstLineNumbers.push(next);
+    return next + section.lines.length;
+  }, 1);
+
+  function removeSection(index: number) {
+    sectionFields.remove(index);
+    // The button that was pressed goes with its section: focus moves to the next thing to do.
+    document.getElementById(ADD_SECTION_BUTTON)?.focus();
+  }
 
   const submit = handleSubmit(
     async (valid) => {
@@ -235,8 +223,8 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
           </p>
         ) : null}
 
-        {/* The totals sit under the lines, and beside them, in sight as the lines scroll, only from `xl`. */}
-        <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        {/* The totals sit under the sections, and beside them, in sight as the lines scroll, only from `2xl`. */}
+        <div className="grid items-start gap-8 2xl:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="grid min-w-0 gap-6">
             <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_10rem]">
               <Field label="Title" htmlFor="quote-title" error={errors.title?.message}>
@@ -252,134 +240,50 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
 
             <div className="grid gap-3">
               <h2 className="text-small font-semibold text-navy-80">Lines</h2>
-              <div>
-                {/* Column names for the sighted; the inputs carry their own names. Below `sm` each row stacks and labels itself. */}
-                <div
-                  aria-hidden="true"
-                  className={`hidden gap-2 border-b border-rule pb-2 text-small font-semibold text-navy-80 sm:grid ${COLUMNS}`}
-                >
-                  <span>Title</span>
-                  <span>Units</span>
-                  <span>Hours per unit</span>
-                  <span className="text-right">Total hours</span>
-                  <span className="text-right">Hours with buffer</span>
-                  <span />
-                </div>
-
-                {fields.map((field, index) => {
-                  const number = index + 1;
-                  const rowErrors = errors.lines?.[index];
-                  const total = lineTotals[index];
-                  const buffered = lineBuffered[index];
-                  const descriptionError = rowErrors?.description?.message;
-                  return (
-                    // A hairline under each line, so where one ends is plain.
-                    <div
-                      key={field.id}
-                      role="group"
-                      aria-label={`Line ${number}`}
-                      className="grid gap-2 border-b border-rule py-4"
-                    >
-                      <div className={`grid items-start gap-2 ${COLUMNS}`}>
-                        {ROW_ONE_FIELDS.map((name) => (
-                          <div key={name} className="grid gap-1">
-                            <span aria-hidden="true" className={narrowLabel}>
-                              {LINE_LABELS[name]}
-                            </span>
-                            <Input
-                              {...fieldA11y(`line-${number}-${name}`, rowErrors?.[name]?.message)}
-                              {...register(`lines.${index}.${name}`)}
-                              aria-label={`Line ${number} ${LINE_NAMES[name]}`}
-                              placeholder={PLACEHOLDERS[name]}
-                              inputMode={INPUT_MODES[name]}
-                              autoComplete="off"
-                            />
-                          </div>
-                        ))}
-                        <div className="grid gap-1">
-                          <span aria-hidden="true" className={narrowLabel}>
-                            Total hours
-                          </span>
-                          <p className="tabular py-3 text-small sm:text-right">
-                            <span className="sr-only">{`Line ${number} total hours `}</span>
-                            {total === null ? NONE : formatHours(total)}
-                          </p>
-                        </div>
-                        <div className="grid gap-1">
-                          <span aria-hidden="true" className={narrowLabel}>
-                            Hours with buffer
-                          </span>
-                          <p className="tabular py-3 text-small sm:text-right">
-                            <span className="sr-only">{`Line ${number} hours with buffer `}</span>
-                            {buffered === null ? NONE : formatHours(buffered)}
-                          </p>
-                        </div>
-                        <Button
-                          variant="quiet"
-                          aria-label={`Remove line ${number}`}
-                          disabled={fields.length === 1}
-                          onClick={() => remove(index)}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                      {/* Row one's messages, each with the id its input's aria-describedby points at. */}
-                      {ROW_ONE_FIELDS.map((name) => {
-                        const message = rowErrors?.[name]?.message;
-                        return message ? (
-                          <p
-                            key={name}
-                            id={`line-${number}-${name}-error`}
-                            role="alert"
-                            className="text-small text-foreground"
-                          >
-                            {message}
-                          </p>
-                        ) : null;
-                      })}
-                      {/* Row two: the description, across the whole width, labelled at every width. */}
-                      <div className="grid gap-1">
-                        <span aria-hidden="true" className={lineLabel}>
-                          Description
-                        </span>
-                        <Textarea
-                          {...fieldA11y(`line-${number}-description`, descriptionError)}
-                          {...register(`lines.${index}.description`)}
-                          aria-label={`Line ${number} description`}
-                          placeholder="Description"
-                          rows={2}
-                          className="min-h-20"
-                        />
-                      </div>
-                      {descriptionError ? (
-                        <p id={`line-${number}-description-error`} role="alert" className="text-small text-foreground">
-                          {descriptionError}
-                        </p>
-                      ) : null}
-                    </div>
-                  );
-                })}
+              <div className="grid gap-8">
+                {sectionFields.fields.map((field, index) => (
+                  <QuoteSection
+                    key={field.id}
+                    control={control}
+                    register={register}
+                    errors={errors}
+                    index={index}
+                    section={values.sections[index]}
+                    firstLineNumber={firstLineNumbers[index] ?? 1}
+                    lineCount={lines}
+                    sectionCount={sectionFields.fields.length}
+                    bufferBp={bufferBp}
+                    onRemove={() => removeSection(index)}
+                    fallbackFocusId={ADD_SECTION_BUTTON}
+                  />
+                ))}
               </div>
 
-              {linesMessage ? (
+              {sectionsMessage ? (
                 <p role="alert" className="text-small text-foreground">
-                  {linesMessage}
+                  {sectionsMessage}
                 </p>
               ) : null}
 
               <div>
                 <Button
+                  id={ADD_SECTION_BUTTON}
                   variant="quiet"
-                  disabled={fields.length >= MAX_LINES}
-                  onClick={() => append({ ...blankQuoteLine })}
+                  disabled={sectionFields.fields.length >= MAX_SECTIONS}
+                  onClick={() =>
+                    sectionFields.append(
+                      { title: '', lines: [{ ...blankQuoteLine }] },
+                      { focusName: `sections.${sectionFields.fields.length}.title` },
+                    )
+                  }
                 >
-                  Add line
+                  Add section
                 </Button>
               </div>
             </div>
           </div>
 
-          <aside aria-label="Quote totals" className="xl:sticky xl:top-6 xl:self-start">
+          <aside aria-label="Quote totals" className="2xl:sticky 2xl:top-6 2xl:self-start">
             <QuoteTotalsPanel
               settings={calc.settings}
               totals={totals}

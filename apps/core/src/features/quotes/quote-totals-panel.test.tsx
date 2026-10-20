@@ -212,11 +212,13 @@ describe('QuoteTotalsPanel', () => {
     expect(valuesOf('Cost', 'Final quote')).toEqual(['₹99.99']);
   });
 
-  it('lays its sections side by side from `md`, and one under another in the column beside the lines from `xl`', () => {
+  it('lays its sections side by side from `md`, and one under another in the column beside the lines from `2xl`', () => {
     render(<QuoteTotalsPanel settings={settings} totals={workbook} lineHours={118_800} currencyCode="INR" />);
     const sections = screen.getByRole('region', { name: 'Time' }).parentElement;
     expect(sections).toContainElement(screen.getByRole('region', { name: 'Cost' }));
-    expect(sections).toHaveClass('grid', 'md:grid-cols-3', 'xl:grid-cols-1');
+    expect(sections).toHaveClass('grid', 'md:grid-cols-3', '2xl:grid-cols-1');
+    // Not from `xl`: under the sections, the panel is the full width there.
+    expect(sections?.className).not.toMatch(/(^|\s)xl:/);
   });
 
   it('asks for the settings instead of totals while they are invalid, and keeps the hours from the lines', () => {
