@@ -27,12 +27,26 @@ const ROLES = [
   { legend: 'Tester', key: 'tester', count: 'testerCount', rate: 'testerRate' },
 ] as const;
 
+// In the order of the calculation: the time buffer pads the hours first, the negotiation buffer pads the amount, and the
+// discount comes off that; then the percentages of the hours.
 const PERCENTAGES = [
+  {
+    name: 'timeBufferPercent',
+    id: 'quote-time-buffer',
+    label: 'Time buffer (%)',
+    hint: 'Pads the hours of every line; the price follows.',
+  },
   {
     name: 'negotiationBufferPercent',
     id: 'quote-negotiation-buffer',
     label: 'Negotiation buffer (%)',
-    hint: 'Added to the subtotal.',
+    hint: 'Added to the subtotal only; it does not change the hours.',
+  },
+  {
+    name: 'discountPercent',
+    id: 'quote-discount',
+    label: 'Discount (%)',
+    hint: 'Taken off after the negotiation buffer is added.',
   },
   {
     name: 'managementPercent',

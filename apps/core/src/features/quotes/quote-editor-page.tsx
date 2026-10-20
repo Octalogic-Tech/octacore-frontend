@@ -163,15 +163,13 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
   // Never asked for while a setting is invalid: the mirror throws on a zero count, day or month.
   const totals = calc.settings ? quoteTotals(calc.settings, calc.lines) : null;
   const lineHours = calc.lines.reduce((sum, line) => sum + line.units * line.hoursHundredths, 0);
-  // Each line's hours with the negotiation buffer, or null while the line or the settings (the buffer) are invalid.
-  const bufferBp = calc.settings?.negotiationBufferBp ?? null;
+  // Each line's hours with the time buffer, or null while the line or the settings (the buffer) are invalid. The panel's
+  // hours with the buffer are `totals.bufferedBaseHours`, which pads each valid line the same way, so the two agree.
+  const bufferBp = calc.settings?.timeBufferBp ?? null;
   const lineTotals = fields.map((_field, index) => lineTotal(values.lines[index]));
   const lineBuffered = lineTotals.map((total) =>
     total === null || bufferBp === null ? null : bufferedHours(total, bufferBp),
   );
-  const shownBuffered = lineBuffered.filter((hours): hours is number => hours !== null);
-  // The panel adds up the column as shown, so the two always agree.
-  const bufferedLineHours = shownBuffered.length > 0 ? shownBuffered.reduce((sum, hours) => sum + hours, 0) : null;
   const settingsWrong = calc.settings === null || SETTINGS_FIELDS.some((name) => errors[name] !== undefined);
   const linesMessage = errors.lines?.root?.message ?? errors.lines?.message;
 
@@ -386,7 +384,6 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
               settings={calc.settings}
               totals={totals}
               lineHours={lineHours}
-              bufferedLineHours={bufferedLineHours}
               currencyCode={values.currencyCode.trim().toUpperCase()}
             />
           </aside>

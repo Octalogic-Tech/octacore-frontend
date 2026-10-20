@@ -10,14 +10,12 @@ interface QuoteTotalsPanelProps {
   totals: QuoteTotals | null;
   /** The lines' own hours (units x hours per unit, valid lines only), in hundredths. Known whatever the settings. */
   lineHours: number;
-  /**
-   * The lines' hours with the negotiation buffer, the sum of the editor's "Hours with buffer" column, in hundredths. Null
-   * while the settings are invalid or no line is valid: then the row is not shown.
-   */
-  bufferedLineHours?: number | null;
   /** The quote's currency, in capitals. Only read while the settings, the currency among them, are valid. */
   currencyCode: string;
 }
+
+/** A true minus sign, for a figure taken off: a hyphen reads as a dash. */
+const MINUS = '\u2212';
 
 /** Hundredths of something counted, with its noun: `1 hour`, `2.5 hours`, `0 months`. */
 function counted(hundredths: number, noun: string) {
@@ -51,13 +49,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
  * The quote's totals as the form stands: the time it takes, the hours by role and the cost ending in the final quote.
  * It never shows a total worked out from a blank or wrong setting: those are replaced by a note to check the settings.
  */
-export function QuoteTotalsPanel({
-  settings,
-  totals,
-  lineHours,
-  bufferedLineHours = null,
-  currencyCode,
-}: QuoteTotalsPanelProps) {
+export function QuoteTotalsPanel({ settings, totals, lineHours, currencyCode }: QuoteTotalsPanelProps) {
   const ready = settings !== null && totals !== null;
   const money = (minor: number) => formatMoney(minor, { currencyCode, currencySymbol: currencyCode });
 
@@ -83,11 +75,15 @@ export function QuoteTotalsPanel({
 
         <Section id="quote-totals-hours" title="Hours">
           <Row label="From the lines" value={counted(lineHours, 'hour')} />
-          {ready && bufferedLineHours !== null ? (
-            <Row
-              label={`With negotiation buffer (${settings.negotiationBufferBp / 100}%)`}
-              value={counted(bufferedLineHours, 'hour')}
-            />
+          {/* The padded hours, with what the time buffer added; with no time buffer they are the lines' own. */}
+          {ready && settings.timeBufferBp > 0 ? (
+            <>
+              <Row
+                label={`Time buffer (${settings.timeBufferBp / 100}%)`}
+                value={`+${counted(totals.timeBufferHours, 'hour')}`}
+              />
+              <Row label="With time buffer" value={counted(totals.bufferedBaseHours, 'hour')} />
+            </>
           ) : null}
           {ready ? (
             <>
@@ -120,6 +116,12 @@ export function QuoteTotalsPanel({
               label={`Negotiation buffer (${settings.negotiationBufferBp / 100}%)`}
               value={money(totals.negotiationBufferCents)}
             />
+            {settings.discountBp > 0 ? (
+              <Row
+                label={`Discount (${settings.discountBp / 100}%)`}
+                value={`${MINUS}${money(totals.discountCents)}`}
+              />
+            ) : null}
             <Row label="Final quote" value={money(totals.finalQuoteCents)} strong />
           </Section>
         ) : (

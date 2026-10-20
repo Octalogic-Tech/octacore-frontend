@@ -57,7 +57,9 @@ const FIELDS: [string, string, keyof QuoteFormValues, string, string][] = [
   ['Project manager', 'Rate per hour', 'managerRate', '3000.00', '2500.50'],
   ['Tester', 'People', 'testerCount', '1', '3'],
   ['Tester', 'Rate per hour', 'testerRate', '0.00', '800'],
+  ['Percentages', 'Time buffer (%)', 'timeBufferPercent', '0', '12.5'],
   ['Percentages', 'Negotiation buffer (%)', 'negotiationBufferPercent', '25', '10'],
+  ['Percentages', 'Discount (%)', 'discountPercent', '0', '7.5'],
   ['Percentages', 'Management (%)', 'managementPercent', '25', '12.5'],
   ['Percentages', 'Testing (%)', 'testingPercent', '0', '10'],
   ['Percentages', 'Bug fixing (%)', 'bugFixPercent', '0', '5'],
@@ -86,7 +88,9 @@ describe('QuoteSettingsDrawer', () => {
       'quote-manager-rate',
       'quote-tester-count',
       'quote-tester-rate',
+      'quote-time-buffer',
       'quote-negotiation-buffer',
+      'quote-discount',
       'quote-management',
       'quote-testing',
       'quote-bug-fixing',
@@ -101,10 +105,45 @@ describe('QuoteSettingsDrawer', () => {
   it('says what each percentage applies to and what the rates are in', () => {
     render(<Harness />);
     const percentages = within(drawer()).getByRole('group', { name: 'Percentages' });
-    expect(within(percentages).getByText('Added to the subtotal.')).toBeInTheDocument();
+    expect(within(percentages).getByText('Pads the hours of every line; the price follows.')).toBeInTheDocument();
+    expect(
+      within(percentages).getByText('Added to the subtotal only; it does not change the hours.'),
+    ).toBeInTheDocument();
+    expect(within(percentages).getByText('Taken off after the negotiation buffer is added.')).toBeInTheDocument();
     expect(within(percentages).getByText('Of the build hours: the lines, testing and bug fixing.')).toBeInTheDocument();
     expect(within(percentages).getAllByText('Of the base hours from the lines.')).toHaveLength(2);
     expect(within(drawer()).getByText('Rates are per hour, in INR.')).toBeInTheDocument();
+  });
+
+  it('shows the percentages in the order of the calculation: time buffer, negotiation buffer, discount, then the hours', () => {
+    render(<Harness />);
+    const percentages = within(drawer()).getByRole('group', { name: 'Percentages' });
+    const labels = within(percentages)
+      .getAllByRole('textbox')
+      .map((input) => (input as HTMLInputElement).labels?.[0]?.textContent);
+    expect(labels).toEqual([
+      'Time buffer (%)',
+      'Negotiation buffer (%)',
+      'Discount (%)',
+      'Management (%)',
+      'Testing (%)',
+      'Bug fixing (%)',
+    ]);
+  });
+
+  it.each([
+    ['Time buffer (%)', '100.01', 'Percentage must be from 0 to 100'],
+    ['Discount (%)', '50.01', 'Discount must be from 0 to 50'],
+    ['Discount (%)', 'abc', 'Enter a percentage like 7.5'],
+  ])('tells %s of %j: %s', async (label, text, message) => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const input = within(drawer()).getByLabelText(label);
+    await user.clear(input);
+    await user.type(input, text);
+    await user.tab();
+    expect(await within(drawer()).findByText(message)).toBeInTheDocument();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
   });
 
   it('shows a field’s message', async () => {

@@ -9,6 +9,7 @@ const MAX_HOURS_HUNDREDTHS = 1_000_000; // 10,000 hours
 const MAX_COUNT = 1_000;
 const MAX_RATE_CENTS = 10_000_000; // 100,000.00 an hour
 const MAX_PERCENT_HUNDREDTHS = 10_000; // 100 %
+const MAX_DISCOUNT_HUNDREDTHS = 5_000; // 50 %, the invoices' own cap
 const MAX_HOURS_PER_DAY = 24;
 const MAX_HOURS_PER_MONTH = 744;
 
@@ -74,12 +75,20 @@ function hoursProblem(text: string): string | null {
   return hundredths > MAX_HOURS_HUNDREDTHS ? 'Hours must be 10,000 or less' : null;
 }
 
-/** A percentage from 0 to 100, to the hundredth. */
-function percentProblem(text: string): string | null {
-  if (text === '') return 'Percentage is required';
-  if (!HUNDREDTHS_TEXT.test(text)) return 'Enter a percentage like 7.5';
-  return hundredthsOf(text) > MAX_PERCENT_HUNDREDTHS ? 'Percentage must be from 0 to 100' : null;
+/** A percentage from 0 up to `max` (in hundredths of a percent), to the hundredth, with the message for one above it. */
+function percentRule(max: number, tooLarge: string) {
+  return (text: string): string | null => {
+    if (text === '') return 'Percentage is required';
+    if (!HUNDREDTHS_TEXT.test(text)) return 'Enter a percentage like 7.5';
+    return hundredthsOf(text) > max ? tooLarge : null;
+  };
 }
+
+/** A percentage from 0 to 100: the time buffer, the negotiation buffer, management, testing and bug fixing. */
+const percentProblem = percentRule(MAX_PERCENT_HUNDREDTHS, 'Percentage must be from 0 to 100');
+
+/** The discount, from 0 to 50 %: no more than an invoice may take off, so a quote can become an invoice. */
+const discountProblem = percentRule(MAX_DISCOUNT_HUNDREDTHS, 'Discount must be from 0 to 50');
 
 /** An hourly rate in units and hundredths of the quote's currency: 0 is a fair rate (a tester may be free). */
 function rateProblem(text: string): string | null {
@@ -116,6 +125,8 @@ const quoteLineRowSchema = z.object({
 // Hours, person-days and months are decimal numbers on the wire (1188, 2.48); every cost is whole minor units.
 const quoteTotalsRowSchema = z.object({
   baseHours: z.number(),
+  timeBufferHours: z.number(),
+  bufferedBaseHours: z.number(),
   testingHours: z.number(),
   bugFixHours: z.number(),
   developmentHours: z.number(),
@@ -132,6 +143,7 @@ const quoteTotalsRowSchema = z.object({
   testingCostCents: z.number().int(),
   subtotalCents: z.number().int(),
   negotiationBufferCents: z.number().int(),
+  discountCents: z.number().int(),
   finalQuoteCents: z.number().int(),
 });
 
@@ -147,7 +159,9 @@ export const quoteRowSchema = z.object({
   testerCount: z.number().int(),
   testerRateCents: z.number().int(),
   // Percents are JSON numbers with up to two decimals (25, 7.5).
+  timeBufferPercent: z.number(),
   negotiationBufferPercent: z.number(),
+  discountPercent: z.number(),
   managementPercent: z.number(),
   testingPercent: z.number(),
   bugFixPercent: z.number(),
@@ -172,7 +186,9 @@ const settingsShape = {
   managerRate: textField(rateProblem),
   testerCount: textField(countProblem),
   testerRate: textField(rateProblem),
+  timeBufferPercent: textField(percentProblem),
   negotiationBufferPercent: textField(percentProblem),
+  discountPercent: textField(discountProblem),
   managementPercent: textField(percentProblem),
   testingPercent: textField(percentProblem),
   bugFixPercent: textField(percentProblem),
@@ -226,7 +242,9 @@ export const emptyQuoteForm: QuoteFormValues = {
   managerRate: '3000.00',
   testerCount: '1',
   testerRate: '0.00',
+  timeBufferPercent: '0',
   negotiationBufferPercent: '25',
+  discountPercent: '0',
   managementPercent: '25',
   testingPercent: '0',
   bugFixPercent: '0',
@@ -246,7 +264,9 @@ export function toQuoteFormValues(row?: QuoteRow): QuoteFormValues {
     managerRate: toAmountText(row.managerRateCents),
     testerCount: String(row.testerCount),
     testerRate: toAmountText(row.testerRateCents),
+    timeBufferPercent: String(row.timeBufferPercent),
     negotiationBufferPercent: String(row.negotiationBufferPercent),
+    discountPercent: String(row.discountPercent),
     managementPercent: String(row.managementPercent),
     testingPercent: String(row.testingPercent),
     bugFixPercent: String(row.bugFixPercent),
@@ -281,7 +301,9 @@ export interface QuoteBody {
   managerRateCents: number;
   testerCount: number;
   testerRateCents: number;
+  timeBufferPercent: number;
   negotiationBufferPercent: number;
+  discountPercent: number;
   managementPercent: number;
   testingPercent: number;
   bugFixPercent: number;
@@ -303,7 +325,9 @@ export function toQuoteBody(values: QuoteFormValues): QuoteBody {
     managerRateCents: parseAmount(values.managerRate),
     testerCount: number(values.testerCount),
     testerRateCents: parseAmount(values.testerRate),
+    timeBufferPercent: number(values.timeBufferPercent),
     negotiationBufferPercent: number(values.negotiationBufferPercent),
+    discountPercent: number(values.discountPercent),
     managementPercent: number(values.managementPercent),
     testingPercent: number(values.testingPercent),
     bugFixPercent: number(values.bugFixPercent),
@@ -350,6 +374,8 @@ export function toCalcInput(values: QuoteFormValues): { settings: CalcSettings |
       bugFixBp: percent(values.bugFixPercent),
       hoursPerDay: whole(values.hoursPerDay),
       hoursPerMonth: whole(values.hoursPerMonth),
+      timeBufferBp: percent(values.timeBufferPercent),
+      discountBp: percent(values.discountPercent),
     },
     lines,
   };

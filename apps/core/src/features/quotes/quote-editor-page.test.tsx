@@ -3,8 +3,9 @@ import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import { coreApi } from '@/lib/core-api';
-import { quoteEnvelope, quoteRows } from '@/test/fixtures/quotes';
+import { bufferedQuoteRow, quoteEnvelope, quoteRows } from '@/test/fixtures/quotes';
 import { renderWithProviders } from '@/test/utils';
+import { hundredthsOf } from './calc';
 import { QuoteEditorPage } from './quote-editor-page';
 
 vi.mock('@/lib/core-api', async (importOriginal) => ({
@@ -20,6 +21,7 @@ const serve = (quote: unknown = quoteEnvelope(saved)) =>
   vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
     if (path === '/quotations/7') return { data: quote };
     if (path === '/quotations/12') return { data: quoteEnvelope({ ...quoteRows[0], id: 12, title: 'Website build' }) };
+    if (path === '/quotations/3') return { data: quoteEnvelope(bufferedQuoteRow) };
     throw new Error(`unexpected GET ${path}`);
   }) as never);
 
@@ -64,6 +66,12 @@ const valuesOf = (section: string, label: string) => {
 
 const lineTotal = (number: number) => screen.getByText(`Line ${number} total hours`).parentElement;
 const lineBuffered = (number: number) => screen.getByText(`Line ${number} hours with buffer`).parentElement;
+/** What the "Hours with buffer" column shows for the first `count` lines, added up, in hundredths of an hour. */
+const columnSum = (count: number) =>
+  Array.from({ length: count }, (_unused, index) => lineBuffered(index + 1)?.textContent ?? '').reduce(
+    (sum, text) => sum + hundredthsOf(text.replace(/^Line \d+ hours with buffer /, '')),
+    0,
+  );
 const settingsButton = () => screen.getByRole('button', { name: /^Settings/ });
 const drawer = () => screen.getByRole('dialog', { name: 'Quote settings' });
 
@@ -98,7 +106,9 @@ const fullNewBody = {
   managerRateCents: 300_000,
   testerCount: 1,
   testerRateCents: 0,
+  timeBufferPercent: 0,
   negotiationBufferPercent: 25,
+  discountPercent: 0,
   managementPercent: 25,
   testingPercent: 0,
   bugFixPercent: 0,
@@ -247,10 +257,10 @@ describe('QuoteEditorPage, a new quote', () => {
     expect(line).toHaveClass('border-b', 'border-rule');
   });
 
-  it('works out each line with the negotiation buffer, and the panel adds the column up', async () => {
+  it('works out each line with the time buffer, and the panel takes the column’s sum from the totals', async () => {
     const user = userEvent.setup();
     renderEditor('/quotes/new');
-    // The plan's example: 24, 2 x 28 and 16.5 hours, 96.5 in all, at the default 25 % buffer.
+    // The plan's example: 24, 2 x 28 and 16.5 hours, 96.5 in all.
     await user.type(screen.getByLabelText('Line 1 hours per unit'), '24');
     await user.click(screen.getByRole('button', { name: 'Add line' }));
     await retype(user, screen.getByLabelText('Line 2 units'), '2');
@@ -258,39 +268,138 @@ describe('QuoteEditorPage, a new quote', () => {
     await user.click(screen.getByRole('button', { name: 'Add line' }));
     await user.type(screen.getByLabelText('Line 3 hours per unit'), '16.5');
 
+    // The new quote's time buffer is 0: each line's hours are its own, and the panel has no row for the buffer.
+    expect(lineBuffered(1)).toHaveTextContent('Line 1 hours with buffer 24');
+    expect(lineBuffered(2)).toHaveTextContent('Line 2 hours with buffer 56');
+    expect(lineBuffered(3)).toHaveTextContent('Line 3 hours with buffer 16.5');
+    expect(valuesOf('Hours', 'From the lines')).toEqual(['96.5 hours']);
+    expect(within(screen.getByRole('region', { name: 'Hours' })).queryByText(/time buffer/i)).toBeNull();
+    expect(valuesOf('Cost', 'Final quote')).toEqual(['₹4,64,425.00']);
+
+    await setSetting(user, 'Percentages', 'Time buffer (%)', '25');
     expect(lineBuffered(1)).toHaveTextContent('Line 1 hours with buffer 30');
     expect(lineBuffered(2)).toHaveTextContent('Line 2 hours with buffer 70');
     // 16.5 x 1.25 is 20.625: the half goes up.
     expect(lineBuffered(3)).toHaveTextContent('Line 3 hours with buffer 20.63');
     expect(valuesOf('Hours', 'From the lines')).toEqual(['96.5 hours']);
-    expect(valuesOf('Hours', 'With negotiation buffer (25%)')).toEqual(['120.63 hours']);
+    expect(valuesOf('Hours', 'Time buffer (25%)')).toEqual(['+24.13 hours']);
+    expect(valuesOf('Hours', 'With time buffer')).toEqual(['120.63 hours']);
 
-    await setSetting(user, 'Percentages', 'Negotiation buffer (%)', '10');
+    await setSetting(user, 'Percentages', 'Time buffer (%)', '10');
     expect(lineBuffered(1)).toHaveTextContent('Line 1 hours with buffer 26.4');
     expect(lineBuffered(2)).toHaveTextContent('Line 2 hours with buffer 61.6');
     expect(lineBuffered(3)).toHaveTextContent('Line 3 hours with buffer 18.15');
-    expect(valuesOf('Hours', 'With negotiation buffer (10%)')).toEqual(['106.15 hours']);
+    expect(valuesOf('Hours', 'Time buffer (10%)')).toEqual(['+9.65 hours']);
+    expect(valuesOf('Hours', 'With time buffer')).toEqual(['106.15 hours']);
+  });
+
+  it('adds up the column as shown to the panel’s hours with the time buffer, line by line and not on the sum', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/3');
+    await screen.findByLabelText('Line 4 hours per unit');
+    // The backend's third vector: 11.39 + 8.44 + 16.31 + 0.23 is 36.37 (padding the 32.32 base would give 36.36).
+    expect([1, 2, 3, 4].map((number) => lineBuffered(number)?.textContent)).toEqual([
+      'Line 1 hours with buffer 11.39',
+      'Line 2 hours with buffer 8.44',
+      'Line 3 hours with buffer 16.31',
+      'Line 4 hours with buffer 0.23',
+    ]);
+    expect(valuesOf('Hours', 'From the lines')).toEqual(['32.32 hours']);
+    expect(valuesOf('Hours', 'Time buffer (12.5%)')).toEqual(['+4.05 hours']);
+    expect(valuesOf('Hours', 'With time buffer')).toEqual(['36.37 hours']);
+    expect(columnSum(4)).toBe(3637);
+
+    // Typing into a line moves the column and the panel together, and they still agree.
+    await retype(user, screen.getByLabelText('Line 4 hours per unit'), '0.4');
+    expect(lineBuffered(4)).toHaveTextContent('Line 4 hours with buffer 0.45');
+    expect(valuesOf('Hours', 'With time buffer')).toEqual(['36.59 hours']);
+    expect(columnSum(4)).toBe(3659);
+    await retype(user, screen.getByLabelText('Line 2 units'), '5');
+    // 5 x 2.5 is 12.5 hours, 14.0625 with the buffer: 14.06.
+    expect(lineBuffered(2)).toHaveTextContent('Line 2 hours with buffer 14.06');
+    expect(valuesOf('Hours', 'With time buffer')).toEqual(['42.21 hours']);
+    expect(columnSum(4)).toBe(4221);
+  });
+
+  it('keeps the negotiation buffer out of the hours: it moves the amount only', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/new');
+    await retype(user, screen.getByLabelText('Line 1 units'), '2');
+    await user.type(screen.getByLabelText('Line 1 hours per unit'), '8');
+    await setSetting(user, 'Percentages', 'Time buffer (%)', '10');
+    expect(lineBuffered(1)).toHaveTextContent('Line 1 hours with buffer 17.6');
+    expect(valuesOf('Hours', 'With time buffer')).toEqual(['17.6 hours']);
+    expect(valuesOf('Hours', 'Management')).toEqual(['4.4 hours', '4.4 per person']);
+    expect(valuesOf('Time', 'Total effort')).toEqual(['22 hours']);
+    // The service's own figures (`compute_totals`): 54,560.00 and 13,200.00, a 25 % buffer of 16,940.00.
+    expect(valuesOf('Cost', 'Subtotal')).toEqual(['₹67,760.00']);
+    expect(valuesOf('Cost', 'Negotiation buffer (25%)')).toEqual(['₹16,940.00']);
+    expect(valuesOf('Cost', 'Final quote')).toEqual(['₹84,700.00']);
+
+    await setSetting(user, 'Percentages', 'Negotiation buffer (%)', '50');
+    expect(lineBuffered(1)).toHaveTextContent('Line 1 hours with buffer 17.6');
+    expect(valuesOf('Hours', 'With time buffer')).toEqual(['17.6 hours']);
+    expect(valuesOf('Hours', 'Management')).toEqual(['4.4 hours', '4.4 per person']);
+    expect(valuesOf('Time', 'Total effort')).toEqual(['22 hours']);
+    expect(valuesOf('Cost', 'Subtotal')).toEqual(['₹67,760.00']);
+    expect(valuesOf('Cost', 'Negotiation buffer (50%)')).toEqual(['₹33,880.00']);
+    expect(valuesOf('Cost', 'Final quote')).toEqual(['₹1,01,640.00']);
+  });
+
+  it('takes the discount off after the negotiation buffer, and shows it as a deduction', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/new');
+    await user.type(screen.getByLabelText('Line 1 hours per unit'), '24');
+    await user.click(screen.getByRole('button', { name: 'Add line' }));
+    await retype(user, screen.getByLabelText('Line 2 units'), '2');
+    await user.type(screen.getByLabelText('Line 2 hours per unit'), '28');
+    await user.click(screen.getByRole('button', { name: 'Add line' }));
+    await user.type(screen.getByLabelText('Line 3 hours per unit'), '16.5');
+    expect(screen.queryByText(/^Discount/)).toBeNull();
+
+    // The figures of the backend's `compute_totals` on this quote with a 10 % time buffer and a 10 % discount.
+    await setSetting(user, 'Percentages', 'Time buffer (%)', '10');
+    await setSetting(user, 'Percentages', 'Discount (%)', '10');
+    expect(valuesOf('Cost', 'Subtotal')).toEqual(['₹4,08,685.00']);
+    expect(valuesOf('Cost', 'Negotiation buffer (25%)')).toEqual(['₹1,02,171.25']);
+    expect(valuesOf('Cost', 'Discount (10%)')).toEqual(['−₹51,085.62']);
+    expect(valuesOf('Cost', 'Final quote')).toEqual(['₹4,59,770.63']);
+    expect(valuesOf('Time', 'Total effort')).toEqual(['132.69 hours']);
+
+    await setSetting(user, 'Percentages', 'Discount (%)', '0');
+    expect(screen.queryByText(/^Discount/)).toBeNull();
+    // Without the discount the amount is the subtotal and the negotiation buffer: 4,08,685.00 and 1,02,171.25.
+    expect(valuesOf('Cost', 'Final quote')).toEqual(['₹5,10,856.25']);
   });
 
   it('shows no buffered hours for a wrong line, and none at all while a setting is wrong', async () => {
     const user = userEvent.setup();
     renderEditor('/quotes/new');
-    // Only a wrong line: the column has nothing to add up, so the panel says nothing about it.
+    // 10 %, not the negotiation buffer's 25 %: the column follows the time buffer.
+    await setSetting(user, 'Percentages', 'Time buffer (%)', '10');
+    // Only a wrong line: the column has nothing, and the panel has no hours to add.
     await user.type(screen.getByLabelText('Line 1 hours per unit'), '1,5');
     expect(lineBuffered(1)).toHaveTextContent('Line 1 hours with buffer —');
-    expect(within(screen.getByRole('region', { name: 'Hours' })).queryByText(/With negotiation buffer/)).toBeNull();
+    expect(valuesOf('Hours', 'Time buffer (10%)')).toEqual(['+0 hours']);
 
     await user.click(screen.getByRole('button', { name: 'Add line' }));
     await user.type(screen.getByLabelText('Line 2 hours per unit'), '8');
-    expect(lineBuffered(2)).toHaveTextContent('Line 2 hours with buffer 10');
-    expect(valuesOf('Hours', 'With negotiation buffer (25%)')).toEqual(['10 hours']);
+    expect(lineBuffered(2)).toHaveTextContent('Line 2 hours with buffer 8.8');
+    expect(valuesOf('Hours', 'With time buffer')).toEqual(['8.8 hours']);
 
-    await setSetting(user, 'Percentages', 'Negotiation buffer (%)', 'abc');
+    // A wrong time buffer, or any other wrong setting, leaves the column with nothing to show and the panel with no totals.
+    await setSetting(user, 'Percentages', 'Time buffer (%)', 'abc');
     expect(lineBuffered(1)).toHaveTextContent('Line 1 hours with buffer —');
     expect(lineBuffered(2)).toHaveTextContent('Line 2 hours with buffer —');
     expect(lineTotal(2)).toHaveTextContent('Line 2 total hours 8');
-    expect(within(screen.getByRole('region', { name: 'Hours' })).queryByText(/With negotiation buffer/)).toBeNull();
+    expect(within(screen.getByRole('region', { name: 'Hours' })).queryByText(/time buffer/i)).toBeNull();
+    expect(screen.getByText('Check the settings to see the totals.')).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/NaN/);
+
+    await setSetting(user, 'Percentages', 'Time buffer (%)', '10');
+    await setSetting(user, 'Percentages', 'Discount (%)', '51');
+    expect(lineBuffered(2)).toHaveTextContent('Line 2 hours with buffer —');
+    expect(screen.getByText('Check the settings to see the totals.')).toBeInTheDocument();
   });
 
   it('puts the totals under the lines, beside them only from `xl`, and keeps them in sight there', async () => {
@@ -305,6 +414,22 @@ describe('QuoteEditorPage, a new quote', () => {
     // Under the lines the three sections sit side by side from `md`, and stack again in the narrow `xl` column.
     const sections = within(totals).getByRole('region', { name: 'Time' }).parentElement;
     expect(sections).toHaveClass('md:grid-cols-3', 'xl:grid-cols-1');
+  });
+
+  it('saves the time buffer and the discount with the quote', async () => {
+    const user = userEvent.setup();
+    vi.mocked(coreApi.post).mockResolvedValue({ data: quoteEnvelope({ id: 12 }) });
+    renderEditor('/quotes/new');
+    await fillQuote(user);
+    await setSetting(user, 'Percentages', 'Time buffer (%)', '10');
+    await setSetting(user, 'Percentages', 'Discount (%)', '7.5');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(coreApi.post).toHaveBeenCalledTimes(1));
+    expect(coreApi.post).toHaveBeenCalledWith('/quotations', {
+      ...fullNewBody,
+      timeBufferPercent: 10,
+      discountPercent: 7.5,
+    });
   });
 
   it('keeps a setting through the drawer closing and saves it', async () => {
@@ -588,6 +713,22 @@ describe('QuoteEditorPage, a saved quote', () => {
     expect(within(drawer()).getByLabelText('Hours in a month')).toHaveValue('150');
   });
 
+  it('loads a quote with a time buffer and a discount into the drawer, and shows both in the totals', async () => {
+    const user = userEvent.setup();
+    renderEditor('/quotes/3');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Retainer scoping' })).toBeInTheDocument();
+    // The mirror on the loaded settings comes to what the service stored for the backend's third vector.
+    expect(valuesOf('Hours', 'With time buffer')).toEqual(['36.37 hours']);
+    expect(valuesOf('Cost', 'Subtotal')).toEqual(['₹75,627.00']);
+    expect(valuesOf('Cost', 'Negotiation buffer (10%)')).toEqual(['₹7,562.70']);
+    expect(valuesOf('Cost', 'Discount (7.5%)')).toEqual(['−₹6,239.22']);
+    expect(valuesOf('Cost', 'Final quote')).toEqual(['₹76,950.48']);
+
+    await user.click(settingsButton());
+    expect(within(drawer()).getByLabelText('Time buffer (%)')).toHaveValue('12.5');
+    expect(within(drawer()).getByLabelText('Discount (%)')).toHaveValue('7.5');
+  });
+
   it('patches the whole quote and says Saved until the next edit', async () => {
     const user = userEvent.setup();
     vi.mocked(coreApi.patch).mockResolvedValue({ data: quoteEnvelope(saved) });
@@ -605,7 +746,9 @@ describe('QuoteEditorPage, a saved quote', () => {
       managerRateCents: 200_000,
       testerCount: 2,
       testerRateCents: 99_999,
+      timeBufferPercent: 0,
       negotiationBufferPercent: 7.5,
+      discountPercent: 0,
       managementPercent: 12.5,
       testingPercent: 10,
       bugFixPercent: 5,

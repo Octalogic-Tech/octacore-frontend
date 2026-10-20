@@ -83,6 +83,62 @@ const secondForm = (): QuoteFormValues =>
     },
   );
 
+// The third vector (the backend's `tests/test_quoting.py`): a 12.5 % time buffer and a 7.5 % discount, a tie in each, every other
+// setting off its default. Each line is padded on its own: 10.12, 3 x 2.5, 2 x 7.25 and 0.2 hours come to 11.39, 8.44, 16.31
+// and 0.23, which is 36.37 (padding the 32.32 base would give 36.36).
+const thirdForm = (): QuoteFormValues =>
+  quoteForm(
+    'Third vector check',
+    [
+      ['1', '10.12'],
+      ['3', '2.50'],
+      ['2', '7.25'],
+      ['1', '0.20'],
+    ],
+    {
+      developerCount: '2',
+      developerRate: '1500.00',
+      managerCount: '1',
+      managerRate: '1800.00',
+      testerCount: '1',
+      testerRate: '900.00',
+      negotiationBufferPercent: '10',
+      managementPercent: '20',
+      testingPercent: '10',
+      bugFixPercent: '5',
+      hoursPerDay: '8',
+      hoursPerMonth: '160',
+      timeBufferPercent: '12.5',
+      discountPercent: '7.5',
+    },
+  );
+
+/** What the third vector comes to, as the service sends it: hours as decimal numbers, every cost in whole cents. */
+const THIRD_TOTALS = {
+  baseHours: 32.32,
+  timeBufferHours: 4.05,
+  bufferedBaseHours: 36.37,
+  testingHours: 3.64,
+  bugFixHours: 1.82,
+  developmentHours: 38.19,
+  buildHours: 41.83,
+  managementHours: 8.37,
+  totalHours: 50.2,
+  developmentHoursPerPerson: 19.1,
+  managementHoursPerPerson: 8.37,
+  testingHoursPerPerson: 3.64,
+  personDays: 6.28,
+  elapsedMonths: 0.13,
+  developmentCostCents: 5_728_500,
+  managementCostCents: 1_506_600,
+  testingCostCents: 327_600,
+  subtotalCents: 7_562_700,
+  negotiationBufferCents: 756_270,
+  // 8,318,970 before the discount; 7.5 % of it is 623,922.75, floored (half up would be 623,923).
+  discountCents: 623_922,
+  finalQuoteCents: 7_695_048,
+};
+
 /** Creates a quote from a form the form's own schema accepts, through `toQuoteBody`, and reads the answer. */
 async function createFrom(form: QuoteFormValues): Promise<QuoteRow> {
   expect(quoteFormSchema.safeParse(form).success).toBe(true);
@@ -100,7 +156,7 @@ function expectTotalsToMatch(row: QuoteRow, form: QuoteFormValues) {
   expect(settings).not.toBeNull();
   const mine = quoteTotals(settings as CalcSettings, lines);
   const fields = Object.keys(mine) as (keyof QuoteTotals)[];
-  expect(fields).toHaveLength(18);
+  expect(fields).toHaveLength(21);
   expect(Object.keys(row.totals).sort()).toEqual([...fields].sort());
   for (const field of fields) {
     const theirs = field.endsWith('Cents') ? row.totals[field] : Math.round(row.totals[field] * 100);
@@ -185,7 +241,10 @@ describe.skipIf(!base)('the running core service, quotations', () => {
         bugFixPercent: 5,
         hoursPerDay: 7,
         hoursPerMonth: 150,
+        timeBufferPercent: 0,
+        discountPercent: 0,
       });
+      expect(quote.totals).toMatchObject({ timeBufferHours: 0, bufferedBaseHours: 28.09, discountCents: 0 });
       expect(quote.totals.finalQuoteCents).toBe(5_084_443);
       expectTotalsToMatch(quote, form);
       expect(toQuoteBody(toQuoteFormValues(quote))).toEqual(toQuoteBody(form));
@@ -205,6 +264,49 @@ describe.skipIf(!base)('the running core service, quotations', () => {
       expect(patchedQuote.totals).toMatchObject({ buildHours: 1.49, elapsedMonths: 0 });
       expectTotalsToMatch(patchedQuote, edited);
       expectTotalsToMatch(await readQuote(quote.id), edited);
+    } finally {
+      await send('DELETE', `/quotations/${quote.id}`);
+    }
+    expect((await send('GET', `/quotations/${quote.id}`)).status).toBe(404);
+  });
+
+  it('the third vector: the time buffer pads each line and the discount is floored, the same on both sides', async () => {
+    const form = thirdForm();
+    const quote = await createFrom(form);
+    try {
+      expect(quote).toMatchObject({
+        developerRateCents: 150_000,
+        managerRateCents: 180_000,
+        testerRateCents: 90_000,
+        timeBufferPercent: 12.5,
+        negotiationBufferPercent: 10,
+        discountPercent: 7.5,
+        managementPercent: 20,
+        testingPercent: 10,
+        bugFixPercent: 5,
+        hoursPerDay: 8,
+        hoursPerMonth: 160,
+      });
+      // The service's numbers, written out from the backend's report, and then the mirror's, field by field.
+      expect(quote.totals).toEqual(THIRD_TOTALS);
+      expectTotalsToMatch(quote, form);
+      expect(toQuoteBody(toQuoteFormValues(quote))).toEqual(toQuoteBody(form));
+
+      // Settings alone change the totals: no time buffer and no discount is the quote as it was before they existed.
+      const plain = { ...form, timeBufferPercent: '0', discountPercent: '0' };
+      const patched = await send('PATCH', `/quotations/${quote.id}`, { timeBufferPercent: 0, discountPercent: 0 });
+      expect(patched.status).toBe(200);
+      const patchedQuote = unwrap(await patched.json(), quoteRowSchema);
+      expect(patchedQuote.totals).toMatchObject({ timeBufferHours: 0, bufferedBaseHours: 32.32, discountCents: 0 });
+      expectTotalsToMatch(patchedQuote, plain);
+      expectTotalsToMatch(await readQuote(quote.id), plain);
+
+      // The discount's own limit is the invoices': 50 is accepted, 50.01 is not.
+      const atLimit = await send('PATCH', `/quotations/${quote.id}`, { discountPercent: 50 });
+      expect(atLimit.status).toBe(200);
+      expectTotalsToMatch(await readQuote(quote.id), { ...plain, discountPercent: '50' });
+      expect((await send('PATCH', `/quotations/${quote.id}`, { discountPercent: 50.01 })).status).toBe(422);
+      expect((await send('PATCH', `/quotations/${quote.id}`, { timeBufferPercent: 100.01 })).status).toBe(422);
     } finally {
       await send('DELETE', `/quotations/${quote.id}`);
     }

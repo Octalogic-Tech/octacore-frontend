@@ -1,6 +1,7 @@
 // Rows shaped like GET http://localhost:5001/api/v1/quotations (octacore-backend, FastAPI), in the service's own envelope;
 // the names and dates are made up, the figures are real. Each row carries its settings flat, its lines and the `totals`
 // the service calculates from them: hours and months as decimal numbers (1188, 2.48), every cost in whole minor units.
+// Neither row uses the time buffer or the discount (both 0), so the padded hours equal the lines' and nothing is taken off.
 //
 // Quote 1 is the workbook of the design's section 3.4: 53 lines of one unit each (1,188 hours) at the default settings
 // (3 developers at 3,100.00, a manager at 3,000.00, a tester at 0.00, a 25 % buffer and 25 % management, 6 hours a day,
@@ -44,7 +45,9 @@ export const quoteRows = [
     managerRateCents: 300_000,
     testerCount: 1,
     testerRateCents: 0,
+    timeBufferPercent: 0,
     negotiationBufferPercent: 25,
+    discountPercent: 0,
     managementPercent: 25,
     testingPercent: 0,
     bugFixPercent: 0,
@@ -53,6 +56,8 @@ export const quoteRows = [
     lines: workbookLines,
     totals: {
       baseHours: 1188,
+      timeBufferHours: 0,
+      bufferedBaseHours: 1188,
       testingHours: 0,
       bugFixHours: 0,
       developmentHours: 1188,
@@ -69,6 +74,7 @@ export const quoteRows = [
       testingCostCents: 0,
       subtotalCents: 457_380_000,
       negotiationBufferCents: 114_345_000,
+      discountCents: 0,
       finalQuoteCents: 571_725_000,
     },
   },
@@ -84,7 +90,9 @@ export const quoteRows = [
     managerRateCents: 200_000,
     testerCount: 2,
     testerRateCents: 99_999,
+    timeBufferPercent: 0,
     negotiationBufferPercent: 7.5,
+    discountPercent: 0,
     managementPercent: 12.5,
     testingPercent: 10,
     bugFixPercent: 5,
@@ -97,6 +105,8 @@ export const quoteRows = [
     ],
     totals: {
       baseHours: 28.09,
+      timeBufferHours: 0,
+      bufferedBaseHours: 28.09,
       testingHours: 2.81,
       bugFixHours: 1.4,
       developmentHours: 29.49,
@@ -113,10 +123,65 @@ export const quoteRows = [
       testingCostCents: 280_997,
       subtotalCents: 4_729_714,
       negotiationBufferCents: 354_729,
+      discountCents: 0,
       finalQuoteCents: 5_084_443,
     },
   },
 ];
+
+// The backend's third vector (`tests/test_quoting.py`), as the service would send it: a 12.5 % time buffer and a 7.5 % discount,
+// a tie in each, in rupees: a final quote of 76,950.48. It is not in `quoteRows`, so the list does not show it; the schema and
+// editor tests read it on its own. Every line is padded on its own: 10.12, 3 x 2.5, 2 x 7.25 and 0.2 hours come to 11.39,
+// 8.44, 16.31 and 0.23 hours, 36.37 in all (padding the 32.32 base would give 36.36).
+export const bufferedQuoteRow = {
+  ...audit,
+  id: 3,
+  title: 'Retainer scoping',
+  currencyCode: 'INR',
+  developerCount: 2,
+  developerRateCents: 150_000,
+  managerCount: 1,
+  managerRateCents: 180_000,
+  testerCount: 1,
+  testerRateCents: 90_000,
+  timeBufferPercent: 12.5,
+  negotiationBufferPercent: 10,
+  discountPercent: 7.5,
+  managementPercent: 20,
+  testingPercent: 10,
+  bugFixPercent: 5,
+  hoursPerDay: 8,
+  hoursPerMonth: 160,
+  lines: [
+    { id: 57, title: 'Discovery', description: 'Interviews and a written brief', units: 1, hoursPerUnit: 10.12 },
+    { id: 58, title: 'Workshops', description: 'Three sessions with the team', units: 3, hoursPerUnit: 2.5 },
+    { id: 59, title: 'Wireframes', description: 'Two flows, low fidelity', units: 2, hoursPerUnit: 7.25 },
+    { id: 60, title: 'Hand-over', description: 'A short call to walk through it', units: 1, hoursPerUnit: 0.2 },
+  ],
+  totals: {
+    baseHours: 32.32,
+    timeBufferHours: 4.05,
+    bufferedBaseHours: 36.37,
+    testingHours: 3.64,
+    bugFixHours: 1.82,
+    developmentHours: 38.19,
+    buildHours: 41.83,
+    managementHours: 8.37,
+    totalHours: 50.2,
+    developmentHoursPerPerson: 19.1,
+    managementHoursPerPerson: 8.37,
+    testingHoursPerPerson: 3.64,
+    personDays: 6.28,
+    elapsedMonths: 0.13,
+    developmentCostCents: 5_728_500,
+    managementCostCents: 1_506_600,
+    testingCostCents: 327_600,
+    subtotalCents: 7_562_700,
+    negotiationBufferCents: 756_270,
+    discountCents: 623_922,
+    finalQuoteCents: 7_695_048,
+  },
+};
 
 const envelope = (message: string, data: unknown) => ({ statusCode: 200, message, data, meta: null });
 

@@ -1,4 +1,4 @@
-import { quoteRows } from '@/test/fixtures/quotes';
+import { bufferedQuoteRow, quoteRows } from '@/test/fixtures/quotes';
 import { quoteTotals } from './calc';
 import {
   SETTINGS_FIELDS,
@@ -72,6 +72,9 @@ describe('quote row schema', () => {
       hoursPerUnit: 16,
     });
     expect(workbook.totals).toMatchObject({ baseHours: 1188, elapsedMonths: 2.48, finalQuoteCents: 571_725_000 });
+    // The time buffer and the discount, and what they come to, are read too; the fixtures do not use them.
+    expect(workbook).toMatchObject({ timeBufferPercent: 0, discountPercent: 0 });
+    expect(workbook.totals).toMatchObject({ timeBufferHours: 0, bufferedBaseHours: 1188, discountCents: 0 });
     expect(rounding.negotiationBufferPercent).toBe(7.5);
     expect(rounding.lines[2].hoursPerUnit).toBe(12.34);
     expect(rounding.totals.personDays).toBe(5.19);
@@ -94,6 +97,20 @@ describe('quote row schema', () => {
         .success,
     ).toBe(false);
     expect(quoteRowSchema.safeParse({ ...quoteRows[0], developerRateCents: '310000' }).success).toBe(false);
+    // The new settings and the new totals are part of the row: a service without them is not this one.
+    const { timeBufferPercent: _timeBuffer, ...withoutTimeBuffer } = quoteRows[0];
+    const { discountPercent: _discount, ...withoutDiscount } = quoteRows[0];
+    void [_timeBuffer, _discount];
+    expect(quoteRowSchema.safeParse(withoutTimeBuffer).success).toBe(false);
+    expect(quoteRowSchema.safeParse(withoutDiscount).success).toBe(false);
+    for (const field of ['timeBufferHours', 'bufferedBaseHours', 'discountCents'] as const) {
+      const { [field]: _gone, ...totals } = quoteRows[0].totals;
+      void _gone;
+      expect([field, quoteRowSchema.safeParse({ ...quoteRows[0], totals }).success]).toEqual([field, false]);
+    }
+    expect(
+      quoteRowSchema.safeParse({ ...quoteRows[0], totals: { ...quoteRows[0].totals, discountCents: 1.5 } }).success,
+    ).toBe(false);
     // The json-server mock answers a bare array: not this service.
     expect(quoteRowsSchema.safeParse([{ id: 1, title: 'Mock' }]).success).toBe(false);
   });
@@ -111,8 +128,33 @@ describe('quote row schema', () => {
   });
 });
 
+describe('a quote with a time buffer and a discount', () => {
+  // The backend's third vector as the service would send it: a 12.5 % time buffer and a 7.5 % discount, a tie in each.
+  const third = quoteRowSchema.parse(bufferedQuoteRow);
+
+  it('reads the settings and the totals, and the mirror reproduces every total field', () => {
+    expect(third).toMatchObject({ timeBufferPercent: 12.5, discountPercent: 7.5 });
+    const mirror = totalsOf(toQuoteFormValues(third));
+    for (const [name, value] of Object.entries(third.totals)) {
+      const wire = name.endsWith('Cents') ? value : Math.round(value * 100);
+      expect([name, mirror[name as keyof typeof mirror]]).toEqual([name, wire]);
+    }
+  });
+
+  it('goes to the form as text and back to the body as the same numbers', () => {
+    const values = toQuoteFormValues(third);
+    expect(values).toMatchObject({ timeBufferPercent: '12.5', discountPercent: '7.5' });
+    expect(messagesOf(values)).toEqual([]);
+    expect(toQuoteBody(values)).toMatchObject({ timeBufferPercent: 12.5, discountPercent: 7.5 });
+    expect(toQuoteFormValues({ ...third, timeBufferPercent: 100, discountPercent: 50 })).toMatchObject({
+      timeBufferPercent: '100',
+      discountPercent: '50',
+    });
+  });
+});
+
 describe('the new quote form', () => {
-  it('starts from the defaults: INR, 3 developers at 3100.00, a manager at 3000.00, a free tester, one blank line', () => {
+  it('starts from the defaults: INR, 3 developers at 3100.00, a manager at 3000.00, a free tester, no time buffer or discount, one blank line', () => {
     expect(emptyQuoteForm).toEqual({
       title: '',
       currencyCode: 'INR',
@@ -122,7 +164,9 @@ describe('the new quote form', () => {
       managerRate: '3000.00',
       testerCount: '1',
       testerRate: '0.00',
+      timeBufferPercent: '0',
       negotiationBufferPercent: '25',
+      discountPercent: '0',
       managementPercent: '25',
       testingPercent: '0',
       bugFixPercent: '0',
@@ -148,6 +192,8 @@ describe('the new quote form', () => {
     );
     expect(SETTINGS_FIELDS).toContain('currencyCode');
     expect(SETTINGS_FIELDS).toContain('testerRate');
+    expect(SETTINGS_FIELDS).toContain('timeBufferPercent');
+    expect(SETTINGS_FIELDS).toContain('discountPercent');
   });
 });
 
@@ -160,7 +206,9 @@ describe('toQuoteBody', () => {
         developerRate: ' 3100.00 ',
         managerRate: '3000.5',
         testerRate: '0.00',
+        timeBufferPercent: ' 12.5 ',
         negotiationBufferPercent: '7.5',
+        discountPercent: '10',
         managementPercent: ' 25 ',
         lines: [line({ title: '  Home page ', description: ' The hero  ', units: ' 2 ', hoursPerUnit: ' 7.5 ' })],
       }),
@@ -174,7 +222,9 @@ describe('toQuoteBody', () => {
       managerRateCents: 300_050,
       testerCount: 1,
       testerRateCents: 0,
+      timeBufferPercent: 12.5,
       negotiationBufferPercent: 7.5,
+      discountPercent: 10,
       managementPercent: 25,
       testingPercent: 0,
       bugFixPercent: 0,
@@ -197,7 +247,9 @@ describe('toQuoteBody', () => {
         managerRateCents: row.managerRateCents,
         testerCount: row.testerCount,
         testerRateCents: row.testerRateCents,
+        timeBufferPercent: row.timeBufferPercent,
         negotiationBufferPercent: row.negotiationBufferPercent,
+        discountPercent: row.discountPercent,
         managementPercent: row.managementPercent,
         testingPercent: row.testingPercent,
         bugFixPercent: row.bugFixPercent,
@@ -218,7 +270,9 @@ describe('toQuoteFormValues', () => {
       developerRate: '3100.00',
       managerRate: '3000.00',
       testerRate: '0.00',
+      timeBufferPercent: '0',
       negotiationBufferPercent: '25',
+      discountPercent: '0',
       hoursPerMonth: '160',
     });
     expect(toQuoteFormValues(workbook).lines).toHaveLength(53);
@@ -352,6 +406,47 @@ describe('quoteFormSchema', () => {
         }
       },
     );
+  });
+
+  describe('the time buffer', () => {
+    it.each([
+      ['', 'Percentage is required'],
+      ['100.01', 'Percentage must be from 0 to 100'],
+      ['101', 'Percentage must be from 0 to 100'],
+      ['-1', 'Enter a percentage like 7.5'],
+      ['12.345', 'Enter a percentage like 7.5'],
+      ['1,5', 'Enter a percentage like 7.5'],
+      ['abc', 'Enter a percentage like 7.5'],
+    ])('tells %j: %s', (text, message) => {
+      const issues = issuesOf(form({ timeBufferPercent: text }));
+      expect(issues.map((issue) => issue.message)).toEqual([message]);
+      expect(issues[0].path).toEqual(['timeBufferPercent']);
+    });
+
+    it.each(['0', '0.00', '12.5', '12.25', '100', '100.00', ' 10 '])('accepts %j', (text) => {
+      expect(messagesOf(form({ timeBufferPercent: text }))).toEqual([]);
+    });
+  });
+
+  describe('the discount', () => {
+    it.each([
+      ['', 'Percentage is required'],
+      ['50.01', 'Discount must be from 0 to 50'],
+      ['51', 'Discount must be from 0 to 50'],
+      ['100', 'Discount must be from 0 to 50'],
+      ['-1', 'Enter a percentage like 7.5'],
+      ['12.345', 'Enter a percentage like 7.5'],
+      ['7,5', 'Enter a percentage like 7.5'],
+      ['abc', 'Enter a percentage like 7.5'],
+    ])('tells %j: %s', (text, message) => {
+      const issues = issuesOf(form({ discountPercent: text }));
+      expect(issues.map((issue) => issue.message)).toEqual([message]);
+      expect(issues[0].path).toEqual(['discountPercent']);
+    });
+
+    it.each(['0', '0.00', '7.5', '10', '49.99', '50', '50.00', ' 12.25 '])('accepts %j', (text) => {
+      expect(messagesOf(form({ discountPercent: text }))).toEqual([]);
+    });
   });
 
   describe('rates', () => {
@@ -490,12 +585,23 @@ describe('toCalcInput', () => {
       bugFixBp: 500,
       hoursPerDay: 7,
       hoursPerMonth: 150,
+      timeBufferBp: 0,
+      discountBp: 0,
     });
     expect(lines).toEqual([
       { units: 2, hoursHundredths: 750 },
       { units: 3, hoursHundredths: 25 },
       { units: 1, hoursHundredths: 1234 },
     ]);
+  });
+
+  it('reads the time buffer and the discount in hundredths of a percent', () => {
+    const { settings } = toCalcInput(form({ timeBufferPercent: '12.5', discountPercent: ' 7.25 ' }));
+    expect(settings).toMatchObject({ timeBufferBp: 1250, discountBp: 725 });
+    expect(toCalcInput(form({ timeBufferPercent: '100', discountPercent: '50' })).settings).toMatchObject({
+      timeBufferBp: 10_000,
+      discountBp: 5000,
+    });
   });
 
   it('has no settings while a percent is invalid, and the mirror is never asked for totals', () => {
@@ -515,6 +621,10 @@ describe('toCalcInput', () => {
     ['hoursPerDay', '0'],
     ['hoursPerMonth', '745'],
     ['bugFixPercent', '1e1'],
+    ['timeBufferPercent', '100.01'],
+    ['timeBufferPercent', ''],
+    ['discountPercent', '50.01'],
+    ['discountPercent', 'abc'],
     // The money is formatted in this currency, and a bad code would throw there.
     ['currencyCode', 'RUPEE'],
   ] as const)(
@@ -592,5 +702,19 @@ describe('quoteTooLarge', () => {
     expect(quoteTooLarge(form({ lines }))).toBe(false);
     expect(quoteTooLarge(form({ lines, developerRate: '100000.00' }))).toBe(true);
     expect(totalsOf(form({ lines })).finalQuoteCents).toBe(4_812_500_000);
+  });
+
+  it('counts the time buffer, which pads the price, and the discount, which comes off the final quote', () => {
+    // 10,500 hours come to 50,531,250.00 at the defaults; a 100 % time buffer doubles the hours and the quote to
+    // 101,062,500.00, and a 10 % discount brings that back to 90,956,250.00.
+    const lines = [line({ units: '100', hoursPerUnit: '105' })];
+    expect(quoteTooLarge(form({ lines }))).toBe(false);
+    expect(quoteTooLarge(form({ lines, timeBufferPercent: '100' }))).toBe(true);
+    expect(totalsOf(form({ lines, timeBufferPercent: '100' })).finalQuoteCents).toBe(10_106_250_000);
+    expect(quoteTooLarge(form({ lines, timeBufferPercent: '100', discountPercent: '10' }))).toBe(false);
+    const discounted = form({ lines, timeBufferPercent: '100', discountPercent: '10' });
+    expect(totalsOf(discounted).finalQuoteCents).toBe(9_095_625_000);
+    expect(messagesOf(form({ lines, timeBufferPercent: '100' }))).toEqual([TOO_LARGE]);
+    expect(messagesOf(form({ lines, timeBufferPercent: '100', discountPercent: '10' }))).toEqual([]);
   });
 });

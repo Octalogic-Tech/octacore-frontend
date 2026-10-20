@@ -33,20 +33,27 @@ function stubCore(
 const halfUp = (n: number, d: number) => Math.floor((2 * n + d) / (2 * d));
 
 /**
- * The service's `totals` for a quote, by the design's formulas, on integers: hours in hundredths, percents in hundredths
- * of a percent, costs in cents, every division half up. Written out here on plain numbers (the quotes in these specs are
- * small, so they are exact) and not taken from the app, so a spec that compares the two checks the app's calculation.
+ * The service's `totals` for a quote, by the design's formulas (section 8.3), on integers: hours in hundredths, percents in
+ * hundredths of a percent, costs in cents, every division half up but the discount's, which is floored. Written out here on
+ * plain numbers (the quotes in these specs are small, so they are exact) and not taken from the app, so a spec that compares
+ * the two checks the app's calculation.
  */
 function totalsOf(quote: Row): Row {
   const lines = quote.lines as { units: number; hoursPerUnit: number }[];
   const count = (key: string) => quote[key] as number;
+  // The time buffer and the discount are 0 for a quote saved without them, as they are in the service.
+  const percent = (key: string) => (quote[key] as number | undefined) ?? 0;
   const hundredths = (value: number) => Math.round(value * 100);
 
-  const base = lines.reduce((sum, line) => sum + line.units * hundredths(line.hoursPerUnit), 0);
-  const testing = halfUp(base * hundredths(count('testingPercent')), 10_000);
-  const bugFix = halfUp(base * hundredths(count('bugFixPercent')), 10_000);
-  const development = base + bugFix;
-  const build = base + testing + bugFix;
+  // Each line is padded by the time buffer on its own, a half going up; everything after starts from the padded sum.
+  const raw = lines.map((line) => line.units * hundredths(line.hoursPerUnit));
+  const base = raw.reduce((sum, hours) => sum + hours, 0);
+  const timeBuffer = hundredths(percent('timeBufferPercent'));
+  const buffered = raw.reduce((sum, hours) => sum + hours + halfUp(hours * timeBuffer, 10_000), 0);
+  const testing = halfUp(buffered * hundredths(count('testingPercent')), 10_000);
+  const bugFix = halfUp(buffered * hundredths(count('bugFixPercent')), 10_000);
+  const development = buffered + bugFix;
+  const build = buffered + testing + bugFix;
   const management = halfUp(build * hundredths(count('managementPercent')), 10_000);
   const total = build + management;
 
@@ -55,10 +62,15 @@ function totalsOf(quote: Row): Row {
   const testingCost = halfUp(testing * count('testerRateCents'), 100);
   const subtotal = developmentCost + managementCost + testingCost;
   const negotiationBuffer = halfUp(subtotal * hundredths(count('negotiationBufferPercent')), 10_000);
+  // The discount comes off the subtotal and the negotiation buffer together, floored: no part of a cent is taken off.
+  const beforeDiscount = subtotal + negotiationBuffer;
+  const discount = Math.floor((beforeDiscount * hundredths(percent('discountPercent'))) / 10_000);
 
   // Hours, person-days and months are decimal numbers on the wire (1188, 2.48), costs whole minor units.
   return {
     baseHours: base / 100,
+    timeBufferHours: (buffered - base) / 100,
+    bufferedBaseHours: buffered / 100,
     testingHours: testing / 100,
     bugFixHours: bugFix / 100,
     developmentHours: development / 100,
@@ -75,7 +87,8 @@ function totalsOf(quote: Row): Row {
     testingCostCents: testingCost,
     subtotalCents: subtotal,
     negotiationBufferCents: negotiationBuffer,
-    finalQuoteCents: subtotal + negotiationBuffer,
+    discountCents: discount,
+    finalQuoteCents: beforeDiscount - discount,
   };
 }
 
@@ -85,7 +98,8 @@ function totalsOf(quote: Row): Row {
  */
 function stored(id: number, fields: Row): Row {
   const lines = (fields.lines as Row[]).map((line, index) => ({ id: id * 100 + index + 1, ...line }));
-  const quote = { ...fields, lines };
+  // A body without the time buffer or the discount is stored with 0, which is what the service's defaults are.
+  const quote = { timeBufferPercent: 0, discountPercent: 0, ...fields, lines };
   return record({ id, ...quote, totals: totalsOf(quote) });
 }
 
