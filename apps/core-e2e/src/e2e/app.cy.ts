@@ -132,25 +132,35 @@ describe('core', () => {
       cy.contains('1 without a salary').should('be.visible');
       cy.contains('a', 'Ben Cho').should('be.visible');
     });
-    // Four columns are wider than the page, so the board scrolls sideways: the last one is scrolled to first.
+    // Four columns are wider than the board, so it scrolls sideways inside itself: the last one is scrolled to first.
     cy.get('[aria-labelledby="col-1-name"]').scrollIntoView();
     cy.get('[aria-labelledby="col-1-name"]').within(() => {
       cy.contains('1 person, ₹85,000.75 a month').should('be.visible');
       cy.contains('a', 'Asha Rao').should('be.visible');
-      cy.contains('since 12 Mar 2026').should('be.visible');
+      // A card has no date on it: the ledger holds those.
+      cy.contains('since').should('not.exist');
     });
-    // Every card has the Move to select, the way to move without dragging, and a drag handle.
-    cy.get('select[aria-label="Move Asha Rao to"]').should('be.visible');
-    cy.get('button[aria-label="Drag Asha Rao"]').should('be.visible');
-    cy.get('select[aria-label="Move Asha Rao to"] option').then((options) => {
-      expect([...options].map((option) => option.textContent)).to.deep.equal([
-        'Move to…',
-        'Bench',
-        'Legacy portal',
-        'Mobile app',
-        'Website',
-      ]);
+    // The board fills the window under the title and the tabs, and the page itself does not scroll.
+    cy.get('main').should('have.attr', 'data-layout', 'full');
+    cy.window().then((win) => {
+      expect(win.document.documentElement.scrollHeight).to.be.at.most(win.innerHeight);
+      expect(win.document.documentElement.scrollWidth).to.be.at.most(win.innerWidth);
     });
+    // Every card has an Actions button, whose menu is the way to move without dragging: one item for each other column.
+    cy.get('button[aria-label="Actions for Asha Rao"]').should('be.visible').click();
+    cy.get('[role="menu"]').within(() => {
+      cy.contains('Move to').should('be.visible');
+      cy.get('[role="menuitem"]').then((items) => {
+        expect([...items].map((item) => item.textContent)).to.deep.equal(['Bench', 'Legacy portal', 'Mobile app']);
+      });
+    });
+    cy.get('body').type('{esc}');
+    cy.get('[role="menu"]').should('not.exist');
+    // The name still goes to the person's page.
+    cy.get('[aria-labelledby="col-1-name"]').contains('a', 'Asha Rao').click();
+    cy.location('pathname').should('eq', '/resources/people/1');
+    cy.go('back');
+    cy.contains('h1', 'Allocation');
 
     cy.contains('[role="tab"]', 'Ledger').click();
     cy.location('search').should('eq', '?tab=ledger');

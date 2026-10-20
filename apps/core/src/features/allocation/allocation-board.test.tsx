@@ -3,6 +3,7 @@ import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import type { ComponentProps } from 'react';
+import { FullMainContext } from '@/components/full-main';
 import { Kanban } from '@/components/ui/kanban';
 import { coreApi } from '@/lib/core-api';
 import { allocationEnvelope, allocationRows, allocationsEnvelope } from '@/test/fixtures/allocations';
@@ -92,7 +93,13 @@ const saved = { data: allocationEnvelope() };
 /** A column, by its name. */
 const column = (name: string) => within(screen.getByRole('group', { name }));
 const cardOf = (name: string) => screen.getByRole('link', { name }).closest('li') as HTMLElement;
-const moveSelect = (name: string) => screen.getByLabelText(`Move ${name} to`);
+/** The button at a card's top right that opens its menu. */
+const actions = (name: string) => screen.getByRole('button', { name: `Actions for ${name}` });
+/** Moves a card with its menu: opens it and picks the column. */
+async function moveVia(user: ReturnType<typeof userEvent.setup>, name: string, to: string) {
+  await user.click(actions(name));
+  await user.click(await screen.findByRole('menuitem', { name: to }));
+}
 /** A column head, whose figures are in spans of their own: the text of the paragraph as a whole. */
 const headline = (text: string) => (_: string, element: Element | null) =>
   element?.tagName === 'P' && element.textContent === text;
@@ -200,12 +207,18 @@ describe('AllocationBoard: the columns', () => {
 });
 
 describe('AllocationBoard: a card', () => {
-  it('shows the name as a link to the person’s page, since the date of their entry, and their salary', async () => {
+  it('shows the name as a link to the person’s page, and their salary', async () => {
     await renderBoard();
     const card = within(cardOf('Ada Lovelace'));
     expect(card.getByRole('link', { name: 'Ada Lovelace' })).toHaveAttribute('href', '/resources/people/1');
-    expect(card.getByText('since 12 Mar 2026')).toBeInTheDocument();
     expect(card.getByText('₹85,000.00')).toBeInTheDocument();
+  });
+
+  it('shows no date on any card: the ledger holds those', async () => {
+    serve({ entries: [adaOnWebsite, graceOnMobile, allocationRows[0]] });
+    await renderBoard();
+    expect(screen.queryByText(/since/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/12 Mar 2026|5 Jan 2026|3 Aug 2026/)).not.toBeInTheDocument();
   });
 
   it('shows no salary for a person who has none', async () => {
@@ -213,38 +226,117 @@ describe('AllocationBoard: a card', () => {
     expect(within(cardOf('Linus Torvalds')).queryByText(/₹/)).not.toBeInTheDocument();
   });
 
-  it('shows no date for a person who has no entry yet', async () => {
+  it('shows nothing under the name of a person with no note and no salary', async () => {
     await renderBoard();
-    expect(within(cardOf('Linus Torvalds')).queryByText(/since/)).not.toBeInTheDocument();
+    const card = cardOf('Linus Torvalds');
+    expect(within(card).getAllByRole('link')).toHaveLength(1);
+    expect(card.querySelectorAll('p')).toHaveLength(0);
   });
 
-  it('says since when for a person on the Bench by an entry', async () => {
-    serve({ entries: [allocationRows[0]], people: [grace] });
-    await renderBoard();
-    expect(within(cardOf('Grace Hopper')).getByText('since 3 Aug 2026')).toBeInTheDocument();
-  });
-
-  it('shows the note, not a date, for a person whose last project is no longer active', async () => {
+  it('shows the note for a person whose last project is no longer active', async () => {
     serve({ projects: [website, projectRows[1], legacyPortal] });
     await renderBoard();
     const card = within(cardOf('Grace Hopper'));
     expect(card.getByText('Last on Mobile app (on hold)')).toBeInTheDocument();
-    expect(card.queryByText(/since/)).not.toBeInTheDocument();
     expect(namesIn('Bench')).toContain('Grace Hopper');
   });
 
-  it('has a handle to drag it by, named for the person', async () => {
+  it('is itself what is dragged: a draggable card with no handle of its own', async () => {
     await renderBoard();
-    expect(within(cardOf('Ada Lovelace')).getByRole('button', { name: 'Drag Ada Lovelace' })).toBeInTheDocument();
+    const card = cardOf('Ada Lovelace');
+    expect(card).toHaveAttribute('aria-roledescription', 'draggable card');
+    expect(card).toHaveAttribute('aria-label', 'Ada Lovelace');
+    expect(card).toHaveAttribute('tabindex', '0');
+    expect(card).toHaveClass('cursor-grab');
+    expect(card).not.toHaveClass('touch-none');
+    expect(screen.queryByRole('button', { name: /^Drag / })).not.toBeInTheDocument();
   });
 
-  it('has a Move select that starts on a disabled placeholder and lists the columns in order', async () => {
+  it('is not a button, which would hold a link and a button', async () => {
     await renderBoard();
-    const select = moveSelect('Ada Lovelace');
-    const options = within(select).getAllByRole('option');
-    expect(options.map((option) => option.textContent)).toEqual(['Move to…', 'Bench', 'Mobile app', 'Website']);
-    expect(options[0]).toBeDisabled();
-    expect(select).toHaveValue('');
+    expect(cardOf('Ada Lovelace')).not.toHaveAttribute('role', 'button');
+    expect(within(cardOf('Ada Lovelace')).getByRole('link', { name: 'Ada Lovelace' })).toBeInTheDocument();
+  });
+
+  it('has an Actions button at its top right, named for the person, and no Move select', async () => {
+    await renderBoard();
+    expect(within(cardOf('Ada Lovelace')).getByRole('button', { name: 'Actions for Ada Lovelace' })).toHaveClass(
+      'size-11'
+    );
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/^Move .* to$/)).not.toBeInTheDocument();
+  });
+});
+
+describe('AllocationBoard: a card’s menu', () => {
+  it('opens on the button, titled Move to, with one item for each other column: the bench first, then the projects', async () => {
+    const user = userEvent.setup();
+    await renderBoard();
+    await user.click(actions('Linus Torvalds'));
+    const menu = await screen.findByRole('menu', { name: 'Actions for Linus Torvalds' });
+    expect(within(menu).getByText('Move to')).toBeInTheDocument();
+    expect(
+      within(menu)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent)
+    ).toEqual(['Mobile app', 'Website']);
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    await user.click(actions('Ada Lovelace'));
+    const other = await screen.findByRole('menu', { name: 'Actions for Ada Lovelace' });
+    expect(
+      within(other)
+        .getAllByRole('menuitem')
+        .map((item) => item.textContent)
+    ).toEqual(['Bench', 'Mobile app']);
+  });
+
+  it('makes every item a 44px target', async () => {
+    const user = userEvent.setup();
+    await renderBoard();
+    await user.click(actions('Linus Torvalds'));
+    for (const item of await screen.findAllByRole('menuitem')) expect(item).toHaveClass('min-h-11');
+  });
+
+  it('does not start a drag, or follow the link, when the button is pressed', async () => {
+    const user = userEvent.setup();
+    await renderBoard();
+    await user.click(actions('Linus Torvalds'));
+    expect(await screen.findByRole('menu')).toBeInTheDocument();
+    expect(document.body).not.toHaveTextContent('Picked up');
+    expect(coreApi.post).not.toHaveBeenCalled();
+  });
+
+  it('opens from the keyboard with Enter, Space or the down arrow, moves with the arrows, and picks with Enter', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    await renderBoard();
+    for (const key of ['{Enter}', ' ', '{ArrowDown}']) {
+      actions('Linus Torvalds').focus();
+      await user.keyboard(key);
+      expect(await screen.findByRole('menu')).toBeInTheDocument();
+      await user.keyboard('{Escape}');
+      await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+      await waitFor(() => expect(actions('Linus Torvalds')).toHaveFocus());
+    }
+    await user.keyboard('{Enter}');
+    await screen.findByRole('menu');
+    await user.keyboard('{ArrowDown}{Enter}');
+    await waitFor(() =>
+      expect(coreApi.post).toHaveBeenCalledWith('/allocations/move', {
+        personId: 3,
+        projectId: 1,
+        effectiveDate: '2026-10-20',
+      })
+    );
+  });
+
+  it('is not a drag when Enter is pressed on the card’s link: the key follows the link', async () => {
+    const user = userEvent.setup();
+    await renderBoard();
+    screen.getByRole('link', { name: 'Ada Lovelace' }).focus();
+    await user.keyboard('{Enter}');
+    expect(screen.queryByText('Picked up Ada Lovelace, from Website.')).not.toBeInTheDocument();
   });
 });
 
@@ -279,7 +371,7 @@ describe('AllocationBoard: moving with the select', () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    await moveVia(user, 'Linus Torvalds', 'Website');
     expect(coreApi.post).toHaveBeenCalledWith('/allocations/move', {
       personId: 3,
       projectId: 1,
@@ -293,7 +385,7 @@ describe('AllocationBoard: moving with the select', () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Ada Lovelace'), 'Bench');
+    await moveVia(user, 'Ada Lovelace', 'Bench');
     expect(coreApi.post).toHaveBeenCalledWith('/allocations/move', {
       personId: 1,
       projectId: null,
@@ -302,17 +394,18 @@ describe('AllocationBoard: moving with the select', () => {
     expect(namesIn('Bench')).toEqual(['Ada Lovelace', 'Linus Torvalds']);
   });
 
-  it('saves nothing for the column the card is already in', async () => {
+  it('does not offer the column the card is in, so a move to it cannot be asked for', async () => {
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Ada Lovelace'), 'Website');
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Bench');
+    await user.click(actions('Ada Lovelace'));
+    expect(screen.queryByRole('menuitem', { name: 'Website' })).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
     expect(coreApi.post).not.toHaveBeenCalled();
     expect(namesIn('Website')).toEqual(['Ada Lovelace']);
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('reads the entries again after a save, and the card is since today', async () => {
+  it('reads the entries again after a save, and the head follows', async () => {
     vi.mocked(coreApi.post).mockImplementation((async () => {
       state.entries = [
         {
@@ -329,40 +422,44 @@ describe('AllocationBoard: moving with the select', () => {
     }) as never);
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
-    await waitFor(() => expect(within(cardOf('Linus Torvalds')).getByText('since 20 Oct 2026')).toBeInTheDocument());
+    await moveVia(user, 'Linus Torvalds', 'Website');
+    await waitFor(() =>
+      expect(vi.mocked(coreApi.get).mock.calls.filter(([path]) => path === '/allocations')).toHaveLength(2)
+    );
     expect(namesIn('Website')).toEqual(['Ada Lovelace', 'Linus Torvalds']);
     expect(column('Website').getByText(headline('2 people, ₹85,000.00 a month'))).toBeInTheDocument();
   });
 
-  it('keeps focus on the card’s select, which is in its new column', async () => {
+  it('keeps focus on the card’s Actions button, which is in its new column', async () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
-    await waitFor(() => expect(moveSelect('Linus Torvalds')).toHaveFocus());
-    expect(column('Website').getByLabelText('Move Linus Torvalds to')).toBe(moveSelect('Linus Torvalds'));
+    await moveVia(user, 'Linus Torvalds', 'Website');
+    await waitFor(() => expect(actions('Linus Torvalds')).toHaveFocus());
+    expect(column('Website').getByRole('button', { name: 'Actions for Linus Torvalds' })).toBe(
+      actions('Linus Torvalds')
+    );
   });
 
-  it('puts the card back, says so, and keeps focus on its select when the save fails', async () => {
+  it('puts the card back, says so, and keeps focus on its Actions button when the save fails', async () => {
     vi.mocked(coreApi.post).mockRejectedValue(failure(500));
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    await moveVia(user, 'Linus Torvalds', 'Website');
     expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. The card is back where it was.');
     expect(namesIn('Bench')).toEqual(['Linus Torvalds']);
     expect(namesIn('Website')).toEqual(['Ada Lovelace']);
     expect(column('Bench').getByText('1 without a salary')).toBeInTheDocument();
-    await waitFor(() => expect(moveSelect('Linus Torvalds')).toHaveFocus());
+    await waitFor(() => expect(actions('Linus Torvalds')).toHaveFocus());
   });
 
   it('clears the message when the next move is tried', async () => {
     vi.mocked(coreApi.post).mockRejectedValueOnce(failure(500)).mockResolvedValue(saved);
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    await moveVia(user, 'Linus Torvalds', 'Website');
     await screen.findByRole('alert');
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Mobile app');
+    await moveVia(user, 'Linus Torvalds', 'Mobile app');
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
     expect(namesIn('Mobile app')).toEqual(['Grace Hopper', 'Linus Torvalds']);
   });
@@ -480,9 +577,9 @@ describe('AllocationBoard: dragging', () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    await moveVia(user, 'Linus Torvalds', 'Website');
     expect(namesIn('Website')).toEqual(['Ada Lovelace', 'Grace Hopper', 'Linus Torvalds']);
-    await user.selectOptions(moveSelect('Grace Hopper'), 'Bench');
+    await moveVia(user, 'Grace Hopper', 'Bench');
     expect(namesIn('Bench')).toEqual(['Grace Hopper']);
   });
 
@@ -511,24 +608,25 @@ describe('AllocationBoard: dragging', () => {
 describe('AllocationBoard: saves in flight', () => {
   const graceOnWebsite = { ...graceOnMobile, projectId: 1, project: { id: 1, name: 'Website' } };
 
-  it('locks a card while its move is being saved, so it cannot be moved a second time', async () => {
+  it('locks a card while its move is being saved: it cannot be dragged or moved from its menu a second time', async () => {
     const first = deferred();
     vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
-    expect(moveSelect('Linus Torvalds')).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Drag Linus Torvalds' })).toBeDisabled();
+    await moveVia(user, 'Linus Torvalds', 'Website');
+    expect(actions('Linus Torvalds')).toBeDisabled();
+    expect(cardOf('Linus Torvalds')).toHaveAttribute('data-disabled', 'true');
+    expect(cardOf('Linus Torvalds')).not.toHaveAttribute('tabindex');
     // The other cards are free.
-    expect(moveSelect('Ada Lovelace')).toBeEnabled();
-    expect(screen.getByRole('button', { name: 'Drag Ada Lovelace' })).toBeEnabled();
+    expect(actions('Ada Lovelace')).toBeEnabled();
+    expect(cardOf('Ada Lovelace')).toHaveAttribute('tabindex', '0');
     // A stray drop of the locked card changes nothing and sends nothing.
     act(() => kanban.onDragEnd?.(dropEvent('person-3', 'col-bench')));
     expect(coreApi.post).toHaveBeenCalledTimes(1);
     expect(namesIn('Website')).toEqual(['Ada Lovelace', 'Linus Torvalds']);
     first.resolve(saved);
-    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
-    expect(screen.getByRole('button', { name: 'Drag Linus Torvalds' })).toBeEnabled();
+    await waitFor(() => expect(actions('Linus Torvalds')).toBeEnabled());
+    expect(cardOf('Linus Torvalds')).toHaveAttribute('tabindex', '0');
   });
 
   it('unlocks the card, and puts it back, when its save fails', async () => {
@@ -536,23 +634,28 @@ describe('AllocationBoard: saves in flight', () => {
     vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    await moveVia(user, 'Linus Torvalds', 'Website');
     first.reject(failure(500));
     expect(await screen.findByRole('alert')).toHaveTextContent('That did not save');
-    expect(moveSelect('Linus Torvalds')).toBeEnabled();
+    expect(actions('Linus Torvalds')).toBeEnabled();
     expect(namesIn('Bench')).toEqual(['Linus Torvalds']);
   });
 
-  it('compares a move with where the card shows now: back to where it was is a move, the same column is not', async () => {
+  it('offers the columns other than the one the card shows in now: back to where it was is a move', async () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
-    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
-    // The stand-in service has not changed, so the entries read back still say Bench; the card shows Website.
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    await moveVia(user, 'Linus Torvalds', 'Website');
+    await waitFor(() => expect(actions('Linus Torvalds')).toBeEnabled());
+    // The stand-in service has not changed, so the entries read back still say Bench; the card shows Website, so its
+    // menu offers the Bench and not Website.
+    await user.click(actions('Linus Torvalds'));
+    expect(screen.queryByRole('menuitem', { name: 'Website' })).not.toBeInTheDocument();
+    expect(await screen.findByRole('menuitem', { name: 'Bench' })).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
     expect(coreApi.post).toHaveBeenCalledTimes(1);
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Bench');
+    await moveVia(user, 'Linus Torvalds', 'Bench');
     expect(coreApi.post).toHaveBeenCalledTimes(2);
     expect(coreApi.post).toHaveBeenLastCalledWith('/allocations/move', {
       personId: 3,
@@ -569,14 +672,14 @@ describe('AllocationBoard: saves in flight', () => {
       .mockRejectedValueOnce(failure(500));
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Mobile app');
-    await user.selectOptions(moveSelect('Ada Lovelace'), 'Bench');
+    await moveVia(user, 'Linus Torvalds', 'Mobile app');
+    await moveVia(user, 'Ada Lovelace', 'Bench');
     expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. The card is back where it was.');
     expect(namesIn('Website')).toEqual(['Ada Lovelace']);
     expect(namesIn('Mobile app')).toEqual(['Grace Hopper', 'Linus Torvalds']);
     expect(namesIn('Bench')).toEqual([]);
-    expect(moveSelect('Linus Torvalds')).toBeDisabled();
-    expect(moveSelect('Ada Lovelace')).toBeEnabled();
+    expect(actions('Linus Torvalds')).toBeDisabled();
+    expect(actions('Ada Lovelace')).toBeEnabled();
     state.entries = [
       {
         ...adaOnWebsite,
@@ -590,7 +693,7 @@ describe('AllocationBoard: saves in flight', () => {
       graceOnMobile,
     ];
     first.resolve(saved);
-    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
+    await waitFor(() => expect(actions('Linus Torvalds')).toBeEnabled());
     expect(namesIn('Mobile app')).toEqual(['Grace Hopper', 'Linus Torvalds']);
     expect(namesIn('Website')).toEqual(['Ada Lovelace']);
   });
@@ -600,7 +703,7 @@ describe('AllocationBoard: saves in flight', () => {
     vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
     const user = userEvent.setup();
     const { client } = await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    await moveVia(user, 'Linus Torvalds', 'Website');
     // Someone else puts Grace on Website; the board reads the entries again while Linus's save is still on its way.
     serve({ entries: [adaOnWebsite, graceOnWebsite] });
     await act(() => client.invalidateQueries({ queryKey: ['allocations'] }));
@@ -609,7 +712,7 @@ describe('AllocationBoard: saves in flight', () => {
     expect(namesIn('Bench')).toEqual([]);
     expect(column('Website').getByText(headline('3 people, ₹2,00,000.00 a month'))).toBeInTheDocument();
     first.resolve(saved);
-    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
+    await waitFor(() => expect(actions('Linus Torvalds')).toBeEnabled());
     expect(namesIn('Website')).toEqual(['Ada Lovelace', 'Grace Hopper', 'Linus Torvalds']);
   });
 
@@ -618,12 +721,12 @@ describe('AllocationBoard: saves in flight', () => {
     vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
     const user = userEvent.setup();
     const { client } = await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    await moveVia(user, 'Linus Torvalds', 'Website');
     serve({ entries: [adaOnWebsite, graceOnWebsite] });
     await act(() => client.invalidateQueries({ queryKey: ['allocations'] }));
     await waitFor(() => expect(namesIn('Mobile app')).toEqual([]));
     first.resolve(saved);
-    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
+    await waitFor(() => expect(actions('Linus Torvalds')).toBeEnabled());
   });
 
   it('forgets a card that is saving when it is gone from the people when they are read again', async () => {
@@ -631,7 +734,7 @@ describe('AllocationBoard: saves in flight', () => {
     vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
     const user = userEvent.setup();
     const { client } = await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    await moveVia(user, 'Linus Torvalds', 'Website');
     serve({ people: [ada, grace] });
     await act(() => client.invalidateQueries({ queryKey: ['people'] }));
     await waitFor(() => expect(screen.queryByRole('link', { name: 'Linus Torvalds' })).not.toBeInTheDocument());
@@ -644,7 +747,7 @@ describe('AllocationBoard: saves in flight', () => {
     vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    await moveVia(user, 'Linus Torvalds', 'Website');
     act(() => kanban.onDragStart?.({ active: { id: 'person-1' } } as never));
     act(() => kanban.onValueChange?.(carry('person-1', 'col-bench')));
     expect(namesIn('Bench')).toEqual(['Ada Lovelace']);
@@ -652,7 +755,7 @@ describe('AllocationBoard: saves in flight', () => {
     expect(namesIn('Website')).toEqual(['Ada Lovelace', 'Linus Torvalds']);
     expect(namesIn('Bench')).toEqual([]);
     first.resolve(saved);
-    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
+    await waitFor(() => expect(actions('Linus Torvalds')).toBeEnabled());
   });
 
   it('puts back only the dragged card when it is dropped on its own column or on nothing, not a card that is saving', async () => {
@@ -660,7 +763,7 @@ describe('AllocationBoard: saves in flight', () => {
     vi.mocked(coreApi.post).mockImplementation(() => first.promise as never);
     const user = userEvent.setup();
     await renderBoard();
-    await user.selectOptions(moveSelect('Linus Torvalds'), 'Website');
+    await moveVia(user, 'Linus Torvalds', 'Website');
     act(() => kanban.onDragStart?.({ active: { id: 'person-1' } } as never));
     act(() => kanban.onValueChange?.(carry('person-1', 'col-bench')));
     act(() => kanban.onValueChange?.(carry('person-1', 'col-1')));
@@ -673,7 +776,7 @@ describe('AllocationBoard: saves in flight', () => {
     expect(namesIn('Bench')).toEqual([]);
     expect(coreApi.post).toHaveBeenCalledTimes(1);
     first.resolve(saved);
-    await waitFor(() => expect(moveSelect('Linus Torvalds')).toBeEnabled());
+    await waitFor(() => expect(actions('Linus Torvalds')).toBeEnabled());
   });
 
   it('saves a drag that starts from where the card was and ends elsewhere, with the drag start known', async () => {
@@ -689,6 +792,71 @@ describe('AllocationBoard: saves in flight', () => {
         effectiveDate: '2026-10-20',
       })
     );
+  });
+});
+
+describe('AllocationBoard: the keyboard', () => {
+  const keyboardStart = (key: string) =>
+    ({ active: { id: key }, activatorEvent: new KeyboardEvent('keydown', { code: 'Space' }) } as never);
+  const pointerStart = (key: string) => ({ active: { id: key }, activatorEvent: new MouseEvent('mousedown') } as never);
+
+  it('puts focus back on the card, which is a new element in its new column, after a keyboard drag moves it', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    await renderBoard();
+    act(() => kanban.onDragStart?.(keyboardStart('person-3')));
+    act(() => kanban.onValueChange?.(carry('person-3', 'col-1')));
+    act(() => kanban.onDragEnd?.(dropEvent('person-3', 'col-1')));
+    await waitFor(() => expect(cardOf('Linus Torvalds')).toHaveFocus());
+    expect(column('Website').getByRole('link', { name: 'Linus Torvalds' })).toBeInTheDocument();
+  });
+
+  it('puts focus back on the card when a keyboard drag is cancelled after it went over another column', async () => {
+    await renderBoard();
+    act(() => kanban.onDragStart?.(keyboardStart('person-3')));
+    act(() => kanban.onValueChange?.(carry('person-3', 'col-1')));
+    act(() => kanban.onDragCancel?.({ active: { id: 'person-3' }, over: null } as never));
+    await waitFor(() => expect(cardOf('Linus Torvalds')).toHaveFocus());
+    expect(namesIn('Bench')).toEqual(['Linus Torvalds']);
+  });
+
+  it('does not take focus for a drag made with the pointer', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    await renderBoard();
+    act(() => kanban.onDragStart?.(pointerStart('person-3')));
+    act(() => kanban.onValueChange?.(carry('person-3', 'col-1')));
+    act(() => kanban.onDragEnd?.(dropEvent('person-3', 'col-1')));
+    await waitFor(() => expect(actions('Linus Torvalds')).toBeEnabled());
+    expect(cardOf('Linus Torvalds')).not.toHaveFocus();
+  });
+});
+
+describe('AllocationBoard: its size', () => {
+  it('asks the shell for the whole area while it is up, and gives it back when it goes', async () => {
+    const setFull = vi.fn();
+    const view = renderWithProviders(
+      <FullMainContext.Provider value={setFull}>
+        <AllocationBoard />
+      </FullMainContext.Provider>
+    );
+    await screen.findByRole('heading', { level: 2, name: 'Bench' });
+    expect(setFull).toHaveBeenLastCalledWith(true);
+    view.unmount();
+    expect(setFull).toHaveBeenLastCalledWith(false);
+  });
+
+  it('fills the height it is given: the row of columns scrolls sideways inside it, and each column scrolls its cards', async () => {
+    await renderBoard();
+    const bench = screen.getByRole('group', { name: 'Bench' });
+    const row = bench.closest('[data-slot="kanban-board"]')?.parentElement;
+    expect(row).toHaveClass('min-h-0', 'flex-1', 'overflow-x-auto');
+    expect(bench).toHaveClass('h-full', 'w-72', 'shrink-0');
+    expect(within(bench).getByRole('list')).toHaveClass('min-h-0', 'flex-1', 'overflow-y-auto');
+  });
+
+  it('keeps a column’s head in view while its cards scroll', async () => {
+    await renderBoard();
+    const bench = screen.getByRole('group', { name: 'Bench' });
+    expect(within(bench).getByRole('heading', { level: 2 }).parentElement).toHaveClass('shrink-0');
   });
 });
 
@@ -759,9 +927,11 @@ describe('AllocationBoard: what a screen reader is told while dragging', () => {
     expect(announce().onDragOver(args('person-3', 'person-3'))).toBe('Linus Torvalds is over Website.');
   });
 
-  it('tells how to move a card by keyboard, and that the menu does it too', async () => {
+  it('tells how to move a card by keyboard, and that the Actions menu does it too', async () => {
     await renderBoard();
-    expect(kanban.accessibility?.screenReaderInstructions?.draggable).toMatch(/pick up a card, press space or enter/);
-    expect(kanban.accessibility?.screenReaderInstructions?.draggable).toMatch(/Move to menu/);
+    expect(kanban.accessibility?.screenReaderInstructions?.draggable).toMatch(
+      /pick up a card, focus it and press space or enter/
+    );
+    expect(kanban.accessibility?.screenReaderInstructions?.draggable).toMatch(/Actions menu/);
   });
 });

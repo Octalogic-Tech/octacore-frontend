@@ -6,7 +6,14 @@
  * - `Slot` and `useComposedRefs` come from `@radix-ui/react-slot` and `@radix-ui/react-compose-refs`, not the
  *   umbrella `radix-ui` package.
  * - Restyled to the app's tokens: square, hairline, flat, a teal bar for focus (see DESIGN.md).
- * - A handle is `touch-none`, so a finger drags the card instead of scrolling the page.
+ * - A separate handle (`KanbanItemHandle`) is `touch-none`, so a finger drags by it instead of scrolling the page. An
+ *   item that is its own handle (`asHandle`, the whole card) is not: touch scrolling must keep working over it.
+ * - The mouse sensor starts a drag only after the pointer has moved 6px, and the touch sensor after a 250ms press (8px
+ *   of tolerance), so a click on a link or button inside a card is still a click and a swipe still scrolls. The
+ *   keyboard sensor is the registry's.
+ * - An item that is its own handle is also its activator, so the keyboard sensor starts a drag only for a key pressed on
+ *   the item itself (Enter on a link inside it follows the link). `sortableAttributes` sets the role, role
+ *   description and tab index dnd-kit puts on a draggable, so a card holding a link and a button need not be a button.
  * - A drag begun from the keyboard is not taken as opted out (see `optedOut`): the registry's check skipped every
  *   built-in step for it, so a card picked up with the keyboard showed no overlay and moved nothing.
  * - The hooks' dependency lists name what they read (the lint rule asks for it); behaviour is the registry's.
@@ -217,6 +224,12 @@ function optedOut({ activatorEvent }: { activatorEvent: Event }) {
   return activatorEvent.defaultPrevented && !(activatorEvent instanceof KeyboardEvent);
 }
 
+// A card is dragged from anywhere on it, and holds links and buttons, so a drag starts only once the pointer has
+// moved a few pixels (a plain click is still a click), and a touch must be held for a moment (a swipe still scrolls
+// the column or the board, which is why a card is not `touch-none`).
+const POINTER_ACTIVATION = { distance: 6 };
+const TOUCH_ACTIVATION = { delay: 250, tolerance: 8 };
+
 function Kanban<T>(props: KanbanProps<T>) {
   const {
     value,
@@ -240,8 +253,8 @@ function Kanban<T>(props: KanbanProps<T>) {
   const lastOverIdRef = React.useRef<UniqueIdentifier | null>(null);
   const hasMovedRef = React.useRef(false);
   const sensors = useSensors(
-    useSensor(MouseSensor),
-    useSensor(TouchSensor),
+    useSensor(MouseSensor, { activationConstraint: POINTER_ACTIVATION }),
+    useSensor(TouchSensor, { activationConstraint: TOUCH_ACTIVATION }),
     useSensor(KeyboardSensor, {
       coordinateGetter,
     })
@@ -844,10 +857,15 @@ interface KanbanItemProps extends React.ComponentProps<'div'> {
   asHandle?: boolean;
   asChild?: boolean;
   disabled?: boolean;
+  /**
+   * What dnd-kit puts on a draggable: `role` (a button, by default), `roleDescription` ("sortable") and `tabIndex`
+   * (0). A card that holds a link and a button is not itself a button, so the caller gives it a role of its own.
+   */
+  sortableAttributes?: { role?: string; roleDescription?: string; tabIndex?: number };
 }
 
 function KanbanItem(props: KanbanItemProps) {
-  const { value, style, asHandle, asChild, disabled, className, ref, ...itemProps } = props;
+  const { value, style, asHandle, asChild, disabled, sortableAttributes, className, ref, ...itemProps } = props;
 
   const instanceId = React.useId();
   const id = itemProps.id ?? instanceId;
@@ -862,6 +880,7 @@ function KanbanItem(props: KanbanItemProps) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
     id: value,
     disabled,
+    attributes: sortableAttributes,
   });
 
   if (value === '') {
@@ -878,7 +897,18 @@ function KanbanItem(props: KanbanItemProps) {
     [disabled, setNodeRef]
   );
 
-  const composedRef = useComposedRefs(ref, onNodeRef);
+  // When the item is its own handle, it is also the activator: dnd-kit's keyboard sensor then starts a drag only for a
+  // key pressed on the item itself, so Enter on a link inside it still follows the link. Without an activator it would
+  // start one for a key pressed on anything inside.
+  const onActivatorRef = React.useCallback(
+    (node: HTMLElement | null) => {
+      if (disabled || !asHandle) return;
+      setActivatorNodeRef(node);
+    },
+    [disabled, asHandle, setActivatorNodeRef]
+  );
+
+  const composedRef = useComposedRefs(ref, onNodeRef, onActivatorRef);
 
   const composedStyle = React.useMemo<React.CSSProperties>(() => {
     return {
@@ -917,7 +947,7 @@ function KanbanItem(props: KanbanItemProps) {
         className={cn(
           'relative after:pointer-events-none after:absolute after:inset-x-0 after:-bottom-px after:h-[3px] focus-visible:after:bg-teal has-[:focus-visible]:after:bg-teal',
           {
-            'touch-none select-none': asHandle,
+            'select-none': asHandle,
             'cursor-default': context.flatCursor,
             'data-dragging:cursor-grabbing': !context.flatCursor,
             'cursor-grab': !isDragging && asHandle && !context.flatCursor,

@@ -91,34 +91,38 @@ interface Named {
   };
 
   /**
-   * A real pointer drag, the way dnd-kit's MouseSensor reads one: a mouse down on the card's drag handle, mouse moves
-   * and a mouse up over the target column. The events are the browser's own mouse events at real screen coordinates, so
-   * the sensor, the collision detection and the drop handler all run as they do for a person. The board has no
-   * activation distance (the sensor takes any mouse down on the handle), so the first move only has to move. dnd-kit
-   * works out where the card is over after a render, so each step waits for the board's own announcement (the live
-   * region a screen reader hears) instead of a fixed pause.
+   * A real pointer drag, the way dnd-kit's MouseSensor reads one: a mouse down on the card itself (the whole card is what
+   * is dragged), mouse moves and a mouse up over the target column. The events are the browser's own mouse events at real
+   * screen coordinates, so the sensor, the collision detection and the drop handler all run as they do for a person. The
+   * sensor starts a drag only once the pointer has moved 6px, so the first move is a long one (a tenth of the way to the
+   * column). dnd-kit works out where the card is over after a render, so each step waits for the board's own announcement
+   * (the live region a screen reader hears) instead of a fixed pause.
    */
   const dragCardTo = (person: string, targetName: string, target: string) => {
-    const handle = `[aria-label="Drag ${person}"]`;
+    const card = `li[aria-label="${person}"]`;
     const live = '[id^="DndLiveRegion"]';
     // dnd-kit tells a mouse event by `instanceof MouseEvent`, and `trigger` makes a plain Event unless it is told otherwise.
     const mouse = { eventConstructor: 'MouseEvent', force: true } as const;
-    cy.get(handle).then(($handle) => {
+    cy.get(card).then(($card) => {
       cy.get(target).then(($target) => {
-        const from = $handle[0].getBoundingClientRect();
+        const from = $card[0].getBoundingClientRect();
         const to = $target[0].getBoundingClientRect();
-        const start = { clientX: Math.round(from.x + from.width / 2), clientY: Math.round(from.y + from.height / 2) };
+        // Where the card is empty: its left padding, not the name or the menu button.
+        const start = { clientX: Math.round(from.x + 6), clientY: Math.round(from.y + from.height / 2) };
         const end = { clientX: Math.round(to.x + to.width / 2), clientY: Math.round(to.y + to.height / 2) };
-        cy.get(handle).trigger('mousedown', { ...mouse, button: 0, buttons: 1, ...start });
-        cy.get(live).should('contain.text', `${person} is over`);
-        for (const step of [0.1, 0.5, 1]) {
-          cy.get('body').trigger('mousemove', {
-            ...mouse,
-            buttons: 1,
-            clientX: Math.round(start.clientX + (end.clientX - start.clientX) * step),
-            clientY: Math.round(start.clientY + (end.clientY - start.clientY) * step),
-          });
-        }
+        const along = (step: number) => ({
+          ...mouse,
+          buttons: 1,
+          clientX: Math.round(start.clientX + (end.clientX - start.clientX) * step),
+          clientY: Math.round(start.clientY + (end.clientY - start.clientY) * step),
+        });
+        cy.get(card).trigger('mousedown', { ...mouse, button: 0, buttons: 1, ...start });
+        // Pressing is not dragging: nothing is picked up until the pointer moves.
+        cy.get(card).should('not.have.attr', 'data-dragging');
+        cy.get('body').trigger('mousemove', along(0.1));
+        cy.get(card).should('have.attr', 'data-dragging');
+        cy.get('body').trigger('mousemove', along(0.5));
+        cy.get('body').trigger('mousemove', along(1));
         cy.get(live).should('contain.text', `${person} is over ${targetName}.`);
         cy.get('body').trigger('mouseup', { ...mouse, button: 0, buttons: 0, ...end });
         cy.get(live).should('contain.text', `${person} was dropped on ${targetName}.`);
@@ -250,8 +254,9 @@ interface Named {
     cy.get(column(`col-${apolloId}`)).within(() => {
       cy.contains('1 person, ₹85,000.00 a month').should('be.visible');
       cy.contains('a', ada).should('be.visible');
-      cy.contains('since 12 Mar 2026').should('be.visible');
       cy.contains('₹85,000.00').should('be.visible');
+      // A card carries no date: the ledger and the person's page have those.
+      cy.contains('since').should('not.exist');
     });
     cy.get(column(`col-${borealisId}`)).within(() => {
       cy.contains('2 people, ₹60,000.50 a month').should('be.visible');
@@ -259,7 +264,7 @@ interface Named {
     });
     shoot('resources-board-allocated');
 
-    // Drag Ada's card to the Bench: a real pointer drag on the handle.
+    // Drag Ada's card to the Bench: a real pointer drag from the card itself.
     dragCardTo(ada, 'Bench', column('col-bench'));
     cy.wait('@move').then(({ request, response }) => {
       expect(response?.statusCode).to.eq(200);
@@ -269,7 +274,6 @@ interface Named {
     cy.get(column('col-bench')).within(() => {
       cy.contains('1 person, ₹85,000.00 a month').should('be.visible');
       cy.contains('a', ada).should('be.visible');
-      cy.contains(`since ${shown(day)}`).should('be.visible');
     });
     cy.get(column(`col-${apolloId}`)).within(() => {
       cy.contains('0 people, ₹0.00 a month').should('be.visible');
@@ -317,15 +321,22 @@ interface Named {
 
     shoot('resources-ledger');
 
-    // The history is filled in, and where Ada is today did not change: still on the bench, since today.
+    // The history is filled in, and where Ada is today did not change: still on the bench.
     cy.contains('[role="tab"]', 'Board').click();
     cy.get(column('col-bench')).within(() => {
       cy.contains('a', ada).should('be.visible');
-      cy.contains(`since ${shown(day)}`).should('be.visible');
     });
 
-    // The Move to select does what the drag does. Two moves on one day leave one entry, so the ledger stays at three.
-    cy.get(`select[aria-label="Move ${ada} to"]`).select(APOLLO);
+    // The card's menu does what the drag does. Two moves on one day leave one entry, so the ledger stays at three. A press
+    // on the menu button is a click and not the start of a drag, and the menu offers every column but the one she is in.
+    cy.get(`button[aria-label="Actions for ${ada}"]`).click();
+    cy.get('[role="menu"]').within(() => {
+      cy.contains('Move to').should('be.visible');
+      cy.get('[role="menuitem"]').then((items) => {
+        expect([...items].map((item) => item.textContent)).to.deep.equal([APOLLO, BOREALIS]);
+      });
+      cy.contains('[role="menuitem"]', APOLLO).click();
+    });
     cy.wait('@move').its('response.statusCode').should('eq', 200);
     cy.get(column(`col-${apolloId}`)).within(() => {
       cy.contains('1 person, ₹85,000.00 a month').should('be.visible');

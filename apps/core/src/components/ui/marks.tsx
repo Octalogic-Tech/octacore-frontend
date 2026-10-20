@@ -59,16 +59,13 @@ export function CloseMark({ className, ...props }: SvgProps) {
   );
 }
 
-/** Two columns of three squares: what a card is picked up by. Drawn, like the other marks, so no icon set is needed. */
-export function GripMark({ className, ...props }: SvgProps) {
+/** Three squares in a row, "more": what opens a card's menu. Drawn, like the other marks, so no icon set is needed. */
+export function MoreMark({ className, ...props }: SvgProps) {
   return (
     <svg className={cn('size-5', className)} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false" {...props}>
-      <rect x="7" y="5" width="3.5" height="3.5" />
-      <rect x="13.5" y="5" width="3.5" height="3.5" />
-      <rect x="7" y="10.25" width="3.5" height="3.5" />
-      <rect x="13.5" y="10.25" width="3.5" height="3.5" />
-      <rect x="7" y="15.5" width="3.5" height="3.5" />
-      <rect x="13.5" y="15.5" width="3.5" height="3.5" />
+      <rect x="3" y="10.25" width="3.5" height="3.5" />
+      <rect x="10.25" y="10.25" width="3.5" height="3.5" />
+      <rect x="17.5" y="10.25" width="3.5" height="3.5" />
     </svg>
   );
 }

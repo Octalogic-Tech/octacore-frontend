@@ -30,6 +30,67 @@ function renderAt(route: string) {
   );
 }
 
+/** The page's own area, which a page can ask to be the whole height and width left beside the sidebar. */
+const main = () => screen.getByRole('main');
+
+describe('App shell: the main area', () => {
+  it('is the usual centred column on every page', () => {
+    for (const route of ['/', '/resources/people', '/resources/leave', '/projects']) {
+      const { unmount } = renderAt(route);
+      expect(main()).toHaveAttribute('data-layout', 'page');
+      expect(main()).toHaveClass('max-w-[75rem]');
+      unmount();
+    }
+  });
+
+  it('is the whole area beside the sidebar, edge to edge and down to the bottom, on the allocation board', () => {
+    renderAt('/resources/allocation');
+    expect(main()).toHaveAttribute('data-layout', 'full');
+    expect(main()).not.toHaveClass('max-w-[75rem]');
+    expect(main()).toHaveClass('flex', 'min-h-0', 'flex-1', 'flex-col');
+  });
+
+  it('is the usual column again on the allocation ledger', () => {
+    renderAt('/resources/allocation?tab=ledger');
+    expect(main()).toHaveAttribute('data-layout', 'page');
+    expect(main()).toHaveClass('max-w-[75rem]');
+  });
+
+  it('follows the tab: full on the board, usual on the ledger, and full again back on the board', async () => {
+    const user = userEvent.setup();
+    renderAt('/resources/allocation');
+    expect(main()).toHaveAttribute('data-layout', 'full');
+    await user.click(screen.getByRole('tab', { name: 'Ledger' }));
+    expect(main()).toHaveAttribute('data-layout', 'page');
+    await user.click(screen.getByRole('tab', { name: 'Board' }));
+    expect(main()).toHaveAttribute('data-layout', 'full');
+  });
+
+  it('goes back to the usual column when the board is left for another page', async () => {
+    const user = userEvent.setup();
+    renderAt('/resources/allocation');
+    expect(main()).toHaveAttribute('data-layout', 'full');
+    await user.click(within(screen.getByRole('navigation', { name: 'Main' })).getByRole('link', { name: 'People' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'People' })).toBeInTheDocument();
+    expect(main()).toHaveAttribute('data-layout', 'page');
+  });
+
+  it('keeps the shell as tall as the window, not taller, while the board is up, so only the board scrolls', () => {
+    const { container } = renderAt('/resources/allocation');
+    expect(container.firstElementChild).toHaveClass('h-dvh');
+    expect(container.firstElementChild).not.toHaveClass('min-h-dvh');
+    // The column beside the sidebar (the header, on a phone, and the main area) is that tall too, not as tall as its content.
+    expect(main().parentElement).toHaveClass('h-full', 'min-h-0');
+  });
+
+  it('keeps the usual page at least as tall as the window, free to grow', () => {
+    const { container } = renderAt('/resources/leave');
+    expect(container.firstElementChild).toHaveClass('min-h-dvh');
+    expect(container.firstElementChild).not.toHaveClass('h-dvh');
+    expect(main().parentElement).not.toHaveClass('h-full');
+  });
+});
+
 describe('App shell', () => {
   it('lists every page in five groups', () => {
     renderAt('/');

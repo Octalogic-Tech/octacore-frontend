@@ -1,15 +1,23 @@
 import type { Announcements, DragCancelEvent, DragEndEvent, DragStartEvent, UniqueIdentifier } from '@dnd-kit/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useFullMain } from '@/components/full-main';
 import { QueryBoundary } from '@/components/query-boundary';
 import { buttonVariants } from '@/components/ui/button';
-import { Kanban, KanbanBoard, KanbanColumn, KanbanItem, KanbanItemHandle, KanbanOverlay } from '@/components/ui/kanban';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Kanban, KanbanBoard, KanbanColumn, KanbanItem, KanbanOverlay } from '@/components/ui/kanban';
 import { LinkArrow } from '@/components/ui/link-arrow';
-import { GripMark } from '@/components/ui/marks';
-import { Select } from '@/components/ui/select';
+import { MoreMark } from '@/components/ui/marks';
 import { usePeople } from '@/features/people/api';
 import { useProjects } from '@/features/projects/api';
-import { formatDate, localToday } from '@/lib/format';
+import { localToday } from '@/lib/format';
 import { formatInr } from '@/lib/money';
 import { useAllocations, useMoveAllocation } from './api';
 import { buildBoard, byPerson, columnTotals, type BoardCard, type BoardColumn } from './board';
@@ -65,15 +73,25 @@ const cardLink =
 const SAVE_FAILED = 'That did not save. The card is back where it was.';
 
 const INSTRUCTIONS =
-  'To pick up a card, press space or enter. While you hold it, use the arrow keys to move it between columns. Press space or enter again to drop it there, or escape to cancel. The Move to menu on each card does the same without dragging.';
+  'To pick up a card, focus it and press space or enter. While you hold it, use the arrow keys to move it between columns. Press space or enter again to drop it there, or escape to cancel. The Actions menu on each card moves it without dragging.';
+
+// What dnd-kit says a draggable is: a button, by default. A card holds a link and a button of its own, so it is a list
+// item (it is in a list) that is described as a draggable card, and stays in the tab order for the keyboard.
+const CARD_ATTRIBUTES = { role: 'listitem', roleDescription: 'draggable card' };
+
+// A press or touch inside the menu is not the card's: it bubbles up the React tree through the portal, where the card's
+// drag listeners would take it.
+const keepToMenu = (event: { stopPropagation: () => void }) => event.stopPropagation();
 
 /**
  * Where everyone is today: the bench first, then a column for each active project, with the monthly salary cost at the
- * head of each. A card moves by dragging its handle to another column, or with the Move to menu on the card, which is
- * the way to do it without dragging. Either one saves a move dated today, which puts the person there from today on;
- * the ledger holds the dated history.
+ * head of each. It fills the area it is given (the page asks the shell for all of it): the row of columns scrolls
+ * sideways and each column scrolls its own cards. A card moves by dragging it from anywhere on it to another column, or
+ * with the menu at its top right, which is the way to do it without dragging. Either one saves a move dated today,
+ * which puts the person there from today on; the ledger holds the dated history.
  */
 export function AllocationBoard() {
+  useFullMain();
   const people = usePeople();
   const projects = useProjects();
   const entries = useAllocations();
@@ -102,21 +120,22 @@ export function AllocationBoard() {
   const savingNow = useRef(new Set<string>());
   const latest = useRef({ board, fromService });
   const refocus = useRef<string | null>(null);
-  // The column a drag began from, which a drop on that column (or on nothing) puts the card back to.
-  const dragFrom = useRef<{ cardKey: string; column: string | null } | null>(null);
+  // The column a drag began from, which a drop on that column (or on nothing) puts the card back to, and whether it
+  // was begun from the keyboard, which has a card to keep its place on.
+  const dragFrom = useRef<{ cardKey: string; column: string | null; keyboard: boolean } | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     latest.current = { board, fromService };
   }, [board, fromService]);
 
-  // A card that changes column is a new element in a new place, so the select that was used (and had focus) is
-  // replaced: focus goes to its successor, or the keyboard user loses their place. The successor is locked until its
-  // save settles, and a locked select cannot take focus, so this waits for it.
+  // A card that changes column is a new element in a new place, so what had focus (its Actions button, or the card
+  // itself in a keyboard drag) is replaced: focus goes to its successor, or the keyboard user loses their place. The
+  // successor is locked until its save settles, and a locked card cannot take focus, so this waits for it.
   useEffect(() => {
     if (refocus.current === null) return;
     const target = document.getElementById(refocus.current);
-    if (!target || (target as HTMLSelectElement).disabled) return;
+    if (!target || (target as HTMLButtonElement).disabled || target.closest('[data-disabled="true"]')) return;
     target.focus();
     refocus.current = null;
   });
@@ -130,19 +149,19 @@ export function AllocationBoard() {
   /**
    * Saves the card as on the column `targetKey` from today, and shows it there; `from` is the column it was in. Nothing
    * is saved for the column it is in already. The card is locked until the save settles. When the save fails the card,
-   * and only that card, goes back (to where the service has it, by name) and the board says so.
+   * and only that card, goes back (to where the service has it, by name) and the board says so. `focusId` is the element
+   * of the card that has focus and will be replaced: it gets focus again once the card is unlocked.
    */
-  async function moveCard(cardKey: string, targetKey: string, from: string | null, focusSelect = false) {
+  async function moveCard(cardKey: string, targetKey: string, from: string | null, focusId?: string) {
     const target = latest.current.board.find((column) => column.key === targetKey);
     const card = Object.values(columns)
       .flat()
       .find((candidate) => candidate.key === cardKey);
     if (!card || !target || from === targetKey || savingNow.current.has(cardKey)) return;
 
-    const selectId = `move-${cardKey}`;
     lock(cardKey, true);
     setFailed(false);
-    if (focusSelect) refocus.current = selectId;
+    if (focusId) refocus.current = focusId;
     setColumns((now) => place(now, card, targetKey));
     try {
       await move.mutateAsync({
@@ -151,7 +170,7 @@ export function AllocationBoard() {
         effectiveDate: localToday(),
       });
     } catch {
-      if (focusSelect) refocus.current = selectId;
+      if (focusId) refocus.current = focusId;
       const back = columnHolding(latest.current.fromService, cardKey) ?? from;
       if (back !== null) setColumns((now) => place(now, card, back));
       setFailed(true);
@@ -168,6 +187,7 @@ export function AllocationBoard() {
       .flat()
       .find((candidate) => candidate.key === cardKey);
     if (card && back !== null) setColumns((now) => place(now, card, back));
+    if (dragFrom.current?.cardKey === cardKey && dragFrom.current.keyboard) refocus.current = cardKey;
     dragFrom.current = null;
   }
 
@@ -177,9 +197,13 @@ export function AllocationBoard() {
     if (Object.keys(next).some((key) => !sameCards(columns[key], next[key]))) setColumns(next);
   }
 
-  function onDragStart({ active }: DragStartEvent) {
+  function onDragStart({ active, activatorEvent }: DragStartEvent) {
     const cardKey = String(active.id);
-    dragFrom.current = { cardKey, column: columnHolding(columns, cardKey) };
+    dragFrom.current = {
+      cardKey,
+      column: columnHolding(columns, cardKey),
+      keyboard: activatorEvent instanceof KeyboardEvent,
+    };
   }
 
   // The card is where it was dropped, which the Kanban has shown since it went over that column; saving is a move there.
@@ -195,8 +219,9 @@ export function AllocationBoard() {
       dropBack(cardKey);
       return;
     }
+    const focusId = dragFrom.current?.cardKey === cardKey && dragFrom.current.keyboard ? cardKey : undefined;
     dragFrom.current = null;
-    void moveCard(cardKey, now, from);
+    void moveCard(cardKey, now, from, focusId);
   }
 
   function onDragCancel({ active }: DragCancelEvent) {
@@ -240,130 +265,153 @@ export function AllocationBoard() {
         </div>
       }
     >
-      {failed ? (
-        <p role="alert" className="mb-4 text-small font-semibold text-foreground">
-          {SAVE_FAILED}
-        </p>
-      ) : null}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {failed ? (
+          <p role="alert" className="mb-3 shrink-0 text-small font-semibold text-foreground">
+            {SAVE_FAILED}
+          </p>
+        ) : null}
 
-      <div className="overflow-x-auto pb-4">
-        <Kanban
-          value={columns}
-          onValueChange={onValueChange}
-          getItemValue={(card) => card.key}
-          onDragStart={onDragStart}
-          onDragEnd={onDragEnd}
-          onDragCancel={onDragCancel}
-          accessibility={{ announcements, screenReaderInstructions: { draggable: INSTRUCTIONS } }}
-        >
-          <KanbanBoard>
-            {board.map((column) => {
-              const cards = columns[column.key] ?? [];
-              const { monthlyCostPaise, withoutSalary } = columnTotals(cards);
-              return (
-                <KanbanColumn
-                  key={column.key}
-                  value={column.key}
-                  role="group"
-                  aria-labelledby={`${column.key}-name`}
-                  className="h-auto min-h-48 w-72 shrink-0"
-                >
-                  <div className="grid gap-1 border-b border-rule pb-3">
-                    <h2 id={`${column.key}-name`} className="text-body font-semibold">
-                      {column.project ? (
-                        <Link
-                          to={`/projects/${column.project.id}`}
-                          className="decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline"
-                        >
-                          {column.project.name}
-                        </Link>
-                      ) : (
-                        'Bench'
-                      )}
-                    </h2>
-                    <p className="text-small">
-                      <span className="tabular">{cards.length}</span> {cards.length === 1 ? 'person' : 'people'},{' '}
-                      <span className="tabular">{formatInr(monthlyCostPaise)}</span> a month
-                    </p>
-                    {withoutSalary > 0 ? (
-                      <p className="text-small text-navy-80">{withoutSalary} without a salary</p>
-                    ) : null}
-                  </div>
+        <div className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden">
+          <Kanban
+            value={columns}
+            onValueChange={onValueChange}
+            getItemValue={(card) => card.key}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
+            onDragCancel={onDragCancel}
+            accessibility={{ announcements, screenReaderInstructions: { draggable: INSTRUCTIONS } }}
+          >
+            <KanbanBoard>
+              {board.map((column) => {
+                const cards = columns[column.key] ?? [];
+                const { monthlyCostPaise, withoutSalary } = columnTotals(cards);
+                return (
+                  <KanbanColumn
+                    key={column.key}
+                    value={column.key}
+                    role="group"
+                    aria-labelledby={`${column.key}-name`}
+                    className="h-full min-h-0 w-72 shrink-0"
+                  >
+                    <div className="grid shrink-0 gap-1 border-b border-rule pb-3">
+                      <h2 id={`${column.key}-name`} className="text-body font-semibold">
+                        {column.project ? (
+                          <Link
+                            to={`/projects/${column.project.id}`}
+                            className="decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline"
+                          >
+                            {column.project.name}
+                          </Link>
+                        ) : (
+                          'Bench'
+                        )}
+                      </h2>
+                      <p className="text-small">
+                        <span className="tabular">{cards.length}</span> {cards.length === 1 ? 'person' : 'people'},{' '}
+                        <span className="tabular">{formatInr(monthlyCostPaise)}</span> a month
+                      </p>
+                      {withoutSalary > 0 ? (
+                        <p className="text-small text-navy-80">{withoutSalary} without a salary</p>
+                      ) : null}
+                    </div>
 
-                  {cards.length === 0 ? (
-                    <p className="text-small text-navy-80">
-                      {column.project ? 'Nobody is on this project.' : 'Nobody is on the bench.'}
-                    </p>
-                  ) : (
-                    <ul className="grid gap-2">
-                      {cards.map((card) => (
-                        <KanbanItem key={card.key} value={card.key} disabled={saving.has(card.key)} asChild>
-                          <li className="border border-rule bg-background p-2">
-                            <div className="flex items-start gap-1">
-                              <KanbanItemHandle
-                                aria-label={`Drag ${card.person.name}`}
-                                className={buttonVariants({ variant: 'icon' })}
-                              >
-                                <GripMark />
-                              </KanbanItemHandle>
-                              <div className="min-w-0 flex-1">
-                                <Link to={`/resources/people/${card.person.id}`} className={cardLink}>
-                                  {card.person.name}
-                                </Link>
-                                {card.since !== null || card.note !== null ? (
-                                  <p className="tabular text-small text-navy-80">
-                                    {card.since !== null ? `since ${formatDate(card.since)}` : card.note}
-                                  </p>
-                                ) : null}
-                                {card.person.monthlySalaryPaise === null ? null : (
-                                  <p className="tabular text-small">{formatInr(card.person.monthlySalaryPaise)}</p>
-                                )}
-                              </div>
-                            </div>
-                            <Select
-                              id={`move-${card.key}`}
-                              aria-label={`Move ${card.person.name} to`}
-                              value=""
-                              className="min-h-11 text-small"
+                    {cards.length === 0 ? (
+                      <p className="text-small text-navy-80">
+                        {column.project ? 'Nobody is on this project.' : 'Nobody is on the bench.'}
+                      </p>
+                    ) : (
+                      <ul className="-mx-2 grid min-h-0 flex-1 content-start gap-2 overflow-y-auto px-2 py-1">
+                        {cards.map((card) => {
+                          const menuLabel = `${card.key}-move`;
+                          const actionsId = `actions-${card.key}`;
+                          return (
+                            <KanbanItem
+                              key={card.key}
+                              id={card.key}
+                              value={card.key}
+                              aria-label={card.person.name}
+                              sortableAttributes={CARD_ATTRIBUTES}
                               disabled={saving.has(card.key)}
-                              onChange={(event) =>
-                                void moveCard(card.key, event.target.value, columnHolding(columns, card.key), true)
-                              }
+                              asHandle
+                              asChild
                             >
-                              <option value="" disabled>
-                                Move to…
-                              </option>
-                              {board.map((option) => (
-                                <option key={option.key} value={option.key}>
-                                  {columnName(option)}
-                                </option>
-                              ))}
-                            </Select>
-                          </li>
-                        </KanbanItem>
-                      ))}
-                    </ul>
-                  )}
-                </KanbanColumn>
-              );
-            })}
-          </KanbanBoard>
+                              <li className="border border-rule bg-background py-1 pl-3 pr-1">
+                                <div className="flex items-start justify-between gap-1">
+                                  <div className="min-w-0 flex-1">
+                                    <Link to={`/resources/people/${card.person.id}`} className={cardLink}>
+                                      {card.person.name}
+                                    </Link>
+                                    {card.note !== null ? <p className="text-small text-navy-80">{card.note}</p> : null}
+                                    {card.person.monthlySalaryPaise === null ? null : (
+                                      <p className="tabular pb-2 text-small">
+                                        {formatInr(card.person.monthlySalaryPaise)}
+                                      </p>
+                                    )}
+                                  </div>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger
+                                      id={actionsId}
+                                      aria-label={`Actions for ${card.person.name}`}
+                                      disabled={saving.has(card.key)}
+                                      className={buttonVariants({ variant: 'icon' })}
+                                    >
+                                      <MoreMark />
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent
+                                      aria-labelledby={actionsId}
+                                      onMouseDown={keepToMenu}
+                                      onTouchStart={keepToMenu}
+                                    >
+                                      <DropdownMenuGroup aria-labelledby={menuLabel}>
+                                        <DropdownMenuLabel id={menuLabel}>Move to</DropdownMenuLabel>
+                                        {board
+                                          .filter((option) => option.key !== columnHolding(columns, card.key))
+                                          .map((option) => (
+                                            <DropdownMenuItem
+                                              key={option.key}
+                                              onSelect={() =>
+                                                void moveCard(
+                                                  card.key,
+                                                  option.key,
+                                                  columnHolding(columns, card.key),
+                                                  actionsId
+                                                )
+                                              }
+                                            >
+                                              {columnName(option)}
+                                            </DropdownMenuItem>
+                                          ))}
+                                      </DropdownMenuGroup>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </div>
+                              </li>
+                            </KanbanItem>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </KanbanColumn>
+                );
+              })}
+            </KanbanBoard>
 
-          <KanbanOverlay>
-            {({ value }) => {
-              const card = Object.values(columns)
-                .flat()
-                .find((candidate) => candidate.key === value);
-              if (!card) return null;
-              return (
-                <div className="flex h-full items-center gap-2 border border-navy bg-background px-3 text-navy">
-                  <GripMark />
-                  <span className="font-semibold">{card.person.name}</span>
-                </div>
-              );
-            }}
-          </KanbanOverlay>
-        </Kanban>
+            <KanbanOverlay>
+              {({ value }) => {
+                const card = Object.values(columns)
+                  .flat()
+                  .find((candidate) => candidate.key === value);
+                if (!card) return null;
+                return (
+                  <div className="flex h-full items-center border border-navy bg-background px-3 font-semibold text-navy">
+                    {card.person.name}
+                  </div>
+                );
+              }}
+            </KanbanOverlay>
+          </Kanban>
+        </div>
       </div>
     </QueryBoundary>
   );

@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react';
-import { Arm, ArmArrow, CheckMark, ChevronDownMark, CloseMark, GripMark } from './marks';
+import { Arm, ArmArrow, CheckMark, ChevronDownMark, CloseMark, MoreMark } from './marks';
 
 describe('marks', () => {
   it('hides every drawn mark from assistive technology', () => {
@@ -10,7 +10,7 @@ describe('marks', () => {
         <CheckMark />
         <ChevronDownMark />
         <CloseMark />
-        <GripMark />
+        <MoreMark />
       </>,
     );
     expect(container.querySelectorAll('[aria-hidden="true"]')).toHaveLength(6);
