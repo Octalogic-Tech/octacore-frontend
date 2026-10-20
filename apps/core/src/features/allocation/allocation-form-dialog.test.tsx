@@ -2,7 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { coreApi } from '@/lib/core-api';
-import { allocationEnvelope, allocationRows } from '@/test/fixtures/allocations';
+import { allocationEnvelope, allocationRows, allocationsEnvelope } from '@/test/fixtures/allocations';
 import { peopleEnvelope } from '@/test/fixtures/people';
 import { projectsEnvelope } from '@/test/fixtures/projects';
 import { renderWithProviders } from '@/test/utils';
@@ -24,7 +24,7 @@ const [, adaOnWebsite, , adaOnBench] = allocationRowsSchema.parse(allocationRows
 
 const onOpenChange = vi.fn();
 
-const DUPLICATE = 'This person already has an entry on that date; edit it instead';
+const DUPLICATE = 'This person already has an entry for that card on that date; edit it instead';
 
 /** What the service answers a save with; the dialog does not read it. */
 const saved = { data: allocationEnvelope() };
@@ -38,10 +38,19 @@ const failure = (status: number, message = 'refused') =>
     config: {} as never,
   });
 
-type Served = { people?: 'fail' | unknown; projects?: 'fail' | unknown };
+type Served = { people?: 'fail' | unknown; projects?: 'fail' | unknown; entries?: unknown[] };
 
-const serve = ({ people, projects }: Served = {}) =>
-  vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+/** The service filters entries by person; the stand-in does too. `entries` are what the service holds. */
+const serve = ({ people, projects, entries = allocationRows }: Served = {}) =>
+  vi.mocked(coreApi.get).mockImplementation((async (path: string, config?: { params?: { personId?: number } }) => {
+    if (path === '/allocations') {
+      const personId = config?.params?.personId;
+      return {
+        data: allocationsEnvelope(
+          personId === undefined ? entries : entries.filter((row) => (row as { personId: number }).personId === personId),
+        ),
+      };
+    }
     if (path === '/people') {
       if (people === 'fail') throw new Error('down');
       return { data: people ?? peopleEnvelope() };
@@ -83,11 +92,11 @@ describe('AllocationFormDialog: adding', () => {
     await screen.findByRole('option', { name: 'Ada Lovelace' });
   });
 
-  it('offers the bench first, then every project by name, whatever its status', async () => {
+  it('offers the bench first, then every project by name, whatever its status, and "Card removed" last', async () => {
     openDialog();
     await screen.findByRole('option', { name: 'Website' });
     // Website is active, Mobile app is on hold and Legacy portal is completed: all are offered.
-    expect(optionNames(screen.getByLabelText('Project'))).toEqual(['Bench', 'Legacy portal', 'Mobile app', 'Website']);
+    expect(optionNames(screen.getByLabelText('Project'))).toEqual(['Bench', 'Legacy portal', 'Mobile app', 'Website', 'Card removed']);
   });
 
   it('offers every person, A to Z, after a prompt to choose one', async () => {
@@ -112,7 +121,9 @@ describe('AllocationFormDialog: adding', () => {
     expect(coreApi.post).toHaveBeenCalledTimes(1);
     expect(coreApi.post).toHaveBeenCalledWith('/allocations', {
       personId: 1,
+      card: 1,
       projectId: null,
+      removed: false,
       effectiveDate: '2026-10-20',
       note: null,
     });
@@ -132,7 +143,9 @@ describe('AllocationFormDialog: adding', () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.post).toHaveBeenCalledWith('/allocations', {
       personId: 2,
+      card: 1,
       projectId: 1,
+      removed: false,
       effectiveDate: '2026-01-05',
       note: 'Joined the team',
     });
@@ -230,7 +243,7 @@ describe('AllocationFormDialog: adding', () => {
     openDialog();
     expect(await screen.findByText('People could not be loaded.')).toBeInTheDocument();
     expect(await screen.findByText('Projects could not be loaded.')).toBeInTheDocument();
-    expect(optionNames(screen.getByLabelText('Project'))).toEqual(['Bench']);
+    expect(optionNames(screen.getByLabelText('Project'))).toEqual(['Bench', 'Card removed']);
   });
 
   it('closes without saving on Cancel', async () => {
@@ -365,7 +378,7 @@ describe('AllocationFormDialog: editing', () => {
     openDialog({ entry: adaOnWebsite });
     expect(await screen.findByText('Projects could not be loaded.')).toBeInTheDocument();
     expect(screen.getByLabelText('Project')).toHaveValue('1');
-    expect(optionNames(screen.getByLabelText('Project'))).toEqual(['Bench', 'Website']);
+    expect(optionNames(screen.getByLabelText('Project'))).toEqual(['Bench', 'Website', 'Card removed']);
   });
 
   it('says so on the date when it now clashes with another entry of the person', async () => {
@@ -394,5 +407,215 @@ describe('AllocationFormDialog: editing', () => {
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onOpenChange).toHaveBeenCalledWith(false);
     expect(coreApi.patch).not.toHaveBeenCalled();
+  });
+});
+
+describe('AllocationFormDialog: cards', () => {
+  const secondCard = { ...allocationRows[1], id: 20, card: 2, projectId: 2, project: { id: 2, name: 'Mobile app' }, effectiveDate: '2026-06-01' };
+  const removedSecond = { ...allocationRows[1], id: 21, card: 2, removed: true, projectId: null, project: null, effectiveDate: '2026-07-01' };
+  const secondOfAda = allocationRowsSchema.parse([secondCard])[0];
+  const removalOfAda = allocationRowsSchema.parse([removedSecond])[0];
+
+  it('opens a new entry on Card 1, offering the card numbers the person has and a new card', async () => {
+    serve({ entries: [secondCard, ...allocationRows] });
+    openDialog({ personId: 1 });
+    expect(screen.getByLabelText('Card')).toHaveValue('1');
+    await waitFor(() => expect(optionNames(screen.getByLabelText('Card'))).toEqual(['Card 1', 'Card 2', 'New card']));
+  });
+
+  it('offers only Card 1 and a new card to a person with no entries', async () => {
+    serve({ entries: [] });
+    openDialog({ personId: 3 });
+    await waitFor(() => expect(coreApi.get).toHaveBeenCalledWith('/allocations', { params: { personId: 3 } }));
+    expect(optionNames(screen.getByLabelText('Card'))).toEqual(['Card 1', 'New card']);
+  });
+
+  it('offers the cards of the person chosen, and goes back to Card 1 when another person is chosen', async () => {
+    serve({ entries: [secondCard, ...allocationRows] });
+    const user = userEvent.setup();
+    openDialog();
+    await screen.findByRole('option', { name: 'Ada Lovelace' });
+    await user.selectOptions(screen.getByLabelText('Person'), 'Ada Lovelace');
+    await waitFor(() => expect(optionNames(screen.getByLabelText('Card'))).toEqual(['Card 1', 'Card 2', 'New card']));
+    await user.selectOptions(screen.getByLabelText('Card'), 'Card 2');
+    await user.selectOptions(screen.getByLabelText('Person'), 'Grace Hopper');
+    await waitFor(() => expect(optionNames(screen.getByLabelText('Card'))).toEqual(['Card 1', 'New card']));
+    expect(screen.getByLabelText('Card')).toHaveValue('1');
+  });
+
+  it('adds an entry for another card of the person, with that card’s number', async () => {
+    serve({ entries: [secondCard, ...allocationRows] });
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ personId: 1 });
+    await waitFor(() => expect(optionNames(screen.getByLabelText('Card'))).toContain('Card 2'));
+    await user.selectOptions(screen.getByLabelText('Card'), 'Card 2');
+    await screen.findByRole('option', { name: 'Website' });
+    await user.selectOptions(screen.getByLabelText('Project'), 'Website');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith('/allocations', {
+      personId: 1,
+      card: 2,
+      projectId: 1,
+      removed: false,
+      effectiveDate: '2026-10-20',
+      note: null,
+    });
+  });
+
+  it('adds a new card through the cards endpoint, not as an entry: the person, the project, the date and the note', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ personId: 1 });
+    await user.selectOptions(screen.getByLabelText('Card'), 'New card');
+    await screen.findByRole('option', { name: 'Website' });
+    await user.selectOptions(screen.getByLabelText('Project'), 'Website');
+    await user.type(screen.getByLabelText('Note'), 'Also on the web build');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledTimes(1);
+    expect(coreApi.post).toHaveBeenCalledWith('/allocations/cards', {
+      personId: 1,
+      projectId: 1,
+      effectiveDate: '2026-10-20',
+      note: 'Also on the web build',
+    });
+  });
+
+  it('adds a new card on the bench with a null project and no note', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ personId: 1 });
+    await user.selectOptions(screen.getByLabelText('Card'), 'New card');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith('/allocations/cards', {
+      personId: 1,
+      projectId: null,
+      effectiveDate: '2026-10-20',
+      note: null,
+    });
+  });
+
+  it('does not let a new card be one that is removed', async () => {
+    const user = userEvent.setup();
+    openDialog({ personId: 1 });
+    await user.selectOptions(screen.getByLabelText('Card'), 'New card');
+    await user.selectOptions(screen.getByLabelText('Project'), 'Card removed');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText('A new card cannot be removed')).toBeInTheDocument();
+    expect(coreApi.post).not.toHaveBeenCalled();
+  });
+
+  it('offers "Card removed" as the last choice of the Project select', async () => {
+    openDialog({ personId: 1 });
+    await screen.findByRole('option', { name: 'Website' });
+    expect(optionNames(screen.getByLabelText('Project'))).toEqual([
+      'Bench',
+      'Legacy portal',
+      'Mobile app',
+      'Website',
+      'Card removed',
+    ]);
+  });
+
+  it('adds an entry that removes a card, with no project', async () => {
+    vi.mocked(coreApi.post).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ personId: 1 });
+    await user.selectOptions(screen.getByLabelText('Project'), 'Card removed');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.post).toHaveBeenCalledWith('/allocations', expect.objectContaining({ card: 1, projectId: null, removed: true }));
+  });
+
+  it('shows a clash on the date in the service’s words when the card has an entry that day', async () => {
+    vi.mocked(coreApi.post).mockRejectedValue(failure(409, DUPLICATE));
+    const user = userEvent.setup();
+    openDialog({ personId: 1 });
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(DUPLICATE)).toBeInTheDocument();
+    expect(screen.getByLabelText('Effective date')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('shows the service’s refusal of a card that does not exist, and of a new card, above the buttons', async () => {
+    vi.mocked(coreApi.post).mockRejectedValue(failure(409, 'That card does not exist'));
+    const user = userEvent.setup();
+    openDialog({ personId: 1 });
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('That card does not exist');
+    expect(onOpenChange).not.toHaveBeenCalledWith(false);
+  });
+
+  it('shows the card of an entry being edited as text it cannot change', () => {
+    openDialog({ entry: secondOfAda });
+    expect(screen.getByLabelText('Card')).toHaveValue('Card 2');
+    expect(screen.getByLabelText('Card')).toHaveAttribute('readonly');
+  });
+
+  it('edits an entry of another card without sending the card or the person', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ entry: secondOfAda });
+    await user.type(screen.getByLabelText('Note'), 'Handed over');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/20', { effectiveDate: '2026-06-01', note: 'Handed over' });
+  });
+
+  it('opens an entry that removes a card on "Card removed", and sends nothing about it when it is saved unchanged', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ entry: removalOfAda });
+    expect(screen.getByLabelText('Project')).toHaveValue('removed');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/21', { effectiveDate: '2026-07-01', note: null });
+  });
+
+  it('turns an entry on a project into the removal of its card: no project, removed', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ entry: secondOfAda });
+    await user.selectOptions(screen.getByLabelText('Project'), 'Card removed');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/20', {
+      projectId: null,
+      removed: true,
+      effectiveDate: '2026-06-01',
+      note: null,
+    });
+  });
+
+  it('turns the removal of a card into a placement again: the project and removed false', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ entry: removalOfAda });
+    await screen.findByRole('option', { name: 'Website' });
+    await user.selectOptions(screen.getByLabelText('Project'), 'Website');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/21', {
+      projectId: 1,
+      removed: false,
+      effectiveDate: '2026-07-01',
+      note: null,
+    });
+  });
+
+  it('turns the removal of a card into the bench with removed false alone', async () => {
+    vi.mocked(coreApi.patch).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    openDialog({ entry: removalOfAda });
+    await user.selectOptions(screen.getByLabelText('Project'), 'Bench');
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/21', {
+      removed: false,
+      effectiveDate: '2026-07-01',
+      note: null,
+    });
   });
 });

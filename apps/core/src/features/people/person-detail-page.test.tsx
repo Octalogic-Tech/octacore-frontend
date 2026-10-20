@@ -232,6 +232,74 @@ describe('PersonDetailPage: where the person is now', () => {
   });
 });
 
+describe('PersonDetailPage: where a person with several cards is now', () => {
+  const mobileApp = { ...projectRows[1], projectStatus: 'active' };
+  const second = (over: Record<string, unknown>) => ({
+    ...allocationRows[1],
+    id: 20,
+    card: 2,
+    effectiveDate: '2026-06-01',
+    ...over,
+  });
+  const onMobile = { projectId: 2, project: { id: 2, name: 'Mobile app' } };
+
+  it('lists where every card is, the lowest card number first, each project linking to its page', async () => {
+    serve({ projects: [projectRows[0], mobileApp, projectRows[2]], entries: [second(onMobile), allocationRows[1]] });
+    renderAt('/resources/people/1');
+    expect(await screen.findByText(sentence('On Website and Mobile app'))).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Website' })).toHaveAttribute('href', '/projects/1');
+    expect(screen.getByRole('link', { name: 'Mobile app' })).toHaveAttribute('href', '/projects/2');
+  });
+
+  it('says the bench for a card on it, whichever card that is', async () => {
+    serve({ entries: [second({ projectId: null, project: null }), allocationRows[1]] });
+    renderAt('/resources/people/1');
+    expect(await screen.findByText(sentence('On Website and the bench'))).toBeInTheDocument();
+  });
+
+  it('counts the cards on one project instead of naming it twice, as a card just copied makes', async () => {
+    serve({ entries: [second({ projectId: 1, project: { id: 1, name: 'Website' } }), allocationRows[1]] });
+    renderAt('/resources/people/1');
+    expect(await screen.findByText(sentence('On Website (2 cards)'))).toBeInTheDocument();
+  });
+
+  it('says a card whose project is not active is on the bench, and which project it was on', async () => {
+    serve({ entries: [second(onMobile), allocationRows[1]] });
+    renderAt('/resources/people/1');
+    expect(await screen.findByText(sentence('On Website and the bench. Last on Mobile app (on hold)'))).toBeInTheDocument();
+  });
+
+  it('is the one card’s sentence again when the other is removed', async () => {
+    serve({
+      entries: [
+        { ...allocationRows[1], id: 21, card: 2, removed: true, projectId: null, project: null, effectiveDate: '2026-07-01' },
+        second(onMobile),
+        allocationRows[1],
+      ],
+    });
+    renderAt('/resources/people/1');
+    expect(await screen.findByText(sentence('On Website since 12 Mar 2026'))).toBeInTheDocument();
+  });
+
+  it('keeps the Allocate button, which adds an entry for a card of this person', async () => {
+    serve({ entries: [second(onMobile), allocationRows[1]] });
+    const user = userEvent.setup();
+    renderAt('/resources/people/1');
+    await user.click(await screen.findByRole('button', { name: 'Allocate' }));
+    const dialog = await screen.findByRole('dialog', { name: 'New allocation entry' });
+    expect(within(dialog).getByLabelText('Card')).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText('Person')).not.toBeInTheDocument();
+  });
+
+  it('counts every entry, of every card, in the Allocations tab', async () => {
+    serve({ entries: [second(onMobile), allocationRows[1], allocationRows[3]] });
+    renderAt('/resources/people/1');
+    await waitFor(() =>
+      expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Overview', 'Allocations 3', 'Leave 2']),
+    );
+  });
+});
+
 describe('PersonDetailPage: allocating', () => {
   it('opens the entry form for this person, who is not asked for', async () => {
     const user = userEvent.setup();
@@ -260,7 +328,9 @@ describe('PersonDetailPage: allocating', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(coreApi.post).toHaveBeenCalledWith('/allocations', {
       personId: 1,
+      card: 1,
       projectId: null,
+      removed: false,
       effectiveDate: '2026-10-20',
       note: null,
     });

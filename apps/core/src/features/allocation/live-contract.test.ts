@@ -3,6 +3,7 @@ import { personRowSchema } from '@/features/people/schema';
 import { unwrap } from '@/lib/core-api';
 import { localToday } from '@/lib/format';
 import { signInLive, type LiveSend } from '@/test/live-api';
+import { cardsOf } from './board';
 import { allocationRowSchema, allocationRowsSchema, BENCH, toAllocationBody, toAllocationFormValues } from './schema';
 
 // Opt-in: this talks to the real FastAPI service and WRITES to it (it adds people, a project or two and their allocation
@@ -16,8 +17,10 @@ let send: LiveSend;
 
 const createdSchema = z.object({ id: z.number().int() });
 
-/** What the ledger shows when a person already has an entry on a date: the form puts it on the date field. */
-const DUPLICATE_DATE = 'This person already has an entry on that date; edit it instead';
+/** What the ledger shows when a card already has an entry on a date: the form puts it on the date field. */
+const DUPLICATE_DATE = 'This person already has an entry for that card on that date; edit it instead';
+const KEEPS_ONE = 'A person keeps at least one card';
+const NO_SUCH_CARD = 'That card does not exist';
 
 const createPerson = async (name: string) =>
   unwrap(await (await send('POST', '/people', { name, joinDate: '2026-01-05', monthlySalaryPaise: 5_000_000 })).json(), personRowSchema);
@@ -53,7 +56,9 @@ describe.skipIf(!base)('the running core service, allocations', () => {
       const body = formBody(person.id, apollo, '2026-03-12', 'Starts on the platform team');
       expect(body).toEqual({
         personId: person.id,
+        card: 1,
         projectId: apollo,
+        removed: false,
         effectiveDate: '2026-03-12',
         note: 'Starts on the platform team',
       });
@@ -63,6 +68,8 @@ describe.skipIf(!base)('the running core service, allocations', () => {
       expect(first).toEqual({
         id: first.id,
         personId: person.id,
+        card: 1,
+        removed: false,
         projectId: apollo,
         effectiveDate: '2026-03-12',
         note: 'Starts on the platform team',
@@ -172,27 +179,43 @@ describe.skipIf(!base)('the running core service, allocations', () => {
     const today = localToday();
     try {
       // The first move of the day adds the entry.
+      // The card is left out here: it is card 1 unless it says otherwise. The board always names it.
       const firstMove = await send('POST', '/allocations/move', { personId: person.id, projectId: apollo, effectiveDate: today });
       expect(firstMove.status).toBe(200);
       const placed = unwrap(await firstMove.json(), allocationRowSchema);
       expect(placed).toMatchObject({ personId: person.id, projectId: apollo, effectiveDate: today, note: '' });
 
       // The second changes that entry: the same id, the new project, still one entry.
-      const secondMove = await send('POST', '/allocations/move', { personId: person.id, projectId: borealis, effectiveDate: today });
+      const secondMove = await send('POST', '/allocations/move', {
+        personId: person.id,
+        card: 1,
+        projectId: borealis,
+        effectiveDate: today,
+      });
       expect(secondMove.status).toBe(200);
       const replaced = unwrap(await secondMove.json(), allocationRowSchema);
       expect(replaced).toMatchObject({ id: placed.id, projectId: borealis, project: { id: borealis, name: 'Move Borealis' } });
       expect(await entriesOf(person.id)).toHaveLength(1);
 
       // And a third, to the bench (projectId null), the way a drop on the Bench column saves.
-      const toBench = await send('POST', '/allocations/move', { personId: person.id, projectId: null, effectiveDate: today });
+      const toBench = await send('POST', '/allocations/move', {
+        personId: person.id,
+        card: 1,
+        projectId: null,
+        effectiveDate: today,
+      });
       expect(toBench.status).toBe(200);
       expect(unwrap(await toBench.json(), allocationRowSchema)).toMatchObject({ id: placed.id, projectId: null, project: null });
       expect(await entriesOf(person.id)).toHaveLength(1);
 
       // A move on another day is another entry, newest first.
       const earlier = '2026-01-06';
-      const other = await send('POST', '/allocations/move', { personId: person.id, projectId: apollo, effectiveDate: earlier });
+      const other = await send('POST', '/allocations/move', {
+        personId: person.id,
+        card: 1,
+        projectId: apollo,
+        effectiveDate: earlier,
+      });
       expect(other.status).toBe(200);
       expect((await entriesOf(person.id)).map((row) => row.effectiveDate)).toEqual([today, earlier]);
 
@@ -256,6 +279,140 @@ describe.skipIf(!base)('the running core service, allocations', () => {
       expect((await send('PATCH', '/allocations/2000000000', { projectId: null })).status).toBe(404);
     } finally {
       expect((await send('DELETE', `/people/${person.id}`)).status).toBe(200);
+    }
+  });
+  it('adds, moves and removes cards: numbering, the guards, and the same rule on both sides', async () => {
+    const person = await createPerson('Cards check');
+    const apollo = await createProject('Cards Apollo');
+    const borealis = await createProject('Cards Borealis');
+    const today = localToday();
+    const after = '2026-12-01';
+    /** The cards of the person on a day by the board's own rule, from what the service lists. */
+    const cardsNow = async (day: string) => cardsOf(await entriesOf(person.id), person.id, day).map(({ card }) => card);
+    try {
+      expect(await cardsNow(today)).toEqual([1]);
+
+      // Card 1 is on the bench from the start, so the only card cannot be removed: the guard speaks first.
+      const only = await send('POST', '/allocations/remove', { personId: person.id, card: 1, effectiveDate: today });
+      expect(only.status).toBe(409);
+      expect(await only.json()).toMatchObject({ message: KEEPS_ONE });
+
+      // The cards endpoint: the project of the card it copies, numbered 2, with one entry; the body is the board's own.
+      await send('POST', '/allocations/move', { personId: person.id, card: 1, projectId: apollo, effectiveDate: today });
+      const copy = await send('POST', '/allocations/cards', { personId: person.id, projectId: apollo, effectiveDate: today });
+      expect(copy.status).toBe(201);
+      const second = unwrap(await copy.json(), allocationRowSchema);
+      expect(second).toMatchObject({ personId: person.id, card: 2, removed: false, projectId: apollo, effectiveDate: today });
+      expect(await cardsNow(today)).toEqual([1, 2]);
+
+      // A copy on the bench has no project; the next number is the next one the person has not had.
+      const third = unwrap(
+        await (await send('POST', '/allocations/cards', { personId: person.id, projectId: null, effectiveDate: today })).json(),
+        allocationRowSchema,
+      );
+      expect(third).toMatchObject({ card: 3, projectId: null, removed: false });
+      expect(await cardsNow(today)).toEqual([1, 2, 3]);
+
+      // Move names the card: card 2 goes to Borealis and card 1 stays where it is.
+      const moved = await send('POST', '/allocations/move', { personId: person.id, card: 2, projectId: borealis, effectiveDate: today });
+      expect(moved.status).toBe(200);
+      expect(unwrap(await moved.json(), allocationRowSchema)).toMatchObject({ id: second.id, card: 2, projectId: borealis });
+      const entries = await entriesOf(person.id);
+      expect(entries.find((row) => row.card === 1)).toMatchObject({ projectId: apollo });
+
+      // A card that does not exist cannot be moved or removed.
+      const moveGhost = await send('POST', '/allocations/move', { personId: person.id, card: 9, projectId: apollo, effectiveDate: today });
+      expect(moveGhost.status).toBe(409);
+      expect(await moveGhost.json()).toMatchObject({ message: NO_SUCH_CARD });
+      const removeGhost = await send('POST', '/allocations/remove', { personId: person.id, card: 9, effectiveDate: today });
+      expect(removeGhost.status).toBe(409);
+      expect(await removeGhost.json()).toMatchObject({ message: NO_SUCH_CARD });
+
+      // Removing a card writes a removed entry with no project, which the list still shows; the card is gone from that day.
+      const removed = await send('POST', '/allocations/remove', { personId: person.id, card: 2, effectiveDate: after });
+      expect(removed.status).toBe(200);
+      const removal = unwrap(await removed.json(), allocationRowSchema);
+      expect(removal).toMatchObject({ card: 2, removed: true, projectId: null, project: null, effectiveDate: after });
+      expect(await cardsNow(after)).toEqual([1, 3]);
+      expect(await cardsNow(today)).toEqual([1, 2, 3]);
+
+      // The same rule on both sides: the board's own `cardsOf` agrees with the service on which cards exist, and the guard
+      // refuses exactly when the board would have fewer than two.
+      const removeThird = await send('POST', '/allocations/remove', { personId: person.id, card: 3, effectiveDate: after });
+      expect(removeThird.status).toBe(200);
+      expect(await cardsNow(after)).toEqual([1]);
+      const removeLast = await send('POST', '/allocations/remove', { personId: person.id, card: 1, effectiveDate: after });
+      expect(removeLast.status).toBe(409);
+      expect(await removeLast.json()).toMatchObject({ message: KEEPS_ONE });
+
+      // The next copy is numbered after the largest number the person has had, removed cards counted: 4, not 2.
+      const fourth = unwrap(
+        await (await send('POST', '/allocations/cards', { personId: person.id, projectId: apollo, effectiveDate: after })).json(),
+        allocationRowSchema,
+      );
+      expect(fourth.card).toBe(4);
+
+      // A later entry of a removed card puts it back.
+      const revived = await send('POST', '/allocations', { personId: person.id, card: 2, projectId: borealis, removed: false, effectiveDate: '2027-01-04', note: null });
+      expect(revived.status).toBe(201);
+      expect(await cardsNow('2027-01-04')).toEqual([1, 2, 4]);
+
+      // One entry a card a date, but another card may have one the same day.
+      const sameDay = await send('POST', '/allocations', { personId: person.id, card: 2, projectId: null, removed: false, effectiveDate: '2027-01-04', note: null });
+      expect(sameDay.status).toBe(409);
+      expect(await sameDay.json()).toMatchObject({ message: DUPLICATE_DATE });
+      const otherCard = await send('POST', '/allocations', { personId: person.id, card: 4, projectId: null, removed: false, effectiveDate: '2027-01-04', note: null });
+      expect(otherCard.status).toBe(201);
+
+      // An entry cannot be removed and on a project at once.
+      const both = await send('POST', '/allocations', { personId: person.id, card: 1, projectId: apollo, removed: true, effectiveDate: '2027-02-01', note: null });
+      expect(both.status).toBe(422);
+    } finally {
+      expect((await send('DELETE', `/people/${person.id}`)).status).toBe(200);
+      await send('DELETE', `/projects/${apollo}`);
+      await send('DELETE', `/projects/${borealis}`);
+    }
+  });
+
+  it('edits the removed flag of an entry, and refuses a change of its card or person', async () => {
+    const person = await createPerson('Removed flag check');
+    const apollo = await createProject('Flag Apollo');
+    try {
+      await send('POST', '/allocations/move', { personId: person.id, card: 1, projectId: apollo, effectiveDate: '2026-03-12' });
+      const copy = unwrap(
+        await (await send('POST', '/allocations/cards', { personId: person.id, projectId: apollo, effectiveDate: '2026-03-12' })).json(),
+        allocationRowSchema,
+      );
+
+      // removed: true clears the project, and a project without removed puts the entry back.
+      const gone = await send('PATCH', `/allocations/${copy.id}`, { removed: true });
+      expect(gone.status).toBe(200);
+      expect(unwrap(await gone.json(), allocationRowSchema)).toMatchObject({ removed: true, projectId: null, project: null });
+      const back = await send('PATCH', `/allocations/${copy.id}`, { projectId: apollo });
+      expect(back.status).toBe(200);
+      expect(unwrap(await back.json(), allocationRowSchema)).toMatchObject({ removed: false, projectId: apollo });
+      const benched = await send('PATCH', `/allocations/${copy.id}`, { removed: true });
+      expect(benched.status).toBe(200);
+      // The way the entry form sends "Card removed" over a project, and a removal made a placement again: both keys.
+      const bothKeys = await send('PATCH', `/allocations/${copy.id}`, { projectId: apollo, removed: false, effectiveDate: '2026-03-12', note: null });
+      expect(bothKeys.status).toBe(200);
+      expect(unwrap(await bothKeys.json(), allocationRowSchema)).toMatchObject({ removed: false, projectId: apollo });
+      const asRemoval = await send('PATCH', `/allocations/${copy.id}`, { projectId: null, removed: true, effectiveDate: '2026-03-12', note: null });
+      expect(asRemoval.status).toBe(200);
+      expect(unwrap(await asRemoval.json(), allocationRowSchema)).toMatchObject({ removed: true, projectId: null });
+      // Removed with a project is a 422.
+      const contradiction = await send('PATCH', `/allocations/${copy.id}`, { projectId: apollo, removed: true });
+      expect(contradiction.status).toBe(422);
+
+      // The card and the person of an entry cannot change.
+      const card = await send('PATCH', `/allocations/${copy.id}`, { card: 3 });
+      expect(card.status).toBe(422);
+      expect(await card.json()).toMatchObject({ data: [{ loc: ['body', 'card'] }] });
+      const who = await send('PATCH', `/allocations/${copy.id}`, { personId: person.id });
+      expect(who.status).toBe(422);
+    } finally {
+      expect((await send('DELETE', `/people/${person.id}`)).status).toBe(200);
+      await send('DELETE', `/projects/${apollo}`);
     }
   });
 });

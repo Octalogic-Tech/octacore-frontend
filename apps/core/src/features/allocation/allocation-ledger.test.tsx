@@ -71,10 +71,10 @@ describe('AllocationLedger: reading', () => {
     renderWithProviders(<AllocationLedger />);
     await screen.findByRole('table', { name: 'Allocation ledger' });
     expect(bodyRows()).toEqual([
-      ['3 Aug 2026', 'Grace Hopper', 'Bench', 'Between projects'],
-      ['12 Mar 2026', 'Ada Lovelace', 'Website', '—'],
-      ['5 Jan 2026', 'Grace Hopper', 'Mobile app', '—'],
-      ['3 Nov 2025', 'Ada Lovelace', 'Bench', 'Joined, not on a project yet'],
+      ['3 Aug 2026', 'Grace Hopper', 'Card 1', 'Bench', 'Between projects'],
+      ['12 Mar 2026', 'Ada Lovelace', 'Card 1', 'Website', '—'],
+      ['5 Jan 2026', 'Grace Hopper', 'Card 1', 'Mobile app', '—'],
+      ['3 Nov 2025', 'Ada Lovelace', 'Card 1', 'Bench', 'Joined, not on a project yet'],
     ]);
     expect(screen.getByText('1–4 of 4')).toBeInTheDocument();
   });
@@ -102,7 +102,7 @@ describe('AllocationLedger: reading', () => {
     renderWithProviders(<AllocationLedger />);
     await screen.findByRole('table', { name: 'Allocation ledger' });
     await user.type(screen.getByLabelText('Search entries'), 'WEBSITE');
-    expect(bodyRows()).toEqual([['12 Mar 2026', 'Ada Lovelace', 'Website', '—']]);
+    expect(bodyRows()).toEqual([['12 Mar 2026', 'Ada Lovelace', 'Card 1', 'Website', '—']]);
   });
 
   it('narrows to a person by their name', async () => {
@@ -118,7 +118,7 @@ describe('AllocationLedger: reading', () => {
     renderWithProviders(<AllocationLedger />);
     await screen.findByRole('table', { name: 'Allocation ledger' });
     await user.type(screen.getByLabelText('Search entries'), 'bench');
-    expect(bodyRows().map((cells) => cells[2])).toEqual(['Bench', 'Bench']);
+    expect(bodyRows().map((cells) => cells[3])).toEqual(['Bench', 'Bench']);
   });
 
   it('says so when nothing matches the search', async () => {
@@ -146,6 +146,87 @@ describe('AllocationLedger: reading', () => {
   });
 });
 
+describe('AllocationLedger: cards', () => {
+  const card2 = { ...allocationRows[1], id: 20, card: 2, projectId: 2, project: { id: 2, name: 'Mobile app' }, effectiveDate: '2026-06-01' };
+  const removal = { ...allocationRows[1], id: 21, card: 2, removed: true, projectId: null, project: null, effectiveDate: '2026-07-01' };
+
+  it('has a Card column, and says "Card 2" for an entry of a person’s second card', async () => {
+    serve([allocationRows[0], card2, ...allocationRows.slice(1)]);
+    renderWithProviders(<AllocationLedger />);
+    await screen.findByRole('table', { name: 'Allocation ledger' });
+    expect(screen.getByRole('columnheader', { name: 'Card' })).toBeInTheDocument();
+    expect(bodyRows().map((cells) => [cells[1], cells[2], cells[3]])).toEqual([
+      ['Grace Hopper', 'Card 1', 'Bench'],
+      ['Ada Lovelace', 'Card 2', 'Mobile app'],
+      ['Ada Lovelace', 'Card 1', 'Website'],
+      ['Grace Hopper', 'Card 1', 'Mobile app'],
+      ['Ada Lovelace', 'Card 1', 'Bench'],
+    ]);
+  });
+
+  it('reads an entry that removes a card as "Card removed" in the Project column', async () => {
+    serve([allocationRows[0], removal, card2, ...allocationRows.slice(1)]);
+    renderWithProviders(<AllocationLedger />);
+    await screen.findByRole('table', { name: 'Allocation ledger' });
+    expect(bodyRows()[1]).toEqual(['1 Jul 2026', 'Ada Lovelace', 'Card 2', 'Card removed', '—']);
+  });
+
+  it('shows the Card column on a person’s own ledger too', async () => {
+    serve([card2, ...allocationRows]);
+    renderWithProviders(<AllocationLedger personId={1} />);
+    await screen.findByRole('table', { name: 'Allocation ledger' });
+    expect(screen.getByRole('columnheader', { name: 'Card' })).toBeInTheDocument();
+    expect(bodyRows().map((cells) => [cells[0], cells[1], cells[2]])).toEqual([
+      ['1 Jun 2026', 'Card 2', 'Mobile app'],
+      ['12 Mar 2026', 'Card 1', 'Website'],
+      ['3 Nov 2025', 'Card 1', 'Bench'],
+    ]);
+  });
+
+  it('narrows to a card by its number, and finds removed entries by "removed"', async () => {
+    serve([removal, card2, ...allocationRows]);
+    const user = userEvent.setup();
+    renderWithProviders(<AllocationLedger />);
+    await screen.findByRole('table', { name: 'Allocation ledger' });
+    await user.type(screen.getByLabelText('Search entries'), 'card 2');
+    expect(bodyRows().map((cells) => cells[3])).toEqual(['Card removed', 'Mobile app']);
+    await user.clear(screen.getByLabelText('Search entries'));
+    await user.type(screen.getByLabelText('Search entries'), 'removed');
+    expect(bodyRows()).toHaveLength(1);
+  });
+
+  it('names the actions of an entry of another card by its card, since two cards can have entries on one day', async () => {
+    serve([{ ...card2, effectiveDate: '2026-03-12' }, ...allocationRows]);
+    renderWithProviders(<AllocationLedger />);
+    expect(await screen.findByRole('button', { name: 'Edit Ada Lovelace from 12 Mar 2026' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit Ada Lovelace from 12 Mar 2026, card 2' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete Ada Lovelace from 12 Mar 2026, card 2' })).toBeInTheDocument();
+  });
+
+  it('says in the confirmation which card an entry was for, and what it said', async () => {
+    serve([removal, card2, ...allocationRows]);
+    vi.mocked(coreApi.delete).mockResolvedValue(saved);
+    const user = userEvent.setup();
+    renderWithProviders(<AllocationLedger />);
+    await user.click(await screen.findByRole('button', { name: 'Delete Ada Lovelace from 1 Jul 2026, card 2' }));
+    expect(screen.getByText('Delete the entry for “Ada Lovelace” (card 2) from 1 Jul 2026?')).toBeInTheDocument();
+    expect(screen.getByText(/Their card 2 was removed from that day\./)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await user.click(screen.getByRole('button', { name: 'Delete Ada Lovelace from 1 Jun 2026, card 2' }));
+    expect(screen.getByText(/Their card 2 was on Mobile app from that day\./)).toBeInTheDocument();
+  });
+
+  it('opens an entry of another card to edit with its card shown and fixed', async () => {
+    serve([card2, ...allocationRows]);
+    const user = userEvent.setup();
+    renderWithProviders(<AllocationLedger />);
+    await user.click(await screen.findByRole('button', { name: 'Edit Ada Lovelace from 1 Jun 2026, card 2' }));
+    const dialog = screen.getByRole('dialog', { name: 'Edit allocation entry' });
+    expect(within(dialog).getByLabelText('Card')).toHaveValue('Card 2');
+    expect(within(dialog).getByLabelText('Card')).toHaveAttribute('readonly');
+  });
+});
+
 describe('AllocationLedger: one person’s', () => {
   it('asks the service for only that person’s entries', async () => {
     renderWithProviders(<AllocationLedger personId={1} />);
@@ -159,7 +240,7 @@ describe('AllocationLedger: one person’s', () => {
     await screen.findByRole('table', { name: 'Allocation ledger' });
     expect(screen.queryByRole('columnheader', { name: 'Person' })).not.toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'Project' })).toBeInTheDocument();
-    expect(bodyRows()[0]).toEqual(['12 Mar 2026', 'Website', '—']);
+    expect(bodyRows()[0]).toEqual(['12 Mar 2026', 'Card 1', 'Website', '—']);
   });
 
   it('has the Person column on the whole ledger', async () => {
@@ -202,7 +283,9 @@ describe('AllocationLedger: adding, editing and deleting', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     expect(coreApi.post).toHaveBeenCalledWith('/allocations', {
       personId: 3,
+      card: 1,
       projectId: null,
+      removed: false,
       effectiveDate: '2026-10-20',
       note: null,
     });

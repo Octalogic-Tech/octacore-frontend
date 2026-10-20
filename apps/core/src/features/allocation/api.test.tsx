@@ -5,7 +5,14 @@ import { coreApi } from '@/lib/core-api';
 import { queryDefaults } from '@/lib/query-client';
 import { allocationEnvelope, allocationRows, allocationsEnvelope } from '@/test/fixtures/allocations';
 import { envelope, fakeAdapter, type FakeAdapter, type FakeReply } from '@/test/fake-adapter';
-import { useAllocations, useDeleteAllocation, useMoveAllocation, useSaveAllocation } from './api';
+import {
+  useAddCard,
+  useAllocations,
+  useDeleteAllocation,
+  useMoveAllocation,
+  useRemoveCard,
+  useSaveAllocation,
+} from './api';
 
 const originalAdapter = coreApi.defaults.adapter;
 
@@ -84,9 +91,11 @@ describe('useAllocations', () => {
 });
 
 describe('useSaveAllocation', () => {
-  const body = { personId: 1, projectId: 2, effectiveDate: '2026-10-20', note: null };
+  const body = { personId: 1, card: 1, projectId: 2, removed: false, effectiveDate: '2026-10-20', note: null };
+  /** The entry being edited: on project 2 and not removed. */
+  const current = { projectId: 2, removed: false };
 
-  it('adds an entry with POST, whole', async () => {
+  it('adds an entry with POST, whole: the person, the card, the project, whether it is removed, the date and the note', async () => {
     const adapter = serve({ status: 201, data: allocationEnvelope(allocationRows[1], 201) });
     const { result } = setup(() => useSaveAllocation());
     await act(() => result.current.mutateAsync({ id: undefined, body }));
@@ -95,20 +104,42 @@ describe('useSaveAllocation', () => {
     expect(sentBody(adapter)).toEqual(body);
   });
 
-  it('adds an entry for the bench with a null project', async () => {
+  it('adds an entry for the bench with a null project, and for another card with its number', async () => {
     const adapter = serve({ status: 201, data: allocationEnvelope() });
     const { result } = setup(() => useSaveAllocation());
-    await act(() => result.current.mutateAsync({ id: undefined, body: { ...body, projectId: null, note: 'Rolled off' } }));
-    expect(sentBody(adapter)).toEqual({ personId: 1, projectId: null, effectiveDate: '2026-10-20', note: 'Rolled off' });
+    await act(() =>
+      result.current.mutateAsync({ id: undefined, body: { ...body, card: 3, projectId: null, note: 'Rolled off' } }),
+    );
+    expect(sentBody(adapter)).toEqual({
+      personId: 1,
+      card: 3,
+      projectId: null,
+      removed: false,
+      effectiveDate: '2026-10-20',
+      note: 'Rolled off',
+    });
   });
 
-  it('changes an entry with PATCH under its id, and never sends the person, which cannot change', async () => {
+  it('adds an entry that says a card is removed, with no project', async () => {
+    const adapter = serve({ status: 201, data: allocationEnvelope() });
+    const { result } = setup(() => useSaveAllocation());
+    await act(() =>
+      result.current.mutateAsync({ id: undefined, body: { ...body, card: 2, projectId: null, removed: true } }),
+    );
+    expect(sentBody(adapter)).toMatchObject({ card: 2, projectId: null, removed: true });
+  });
+
+  it('changes an entry with PATCH under its id, and never sends the person or the card, which cannot change', async () => {
     const adapter = serve({ status: 200, data: allocationEnvelope() });
     const { result } = setup(() => useSaveAllocation());
-    await act(() => result.current.mutateAsync({ id: 3, body: { ...body, projectId: null, note: 'Rolled off' } }));
+    await act(() =>
+      result.current.mutateAsync({ id: 3, body: { ...body, projectId: null, note: 'Rolled off' }, current }),
+    );
     expect(adapter.calls[0]).toMatchObject({ method: 'patch', url: '/allocations/3' });
-    // The service refuses a write with a key it does not know, and the person is not one it takes on a change.
+    // The service refuses a write with a key it does not know, and the person and the card are not ones it takes on a change.
     expect(sentBody(adapter)).toEqual({ projectId: null, effectiveDate: '2026-10-20', note: 'Rolled off' });
+    expect(sentBody(adapter)).not.toHaveProperty('personId');
+    expect(sentBody(adapter)).not.toHaveProperty('card');
   });
 
   describe('on a PATCH, the project', () => {
@@ -118,17 +149,24 @@ describe('useSaveAllocation', () => {
       const adapter = serve({ status: 200, data: allocationEnvelope() });
       const { result } = setup(() => useSaveAllocation());
       await act(() =>
-        result.current.mutateAsync({ id: 3, body: { ...body, projectId: 99, note: 'Corrected' }, currentProjectId: 99 })
+        result.current.mutateAsync({
+          id: 3,
+          body: { ...body, projectId: 99, note: 'Corrected' },
+          current: { projectId: 99, removed: false },
+        }),
       );
       expect(sentBody(adapter)).toEqual({ effectiveDate: '2026-10-20', note: 'Corrected' });
-      expect(sentBody(adapter)).not.toHaveProperty('projectId');
     });
 
     it('is left out when it is the bench and the entry is on the bench already', async () => {
       const adapter = serve({ status: 200, data: allocationEnvelope() });
       const { result } = setup(() => useSaveAllocation());
       await act(() =>
-        result.current.mutateAsync({ id: 3, body: { ...body, projectId: null }, currentProjectId: null })
+        result.current.mutateAsync({
+          id: 3,
+          body: { ...body, projectId: null },
+          current: { projectId: null, removed: false },
+        }),
       );
       expect(sentBody(adapter)).not.toHaveProperty('projectId');
     });
@@ -136,31 +174,26 @@ describe('useSaveAllocation', () => {
     it('is sent when it is another project', async () => {
       const adapter = serve({ status: 200, data: allocationEnvelope() });
       const { result } = setup(() => useSaveAllocation());
-      await act(() => result.current.mutateAsync({ id: 3, body: { ...body, projectId: 2 }, currentProjectId: 99 }));
+      await act(() =>
+        result.current.mutateAsync({ id: 3, body: { ...body, projectId: 2 }, current: { projectId: 99, removed: false } }),
+      );
       expect(sentBody(adapter)).toEqual({ projectId: 2, effectiveDate: '2026-10-20', note: null });
     });
 
     it('is sent as null when the entry moves to the bench', async () => {
       const adapter = serve({ status: 200, data: allocationEnvelope() });
       const { result } = setup(() => useSaveAllocation());
-      await act(() => result.current.mutateAsync({ id: 3, body: { ...body, projectId: null }, currentProjectId: 2 }));
+      await act(() => result.current.mutateAsync({ id: 3, body: { ...body, projectId: null }, current }));
       expect(sentBody(adapter)).toEqual({ projectId: null, effectiveDate: '2026-10-20', note: null });
     });
 
     it('is sent when the entry is on the bench and moves to a project', async () => {
       const adapter = serve({ status: 200, data: allocationEnvelope() });
       const { result } = setup(() => useSaveAllocation());
-      await act(() => result.current.mutateAsync({ id: 3, body: { ...body, projectId: 2 }, currentProjectId: null }));
+      await act(() =>
+        result.current.mutateAsync({ id: 3, body, current: { projectId: null, removed: false } }),
+      );
       expect(sentBody(adapter)).toHaveProperty('projectId', 2);
-    });
-
-    it('never sends the person, whether or not the project is sent', async () => {
-      const adapter = serve({ status: 200, data: allocationEnvelope() });
-      const { result } = setup(() => useSaveAllocation());
-      await act(() => result.current.mutateAsync({ id: 3, body, currentProjectId: 2 }));
-      await act(() => result.current.mutateAsync({ id: 3, body, currentProjectId: 7 }));
-      expect(sentBody(adapter, 0)).not.toHaveProperty('personId');
-      expect(sentBody(adapter, 1)).not.toHaveProperty('personId');
     });
 
     it('is always sent on an add', async () => {
@@ -171,10 +204,63 @@ describe('useSaveAllocation', () => {
     });
   });
 
+  describe('on a PATCH, removed', () => {
+    it('is left out when the entry is not removed and is not being removed', async () => {
+      const adapter = serve({ status: 200, data: allocationEnvelope() });
+      const { result } = setup(() => useSaveAllocation());
+      await act(() => result.current.mutateAsync({ id: 3, body, current }));
+      expect(sentBody(adapter)).not.toHaveProperty('removed');
+    });
+
+    it('is left out when the entry is removed already and stays so, with its project left out too', async () => {
+      const adapter = serve({ status: 200, data: allocationEnvelope() });
+      const { result } = setup(() => useSaveAllocation());
+      await act(() =>
+        result.current.mutateAsync({
+          id: 3,
+          body: { ...body, projectId: null, removed: true, note: 'Gone' },
+          current: { projectId: null, removed: true },
+        }),
+      );
+      expect(sentBody(adapter)).toEqual({ effectiveDate: '2026-10-20', note: 'Gone' });
+    });
+
+    it('is sent, with no project, when an entry on a project becomes the removal of the card', async () => {
+      const adapter = serve({ status: 200, data: allocationEnvelope() });
+      const { result } = setup(() => useSaveAllocation());
+      await act(() =>
+        result.current.mutateAsync({ id: 3, body: { ...body, projectId: null, removed: true }, current }),
+      );
+      expect(sentBody(adapter)).toEqual({ projectId: null, removed: true, effectiveDate: '2026-10-20', note: null });
+    });
+
+    it('is sent as false, with the project, when the removal of a card is made a placement again', async () => {
+      const adapter = serve({ status: 200, data: allocationEnvelope() });
+      const { result } = setup(() => useSaveAllocation());
+      await act(() =>
+        result.current.mutateAsync({ id: 3, body, current: { projectId: null, removed: true } }),
+      );
+      expect(sentBody(adapter)).toEqual({ projectId: 2, removed: false, effectiveDate: '2026-10-20', note: null });
+    });
+
+    it('is sent as false alone when the removal of a card becomes the bench', async () => {
+      const adapter = serve({ status: 200, data: allocationEnvelope() });
+      const { result } = setup(() => useSaveAllocation());
+      await act(() =>
+        result.current.mutateAsync({
+          id: 3,
+          body: { ...body, projectId: null },
+          current: { projectId: null, removed: true },
+        }),
+      );
+      expect(sentBody(adapter)).toEqual({ removed: false, effectiveDate: '2026-10-20', note: null });
+    });
+  });
+
   it('sends a null note on a PATCH, so an emptied note is cleared', async () => {
     const adapter = serve({ status: 200, data: allocationEnvelope() });
     const { result } = setup(() => useSaveAllocation());
-    await act(() => result.current.mutateAsync({ id: 3, body }));
+    await act(() => result.current.mutateAsync({ id: 3, body, current }));
     expect(sentBody(adapter)).toHaveProperty('note', null);
   });
 
@@ -204,11 +290,20 @@ describe('useSaveAllocation', () => {
   });
 
   it('fails, and refreshes nothing, when the service refuses the entry', async () => {
-    serve({ status: 409, data: { statusCode: 409, message: 'This person already has an entry on that date; edit it instead', data: null } });
+    serve({
+      status: 409,
+      data: {
+        statusCode: 409,
+        message: 'This person already has an entry for that card on that date; edit it instead',
+        data: null,
+      },
+    });
     const { client, result } = setup(() => useSaveAllocation());
     const invalidate = vi.spyOn(client, 'invalidateQueries');
     await act(async () => {
-      await expect(result.current.mutateAsync({ id: undefined, body })).rejects.toMatchObject({ response: { status: 409 } });
+      await expect(result.current.mutateAsync({ id: undefined, body })).rejects.toMatchObject({
+        response: { status: 409 },
+      });
     });
     expect(invalidate).not.toHaveBeenCalled();
   });
@@ -245,41 +340,132 @@ describe('useDeleteAllocation', () => {
 });
 
 describe('useMoveAllocation', () => {
-  it('sets where a person is from a day, with POST /allocations/move', async () => {
+  const move = { personId: 1, card: 1, projectId: 2, effectiveDate: '2026-10-20' };
+
+  it('sets where a card is from a day, with POST /allocations/move, naming the card', async () => {
     const adapter = serve({ status: 200, data: allocationEnvelope() });
     const { result } = setup(() => useMoveAllocation());
-    await act(() => result.current.mutateAsync({ personId: 1, projectId: 2, effectiveDate: '2026-10-20' }));
+    await act(() => result.current.mutateAsync(move));
     expect(adapter.calls).toHaveLength(1);
     expect(adapter.calls[0]).toMatchObject({ method: 'post', url: '/allocations/move' });
-    expect(sentBody(adapter)).toEqual({ personId: 1, projectId: 2, effectiveDate: '2026-10-20' });
+    expect(sentBody(adapter)).toEqual({ personId: 1, card: 1, projectId: 2, effectiveDate: '2026-10-20' });
   });
 
-  it('moves a person to the bench with a null project, which is not left out', async () => {
+  it('moves another card of the person by its number', async () => {
     const adapter = serve({ status: 200, data: allocationEnvelope() });
     const { result } = setup(() => useMoveAllocation());
-    await act(() => result.current.mutateAsync({ personId: 1, projectId: null, effectiveDate: '2026-10-20' }));
-    expect(sentBody(adapter)).toEqual({ personId: 1, projectId: null, effectiveDate: '2026-10-20' });
+    await act(() => result.current.mutateAsync({ ...move, card: 3 }));
+    expect(sentBody(adapter)).toMatchObject({ card: 3 });
+  });
+
+  it('moves a card to the bench with a null project, which is not left out', async () => {
+    const adapter = serve({ status: 200, data: allocationEnvelope() });
+    const { result } = setup(() => useMoveAllocation());
+    await act(() => result.current.mutateAsync({ ...move, projectId: null }));
+    expect(sentBody(adapter)).toEqual({ personId: 1, card: 1, projectId: null, effectiveDate: '2026-10-20' });
   });
 
   it('does not read the answer, and refreshes the lists', async () => {
     serve({ status: 200, data: { surprise: true } });
     const { client, result } = setup(() => useMoveAllocation());
     const invalidate = vi.spyOn(client, 'invalidateQueries');
-    await act(() => result.current.mutateAsync({ personId: 1, projectId: 2, effectiveDate: '2026-10-20' }));
+    await act(() => result.current.mutateAsync(move));
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(invalidate).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ['allocations'] }));
   });
 
   it('fails, so the board can put the card back, when the service refuses', async () => {
-    serve({ status: 409, data: { statusCode: 409, message: 'Referenced record does not exist', data: null } });
+    serve({ status: 409, data: { statusCode: 409, message: 'That card does not exist', data: null } });
     const { client, result } = setup(() => useMoveAllocation());
     const invalidate = vi.spyOn(client, 'invalidateQueries');
     await act(async () => {
-      await expect(
-        result.current.mutateAsync({ personId: 1, projectId: 2, effectiveDate: '2026-10-20' }),
-      ).rejects.toMatchObject({ response: { status: 409 } });
+      await expect(result.current.mutateAsync({ ...move, card: 4 })).rejects.toMatchObject({
+        response: { status: 409 },
+      });
     });
     await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+});
+
+describe('useAddCard', () => {
+  const add = { personId: 1, projectId: 2, effectiveDate: '2026-10-20' };
+
+  it('adds a card with POST /allocations/cards: the person, the project it starts on and the day', async () => {
+    const adapter = serve({ status: 201, data: allocationEnvelope(allocationRows[1], 201) });
+    const { result } = setup(() => useAddCard());
+    await act(() => result.current.mutateAsync(add));
+    expect(adapter.calls).toHaveLength(1);
+    expect(adapter.calls[0]).toMatchObject({ method: 'post', url: '/allocations/cards' });
+    expect(sentBody(adapter)).toEqual({ personId: 1, projectId: 2, effectiveDate: '2026-10-20' });
+  });
+
+  it('starts a card on the bench with a null project, which is not left out', async () => {
+    const adapter = serve({ status: 201, data: allocationEnvelope() });
+    const { result } = setup(() => useAddCard());
+    await act(() => result.current.mutateAsync({ ...add, projectId: null }));
+    expect(sentBody(adapter)).toEqual({ personId: 1, projectId: null, effectiveDate: '2026-10-20' });
+  });
+
+  it('sends a note when it is given, and none when it is not', async () => {
+    const adapter = serve({ status: 201, data: allocationEnvelope() });
+    const { result } = setup(() => useAddCard());
+    await act(() => result.current.mutateAsync({ ...add, note: 'Also on the platform team' }));
+    await act(() => result.current.mutateAsync({ ...add, note: null }));
+    expect(sentBody(adapter, 0)).toHaveProperty('note', 'Also on the platform team');
+    expect(sentBody(adapter, 1)).toHaveProperty('note', null);
+  });
+
+  it('does not read the answer, and refreshes the lists', async () => {
+    serve({ status: 201, data: { surprise: true } });
+    const { client, result } = setup(() => useAddCard());
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    await act(() => result.current.mutateAsync(add));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(invalidate).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ['allocations'] }));
+  });
+
+  it('fails, and refreshes nothing, when the service refuses', async () => {
+    serve({ status: 409, data: { statusCode: 409, message: 'Referenced record does not exist', data: null } });
+    const { client, result } = setup(() => useAddCard());
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    await act(async () => {
+      await expect(result.current.mutateAsync(add)).rejects.toMatchObject({ response: { status: 409 } });
+    });
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+});
+
+describe('useRemoveCard', () => {
+  const remove = { personId: 1, card: 2, effectiveDate: '2026-10-20' };
+
+  it('removes a card with POST /allocations/remove: the person, the card and the day', async () => {
+    const adapter = serve({ status: 200, data: allocationEnvelope() });
+    const { result } = setup(() => useRemoveCard());
+    await act(() => result.current.mutateAsync(remove));
+    expect(adapter.calls).toHaveLength(1);
+    expect(adapter.calls[0]).toMatchObject({ method: 'post', url: '/allocations/remove' });
+    expect(sentBody(adapter)).toEqual({ personId: 1, card: 2, effectiveDate: '2026-10-20' });
+  });
+
+  it('does not read the answer, and refreshes the lists', async () => {
+    serve({ status: 200, data: { surprise: true } });
+    const { client, result } = setup(() => useRemoveCard());
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    await act(() => result.current.mutateAsync(remove));
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(invalidate).toHaveBeenCalledWith(expect.objectContaining({ queryKey: ['allocations'] }));
+  });
+
+  it('fails with the service’s refusal when a person has only one card, and refreshes nothing', async () => {
+    serve({ status: 409, data: { statusCode: 409, message: 'A person keeps at least one card', data: null } });
+    const { client, result } = setup(() => useRemoveCard());
+    const invalidate = vi.spyOn(client, 'invalidateQueries');
+    await act(async () => {
+      await expect(result.current.mutateAsync({ ...remove, card: 1 })).rejects.toMatchObject({
+        response: { status: 409 },
+      });
+    });
     expect(invalidate).not.toHaveBeenCalled();
   });
 });

@@ -14,17 +14,28 @@ const person = (over: Record<string, unknown> = {}): PersonRow =>
 const project = (id: number, name: string, projectStatus = 'active'): ProjectRow =>
   projectRowSchema.parse({ ...projectRows[0], id, name, projectStatus });
 
-/** An entry for person 1: from `effectiveDate` they are on the project, or on the bench when `on` is null. */
-const entry = (id: number, on: { id: number; name: string } | null, effectiveDate: string): AllocationRow =>
+/**
+ * An entry for person 1: from `effectiveDate` their card (1 unless `over` says another) is on the project, or on the
+ * bench when `on` is null.
+ */
+const entry = (
+  id: number,
+  on: { id: number; name: string } | null,
+  effectiveDate: string,
+  over: Record<string, unknown> = {}
+): AllocationRow =>
   allocationRowSchema.parse({
     ...allocationRows[1],
     id,
     personId: 1,
+    card: 1,
+    removed: false,
     projectId: on?.id ?? null,
     effectiveDate,
     note: null,
     person: { id: 1, name: 'Ada Lovelace' },
     project: on,
+    ...over,
   });
 
 const apollo = project(10, 'Apollo');
@@ -93,6 +104,74 @@ describe('placementOf', () => {
       date: '2026-10-21',
     });
     expect(placement({ person: person({ joinDate: TODAY }) })).toEqual({ kind: 'unallocated' });
+  });
+
+  describe('with several cards', () => {
+    const borealis = project(11, 'Borealis');
+    const both = [
+      entry(3, { id: 11, name: 'Borealis' }, '2026-06-01', { card: 2 }),
+      entry(1, { id: 10, name: 'Apollo' }, '2026-03-12'),
+    ];
+
+    it('says where every card is, the lowest card number first', () => {
+      expect(placement({ projects: [apollo, borealis], entries: both })).toEqual({
+        kind: 'several',
+        cards: [
+          { card: 1, project: { id: 10, name: 'Apollo' }, since: '2026-03-12', note: null },
+          { card: 2, project: { id: 11, name: 'Borealis' }, since: '2026-06-01', note: null },
+        ],
+      });
+    });
+
+    it('includes a card on the bench, and a card with no entry yet (card 1 is there from the start)', () => {
+      expect(placement({ entries: [entry(2, null, '2026-06-01', { card: 2 })] })).toEqual({
+        kind: 'several',
+        cards: [
+          { card: 1, project: null, since: null, note: null },
+          { card: 2, project: null, since: '2026-06-01', note: null },
+        ],
+      });
+    });
+
+    it('lists two cards on one project twice, as a copy just made is', () => {
+      const copied = [
+        entry(3, { id: 10, name: 'Apollo' }, '2026-10-20', { card: 2 }),
+        entry(1, { id: 10, name: 'Apollo' }, '2026-03-12'),
+      ];
+      const result = placement({ entries: copied });
+      expect(result).toMatchObject({ kind: 'several' });
+      expect(result.kind === 'several' && result.cards.map((card) => card.project?.name)).toEqual(['Apollo', 'Apollo']);
+    });
+
+    it('puts a card whose project is not active on the bench with a note, keeping the project it is on underneath', () => {
+      expect(placement({ projects: [apollo, project(11, 'Borealis', 'on_hold')], entries: both })).toEqual({
+        kind: 'several',
+        cards: [
+          { card: 1, project: { id: 10, name: 'Apollo' }, since: '2026-03-12', note: null },
+          { card: 2, project: null, since: null, note: 'Last on Borealis (on hold)' },
+        ],
+      });
+    });
+
+    it('is one card again once the other is removed', () => {
+      const removed = entry(4, null, '2026-07-01', { card: 2, removed: true });
+      expect(placement({ projects: [apollo, borealis], entries: [removed, ...both] })).toEqual({
+        kind: 'project',
+        project: { id: 10, name: 'Apollo' },
+        since: '2026-03-12',
+      });
+    });
+
+    it('is still left or not joined, whatever the cards were', () => {
+      expect(placement({ person: person({ leaveDate: '2026-10-19' }), entries: both })).toEqual({
+        kind: 'left',
+        date: '2026-10-19',
+      });
+      expect(placement({ person: person({ joinDate: '2026-10-21' }), entries: both })).toEqual({
+        kind: 'not-joined',
+        date: '2026-10-21',
+      });
+    });
   });
 
   it('reads only the person’s own entries', () => {

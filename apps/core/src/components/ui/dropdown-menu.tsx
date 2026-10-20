@@ -58,3 +58,14 @@ export function DropdownMenuItem({ className, ...props }: ComponentProps<typeof 
     />
   );
 }
+
+/** A hairline between groups of choices. */
+export function DropdownMenuSeparator({ className, ...props }: ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
+  return (
+    <DropdownMenuPrimitive.Separator
+      data-slot="dropdown-menu-separator"
+      className={cn('h-px bg-rule', className)}
+      {...props}
+    />
+  );
+}

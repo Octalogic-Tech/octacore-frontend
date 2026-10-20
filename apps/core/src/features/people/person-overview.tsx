@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/format';
 import { formatInr } from '@/lib/money';
-import type { Placement } from './placement';
+import { pluralize } from '@/lib/format';
+import type { CardPlacement, Placement } from './placement';
 import type { PersonRow } from './schema';
 
 const NONE = '—';
@@ -21,6 +22,28 @@ interface PersonOverviewProps {
    */
   placement: Placement | null | 'unavailable';
   onAllocate: () => void;
+}
+
+/** The places of several cards, each place once with how many cards are on it: Website, the bench, and so on. */
+function places(cards: readonly CardPlacement[]) {
+  const grouped: { key: string; project: CardPlacement['project']; count: number }[] = [];
+  for (const { project } of cards) {
+    const key = project ? `project-${project.id}` : 'bench';
+    const found = grouped.find((place) => place.key === key);
+    if (found) found.count += 1;
+    else grouped.push({ key, project, count: 1 });
+  }
+  return grouped;
+}
+
+/** "Website, Mobile app and the bench": the places in a list, the last after an "and". */
+function listOf(items: readonly ReactNode[]): ReactNode {
+  return items.map((item, index) => (
+    <span key={index}>
+      {index === 0 ? '' : index === items.length - 1 ? ' and ' : ', '}
+      {item}
+    </span>
+  ));
 }
 
 /** Where the person is, said first, then who they are: contact, dates, pay, contract and what they know. */
@@ -44,6 +67,30 @@ function placementSentence(placement: Placement | 'unavailable'): ReactNode {
           On the bench since <span className="tabular font-semibold">{formatDate(placement.since ?? '')}</span>
         </>
       );
+    case 'several': {
+      // A card on a project that is not active is on the bench, and the sentence says which project it was on.
+      const notes = placement.cards.flatMap((card) => (card.note === null ? [] : [card.note]));
+      return (
+        <>
+          On{' '}
+          {listOf(
+            places(placement.cards).map(({ project, count }) => (
+              <>
+                {project ? (
+                  <Link to={`/projects/${project.id}`} className={projectLink}>
+                    {project.name}
+                  </Link>
+                ) : (
+                  'the bench'
+                )}
+                {count > 1 ? ` (${pluralize(count, 'card')})` : null}
+              </>
+            ))
+          )}
+          {notes.map((note) => `. ${note}`).join('')}
+        </>
+      );
+    }
     case 'unallocated':
       return 'Not allocated yet';
     case 'left':

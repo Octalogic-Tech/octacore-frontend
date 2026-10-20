@@ -9,10 +9,13 @@ import { Select } from '@/components/ui/select';
 import { usePeople } from '@/features/people/api';
 import { useProjects } from '@/features/projects/api';
 import { serviceMessage, statusOf } from '@/lib/core-api';
-import { useSaveAllocation } from './api';
+import { useAddCard, useAllocations, useSaveAllocation } from './api';
 import {
   BENCH,
+  NEW_CARD,
+  REMOVED,
   allocationFormSchema,
+  cardChoices,
   toAllocationBody,
   toAllocationFormValues,
   type AllocationFormValues,
@@ -35,8 +38,8 @@ interface Option {
   label: string;
 }
 
-/** What the service says when the person has an entry on that date already: it belongs on the date. */
-const DUPLICATE_DATE = 'This person already has an entry on that date';
+/** What the service says when the card has an entry on that date already: it belongs on the date. */
+const DUPLICATE_DATE = 'This person already has an entry';
 
 /** The entry's own project is always an option, so a list that is loading, has failed or lost it cannot blank the select. */
 function withCurrent(options: Option[], current: Option | undefined): Option[] {
@@ -50,6 +53,7 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
   const people = usePeople();
   const projects = useProjects();
   const save = useSaveAllocation();
+  const addCard = useAddCard();
   // A message to show above the buttons: the service's own words when it wrote them for people, or ours.
   const [failure, setFailure] = useState<string | null>(null);
   const {
@@ -58,6 +62,8 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
     reset,
     setError,
     setFocus,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<AllocationFormValues>({ resolver: zodResolver(allocationFormSchema), defaultValues: toAllocationFormValues() });
 
@@ -68,6 +74,20 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
       setFailure(null);
     }
   }, [open, entry, personId, reset]);
+
+  // The cards the person has, for the Card field: from their entries (all of them when no person is fixed, which the
+  // ledger has already read, and the chosen person's out of those).
+  const chosenPerson = personId ?? (Number(watch('personId')) || undefined);
+  const entries = useAllocations(personId === undefined ? undefined : { personId });
+  const cards = useMemo(
+    () => cardChoices((entries.data ?? []).filter((row) => row.personId === chosenPerson)),
+    [entries.data, chosenPerson],
+  );
+  const chosenCard = watch('card');
+  useEffect(() => {
+    // Another person's cards are other numbers: a card they do not have is not kept.
+    if (!entry && chosenCard !== NEW_CARD && !cards.includes(Number(chosenCard))) setValue('card', '1');
+  }, [entry, chosenCard, cards, setValue]);
 
   const personOptions = useMemo(
     () => (people.data ?? []).map((person) => ({ id: person.id, label: person.name })).sort(byLabel),
@@ -85,16 +105,29 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
   const submit = handleSubmit(async (values) => {
     setFailure(null);
     try {
-      await save.mutateAsync({
-        id: entry?.id,
-        body: toAllocationBody(values),
-        currentProjectId: entry?.projectId,
-      });
+      const body = toAllocationBody(values);
+      if (entry) {
+        await save.mutateAsync({
+          id: entry.id,
+          body: { ...body, card: entry.card },
+          current: { projectId: entry.projectId, removed: entry.removed },
+        });
+      } else if (body.card === null) {
+        // A new card is numbered by the service, which has the person's cards: it has its own endpoint.
+        await addCard.mutateAsync({
+          personId: body.personId,
+          projectId: body.projectId,
+          effectiveDate: body.effectiveDate,
+          note: body.note,
+        });
+      } else {
+        await save.mutateAsync({ body: { ...body, card: body.card } });
+      }
     } catch (error) {
       const status = statusOf(error);
       const message = serviceMessage(error);
       if (status === 409 && message?.startsWith(DUPLICATE_DATE)) {
-        // A person has one entry a day: say so on the date, which is the one thing to change.
+        // A card has one entry a day: say so on the date, which is the one thing to change.
         setError('effectiveDate', { type: 'server', message });
         setFocus('effectiveDate');
       } else if (entry !== undefined && status === 404) {
@@ -145,6 +178,22 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
               </Select>
             </Field>
           )}
+          {entry ? (
+            <Field label="Card" htmlFor="allocation-card" hint="The card of an entry cannot be changed.">
+              <Input id="allocation-card" value={`Card ${entry.card}`} readOnly />
+            </Field>
+          ) : (
+            <Field label="Card" htmlFor="allocation-card" error={errors.card?.message}>
+              <Select {...fieldA11y('allocation-card', errors.card?.message)} {...register('card')}>
+                {cards.map((card) => (
+                  <option key={card} value={String(card)}>
+                    Card {card}
+                  </option>
+                ))}
+                <option value={NEW_CARD}>New card</option>
+              </Select>
+            </Field>
+          )}
           <Field
             label="Project"
             htmlFor="allocation-project"
@@ -158,6 +207,7 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
                   {option.label}
                 </option>
               ))}
+              <option value={REMOVED}>Card removed</option>
             </Select>
           </Field>
           <Field

@@ -10,6 +10,7 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Kanban, KanbanBoard, KanbanColumn, KanbanItem, KanbanOverlay } from '@/components/ui/kanban';
@@ -18,8 +19,9 @@ import { MoreMark } from '@/components/ui/marks';
 import { usePeople } from '@/features/people/api';
 import { useProjects } from '@/features/projects/api';
 import { localToday } from '@/lib/format';
+import { serviceMessage } from '@/lib/core-api';
 import { formatInr } from '@/lib/money';
-import { useAllocations, useMoveAllocation } from './api';
+import { useAddCard, useAllocations, useMoveAllocation, useRemoveCard } from './api';
 import { buildBoard, byPerson, columnTotals, type BoardCard, type BoardColumn } from './board';
 
 /** The cards of each column, by column key: the shape the Kanban component holds. */
@@ -67,10 +69,17 @@ const sameCards = (a: readonly BoardCard[] = [], b: readonly BoardCard[] = []) =
 
 const columnName = (column: BoardColumn) => column.project?.name ?? 'Bench';
 
+/** The person's name, and which of their cards it is when they have several: "Ada Lovelace, card 2 of 3". */
+const cardLabel = (card: BoardCard) =>
+  card.cardCount > 1 ? `${card.person.name}, card ${card.card} of ${card.cardCount}` : card.person.name;
+
 const cardLink =
   'inline-flex min-h-11 items-center font-semibold text-foreground decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline';
 
 const SAVE_FAILED = 'That did not save. The card is back where it was.';
+/** For a copy or a removal that failed without a message of the service's own: nothing moved, so nothing is back. */
+const CARD_SAVE_FAILED = 'That did not save. Try again.';
+const KEEPS_ONE = 'A person keeps at least one card';
 
 const INSTRUCTIONS =
   'To pick up a card, focus it and press space or enter. While you hold it, use the arrow keys to move it between columns. Press space or enter again to drop it there, or escape to cancel. The Actions menu on each card moves it without dragging.';
@@ -96,6 +105,8 @@ export function AllocationBoard() {
   const projects = useProjects();
   const entries = useAllocations();
   const move = useMoveAllocation();
+  const addCard = useAddCard();
+  const removeCard = useRemoveCard();
 
   const today = localToday();
   const board = useMemo(
@@ -123,7 +134,9 @@ export function AllocationBoard() {
   // The column a drag began from, which a drop on that column (or on nothing) puts the card back to, and whether it
   // was begun from the keyboard, which has a card to keep its place on.
   const dragFrom = useRef<{ cardKey: string; column: string | null; keyboard: boolean } | null>(null);
-  const [failed, setFailed] = useState(false);
+  // What the board says when a save did not go through: ours for a move (the card is back where it was), the service's
+  // own words for a copy or a removal that it refused.
+  const [failed, setFailed] = useState<string | null>(null);
 
   useEffect(() => {
     latest.current = { board, fromService };
@@ -140,11 +153,19 @@ export function AllocationBoard() {
     refocus.current = null;
   });
 
-  function lock(cardKey: string, locked: boolean) {
-    if (locked) savingNow.current.add(cardKey);
-    else savingNow.current.delete(cardKey);
+  function lock(cardKeys: readonly string[], locked: boolean) {
+    for (const cardKey of cardKeys) {
+      if (locked) savingNow.current.add(cardKey);
+      else savingNow.current.delete(cardKey);
+    }
     setSaving(new Set(savingNow.current));
   }
+
+  /** The keys of every card the person has on the board now. */
+  const cardsOfPerson = (personId: number) =>
+    Object.values(columns)
+      .flat()
+      .filter((card) => card.person.id === personId);
 
   /**
    * Saves the card as on the column `targetKey` from today, and shows it there; `from` is the column it was in. Nothing
@@ -159,13 +180,14 @@ export function AllocationBoard() {
       .find((candidate) => candidate.key === cardKey);
     if (!card || !target || from === targetKey || savingNow.current.has(cardKey)) return;
 
-    lock(cardKey, true);
-    setFailed(false);
+    lock([cardKey], true);
+    setFailed(null);
     if (focusId) refocus.current = focusId;
     setColumns((now) => place(now, card, targetKey));
     try {
       await move.mutateAsync({
         personId: card.person.id,
+        card: card.card,
         projectId: target.project?.id ?? null,
         effectiveDate: localToday(),
       });
@@ -173,10 +195,51 @@ export function AllocationBoard() {
       if (focusId) refocus.current = focusId;
       const back = columnHolding(latest.current.fromService, cardKey) ?? from;
       if (back !== null) setColumns((now) => place(now, card, back));
-      setFailed(true);
+      setFailed(SAVE_FAILED);
     } finally {
-      lock(cardKey, false);
+      lock([cardKey], false);
     }
+  }
+
+  /**
+   * Runs a save that adds or removes a card of a person. It is not shown before it is saved (the new card's number is the
+   * service's to give, and the shares of the person's cards change), so every card of the person is locked until the save
+   * has settled and the entries read back. A refusal is shown in the service's words.
+   */
+  async function changeCards(card: BoardCard, save: () => Promise<unknown>, focusId: string) {
+    const keys = cardsOfPerson(card.person.id).map((candidate) => candidate.key);
+    if (keys.some((key) => savingNow.current.has(key))) return;
+    lock(keys, true);
+    setFailed(null);
+    refocus.current = focusId;
+    try {
+      await save();
+    } catch (error) {
+      setFailed(serviceMessage(error) ?? CARD_SAVE_FAILED);
+    } finally {
+      lock(keys, false);
+    }
+  }
+
+  /** A copy of the card, on the same project (or the bench), dated today: two cards then stand in one column. */
+  function duplicateCard(card: BoardCard) {
+    return changeCards(
+      card,
+      () => addCard.mutateAsync({ personId: card.person.id, projectId: card.projectId, effectiveDate: localToday() }),
+      `actions-${card.key}`
+    );
+  }
+
+  /** The card is removed from today; the person's other card takes its share of the salary. */
+  function deleteCard(card: BoardCard) {
+    if (card.cardCount < 2) return Promise.resolve();
+    // The card is gone once this is saved: focus goes to the person's lowest numbered card that is left.
+    const left = cardsOfPerson(card.person.id).find((candidate) => candidate.key !== card.key);
+    return changeCards(
+      card,
+      () => removeCard.mutateAsync({ personId: card.person.id, card: card.card, effectiveDate: localToday() }),
+      `actions-${left?.key ?? card.key}`
+    );
   }
 
   /** Puts a card that was being dragged back where the drag began (or where the service has it): only that card. */
@@ -228,10 +291,12 @@ export function AllocationBoard() {
     if (!savingNow.current.has(String(active.id))) dropBack(String(active.id));
   }
 
-  const nameOf = (id: UniqueIdentifier) =>
-    Object.values(columns)
+  const nameOf = (id: UniqueIdentifier) => {
+    const card = Object.values(columns)
       .flat()
-      .find((card) => card.key === id)?.person.name ?? 'The card';
+      .find((candidate) => candidate.key === id);
+    return card ? cardLabel(card) : 'The card';
+  };
   const placeOf = (id: UniqueIdentifier) => {
     const key = String(id) in columns ? String(id) : columnHolding(columns, String(id));
     const column = board.find((candidate) => candidate.key === key);
@@ -266,9 +331,9 @@ export function AllocationBoard() {
       }
     >
       <div className="flex min-h-0 flex-1 flex-col">
-        {failed ? (
+        {failed !== null ? (
           <p role="alert" className="mb-3 shrink-0 text-small font-semibold text-foreground">
-            {SAVE_FAILED}
+            {failed}
           </p>
         ) : null}
 
@@ -308,8 +373,8 @@ export function AllocationBoard() {
                         )}
                       </h2>
                       <p className="text-small">
-                        <span className="tabular">{cards.length}</span> {cards.length === 1 ? 'person' : 'people'},{' '}
-                        <span className="tabular">{formatInr(monthlyCostPaise)}</span> a month
+                        <span className="tabular">{cards.length}</span> {cards.length === 1 ? 'card' : 'cards'},{' '}
+                        {formatInr(monthlyCostPaise)} a month
                       </p>
                       {withoutSalary > 0 ? (
                         <p className="text-small text-navy-80">{withoutSalary} without a salary</p>
@@ -325,12 +390,15 @@ export function AllocationBoard() {
                         {cards.map((card) => {
                           const menuLabel = `${card.key}-move`;
                           const actionsId = `actions-${card.key}`;
+                          const reasonId = `${card.key}-keeps-one`;
+                          // A move of one of the person's cards still being saved: a copy or a removal waits for it.
+                          const personBusy = cardsOfPerson(card.person.id).some((other) => saving.has(other.key));
                           return (
                             <KanbanItem
                               key={card.key}
                               id={card.key}
                               value={card.key}
-                              aria-label={card.person.name}
+                              aria-label={cardLabel(card)}
                               sortableAttributes={CARD_ATTRIBUTES}
                               disabled={saving.has(card.key)}
                               asHandle
@@ -342,17 +410,20 @@ export function AllocationBoard() {
                                     <Link to={`/resources/people/${card.person.id}`} className={cardLink}>
                                       {card.person.name}
                                     </Link>
-                                    {card.note !== null ? <p className="text-small text-navy-80">{card.note}</p> : null}
-                                    {card.person.monthlySalaryPaise === null ? null : (
-                                      <p className="tabular pb-2 text-small">
-                                        {formatInr(card.person.monthlySalaryPaise)}
+                                    {card.cardCount > 1 ? (
+                                      <p className="text-small text-navy-80">
+                                        Card {card.card} of {card.cardCount}
                                       </p>
+                                    ) : null}
+                                    {card.note !== null ? <p className="text-small text-navy-80">{card.note}</p> : null}
+                                    {card.salaryShare === null ? null : (
+                                      <p className="pb-2 text-small">{formatInr(card.salaryShare)}</p>
                                     )}
                                   </div>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger
                                       id={actionsId}
-                                      aria-label={`Actions for ${card.person.name}`}
+                                      aria-label={`Actions for ${cardLabel(card)}`}
                                       disabled={saving.has(card.key)}
                                       className={buttonVariants({ variant: 'icon' })}
                                     >
@@ -383,6 +454,22 @@ export function AllocationBoard() {
                                             </DropdownMenuItem>
                                           ))}
                                       </DropdownMenuGroup>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem disabled={personBusy} onSelect={() => void duplicateCard(card)}>
+                                        Duplicate
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem
+                                        disabled={card.cardCount < 2 || personBusy}
+                                        aria-describedby={card.cardCount < 2 ? reasonId : undefined}
+                                        onSelect={() => void deleteCard(card)}
+                                      >
+                                        Delete card
+                                      </DropdownMenuItem>
+                                      {card.cardCount < 2 ? (
+                                        <p id={reasonId} className="px-3 pb-2 text-small text-navy-80">
+                                          {KEEPS_ONE}
+                                        </p>
+                                      ) : null}
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </div>
@@ -405,7 +492,7 @@ export function AllocationBoard() {
                 if (!card) return null;
                 return (
                   <div className="flex h-full items-center border border-navy bg-background px-3 font-semibold text-navy">
-                    {card.person.name}
+                    {cardLabel(card)}
                   </div>
                 );
               }}

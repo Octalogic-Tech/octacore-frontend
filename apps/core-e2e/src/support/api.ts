@@ -225,9 +225,10 @@ const people = (): Row[] => [
   }),
 ];
 
-// The ledger, newest first as the service sends it: Asha was on the Mobile app, then the bench, and has been on the
-// Website since 12 March 2026. Ben has no entry, so he is on the bench with no date. A null project is the bench.
-const entry = (fields: Row): Row => record({ note: null, ...fields });
+// The ledger, newest first as the service sends it: Asha's card 1 was on the Mobile app, then the bench, and has been on
+// the Website since 12 March 2026. Ben has no entry, so his card 1 is on the bench with no date. A null project is the
+// bench. Every entry belongs to one card of a person, and a removed entry has no project.
+const entry = (fields: Row): Row => record({ note: null, card: 1, removed: false, ...fields });
 
 const allocations = (): Row[] => [
   entry({
@@ -277,6 +278,26 @@ const leaves = (): Row[] => [
     reason: 'Family wedding',
   }),
 ];
+
+/**
+ * The cards a person has on a day, by the service's rule: for each card number the latest entry on or before the day (by
+ * date, then id); a removed card is gone; card 1 is there from the start; with none left, an implicit card 1 stands in.
+ */
+const cardsOn = (rows: Row[], personId: number, day: string): number[] => {
+  const latest = new Map<number, Row>();
+  for (const row of rows) {
+    if (row.personId !== personId || (row.effectiveDate as string) > day) continue;
+    const held = latest.get(row.card as number);
+    const newer =
+      !held ||
+      (row.effectiveDate as string) > (held.effectiveDate as string) ||
+      (row.effectiveDate === held.effectiveDate && (row.id as number) > (held.id as number));
+    if (newer) latest.set(row.card as number, row);
+  }
+  const live = [...latest.entries()].filter(([, row]) => !row.removed).map(([card]) => card);
+  if (!latest.has(1)) live.push(1);
+  return live.length > 0 ? live.sort((a, b) => a - b) : [1];
+};
 
 /** Whether the row passes the list's filters: each named query parameter, when given, must equal the row's value. */
 const matchesFilter = (row: Row, query: URLSearchParams, keys: string[]) =>
@@ -442,10 +463,69 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
     const found = people().find((person) => person.id === Number(url.split('/').pop()));
     return found ? { body: envelope(found) } : { statusCode: 404, body: envelope(null, 404) };
   });
-  // Both lists carry a query string (`?personId=1`), hence the trailing `*`, and are filtered like the service does.
+  // Both lists carry a query string (`?personId=1`), hence the trailing `*`, and are filtered like the service does. The
+  // ledger keeps state, so a card added, moved or removed shows up on the next read; it answers the writes by the
+  // service's rules (a card above 1 that does not exist, the last card of a person) with the service's own messages.
+  let ledger = allocations();
+  let nextEntryId = 100;
+  const newestFirst = (rows: Row[]) =>
+    [...rows].sort(
+      (a, b) =>
+        (b.effectiveDate as string).localeCompare(a.effectiveDate as string) || (b.id as number) - (a.id as number),
+    );
+  const nameOf = (rows: Row[], id: unknown) => {
+    const found = rows.find((row) => row.id === id);
+    return found ? { id: found.id, name: found.name } : null;
+  };
+  /** Sets the (person, card, day) entry, adding it when the card has none that day; answers it. */
+  const upsert = (personId: number, card: number, day: string, projectId: number | null, removed: boolean) => {
+    const held = ledger.find((row) => row.personId === personId && row.card === card && row.effectiveDate === day);
+    const fields = { projectId, removed, project: projectId === null ? null : nameOf(projects(), projectId) };
+    if (held) {
+      Object.assign(held, fields);
+      return held;
+    }
+    nextEntryId += 1;
+    const added = entry({
+      id: nextEntryId,
+      personId,
+      card,
+      effectiveDate: day,
+      person: nameOf(people(), personId),
+      ...fields,
+    });
+    ledger = [added, ...ledger];
+    return added;
+  };
+  type EntryBody = { personId: number; card?: number; projectId: number | null; effectiveDate: string };
   stubCore('GET', '/allocations*', ({ url }) => {
     const query = new URL(url).searchParams;
-    return { body: envelope(allocations().filter((row) => matchesFilter(row, query, ['personId', 'projectId']))) };
+    return { body: envelope(newestFirst(ledger).filter((row) => matchesFilter(row, query, ['personId', 'projectId']))) };
+  });
+  stubCore('POST', '/allocations/move', ({ body }) => {
+    const { personId, card = 1, projectId, effectiveDate } = body as EntryBody;
+    if (card > 1 && !ledger.some((row) => row.personId === personId && row.card === card)) {
+      return { statusCode: 409, body: { ...envelope(null, 409), message: 'That card does not exist' } };
+    }
+    return { body: envelope(upsert(personId, card, effectiveDate, projectId, false)) };
+  });
+  stubCore('POST', '/allocations/cards', ({ body }) => {
+    const { personId, projectId, effectiveDate } = body as EntryBody;
+    const numbers = ledger.filter((row) => row.personId === personId).map((row) => row.card as number);
+    // The next number the person has not had, removed cards counted; at least 2.
+    const card = Math.max(1, ...numbers) + 1;
+    return { statusCode: 201, body: envelope(upsert(personId, card, effectiveDate, projectId, false), 201) };
+  });
+  stubCore('POST', '/allocations/remove', ({ body }) => {
+    const { personId, card, effectiveDate } = body as { personId: number; card: number; effectiveDate: string };
+    const cards = cardsOn(ledger, personId, effectiveDate);
+    if (!cards.includes(card)) {
+      return { statusCode: 409, body: { ...envelope(null, 409), message: 'That card does not exist' } };
+    }
+    if (cards.length < 2) {
+      return { statusCode: 409, body: { ...envelope(null, 409), message: 'A person keeps at least one card' } };
+    }
+    return { body: envelope(upsert(personId, card, effectiveDate, null, true)) };
   });
   stubCore('GET', '/leaves*', ({ url }) => {
     const query = new URL(url).searchParams;

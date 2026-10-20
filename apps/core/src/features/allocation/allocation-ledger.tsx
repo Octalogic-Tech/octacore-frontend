@@ -13,9 +13,16 @@ import { usePagedRows } from '@/hooks/use-paged-rows';
 import { formatDate, localToday } from '@/lib/format';
 import { useAllocations, useDeleteAllocation } from './api';
 import { AllocationFormDialog } from './allocation-form-dialog';
-import { allocationMatches, type AllocationRow } from './schema';
+import { allocationMatches, entryPlace, type AllocationRow } from './schema';
 
 const NONE = '—';
+
+/** What a deleted entry stops saying: where the card was from that day, or that it was removed. */
+function whatItSaid(entry: AllocationRow): string {
+  if (entry.removed) return `Their card ${entry.card} was removed from that day.`;
+  const place = entry.project ? entry.project.name : 'the bench';
+  return entry.card > 1 ? `Their card ${entry.card} was on ${place} from that day.` : `They were on ${place} from that day.`;
+}
 
 interface AllocationLedgerProps {
   /** Only this person's entries, on their own page: the Person column and the Person field are left out. */
@@ -41,8 +48,10 @@ export function AllocationLedger({ personId }: AllocationLedgerProps) {
   );
   const paging = usePagedRows(filtered);
 
-  // Names the row by what it says, since a person may have many.
-  const rowName = (entry: AllocationRow) => `${entry.person.name} from ${formatDate(entry.effectiveDate)}`;
+  // Names the row by what it says, since a person may have many, and by its card when it is not the first, since two
+  // cards can have an entry on one day.
+  const rowName = (entry: AllocationRow) =>
+    `${entry.person.name} from ${formatDate(entry.effectiveDate)}${entry.card > 1 ? `, card ${entry.card}` : ''}`;
 
   return (
     <>
@@ -87,6 +96,7 @@ export function AllocationLedger({ personId }: AllocationLedgerProps) {
                   <TableRow>
                     <TableHead>From</TableHead>
                     {personId === undefined ? <TableHead>Person</TableHead> : null}
+                    <TableHead>Card</TableHead>
                     <TableHead>Project</TableHead>
                     <TableHead>Note</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -106,7 +116,8 @@ export function AllocationLedger({ personId }: AllocationLedgerProps) {
                       {personId === undefined ? (
                         <TableCell className="font-semibold">{entry.person.name}</TableCell>
                       ) : null}
-                      <TableCell>{entry.project?.name ?? 'Bench'}</TableCell>
+                      <TableCell className="whitespace-nowrap">Card {entry.card}</TableCell>
+                      <TableCell>{entryPlace(entry)}</TableCell>
                       <TableCell className="min-w-[10rem]">{entry.note || NONE}</TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         <IconButton
@@ -150,8 +161,8 @@ export function AllocationLedger({ personId }: AllocationLedgerProps) {
         onOpenChange={(open) => {
           if (!open) setToDelete(null);
         }}
-        title={`Delete the entry for “${toDelete?.person.name ?? ''}” from ${toDelete ? formatDate(toDelete.effectiveDate) : ''}?`}
-        description={`They were on ${toDelete?.project ? toDelete.project.name : 'the bench'} from that day. Where they are now is worked out again from their other entries. This cannot be undone.`}
+        title={`Delete the entry for “${toDelete?.person.name ?? ''}”${toDelete && toDelete.card > 1 ? ` (card ${toDelete.card})` : ''} from ${toDelete ? formatDate(toDelete.effectiveDate) : ''}?`}
+        description={`${toDelete ? whatItSaid(toDelete) : ''} Where they are now is worked out again from their other entries. This cannot be undone.`}
         confirmLabel="Delete entry"
         fallbackFocusId="allocation-search"
         onConfirm={async () => {

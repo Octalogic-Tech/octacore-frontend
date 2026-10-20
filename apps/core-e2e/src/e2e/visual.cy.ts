@@ -45,6 +45,29 @@ describe('visual captures', () => {
   }
 });
 
+// A person with two cards on the board, at each width: made through the card's menu, as a person does.
+describe('visual captures: a person with two cards', () => {
+  beforeEach(() => {
+    stubApi();
+  });
+
+  for (const [width, height] of viewports) {
+    it(`allocation board with a duplicated card at ${width}px`, () => {
+      cy.viewport(width, height);
+      cy.visit('/resources/allocation');
+      cy.get('main h1').should('be.visible');
+      // The Website column is past the edge of the board on a phone: scroll to it first.
+      cy.get('[aria-labelledby="col-1-name"]').scrollIntoView();
+      cy.get('button[aria-label="Actions for Asha Rao"]').click();
+      cy.contains('[role="menu"] [role="menuitem"]', 'Duplicate').click();
+      cy.get('li[aria-label="Asha Rao, card 2 of 2"]').should('exist');
+      cy.get('li[aria-label="Asha Rao, card 1 of 2"]').scrollIntoView();
+      cy.get('[role="status"][aria-label="Loading"]').should('not.exist');
+      cy.screenshot(`allocation-board-two-cards-${width}`, { capture: 'fullPage' });
+    });
+  }
+});
+
 describe('visual captures: signed out', () => {
   beforeEach(() => {
     stubApi({ signedIn: false });

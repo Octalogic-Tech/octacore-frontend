@@ -39,8 +39,8 @@ const shown = (iso: string) => {
 const column = (key: string) => `[aria-labelledby="${key}-name"]`;
 const ledgerRows = 'table[aria-label="Allocation ledger"] tbody tr';
 
-/** The first cells of each row of the table, as text: the day, the person, the project and the note. */
-const cellsOf = (rows: JQuery<HTMLElement>, count = 4) =>
+/** The first cells of each row of the table, as text: the day, the person, the card, the project and the note. */
+const cellsOf = (rows: JQuery<HTMLElement>, count = 5) =>
   [...rows].map((row) => Array.from(row.querySelectorAll('td')).slice(0, count).map((cell) => cell.textContent?.trim()));
 
 interface Named {
@@ -99,6 +99,7 @@ interface Named {
    * (the live region a screen reader hears) instead of a fixed pause.
    */
   const dragCardTo = (person: string, targetName: string, target: string) => {
+    // `person` is what the card is called: the person's name, and "card 2 of 2" after it when they have several.
     const card = `li[aria-label="${person}"]`;
     const live = '[id^="DndLiveRegion"]';
     // dnd-kit tells a mouse event by `instanceof MouseEvent`, and `trigger` makes a plain Event unless it is told otherwise.
@@ -248,18 +249,18 @@ interface Named {
       expect([...heads].map((head) => head.textContent)).to.deep.equal(['Bench', APOLLO, BOREALIS]);
     });
     cy.get(column('col-bench')).within(() => {
-      cy.contains('0 people, ₹0.00 a month').should('be.visible');
+      cy.contains('0 cards, ₹0.00 a month').should('be.visible');
       cy.contains('Nobody is on the bench.').should('be.visible');
     });
     cy.get(column(`col-${apolloId}`)).within(() => {
-      cy.contains('1 person, ₹85,000.00 a month').should('be.visible');
+      cy.contains('1 card, ₹85,000.00 a month').should('be.visible');
       cy.contains('a', ada).should('be.visible');
       cy.contains('₹85,000.00').should('be.visible');
       // A card carries no date: the ledger and the person's page have those.
       cy.contains('since').should('not.exist');
     });
     cy.get(column(`col-${borealisId}`)).within(() => {
-      cy.contains('2 people, ₹60,000.50 a month').should('be.visible');
+      cy.contains('2 cards, ₹60,000.50 a month').should('be.visible');
       cy.contains('1 without a salary').should('be.visible');
     });
     shoot('resources-board-allocated');
@@ -272,11 +273,11 @@ interface Named {
       expect(request.body.personId).to.be.a('number');
     });
     cy.get(column('col-bench')).within(() => {
-      cy.contains('1 person, ₹85,000.00 a month').should('be.visible');
+      cy.contains('1 card, ₹85,000.00 a month').should('be.visible');
       cy.contains('a', ada).should('be.visible');
     });
     cy.get(column(`col-${apolloId}`)).within(() => {
-      cy.contains('0 people, ₹0.00 a month').should('be.visible');
+      cy.contains('0 cards, ₹0.00 a month').should('be.visible');
       cy.contains('Nobody is on this project.').should('be.visible');
     });
     // The card in flight glides into place for a moment after the drop; the screenshot waits for it to land.
@@ -290,8 +291,8 @@ interface Named {
     cy.get(ledgerRows).should('have.length', 2);
     cy.get(ledgerRows).then((rows) => {
       expect(cellsOf(rows)).to.deep.equal([
-        [shown(day), ada, 'Bench', '—'],
-        ['12 Mar 2026', ada, APOLLO, 'Joins the platform team'],
+        [shown(day), ada, 'Card 1', 'Bench', '—'],
+        ['12 Mar 2026', ada, 'Card 1', APOLLO, 'Joins the platform team'],
       ]);
     });
 
@@ -313,9 +314,9 @@ interface Named {
     cy.get(ledgerRows).should('have.length', 3);
     cy.get(ledgerRows).then((rows) => {
       expect(cellsOf(rows)).to.deep.equal([
-        [shown(day), ada, 'Bench', '—'],
-        ['12 Mar 2026', ada, APOLLO, 'Joins the platform team'],
-        ['5 Jan 2026', ada, 'Bench', 'Joined, not placed yet'],
+        [shown(day), ada, 'Card 1', 'Bench', '—'],
+        ['12 Mar 2026', ada, 'Card 1', APOLLO, 'Joins the platform team'],
+        ['5 Jan 2026', ada, 'Card 1', 'Bench', 'Joined, not placed yet'],
       ]);
     });
 
@@ -339,7 +340,7 @@ interface Named {
     });
     cy.wait('@move').its('response.statusCode').should('eq', 200);
     cy.get(column(`col-${apolloId}`)).within(() => {
-      cy.contains('1 person, ₹85,000.00 a month').should('be.visible');
+      cy.contains('1 card, ₹85,000.00 a month').should('be.visible');
       cy.contains('a', ada).should('be.visible');
     });
     cy.contains('[role="tab"]', 'Ledger').click();
@@ -353,6 +354,83 @@ interface Named {
     cy.contains(`On ${APOLLO} since ${shown(day)}`).should('be.visible');
     cy.contains('[role="tab"]', 'Allocations').should('contain', '3').click();
     cy.get(ledgerRows).should('have.length', 3);
+  });
+
+  it('gives a person a second card: duplicates them from the card menu, splits their salary, drags a card to another project, and removes it', () => {
+    const ada = `${PREFIX} Ada`;
+    const day = today();
+
+    addPerson(ada, 8_500_000).then((person) =>
+      call('POST', '/allocations', { personId: person.id, projectId: apolloId, effectiveDate: '2026-03-12' }),
+    );
+    cy.intercept('POST', '**/allocations/cards').as('copy');
+    cy.intercept('POST', '**/allocations/move').as('move');
+    cy.intercept('POST', '**/allocations/remove').as('remove');
+    signIn();
+    cy.get(nav).contains('a', 'Allocation').click();
+    cy.contains('h1', 'Allocation');
+    cy.get(column(`col-${apolloId}`)).contains('1 card, ₹85,000.00 a month').should('be.visible');
+
+    // Duplicate: a copy on the same project, so two cards stand in its column, each with half of the salary. The copy is
+    // the service's to number, and it is made today on the project of the card it copies.
+    cy.get(`button[aria-label="Actions for ${ada}"]`).click();
+    cy.contains('[role="menu"] [role="menuitem"]', 'Duplicate').click();
+    cy.wait('@copy').then(({ request, response }) => {
+      expect(response?.statusCode).to.eq(201);
+      expect(request.body).to.include({ projectId: apolloId, effectiveDate: day });
+      expect(request.body.personId).to.be.a('number');
+      expect(request.body).to.not.have.property('card');
+    });
+    cy.get(column(`col-${apolloId}`)).within(() => {
+      cy.contains('2 cards, ₹85,000.00 a month').should('be.visible');
+      cy.get(`li[aria-label="${ada}, card 1 of 2"]`).should('contain', 'Card 1 of 2').and('contain', '₹42,500.00');
+      cy.get(`li[aria-label="${ada}, card 2 of 2"]`).should('contain', 'Card 2 of 2').and('contain', '₹42,500.00');
+    });
+    shoot('resources-board-two-cards');
+
+    // Drag the second card to Borealis with a real pointer: it moves by its number, and the two columns' costs add up to
+    // the whole salary.
+    dragCardTo(`${ada}, card 2 of 2`, BOREALIS, column(`col-${borealisId}`));
+    cy.wait('@move').then(({ request, response }) => {
+      expect(response?.statusCode).to.eq(200);
+      expect(request.body).to.include({ card: 2, projectId: borealisId, effectiveDate: day });
+    });
+    cy.get(column(`col-${apolloId}`)).contains('1 card, ₹42,500.00 a month').should('be.visible');
+    cy.get(column(`col-${borealisId}`)).contains('1 card, ₹42,500.00 a month').should('be.visible');
+    cy.get('.cursor-grabbing').should('not.exist');
+
+    // Delete card: the person's other card is left with the whole salary, and cannot be deleted in its turn.
+    cy.get(`button[aria-label="Actions for ${ada}, card 2 of 2"]`).click();
+    cy.contains('[role="menu"] [role="menuitem"]', 'Delete card').click();
+    cy.wait('@remove').then(({ request, response }) => {
+      expect(response?.statusCode).to.eq(200);
+      expect(request.body).to.include({ card: 2, effectiveDate: day });
+    });
+    cy.get(column(`col-${borealisId}`)).contains('0 cards, ₹0.00 a month').should('be.visible');
+    cy.get(column(`col-${apolloId}`)).within(() => {
+      cy.contains('1 card, ₹85,000.00 a month').should('be.visible');
+      cy.get(`li[aria-label="${ada}"]`).should('contain', '₹85,000.00').and('not.contain', 'Card 1 of');
+    });
+    cy.get(`button[aria-label="Actions for ${ada}"]`).click();
+    cy.contains('[role="menu"] [role="menuitem"]', 'Delete card').should('have.attr', 'aria-disabled', 'true');
+    cy.contains('A person keeps at least one card').should('be.visible');
+    cy.get('body').type('{esc}');
+    shoot('resources-board-card-removed');
+
+    // The ledger keeps what happened: card 2's one entry today (made, moved and removed on one day are one entry) says it
+    // was removed, and card 1 is where it was.
+    cy.contains('[role="tab"]', 'Ledger').click();
+    cy.get('#allocation-search').type(ada);
+    cy.get(ledgerRows).should('have.length', 2);
+    cy.get(ledgerRows).then((rows) => {
+      expect(cellsOf(rows)).to.deep.equal([
+        [shown(day), ada, 'Card 2', 'Card removed', '—'],
+        ['12 Mar 2026', ada, 'Card 1', APOLLO, '—'],
+      ]);
+    });
+    // The person's own page says where they are now: one card again, on Apollo.
+    openPerson(ada);
+    cy.contains(`On ${APOLLO} since 12 Mar 2026`).should('be.visible');
   });
 
   it('adds a leave on the person’s page, lists it in the register, refuses an overlap, and deletes it', () => {
@@ -402,7 +480,7 @@ interface Named {
     cy.get(nav).contains('a', 'Leave').click();
     cy.contains('h1', 'Leave');
     cy.get('table[aria-label="Leave"] tbody tr').then((rows) => {
-      expect(cellsOf(rows)).to.deep.equal([['4 May 2026 to 6 May 2026', lee, 'Sick', 'Fever']]);
+      expect(cellsOf(rows, 4)).to.deep.equal([['4 May 2026 to 6 May 2026', lee, 'Sick', 'Fever']]);
     });
     shoot('resources-leave');
 

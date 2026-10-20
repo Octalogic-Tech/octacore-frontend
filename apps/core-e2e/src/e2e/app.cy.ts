@@ -128,14 +128,14 @@ describe('core', () => {
       expect([...heads].map((head) => head.textContent)).to.deep.equal(['Bench', 'Legacy portal', 'Mobile app', 'Website']);
     });
     cy.get('[aria-labelledby="col-bench-name"]').within(() => {
-      cy.contains('1 person, ₹0.00 a month').should('be.visible');
+      cy.contains('1 card, ₹0.00 a month').should('be.visible');
       cy.contains('1 without a salary').should('be.visible');
       cy.contains('a', 'Ben Cho').should('be.visible');
     });
     // Four columns are wider than the board, so it scrolls sideways inside itself: the last one is scrolled to first.
     cy.get('[aria-labelledby="col-1-name"]').scrollIntoView();
     cy.get('[aria-labelledby="col-1-name"]').within(() => {
-      cy.contains('1 person, ₹85,000.75 a month').should('be.visible');
+      cy.contains('1 card, ₹85,000.75 a month').should('be.visible');
       cy.contains('a', 'Asha Rao').should('be.visible');
       // A card has no date on it: the ledger holds those.
       cy.contains('since').should('not.exist');
@@ -151,8 +151,17 @@ describe('core', () => {
     cy.get('[role="menu"]').within(() => {
       cy.contains('Move to').should('be.visible');
       cy.get('[role="menuitem"]').then((items) => {
-        expect([...items].map((item) => item.textContent)).to.deep.equal(['Bench', 'Legacy portal', 'Mobile app']);
+        expect([...items].map((item) => item.textContent)).to.deep.equal([
+          'Bench',
+          'Legacy portal',
+          'Mobile app',
+          'Duplicate',
+          'Delete card',
+        ]);
       });
+      // A person keeps at least one card: with only one, Delete card is shown but cannot be chosen, and says why.
+      cy.contains('[role="menuitem"]', 'Delete card').should('have.attr', 'aria-disabled', 'true');
+      cy.contains('A person keeps at least one card').should('be.visible');
     });
     cy.get('body').type('{esc}');
     cy.get('[role="menu"]').should('not.exist');
@@ -168,6 +177,43 @@ describe('core', () => {
     cy.get('#allocation-search').type('mobile');
     cy.get('table[aria-label="Allocation ledger"] tbody tr').should('have.length', 1);
     cy.contains('td', '2 Jun 2025').should('be.visible');
+  });
+
+  it('gives a person a second card, shares their salary between the two, moves one, and removes it', () => {
+    cy.get(nav).contains('a', 'Allocation').click();
+    cy.contains('h1', 'Allocation');
+    const website = '[aria-labelledby="col-1-name"]';
+    const mobileApp = '[aria-labelledby="col-2-name"]';
+    cy.get(website).scrollIntoView();
+
+    // Duplicate: a copy on the same project, so two cards stand in the Website column, each with its half of ₹85,000.75
+    // (the paisa that does not divide goes to the first card).
+    cy.get('button[aria-label="Actions for Asha Rao"]').click();
+    cy.contains('[role="menu"] [role="menuitem"]', 'Duplicate').click();
+    cy.get(website).within(() => {
+      cy.contains('2 cards, ₹85,000.75 a month').should('be.visible');
+      cy.get('li[aria-label="Asha Rao, card 1 of 2"]').should('contain', 'Card 1 of 2').and('contain', '₹42,500.38');
+      cy.get('li[aria-label="Asha Rao, card 2 of 2"]').should('contain', 'Card 2 of 2').and('contain', '₹42,500.37');
+    });
+    cy.screenshot('allocation-two-cards', { capture: 'viewport' });
+
+    // Move the second card to the Mobile app: the columns' costs add up to the salary.
+    cy.get('button[aria-label="Actions for Asha Rao, card 2 of 2"]').click();
+    cy.contains('[role="menu"] [role="menuitem"]', 'Mobile app').click();
+    cy.get(mobileApp).scrollIntoView();
+    cy.get(mobileApp).contains('1 card, ₹42,500.37 a month').should('be.visible');
+    cy.get(website).scrollIntoView();
+    cy.get(website).contains('1 card, ₹42,500.38 a month').should('be.visible');
+
+    // Remove it: the card that is left has the whole salary, and its Delete card is disabled.
+    cy.get('button[aria-label="Actions for Asha Rao, card 2 of 2"]').click();
+    cy.contains('[role="menu"] [role="menuitem"]', 'Delete card').click();
+    cy.get(website).within(() => {
+      cy.contains('1 card, ₹85,000.75 a month').should('be.visible');
+      cy.get('li[aria-label="Asha Rao"]').should('contain', '₹85,000.75').and('not.contain', 'Card 1 of');
+    });
+    cy.get('button[aria-label="Actions for Asha Rao"]').click();
+    cy.contains('[role="menu"] [role="menuitem"]', 'Delete card').should('have.attr', 'aria-disabled', 'true');
   });
 
   it('lists every leave in the register and finds one by its reason', () => {
