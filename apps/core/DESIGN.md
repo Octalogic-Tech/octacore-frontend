@@ -176,7 +176,7 @@ Nothing in the app is smaller than 14px. Amounts and dates use tabular figures (
 
 ## Layout
 
-A navy sidebar of 256px from 1024px; below that a 64px header with the logo and a menu button that opens the same navigation in a sheet. The content column is at most 1200px with fluid gutters (20px on phones, 32px from 768px, 40px from 1280px). Pages are one column: the page title with its action on one line, the filters or search, then a framed panel holding the table and its pager. Tables scroll sideways inside their panel below 768px; the page itself never scrolls sideways. Every interactive target is at least 44px.
+A navy sidebar of 256px from 1024px; below that a 64px header with the logo and a menu button that opens the same navigation in a sheet. The content column is at most 1200px with fluid gutters (20px on phones, 32px from 768px, 40px from 1280px). Pages are one column (the allocation board is the exception, see Board): the page title with its action on one line, the filters or search, then a framed panel holding the table and its pager. Tables scroll sideways inside their panel below 768px; the page itself never scrolls sideways. Every interactive target is at least 44px.
 
 ## Elevation & Depth
 
@@ -194,7 +194,7 @@ Every corner is square (radius 0). The one non-rectangular silhouette is the 45 
 A label and a square arm cell, 52px tall; one primary per screen. Hover and keyboard focus fill the cell teal and swing the arm into an arrow (220ms and 320ms). The quiet variant is plain text, 44px tall, with a teal underline on hover and focus; it is used for Cancel, Previous and Next. A table row's actions (Edit, Delete, Preview and the like) are icon buttons instead: one Lucide mark in a 44px square with no text, named by its `aria-label` and tooltip ("Edit Acme"), and a teal bar under the mark on hover and focus.
 
 ### Navigation
-Logo, then three groups of text links (Work, Finance, Reference data). Group names are Small, uppercase and tracked, in Mist. The current page is white with a teal arm and `aria-current="page"`; other links are Mist with a Mist arm that lengthens and turns teal on hover.
+Logo, then groups of text links (Work, Resources, Finance, Reference data, and for admins Admin and Planned). Group names are Small, uppercase and tracked, in Mist. The current page is white with a teal arm and `aria-current="page"`; other links are Mist with a Mist arm that lengthens and turns teal on hover.
 
 ### Account
 At the foot of the sidebar and the menu sheet, a single 44px button: the person's initials in a square Night Navy tile (first letter of the first and last word of the name), the name, and a drawn chevron. It opens a popover upward, as wide as the button, with the email and then Change password and Sign out as quiet buttons. The popover is a grey object with a 1px navy frame: flat, no scrim, and it closes on Escape, an outside click or a choice. Change password closes it and opens its dialog, and focus comes back to the name button.
@@ -204,6 +204,9 @@ Underline fields: no box, no fill. A 1px Muted Navy rule that turns navy on hove
 
 ### Tabs
 A page with more than one subject splits into tabs: text only (the icon set is for row actions), 44px tall, on a navy rule the width of the content. Labels are Slate Navy; hover, keyboard focus and the selected tab turn them Octalogic Navy, and the selected tab also carries a 3px teal bar on the rule. A count follows the name in regular weight ("Invoices 4") once it is known. The selected tab lives in the address (`?tab=`, bare for the first tab), replacing the history entry so Back leaves the page; an unknown value opens the first tab. Only the open tab is on the page.
+
+### Board
+The allocation board is the registry's Kanban component restyled to the tokens, and it is the one page that fills the window: edge to edge beside the sidebar, with small gutters, and down to the bottom, under the title and the tabs (the shell's `<main>` gives its centred column up while the board is on screen). The columns fill that height: each is a Soft Hairline well in a Hairline frame, 288px wide, with its name, head count and monthly cost under a Hairline, and scrolls its own cards when there are many; the row of columns scrolls sideways inside the board, so the page itself never scrolls. A card is a flat Paper Grey object in a Hairline frame with the person's name as a link, "Card 1 of 2" in Slate Navy when the person has several cards (nothing when they have one), the card's share of their salary (their salary split evenly between their cards) and, when it is on the bench because its project is not active, a note; it has no date, which the ledger holds. The column head counts cards ("1 card, ₹85,000.00 a month"); only its count is set in tabular figures, because the font draws the punctuation of tabular amounts wide. The whole card is picked up, with the mouse (after 6px, so a click on the name or the menu button is still a click), by touch (after a short press, so a swipe still scrolls the column) or by the keyboard (focus the card, then space or enter), and it shows a grab cursor; it is announced as a draggable card in a list, not as a button. At its top right a 44px button with a drawn three-square mark (like the other marks, not an icon from the set) opens the card's menu, as Trello's does: a flat grey object with a Navy frame with a Move to group (a 44px item for each other column, the way to move without dragging), a Hairline, Duplicate (a copy of the card on the same project, for a person on more than one project) and Delete card, which is shown but disabled, with its reason ("A person keeps at least one card") in Slate Navy under it, when the person has one card. The card in flight is an outlined navy card, with no shadow; a card whose move is being saved is dimmed and locked until it settles.
 
 ### Panels and tables
 A framed panel (grey, 1px navy frame, one cut corner) holds a table: a navy rule under the heads, Hairline between rows, rows at least 44px, amounts right-aligned in tabular figures, a pager at the foot (rows per page, range, Previous and Next).
@@ -241,7 +244,7 @@ Deliberate, so a later reader does not "fix" them back:
 - Dialogs use a clip-path cut; framed panels use the corner svg. The website uses the svg technique for panels only.
 - shadcn's `accent` token is the Soft Hairline hover fill, not teal; teal is the separate `signal` token. `destructive` is navy.
 - Text is never below 14px, so the website's 13px Label is not used; sidebar group names use Small.
-- Select and the Yes and No choice are native elements, not Radix components. Dialogs, the menu sheet and the account popover are Radix.
+- Select and the Yes and No choice are native elements, not Radix components. Dialogs, the menu sheet, the account popover and the allocation board's card menu are Radix.
 - The avatar is a square initials tile, not a circle: every corner is square, and there is no photo to show.
 - The resting colour of an arm on navy is Mist, as on the website. An earlier build used Navy Rule (1.52:1) and was corrected in review.
 - No scroll reveals or play-once motion: this is an operating tool.

@@ -17,10 +17,34 @@ describe('core', () => {
 
   it('moves through every page from the sidebar', () => {
     cy.contains('h1', 'Overview');
-    for (const page of ['Clients', 'Projects', 'People', 'Invoices', 'Categories', 'Technologies', 'Countries', 'Overview']) {
+    for (const page of [
+      'Clients',
+      'Projects',
+      'People',
+      'Allocation',
+      'Leave',
+      'Invoices',
+      'Categories',
+      'Technologies',
+      'Countries',
+      'Overview',
+    ]) {
       cy.get(nav).contains('a', page).click();
       cy.contains('h1', page);
     }
+  });
+
+  it('groups People, Allocation and Leave under Resources, and sends each to its own address', () => {
+    // The group's name heads its links, between the Work and Finance groups.
+    cy.get(nav).contains('Resources').should('be.visible');
+    cy.get(nav).contains('a', 'People').click();
+    cy.location('pathname').should('eq', '/resources/people');
+    cy.get(nav).contains('a', 'Allocation').click();
+    cy.location('pathname').should('eq', '/resources/allocation');
+    cy.get(nav).contains('a', 'Allocation').should('have.attr', 'aria-current', 'page');
+    cy.get(nav).contains('a', 'Leave').click();
+    cy.location('pathname').should('eq', '/resources/leave');
+    cy.get(nav).contains('a', 'Leave').should('have.attr', 'aria-current', 'page');
   });
 
   it('marks only the current page', () => {
@@ -36,14 +60,183 @@ describe('core', () => {
     cy.contains('td', 'Globex').should('be.visible');
   });
 
-  it('lists the people with their monthly salary in dollars and cents', () => {
+  it('lists the people under Resources with their technologies and monthly salary in rupees and paise', () => {
     cy.get(nav).contains('a', 'People').click();
+    cy.location('pathname').should('eq', '/resources/people');
     cy.contains('h1', 'People');
     cy.contains('td', 'Asha Rao').should('be.visible');
     cy.contains('td', 'asha@example.com').should('be.visible');
-    cy.contains('td', '$5,600.75').should('be.visible');
+    cy.contains('td', 'Nest, React').should('be.visible');
+    cy.contains('td', '₹85,000.75').should('be.visible');
     cy.contains('td', 'Ben Cho').should('be.visible');
     cy.get(`${nav} a[aria-current="page"]`).should('have.length', 1).and('contain', 'People');
+    // Search finds a person by a technology they know.
+    cy.get('#person-search').type('nest');
+    cy.contains('td', 'Asha Rao').should('be.visible');
+    cy.contains('td', 'Ben Cho').should('not.exist');
+  });
+
+  it('opens a person from the list: where they are now, their pay and technologies, their ledger and their leave', () => {
+    cy.get(nav).contains('a', 'People').click();
+    cy.contains('a', 'Asha Rao').click();
+    cy.location('pathname').should('eq', '/resources/people/1');
+    cy.contains('h1', 'Asha Rao');
+    // Placement comes from the latest entry on or before today.
+    cy.contains('On Website since 12 Mar 2026').should('be.visible');
+    cy.contains('dt', 'Monthly salary').next().should('have.text', '₹85,000.75');
+    cy.contains('dt', 'Technologies').next().should('have.text', 'Nest, React');
+    cy.contains('[role="tab"]', 'Allocations').should('contain', '3');
+    cy.contains('[role="tab"]', 'Leave').should('contain', '2');
+
+    // The ledger is newest first, with the bench named as such.
+    cy.contains('[role="tab"]', 'Allocations').click();
+    cy.location('search').should('eq', '?tab=allocations');
+    cy.get('table[aria-label="Allocation ledger"] tbody tr').then((rows) => {
+      expect([...rows].map((row) => row.querySelector('td')?.textContent)).to.deep.equal([
+        '12 Mar 2026',
+        '15 Jan 2026',
+        '2 Jun 2025',
+      ]);
+    });
+    cy.contains('td', 'Bench').should('be.visible');
+
+    cy.contains('[role="tab"]', 'Leave').click();
+    cy.location('search').should('eq', '?tab=leave');
+    cy.contains('td', '12 Mar 2026 to 14 Mar 2026').should('be.visible');
+    cy.contains('td', 'Family wedding').should('be.visible');
+    cy.contains('td', '4 May 2026').should('be.visible');
+    // Only this person's: the table has no Person column here.
+    cy.contains('th', 'Person').should('not.exist');
+    cy.get(`${nav} a[aria-current="page"]`).should('have.length', 1).and('contain', 'People');
+  });
+
+  it('shows a person who does not exist as not found, with a way back', () => {
+    cy.visit('/resources/people/999');
+    cy.contains('h1', 'Person not found').should('be.visible');
+    cy.contains('a', 'Back to people').click();
+    cy.location('pathname').should('eq', '/resources/people');
+    cy.contains('h1', 'People');
+  });
+
+  it('puts everyone on the allocation board today: the bench first, then the active projects, each with its monthly cost', () => {
+    cy.get(nav).contains('a', 'Allocation').click();
+    cy.contains('h1', 'Allocation');
+    cy.contains('[role="tab"]', 'Board').should('have.attr', 'aria-selected', 'true');
+    cy.location('search').should('eq', '');
+    // Bench first, then the projects by name; the head says how many and what they cost a month in rupees.
+    cy.get('main [role="group"] h2').then((heads) => {
+      expect([...heads].map((head) => head.textContent)).to.deep.equal(['Bench', 'Legacy portal', 'Mobile app', 'Website']);
+    });
+    cy.get('[aria-labelledby="col-bench-name"]').within(() => {
+      cy.contains('1 card, ₹0.00 a month').should('be.visible');
+      cy.contains('1 without a salary').should('be.visible');
+      cy.contains('a', 'Ben Cho').should('be.visible');
+    });
+    // Four columns are wider than the board, so it scrolls sideways inside itself: the last one is scrolled to first.
+    cy.get('[aria-labelledby="col-1-name"]').scrollIntoView();
+    cy.get('[aria-labelledby="col-1-name"]').within(() => {
+      cy.contains('1 card, ₹85,000.75 a month').should('be.visible');
+      cy.contains('a', 'Asha Rao').should('be.visible');
+      // A card has no date on it: the ledger holds those.
+      cy.contains('since').should('not.exist');
+    });
+    // The board fills the window under the title and the tabs, and the page itself does not scroll.
+    cy.get('main').should('have.attr', 'data-layout', 'full');
+    cy.window().then((win) => {
+      expect(win.document.documentElement.scrollHeight).to.be.at.most(win.innerHeight);
+      expect(win.document.documentElement.scrollWidth).to.be.at.most(win.innerWidth);
+    });
+    // Every card has an Actions button, whose menu is the way to move without dragging: one item for each other column.
+    cy.get('button[aria-label="Actions for Asha Rao"]').should('be.visible').click();
+    cy.get('[role="menu"]').within(() => {
+      cy.contains('Move to').should('be.visible');
+      cy.get('[role="menuitem"]').then((items) => {
+        expect([...items].map((item) => item.textContent)).to.deep.equal([
+          'Bench',
+          'Legacy portal',
+          'Mobile app',
+          'Duplicate',
+          'Delete card',
+        ]);
+      });
+      // A person keeps at least one card: with only one, Delete card is shown but cannot be chosen, and says why.
+      cy.contains('[role="menuitem"]', 'Delete card').should('have.attr', 'aria-disabled', 'true');
+      cy.contains('A person keeps at least one card').should('be.visible');
+    });
+    cy.get('body').type('{esc}');
+    cy.get('[role="menu"]').should('not.exist');
+    // The name still goes to the person's page.
+    cy.get('[aria-labelledby="col-1-name"]').contains('a', 'Asha Rao').click();
+    cy.location('pathname').should('eq', '/resources/people/1');
+    cy.go('back');
+    cy.contains('h1', 'Allocation');
+
+    cy.contains('[role="tab"]', 'Ledger').click();
+    cy.location('search').should('eq', '?tab=ledger');
+    cy.get('table[aria-label="Allocation ledger"] tbody tr').should('have.length', 3);
+    cy.get('#allocation-search').type('mobile');
+    cy.get('table[aria-label="Allocation ledger"] tbody tr').should('have.length', 1);
+    cy.contains('td', '2 Jun 2025').should('be.visible');
+  });
+
+  it('gives a person a second card, shares their salary between the two, moves one, and removes it', () => {
+    cy.get(nav).contains('a', 'Allocation').click();
+    cy.contains('h1', 'Allocation');
+    const website = '[aria-labelledby="col-1-name"]';
+    const mobileApp = '[aria-labelledby="col-2-name"]';
+    cy.get(website).scrollIntoView();
+
+    // Duplicate: a copy on the same project, so two cards stand in the Website column, each with its half of ₹85,000.75
+    // (the paisa that does not divide goes to the first card).
+    cy.get('button[aria-label="Actions for Asha Rao"]').click();
+    cy.contains('[role="menu"] [role="menuitem"]', 'Duplicate').click();
+    cy.get(website).within(() => {
+      cy.contains('2 cards, ₹85,000.75 a month').should('be.visible');
+      cy.get('li[aria-label="Asha Rao, card 1 of 2"]').should('contain', 'Card 1 of 2').and('contain', '₹42,500.38');
+      cy.get('li[aria-label="Asha Rao, card 2 of 2"]').should('contain', 'Card 2 of 2').and('contain', '₹42,500.37');
+    });
+    cy.screenshot('allocation-two-cards', { capture: 'viewport' });
+
+    // Move the second card to the Mobile app: the columns' costs add up to the salary.
+    cy.get('button[aria-label="Actions for Asha Rao, card 2 of 2"]').click();
+    cy.contains('[role="menu"] [role="menuitem"]', 'Mobile app').click();
+    cy.get(mobileApp).scrollIntoView();
+    cy.get(mobileApp).contains('1 card, ₹42,500.37 a month').should('be.visible');
+    cy.get(website).scrollIntoView();
+    cy.get(website).contains('1 card, ₹42,500.38 a month').should('be.visible');
+
+    // Remove it: the card that is left has the whole salary, and its Delete card is disabled.
+    cy.get('button[aria-label="Actions for Asha Rao, card 2 of 2"]').click();
+    cy.contains('[role="menu"] [role="menuitem"]', 'Delete card').click();
+    cy.get(website).within(() => {
+      cy.contains('1 card, ₹85,000.75 a month').should('be.visible');
+      cy.get('li[aria-label="Asha Rao"]').should('contain', '₹85,000.75').and('not.contain', 'Card 1 of');
+    });
+    cy.get('button[aria-label="Actions for Asha Rao"]').click();
+    cy.contains('[role="menu"] [role="menuitem"]', 'Delete card').should('have.attr', 'aria-disabled', 'true');
+  });
+
+  it('lists every leave in the register and finds one by its reason', () => {
+    cy.get(nav).contains('a', 'Leave').click();
+    cy.contains('h1', 'Leave');
+    // Newest first, with the type, and a range or a single day.
+    cy.get('table[aria-label="Leave"] tbody tr').then((rows) => {
+      expect([...rows].map((row) => row.querySelector('td')?.textContent)).to.deep.equal([
+        '4 May 2026',
+        '12 Mar 2026 to 14 Mar 2026',
+      ]);
+    });
+    cy.contains('td', 'Sick').should('be.visible');
+    cy.contains('td', 'Casual').should('be.visible');
+    cy.get('#leave-search').type('wedding');
+    cy.get('table[aria-label="Leave"] tbody tr').should('have.length', 1);
+    cy.contains('td', 'Asha Rao').should('be.visible');
+  });
+
+  it('sends the old /people address to the People page in Resources', () => {
+    cy.visit('/people');
+    cy.location('pathname').should('eq', '/resources/people');
+    cy.contains('h1', 'People');
   });
 
   it('lists the projects and opens one with its resources and invoices', () => {

@@ -1,5 +1,5 @@
 import { countryRows } from '@/test/fixtures/countries';
-import { countryPickerOptions, dollarCountry } from './options';
+import { countryPickerOptions, dollarCountry, indiaRate } from './options';
 import { countriesSchema } from './schema';
 
 const countries = countriesSchema.parse(countryRows);
@@ -64,5 +64,36 @@ describe('dollarCountry', () => {
 
   it('is undefined while the list is empty', () => {
     expect(dollarCountry([])).toBeUndefined();
+  });
+});
+
+describe('indiaRate', () => {
+  const [inRow] = countries.filter((country) => country.iso === 'IN');
+  const inRupees = (over: Partial<typeof inRow>) => ({ ...inRow, ...over });
+  const withIndia = (over: Partial<typeof inRow>) =>
+    countries.map((country) => (country.iso === 'IN' ? { ...country, ...over } : country));
+
+  it('is the rupees to the dollar of India', () => {
+    expect(indiaRate(countries)).toBe(88.25);
+  });
+
+  it('is null when no country uses rupees', () => {
+    expect(indiaRate(countries.filter((country) => country.currencyCode !== 'INR'))).toBeNull();
+    expect(indiaRate([])).toBeNull();
+  });
+
+  it('is null while the country is switched off, or has no rate yet', () => {
+    expect(indiaRate(withIndia({ active: false }))).toBeNull();
+    expect(indiaRate(withIndia({ rate: null }))).toBeNull();
+  });
+
+  it('goes by the currency, and by the lowest id among the countries that qualify', () => {
+    const others = countries.filter((country) => country.iso !== 'IN');
+    const high = inRupees({ id: 150, iso: 'XA', nicename: 'Testland A', rate: 140.5 });
+    const low = inRupees({ id: 20, iso: 'XB', nicename: 'Testland B', rate: 89 });
+    expect(indiaRate([high, ...others, low])).toBe(89);
+    // A lower id that is off, or has no rate, is skipped rather than read as the answer.
+    expect(indiaRate([high, ...others, { ...low, active: false }])).toBe(140.5);
+    expect(indiaRate([...others, { ...low, rate: null }, high])).toBe(140.5);
   });
 });

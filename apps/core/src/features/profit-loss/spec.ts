@@ -27,7 +27,7 @@ export const profitLossSpec: PlannedSpec = {
   surface: 'page',
   home: 'Finance › Profit and loss',
   size: 'M',
-  needs: ['currency-tax', 'allocation'],
+  needs: ['currency-tax'],
   does: [
     'A monthly table of revenue, payroll, other expenses and profit.',
     'A project and client view: revenue against the payroll of the people allocated to them.',
@@ -37,7 +37,7 @@ export const profitLossSpec: PlannedSpec = {
   buildsOn: [
     'Invoices, and the project totals calculated from them.',
     'People’s monthly salary and the project resources, so payroll can be charged to projects.',
-    'Allocation dates (Allocation and bench) and the base currency (Currency and tax).',
+    'The allocation ledger, which dates who was on which project, and the base currency (Currency and tax).',
   ],
   decisions: [
     'Cash basis (counted when paid) or accrual (counted when invoiced).',

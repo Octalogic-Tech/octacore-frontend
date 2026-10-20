@@ -27,7 +27,7 @@ export const skillsSpec: PlannedSpec = {
   ],
   buildsOn: [
     'The Technologies and Categories reference data. Nothing links to it today: no project, person or resource points at a technology.',
-    'People, and Allocation and bench for who is free.',
+    'People, and the Allocation board for who is free.',
   ],
   decisions: [
     'Yes or no, or a level such as learning, working and expert.',

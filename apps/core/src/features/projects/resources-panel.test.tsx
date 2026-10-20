@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { coreApi } from '@/lib/core-api';
 import { categoriesEnvelope } from '@/test/fixtures/categories';
+import { countriesEnvelope, countryRows } from '@/test/fixtures/countries';
 import { peopleEnvelope, peopleRows, resourceRows, resourcesEnvelope } from '@/test/fixtures/projects';
 import { renderWithProviders } from '@/test/utils';
 import { ResourcesPanel } from './resources-panel';
@@ -23,10 +24,19 @@ const failure = (status: number) =>
 
 const saved = { data: { statusCode: 200, message: 'saved', data: {}, meta: null } };
 
-const serve = (resources: unknown = resourcesEnvelope(), people: unknown = peopleEnvelope()) =>
+/** The countries with India's rate changed: 80 rupees to the dollar keeps the sums below round. */
+const indiaAt = (rate: number | null) =>
+  countriesEnvelope(countryRows.map((row) => (row.iso === 'IN' ? { ...row, rate } : row)));
+
+const serve = (
+  resources: unknown = resourcesEnvelope(),
+  people: unknown = peopleEnvelope(),
+  countries: unknown = indiaAt(80),
+) =>
   vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
     if (path === '/project-resources') return { data: resources };
     if (path === '/people') return { data: people };
+    if (path === '/countries') return { data: countries };
     if (path === '/categories') return { data: categoriesEnvelope() };
     throw new Error(`unexpected GET ${path}`);
   }) as never);
@@ -151,8 +161,9 @@ describe('ResourcesPanel: changing', () => {
 
 describe('ResourcesPanel: team cost against billing', () => {
   const resourceOf = (over: Record<string, unknown>) => ({ ...resourceRows[0], ...over });
-  // Rates and salaries are in whole US cents.
-  const personOf = (id: number, monthlySalaryCents: number | null) => ({ ...peopleRows[0], id, monthlySalaryCents });
+  // Rates are in whole US cents; a salary is in whole INR paise, counted at India's 80 rupees to the dollar (8,000 paise is
+  // 100 cents).
+  const personOf = (id: number, monthlySalaryPaise: number | null) => ({ ...peopleRows[0], id, monthlySalaryPaise });
   const sentence = (expected: string) => (_: string, element: Element | null) =>
     element?.tagName === 'P' && element.textContent === expected;
 
@@ -163,7 +174,7 @@ describe('ResourcesPanel: team cost against billing', () => {
         resourceOf({ id: 2, personId: 2, rateCents: 4000, name: 'Ben Cho', person: { id: 2, name: 'Ben Cho' } }),
         resourceOf({ id: 3, personId: null, person: null, name: 'Open role', rateCents: 9000 }),
       ]),
-      peopleEnvelope([personOf(1, 500000), personOf(2, 480000)]),
+      peopleEnvelope([personOf(1, 40_000_000), personOf(2, 38_400_000)]),
     );
     renderPanel();
     // billed (5,000 + 4,000) x 160 = 1,440,000 cents; cost 980,000; margin 460,000 (32%); 2 of the 3 resources are
@@ -178,7 +189,7 @@ describe('ResourcesPanel: team cost against billing', () => {
   });
 
   it('says bills for one resource, and shortfall when the salary is more than the billing', async () => {
-    serve(resourcesEnvelope([resourceOf({ id: 1, personId: 1, rateCents: 500 })]), peopleEnvelope([personOf(1, 90000)]));
+    serve(resourcesEnvelope([resourceOf({ id: 1, personId: 1, rateCents: 500 })]), peopleEnvelope([personOf(1, 7_200_000)]));
     renderPanel();
     // billed 500 x 160 = 80,000 cents; cost 90,000; a shortfall of 10,000, 12.5% of 80,000, shown as 13%.
     expect(
@@ -191,7 +202,7 @@ describe('ResourcesPanel: team cost against billing', () => {
   });
 
   it('leaves the percentage out when the counted rates are all 0', async () => {
-    serve(resourcesEnvelope([resourceOf({ id: 1, personId: 1, rateCents: 0 })]), peopleEnvelope([personOf(1, 500000)]));
+    serve(resourcesEnvelope([resourceOf({ id: 1, personId: 1, rateCents: 0 })]), peopleEnvelope([personOf(1, 40_000_000)]));
     renderPanel();
     expect(
       await screen.findByText(
@@ -215,7 +226,7 @@ describe('ResourcesPanel: team cost against billing', () => {
         resourceOf({ id: 1, personId: 1, rateCents: 5000 }),
         resourceOf({ id: 2, personId: 2, rateCents: 4000, name: 'Ben Cho', person: { id: 2, name: 'Ben Cho' } }),
       ]),
-      peopleEnvelope([personOf(1, 500000), personOf(2, 480000)]),
+      peopleEnvelope([personOf(1, 40_000_000), personOf(2, 38_400_000)]),
     );
     renderPanel();
     await screen.findByText(/At current salaries/);
@@ -244,6 +255,48 @@ describe('ResourcesPanel: team cost against billing', () => {
     renderPanel();
     expect(await screen.findByText('No resources yet.')).toBeInTheDocument();
     expect(screen.queryByText(/At current salaries|No margin yet|Salary is today/)).not.toBeInTheDocument();
+  });
+
+  it('says what is needed, and works out no margin, while India has no rate to turn rupees into dollars', async () => {
+    serve(
+      resourcesEnvelope([resourceOf({ id: 1, personId: 1, rateCents: 5000 })]),
+      peopleEnvelope([personOf(1, 40_000_000)]),
+      indiaAt(null),
+    );
+    renderPanel();
+    expect(await screen.findByText("Set India's rate on the Countries page to see the team margin.")).toBeInTheDocument();
+    expect(screen.queryByText(/At current salaries|No margin yet|Salary is today/)).not.toBeInTheDocument();
+  });
+
+  it('says what is needed when no country uses rupees at all', async () => {
+    serve(
+      resourcesEnvelope([resourceOf({ id: 1, personId: 1, rateCents: 5000 })]),
+      peopleEnvelope([personOf(1, 40_000_000)]),
+      countriesEnvelope(countryRows.filter((row) => row.currencyCode !== 'INR')),
+    );
+    renderPanel();
+    expect(await screen.findByText("Set India's rate on the Countries page to see the team margin.")).toBeInTheDocument();
+  });
+
+  it('shows no rupee figure of any salary, only the dollars the team costs', async () => {
+    serve(
+      resourcesEnvelope([resourceOf({ id: 1, personId: 1, rateCents: 5000 })]),
+      peopleEnvelope([personOf(1, 40_000_000)]),
+    );
+    renderPanel();
+    await screen.findByText(/At current salaries/);
+    expect(screen.queryByText(/₹/)).not.toBeInTheDocument();
+  });
+
+  it('says the rate could not be loaded, and does not say there is no margin, when the countries list fails', async () => {
+    vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
+      if (path === '/project-resources') return { data: resourcesEnvelope() };
+      if (path === '/people') return { data: peopleEnvelope() };
+      throw new Error('down');
+    }) as never);
+    renderPanel();
+    expect(await screen.findByText("India's rate could not be loaded.")).toBeInTheDocument();
+    expect(screen.queryByText(/No margin yet|Set India/)).not.toBeInTheDocument();
   });
 
   it('says the salaries could not be loaded, and does not say there is no margin, when the people list fails', async () => {
