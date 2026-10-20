@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useController, type Control } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -40,16 +41,28 @@ export function LineDescriptionDialog({ open, onOpenChange, control, name, numbe
   );
 }
 
-/** Mounted only while the dialog is open, so the quote never has more than this one description text area. */
+/**
+ * Mounted only while the dialog is open, so the quote never has more than this one description text area. It opens with
+ * the caret after the text, so typing adds to it: the caret is put there before the dialog focuses the field, and focus
+ * keeps it.
+ */
 function DescriptionField({ control, name, id }: { control: Control<QuoteFormValues>; name: DescriptionName; id: string }) {
   const { field } = useController({ control, name });
+  const { ref } = field;
+  const attach = useCallback(
+    (element: HTMLTextAreaElement | null) => {
+      ref(element);
+      if (element) element.setSelectionRange(element.value.length, element.value.length);
+    },
+    [ref],
+  );
   return (
     <Field label="Description" htmlFor={id}>
       <Textarea
         id={id}
         rows={6}
         name={field.name}
-        ref={field.ref}
+        ref={attach}
         value={field.value}
         onChange={field.onChange}
         onBlur={field.onBlur}

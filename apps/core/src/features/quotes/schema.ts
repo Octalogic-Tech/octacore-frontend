@@ -209,6 +209,9 @@ const settingsSchema = z.object(settingsShape);
 // A line's title is its short name ("Login (JWT)"); the description, behind a button, says what it covers and may be
 // left empty.
 const quoteLineSchema = z.object({
+  // The editor's own handle on the line (see `uids.ts`): it keeps the line's place in the page while it is dragged. Never
+  // sent: `toQuoteBody` names what is.
+  uid: z.string().optional(),
   title: z.string().trim().min(1, 'Title is required'),
   description: z.string(),
   units: textField(unitsProblem),
@@ -217,6 +220,7 @@ const quoteLineSchema = z.object({
 
 // A section only groups lines. It may be empty while the quote is being built; the quote as a whole needs a line.
 const quoteSectionSchema = z.object({
+  uid: z.string().optional(),
   title: z.string().trim().min(1, 'Section title is required'),
   // At most 200 lines, told in the quote's own check below, beside the count for the whole quote.
   lines: z.array(quoteLineSchema),

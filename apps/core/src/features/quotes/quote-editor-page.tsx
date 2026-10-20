@@ -1,3 +1,4 @@
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
@@ -10,16 +11,19 @@ import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { LinkArrow } from '@/components/ui/link-arrow';
 import { Panel } from '@/components/ui/panel';
+import { Sortable, SortableContent, SortableOverlay } from '@/components/ui/sortable';
 import { serviceMessage, statusOf } from '@/lib/core-api';
 import { useQuote, useSaveQuote } from './api';
 import { quoteTotals } from './calc';
-import { QuoteSection } from './quote-section';
+import { firstWrongField } from './form-errors';
+import { DRAG_INSTRUCTIONS, useQuoteDrag } from './quote-drag';
+import { QuoteSection, addSectionId } from './quote-section';
 import { CurrencyInput, QuoteSettingsDrawer } from './quote-settings-drawer';
 import { QuoteTotalsPanel } from './quote-totals-panel';
 import {
+  MAX_LINES,
   MAX_SECTIONS,
   SETTINGS_FIELDS,
-  blankQuoteLine,
   lineCount,
   quoteFormSchema,
   toCalcInput,
@@ -28,10 +32,12 @@ import {
   type QuoteFormValues,
   type QuoteRow,
 } from './schema';
+import { newSection, withUids } from './uids';
 
 const INT32_MAX = 2_147_483_647;
 const SETTINGS_BUTTON = 'quote-settings-button';
-const ADD_SECTION_BUTTON = 'quote-add-section';
+// Sections and lines move up and down only.
+const DRAG_MODIFIERS = [restrictToVerticalAxis];
 
 const backLink =
   'mb-4 inline-flex min-h-11 items-center font-semibold decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline';
@@ -113,12 +119,18 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
     reset,
     getValues,
     setValue,
+    setError,
+    clearErrors,
+    setFocus,
     formState: { errors, isSubmitting },
   } = useForm<QuoteFormValues>({
     resolver: zodResolver(quoteFormSchema),
     // A message once a field is left, then as it is corrected, so a wrong setting is told inside the drawer.
     mode: 'onTouched',
-    defaultValues: toQuoteFormValues(quote),
+    // A failed Save focuses the first wrong field in the order shown (see `firstWrongField`), not in the order the
+    // fields were registered in.
+    shouldFocusError: false,
+    defaultValues: withUids(toQuoteFormValues(quote)),
   });
   const sectionFields = useFieldArray({ control, name: 'sections' });
 
@@ -155,11 +167,35 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
     return next + section.lines.length;
   }, 1);
 
+  // The button that removed a section goes with it: focus moves, once the page shows the change, to the Add section of the
+  // section before (of the new first section when the first went).
+  const focusAfterRender = useRef<string | null>(null);
+  useEffect(() => {
+    if (focusAfterRender.current === null) return;
+    document.getElementById(focusAfterRender.current)?.focus();
+    focusAfterRender.current = null;
+  });
+  const removedFocusId = (index: number) => addSectionId(Math.max(1, index));
+
   function removeSection(index: number) {
     sectionFields.remove(index);
-    // The button that was pressed goes with its section: focus moves to the next thing to do.
-    document.getElementById(ADD_SECTION_BUTTON)?.focus();
+    focusAfterRender.current = removedFocusId(index);
   }
+
+  /** A new section right after the one at `index`; with no line when the quote has no room for another. */
+  function addSectionAfter(index: number) {
+    sectionFields.insert(index + 1, newSection(lines < MAX_LINES), { focusName: `sections.${index + 1}.title` });
+  }
+
+  const drag = useQuoteDrag({
+    sections: values.sections,
+    firstLineNumbers,
+    errors,
+    getValues,
+    setValue,
+    setError,
+    clearErrors,
+  });
 
   const submit = handleSubmit(
     async (valid) => {
@@ -194,8 +230,13 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
       }
     },
     (invalid) => {
-      // A message inside the closed drawer would be out of sight.
-      if (SETTINGS_FIELDS.some((name) => invalid[name] !== undefined)) setSettingsOpen(true);
+      // A message inside the closed drawer would be out of sight. The drawer puts focus on its own first wrong field.
+      if (SETTINGS_FIELDS.some((name) => invalid[name] !== undefined)) {
+        setSettingsOpen(true);
+        return;
+      }
+      const first = firstWrongField(invalid, getValues());
+      if (first) setFocus(first);
     },
   );
 
@@ -240,46 +281,42 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
 
             <div className="grid gap-3">
               <h2 className="text-small font-semibold text-navy-80">Lines</h2>
-              <div className="grid gap-8">
-                {sectionFields.fields.map((field, index) => (
-                  <QuoteSection
-                    key={field.id}
-                    control={control}
-                    register={register}
-                    errors={errors}
-                    index={index}
-                    section={values.sections[index]}
-                    firstLineNumber={firstLineNumbers[index] ?? 1}
-                    lineCount={lines}
-                    sectionCount={sectionFields.fields.length}
-                    bufferBp={bufferBp}
-                    onRemove={() => removeSection(index)}
-                    fallbackFocusId={ADD_SECTION_BUTTON}
-                  />
-                ))}
-              </div>
+              <Sortable
+                value={drag.layout}
+                onMove={drag.onMove}
+                announcements={drag.announcements}
+                instructions={DRAG_INSTRUCTIONS}
+                modifiers={DRAG_MODIFIERS}
+              >
+                <SortableContent className="grid gap-8">
+                  {/* Keyed by each section's own uid, which a drag keeps: no section is made again when one moves. */}
+                  {values.sections.map((section, index) => (
+                    <QuoteSection
+                      key={section.uid ?? index}
+                      control={control}
+                      register={register}
+                      errors={errors}
+                      index={index}
+                      section={section}
+                      firstLineNumber={firstLineNumbers[index] ?? 1}
+                      lineCount={lines}
+                      sectionCount={values.sections.length}
+                      canAddSection={values.sections.length < MAX_SECTIONS}
+                      bufferBp={bufferBp}
+                      onRemove={() => removeSection(index)}
+                      onAddSection={() => addSectionAfter(index)}
+                      fallbackFocusId={removedFocusId(index)}
+                    />
+                  ))}
+                </SortableContent>
+                <SortableOverlay>{drag.renderHeld}</SortableOverlay>
+              </Sortable>
 
               {sectionsMessage ? (
                 <p role="alert" className="text-small text-foreground">
                   {sectionsMessage}
                 </p>
               ) : null}
-
-              <div>
-                <Button
-                  id={ADD_SECTION_BUTTON}
-                  variant="quiet"
-                  disabled={sectionFields.fields.length >= MAX_SECTIONS}
-                  onClick={() =>
-                    sectionFields.append(
-                      { title: '', lines: [{ ...blankQuoteLine }] },
-                      { focusName: `sections.${sectionFields.fields.length}.title` },
-                    )
-                  }
-                >
-                  Add section
-                </Button>
-              </div>
             </div>
           </div>
 

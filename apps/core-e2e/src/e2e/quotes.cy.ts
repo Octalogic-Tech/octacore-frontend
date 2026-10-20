@@ -41,8 +41,9 @@ function fillNewQuote() {
   });
   cy.get('[role="dialog"]').should('not.exist');
   cy.get('button[aria-label="Edit description of line 1"]').should('be.visible');
-  // Add line puts the new line in the same section and moves to its title. This one has no description.
-  cy.contains('button', 'Add line').click();
+  // Add line, in the footer row under the section's lines, puts the new line in that section and moves to its title.
+  // This one has no description.
+  cy.get('button[aria-label="Add line to section 1"]').click();
   cy.focused().should('have.id', 'line-2-title');
   cy.get('#line-2-title').type('Checkout');
   replaceText('#line-2-units', '3');

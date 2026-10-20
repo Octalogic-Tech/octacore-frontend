@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type { Control, UseFormRegister } from 'react-hook-form';
-import { LuFileText, LuTrash2 } from 'react-icons/lu';
+import { LuFileText, LuGripVertical, LuTrash2 } from 'react-icons/lu';
 import { fieldA11y } from '@/components/ui/field';
 import { IconButton } from '@/components/ui/icon-button';
 import { Input } from '@/components/ui/input';
+import { SortableItem, SortableItemHandle } from '@/components/ui/sortable';
 import { cn } from '@/lib/utils';
 import { bufferedHours, formatHours } from './calc';
 import { LineDescriptionDialog } from './line-description-dialog';
@@ -12,10 +13,11 @@ import { lineHours, type LineFormValues, type QuoteFormValues } from './schema';
 export const NONE = '—';
 
 /**
- * The compact table's columns from `md` up: the title takes the free width; units, hours per unit, total hours, hours with
- * buffer and the two icon buttons have fixed ones. Shared by the headings and every row, so they line up.
+ * The compact table's columns from `md` up: the drag handle, then the title takes the free width; units, hours per unit,
+ * total hours, hours with buffer and the two icon buttons have fixed ones. Shared by the headings and every row, so they
+ * line up.
  */
-export const LINE_COLUMNS = 'md:grid-cols-[minmax(0,1fr)_5rem_6.5rem_5.5rem_7rem_2rem_2rem]';
+export const LINE_COLUMNS = 'md:grid-cols-[2rem_minmax(0,1fr)_5rem_6.5rem_5.5rem_7rem_2rem_2rem]';
 
 /**
  * The line table's smaller type from `md` up. The owner asked for smaller fields and fonts to see more lines at once: an
@@ -38,6 +40,8 @@ const narrowLabel = 'text-small font-semibold text-navy-80 md:hidden';
 interface QuoteLineRowProps {
   control: Control<QuoteFormValues>;
   register: UseFormRegister<QuoteFormValues>;
+  /** The line's own id, which follows it wherever it is dragged. */
+  uid: string;
   sectionIndex: number;
   lineIndex: number;
   /** The line's number in the whole quote, from 1: the names say "Line 3" whichever section it is in. */
@@ -56,6 +60,7 @@ interface QuoteLineRowProps {
 export function QuoteLineRow({
   control,
   register,
+  uid,
   sectionIndex,
   lineIndex,
   number,
@@ -74,71 +79,83 @@ export function QuoteLineRow({
 
   return (
     // A hairline under each line, so where one ends is plain.
-    <div role="group" aria-label={`Line ${number}`} className="grid gap-2 border-b border-rule py-4 md:gap-1 md:py-1">
-      <div className={cn('grid items-start gap-2 md:items-center md:gap-x-2 md:gap-y-0', LINE_COLUMNS)}>
-        {FIELDS.map((name) => (
-          <div key={name} className="grid gap-1">
-            <span aria-hidden="true" className={narrowLabel}>
-              {LINE_LABELS[name]}
+    <SortableItem value={uid} asChild>
+      <div role="group" aria-label={`Line ${number}`} className="grid gap-2 border-b border-rule py-4 md:gap-1 md:py-1">
+        <div className={cn('grid items-start gap-2 md:items-center md:gap-x-2 md:gap-y-0', LINE_COLUMNS)}>
+          {/* Only the handle starts a drag, so the inputs stay editable. A 44px target on a phone, compact from `md`. */}
+          <SortableItemHandle asChild>
+            <IconButton label={`Drag line ${number}`} icon={LuGripVertical} className={compactButton} />
+          </SortableItemHandle>
+          {FIELDS.map((name) => (
+            <div key={name} className="grid gap-1">
+              <span aria-hidden="true" className={narrowLabel}>
+                {LINE_LABELS[name]}
+              </span>
+              <Input
+                {...fieldA11y(`line-${number}-${name}`, messages[name])}
+                {...register(`sections.${sectionIndex}.lines.${lineIndex}.${name}`)}
+                aria-label={`Line ${number} ${LINE_NAMES[name]}`}
+                placeholder={PLACEHOLDERS[name]}
+                inputMode={INPUT_MODES[name]}
+                autoComplete="off"
+                className={cn(compactInput, name !== 'title' && 'tabular md:text-right')}
+              />
+            </div>
+          ))}
+          <Figure label="Total hours" name={`Line ${number} total hours `} hundredths={total} />
+          <Figure label="Hours with buffer" name={`Line ${number} hours with buffer `} hundredths={buffered} />
+          {/* Side by side under a stacked line; from `md` each button is a cell of the row. */}
+          <div className="flex gap-2 md:contents">
+            <span className="relative inline-flex">
+              <IconButton
+                label={described ? `Edit description of line ${number}` : `Add description to line ${number}`}
+                icon={LuFileText}
+                onClick={() => setDescribing(true)}
+                className={compactButton}
+              />
+              {/* The line has a description: a small square of teal, framed in navy so it shows on grey. */}
+              {described ? (
+                <span
+                  aria-hidden="true"
+                  data-slot="description-marker"
+                  className="pointer-events-none absolute right-1 top-1 size-2 border border-foreground bg-teal"
+                />
+              ) : null}
             </span>
-            <Input
-              {...fieldA11y(`line-${number}-${name}`, messages[name])}
-              {...register(`sections.${sectionIndex}.lines.${lineIndex}.${name}`)}
-              aria-label={`Line ${number} ${LINE_NAMES[name]}`}
-              placeholder={PLACEHOLDERS[name]}
-              inputMode={INPUT_MODES[name]}
-              autoComplete="off"
-              className={cn(compactInput, name !== 'title' && 'tabular md:text-right')}
-            />
-          </div>
-        ))}
-        <Figure label="Total hours" name={`Line ${number} total hours `} hundredths={total} />
-        <Figure label="Hours with buffer" name={`Line ${number} hours with buffer `} hundredths={buffered} />
-        {/* Side by side under a stacked line; from `md` each button is a cell of the row. */}
-        <div className="flex gap-2 md:contents">
-          <span className="relative inline-flex">
             <IconButton
-              label={described ? `Edit description of line ${number}` : `Add description to line ${number}`}
-              icon={LuFileText}
-              onClick={() => setDescribing(true)}
+              label={`Remove line ${number}`}
+              icon={LuTrash2}
+              disabled={!canRemove}
+              onClick={onRemove}
               className={compactButton}
             />
-            {/* The line has a description: a small square of teal, framed in navy so it shows on grey. */}
-            {described ? (
-              <span
-                aria-hidden="true"
-                data-slot="description-marker"
-                className="pointer-events-none absolute right-1 top-1 size-2 border border-foreground bg-teal"
-              />
-            ) : null}
-          </span>
-          <IconButton
-            label={`Remove line ${number}`}
-            icon={LuTrash2}
-            disabled={!canRemove}
-            onClick={onRemove}
-            className={compactButton}
-          />
+          </div>
         </div>
+        {/* Each message has the id its input's aria-describedby points at. The title's is for screen readers only: its
+            field's heavier rule says it to the eye, and the row keeps its height. */}
+        {FIELDS.map((name) => {
+          const message = messages[name];
+          return message ? (
+            <p
+              key={name}
+              id={`line-${number}-${name}-error`}
+              role="alert"
+              className={name === 'title' ? 'sr-only' : 'text-small text-foreground'}
+            >
+              {message}
+            </p>
+          ) : null;
+        })}
+        <LineDescriptionDialog
+          open={describing}
+          onOpenChange={setDescribing}
+          control={control}
+          name={`sections.${sectionIndex}.lines.${lineIndex}.description`}
+          number={number}
+          title={line?.title ?? ''}
+        />
       </div>
-      {/* Each message has the id its input's aria-describedby points at. */}
-      {FIELDS.map((name) => {
-        const message = messages[name];
-        return message ? (
-          <p key={name} id={`line-${number}-${name}-error`} role="alert" className="text-small text-foreground">
-            {message}
-          </p>
-        ) : null;
-      })}
-      <LineDescriptionDialog
-        open={describing}
-        onOpenChange={setDescribing}
-        control={control}
-        name={`sections.${sectionIndex}.lines.${lineIndex}.description`}
-        number={number}
-        title={line?.title ?? ''}
-      />
-    </div>
+    </SortableItem>
   );
 }
 
