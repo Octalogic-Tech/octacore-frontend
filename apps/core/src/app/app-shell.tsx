@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
+import { PageWidthProvider } from '@/app/page-width';
 import { SidebarNav } from '@/app/sidebar-nav';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { FullMainContext } from '@/components/full-main';
@@ -9,8 +10,9 @@ import { cn } from '@/lib/utils';
 
 /**
  * A navy sidebar from 1024px; below that a header with a menu button that opens the same navigation in a sheet. The
- * main area is a centred column that grows with its page, unless the page asks for the whole area (`useFullMain`): then
- * it is the window's height less the header, with small gutters, and the page inside scrolls only where it chooses to.
+ * main area is a centred column, capped at 75rem, that grows with its page. A page can drop the cap and keep the usual
+ * flow (`useFullWidthPage`: the quote editor), or ask for the whole area (`useFullMain`): then it is the window's height
+ * less the header, with small gutters, and the page inside scrolls only where it chooses to.
  */
 export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -48,22 +50,26 @@ export function AppShell() {
             <span aria-hidden="true" className="block h-0.5 w-5 bg-on-navy" />
           </button>
         </header>
-        <main
-          id="main"
-          data-layout={full ? 'full' : 'page'}
-          className={cn(
-            'w-full flex-1',
-            full
-              ? 'flex min-h-0 flex-col px-3 pb-3 pt-5 md:px-4 lg:pt-6'
-              : 'mx-auto max-w-[75rem] px-5 py-8 md:px-8 lg:py-12 xl:px-10',
+        <PageWidthProvider>
+          {(fullWidth) => (
+            <main
+              id="main"
+              data-layout={full ? 'full' : 'page'}
+              className={cn(
+                'w-full flex-1',
+                full
+                  ? 'flex min-h-0 flex-col px-3 pb-3 pt-5 md:px-4 lg:pt-6'
+                  : cn('mx-auto px-5 py-8 md:px-8 lg:py-12 xl:px-10', !fullWidth && 'max-w-[75rem]'),
+              )}
+            >
+              <FullMainContext.Provider value={setFull}>
+                <ErrorBoundary key={pathname}>
+                  <Outlet />
+                </ErrorBoundary>
+              </FullMainContext.Provider>
+            </main>
           )}
-        >
-          <FullMainContext.Provider value={setFull}>
-            <ErrorBoundary key={pathname}>
-              <Outlet />
-            </ErrorBoundary>
-          </FullMainContext.Provider>
-        </main>
+        </PageWidthProvider>
       </div>
       <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
         <SheetContent title="Menu">

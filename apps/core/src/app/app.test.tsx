@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { coreApi } from '@/lib/core-api';
 import { AuthTestProvider } from '@/test/auth';
 import { envelope, fakeAdapter } from '@/test/fake-adapter';
+import { quoteEnvelope, quoteRows } from '@/test/fixtures/quotes';
 import App from './app';
 
 const originalAdapter = coreApi.defaults.adapter;
@@ -95,7 +96,7 @@ describe('App shell', () => {
   it('lists every page in five groups', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    for (const label of ['Overview', 'Clients', 'Projects', 'People', 'Allocation', 'Leave', 'Invoices', 'Expenses', 'Categories', 'Technologies', 'Countries', 'Expense types', 'Users']) {
+    for (const label of ['Overview', 'Clients', 'Projects', 'Quotes', 'People', 'Allocation', 'Leave', 'Invoices', 'Expenses', 'Categories', 'Technologies', 'Countries', 'Expense types', 'Users']) {
       expect(within(nav).getByRole('link', { name: label })).toBeInTheDocument();
     }
     for (const group of ['Work', 'Resources', 'Finance', 'Reference data', 'Admin']) {
@@ -105,6 +106,19 @@ describe('App shell', () => {
     expect(within(nav).queryByRole('link', { name: 'Recurring' })).not.toBeInTheDocument();
     // A country carries its currency, so there is no Currencies page.
     expect(within(nav).queryByRole('link', { name: 'Currencies' })).not.toBeInTheDocument();
+  });
+
+  it('puts Quotes in the Work group, after Projects', () => {
+    renderAt('/');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    const work = within(nav).getByRole('list', { name: 'Work' });
+    expect(within(work).getAllByRole('link').map((link) => link.textContent)).toEqual([
+      'Overview',
+      'Clients',
+      'Projects',
+      'Quotes',
+    ]);
+    expect(within(work).getByRole('link', { name: 'Quotes' })).toHaveAttribute('href', '/quotes');
   });
 
   it('puts People, Allocation and Leave in the Resources group, not under Work', () => {
@@ -141,6 +155,60 @@ describe('App shell', () => {
     const nav = screen.getByRole('navigation', { name: 'Main' });
     expect(within(nav).getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('heading', { level: 1, name: 'Project' })).toBeInTheDocument();
+  });
+
+  it.each([
+    ['/quotes', 'Quotes'],
+    ['/quotes/new', 'New quote'],
+  ])('shows the real page at %s, with Quotes current in the sidebar', (route, title) => {
+    renderAt(route);
+    expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'Quotes' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByText('Planned, not built yet')).not.toBeInTheDocument();
+  });
+
+  it('opens /quotes/3 on the editor with that quote, not on the new-quote form', async () => {
+    coreApi.defaults.adapter = fakeAdapter((config) =>
+      config.url === '/quotations/3'
+        ? { status: 200, data: quoteEnvelope({ ...quoteRows[1], id: 3 }) }
+        : { status: 200, data: envelope([]) },
+    );
+    renderAt('/quotes/3');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Dashboard refresh' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Back to quotes' })).toHaveAttribute('href', '/quotes');
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expect(within(nav).getByRole('link', { name: 'Quotes' })).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('caps every page at the content width but lets the quote editor use the full width', async () => {
+    const user = userEvent.setup();
+    renderAt('/quotes');
+    expect(await screen.findByRole('heading', { level: 1, name: 'Quotes' })).toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveClass('max-w-[75rem]');
+
+    await user.click(screen.getByRole('button', { name: 'New quote' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'New quote' })).toBeInTheDocument();
+    expect(screen.getByRole('main')).not.toHaveClass('max-w-[75rem]');
+
+    await user.click(screen.getByRole('link', { name: 'Back to quotes' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Quotes' })).toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveClass('max-w-[75rem]');
+  });
+
+  it.each(['/quotes/3', '/quotes/abc'])('lets %s use the full width while it loads or is not found', async (route) => {
+    // The quote never arrives, so /quotes/3 stays loading.
+    coreApi.defaults.adapter = fakeAdapter((config) =>
+      config.url === '/quotations/3' ? new Promise(() => undefined) : { status: 200, data: envelope([]) },
+    );
+    renderAt(route);
+    expect(await screen.findByRole('heading', { level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole('main')).not.toHaveClass('max-w-[75rem]');
+  });
+
+  it.each(['/', '/projects', '/projects/1', '/finance/invoices', '/nope'])('keeps %s at the content width', (route) => {
+    renderAt(route);
+    expect(screen.getByRole('main')).toHaveClass('max-w-[75rem]');
   });
 
   it.each([
