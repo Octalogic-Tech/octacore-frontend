@@ -41,6 +41,7 @@
       "outputs": ["{workspaceRoot}/coverage/apps/core"],
       "options": {
         "passWithNoTests": true,
+        "reporters": ["default"],
         "reportsDirectory": "../../coverage/apps/core"
       }
     },
