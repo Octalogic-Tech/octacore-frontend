@@ -1,14 +1,24 @@
-const shortDate = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+const shortDate = new Intl.DateTimeFormat('en-GB', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+});
 
 /** Formats `YYYY-MM-DD` from the parts, so the day never shifts with the time zone. */
 export function formatDate(iso: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
   if (!match) return iso;
   const [, year, month, day] = match;
-  return shortDate.format(new Date(Number(year), Number(month) - 1, Number(day)));
+  return shortDate.format(
+    new Date(Number(year), Number(month) - 1, Number(day))
+  );
 }
 
-export function pluralize(count: number, singular: string, plural = `${singular}s`): string {
+export function pluralize(
+  count: number,
+  singular: string,
+  plural = `${singular}s`
+): string {
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
@@ -29,11 +39,24 @@ function daysInMonth(year: number, month: number): number {
 }
 
 /** The parts of a real `YYYY-MM-DD` date from the year 1000 on, or null. Never goes through a time zone. */
-function dateParts(iso: string): { year: number; month: number; day: number } | null {
+function dateParts(
+  iso: string
+): { year: number; month: number; day: number } | null {
   const match = DATE_PARTS.exec(iso);
   if (!match) return null;
-  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
-  if (year < 1000 || month < 1 || month > 12 || day < 1 || day > daysInMonth(year, month)) return null;
+  const [year, month, day] = [
+    Number(match[1]),
+    Number(match[2]),
+    Number(match[3]),
+  ];
+  if (
+    year < 1000 ||
+    month < 1 ||
+    month > 12 ||
+    day < 1 ||
+    day > daysInMonth(year, month)
+  )
+    return null;
   return { year, month, day };
 }
 
@@ -47,12 +70,16 @@ export function addMonths(iso: string, months: number): string {
   const index = parts.year * 12 + (parts.month - 1) + months;
   const year = Math.floor(index / 12);
   const month = index - year * 12 + 1;
-  return `${String(year).padStart(4, '0')}-${pad(month)}-${pad(Math.min(parts.day, daysInMonth(year, month)))}`;
+  return `${String(year).padStart(4, '0')}-${pad(month)}-${pad(
+    Math.min(parts.day, daysInMonth(year, month))
+  )}`;
 }
 
 /** The last day of the month a `YYYY-MM-DD` date is in. Anything that is not a real date gives `''`. */
 export function endOfMonth(iso: string): string {
   const parts = dateParts(iso);
   if (!parts) return '';
-  return `${String(parts.year).padStart(4, '0')}-${pad(parts.month)}-${pad(daysInMonth(parts.year, parts.month))}`;
+  return `${String(parts.year).padStart(4, '0')}-${pad(parts.month)}-${pad(
+    daysInMonth(parts.year, parts.month)
+  )}`;
 }

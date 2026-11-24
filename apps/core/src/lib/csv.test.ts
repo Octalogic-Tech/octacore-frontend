@@ -8,8 +8,8 @@ describe('toCsv', () => {
         [
           ['1', 'x'],
           ['2', ''],
-        ],
-      ),
+        ]
+      )
     ).toBe(['A,B', '1,x', '2,'].join('\r\n'));
   });
 
@@ -18,14 +18,19 @@ describe('toCsv', () => {
   });
 
   it('quotes values containing commas, quotes and newlines', () => {
-    const csv = toCsv(['A', 'B', 'C'], [['Doe, John', 'He said "hi"', 'Line1\nLine2']]);
+    const csv = toCsv(
+      ['A', 'B', 'C'],
+      [['Doe, John', 'He said "hi"', 'Line1\nLine2']]
+    );
     expect(csv).toContain('"Doe, John"');
     expect(csv).toContain('"He said ""hi"""');
     expect(csv).toContain('"Line1\nLine2"');
   });
 
   it('writes a value as given: only the caller knows which ones are typed text', () => {
-    expect(toCsv(['A'], [['=1+1'], ['-5']])).toBe(['A', '=1+1', '-5'].join('\r\n'));
+    expect(toCsv(['A'], [['=1+1'], ['-5']])).toBe(
+      ['A', '=1+1', '-5'].join('\r\n')
+    );
   });
 });
 
@@ -51,7 +56,9 @@ describe('downloadCsv', () => {
     const revokeObjectURL = vi.fn();
     Object.assign(URL, { createObjectURL, revokeObjectURL });
     const names: string[] = [];
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) {
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (
+      this: HTMLAnchorElement
+    ) {
       names.push(this.download);
     });
 

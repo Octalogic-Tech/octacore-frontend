@@ -1,6 +1,16 @@
 import { z } from 'zod';
-import { MAX_CENTS, amountProblem, parseAmount, toAmountText } from '@/lib/money';
-import { hundredthsOf, quoteTotals, type CalcLine, type CalcSettings } from './calc';
+import {
+  MAX_CENTS,
+  amountProblem,
+  parseAmount,
+  toAmountText,
+} from '@/lib/money';
+import {
+  hundredthsOf,
+  quoteTotals,
+  type CalcLine,
+  type CalcSettings,
+} from './calc';
 
 // The limits of the service (`app/core/quoting.py`), so the form refuses what it would answer with a 422.
 export const MAX_LINES = 200;
@@ -20,16 +30,24 @@ const WHOLE_NUMBER = /^\d+$/;
 const HUNDREDTHS_TEXT = /^\d+(\.\d{1,2})?$/;
 const CURRENCY_TEXT = /^[A-Za-z]{3}$/;
 
-const TOO_LARGE = 'The quote comes to more than 100,000,000.00. Reduce the hours or the rates.';
+const TOO_LARGE =
+  'The quote comes to more than 100,000,000.00. Reduce the hours or the rates.';
 
 // What each field's text can be told, as a message or null. Plain functions, so the editor can also ask them on every
 // keystroke (`toCalcInput`) without building a zod parse for each of up to 200 lines.
 
 /** A whole number from `min` to `max`, with the messages of the field it is for. */
-function wholeNumberProblem(options: { required: string; example: number; range: string; min: number; max: number }) {
+function wholeNumberProblem(options: {
+  required: string;
+  example: number;
+  range: string;
+  min: number;
+  max: number;
+}) {
   return (text: string): string | null => {
     if (text === '') return options.required;
-    if (!WHOLE_NUMBER.test(text)) return `Enter a whole number, like ${options.example}`;
+    if (!WHOLE_NUMBER.test(text))
+      return `Enter a whole number, like ${options.example}`;
     const value = Number(text);
     return value < options.min || value > options.max ? options.range : null;
   };
@@ -70,10 +88,13 @@ const hoursPerMonthProblem = wholeNumberProblem({
 /** Hours per unit: more than 0 and at most 10,000, to the hundredth. */
 function hoursProblem(text: string): string | null {
   if (text === '') return 'Hours are required';
-  if (!HUNDREDTHS_TEXT.test(text)) return 'Enter hours like 7.5, with up to two decimals and no commas or signs';
+  if (!HUNDREDTHS_TEXT.test(text))
+    return 'Enter hours like 7.5, with up to two decimals and no commas or signs';
   const hundredths = hundredthsOf(text);
   if (hundredths < 1) return 'Hours must be more than 0';
-  return hundredths > MAX_HOURS_HUNDREDTHS ? 'Hours must be 10,000 or less' : null;
+  return hundredths > MAX_HOURS_HUNDREDTHS
+    ? 'Hours must be 10,000 or less'
+    : null;
 }
 
 /** A percentage from 0 up to `max` (in hundredths of a percent), to the hundredth, with the message for one above it. */
@@ -86,22 +107,32 @@ function percentRule(max: number, tooLarge: string) {
 }
 
 /** A percentage from 0 to 100: the time buffer, the negotiation buffer, management, testing and bug fixing. */
-const percentProblem = percentRule(MAX_PERCENT_HUNDREDTHS, 'Percentage must be from 0 to 100');
+const percentProblem = percentRule(
+  MAX_PERCENT_HUNDREDTHS,
+  'Percentage must be from 0 to 100'
+);
 
 /** The discount, from 0 to 50 %: no more than an invoice may take off, so a quote can become an invoice. */
-const discountProblem = percentRule(MAX_DISCOUNT_HUNDREDTHS, 'Discount must be from 0 to 50');
+const discountProblem = percentRule(
+  MAX_DISCOUNT_HUNDREDTHS,
+  'Discount must be from 0 to 50'
+);
 
 /** An hourly rate in units and hundredths of the quote's currency: 0 is a fair rate (a tester may be free). */
 function rateProblem(text: string): string | null {
   if (text === '') return 'Rate is required';
   const problem = amountProblem(text, { allowZero: true });
   if (problem !== null) return problem;
-  return parseAmount(text) > MAX_RATE_CENTS ? 'The rate must be 100,000.00 or less' : null;
+  return parseAmount(text) > MAX_RATE_CENTS
+    ? 'The rate must be 100,000.00 or less'
+    : null;
 }
 
 function currencyProblem(text: string): string | null {
   if (text === '') return 'Currency is required';
-  return CURRENCY_TEXT.test(text) ? null : 'Use a three-letter currency code, like INR';
+  return CURRENCY_TEXT.test(text)
+    ? null
+    : 'Use a three-letter currency code, like INR';
 }
 
 // Text, not number inputs: a comma or a sign must be told what is wrong, not dropped.
@@ -240,20 +271,37 @@ export const quoteFormSchema = z
     values.sections.forEach((section, index) => {
       if (section.lines.length > MAX_LINES) {
         const message = `A section has at most ${MAX_LINES} lines`;
-        context.addIssue({ code: 'custom', path: ['sections', index, 'lines'], message });
+        context.addIssue({
+          code: 'custom',
+          path: ['sections', index, 'lines'],
+          message,
+        });
       }
     });
     const count = lineCount(values);
     // With no section at all, that is what is said.
     if (count === 0 && values.sections.length > 0) {
-      context.addIssue({ code: 'custom', path: ['sections'], message: 'Add at least one line' });
+      context.addIssue({
+        code: 'custom',
+        path: ['sections'],
+        message: 'Add at least one line',
+      });
     }
     if (count > MAX_LINES) {
-      context.addIssue({ code: 'custom', path: ['sections'], message: `A quote has at most ${MAX_LINES} lines` });
+      context.addIssue({
+        code: 'custom',
+        path: ['sections'],
+        message: `A quote has at most ${MAX_LINES} lines`,
+      });
     }
     // Each field can be in range while the quote is not: the service refuses a final quote above the largest amount. Said
     // once (the lines are what to reduce, with the rates), and only while the settings are valid.
-    if (quoteTooLarge(values)) context.addIssue({ code: 'custom', path: ['sections'], message: TOO_LARGE });
+    if (quoteTooLarge(values))
+      context.addIssue({
+        code: 'custom',
+        path: ['sections'],
+        message: TOO_LARGE,
+      });
   });
 
 export type QuoteFormValues = z.infer<typeof quoteFormSchema>;
@@ -261,7 +309,9 @@ export type SectionFormValues = QuoteFormValues['sections'][number];
 export type LineFormValues = SectionFormValues['lines'][number];
 
 /** Every field the settings drawer holds: all but the title and the sections. */
-export const SETTINGS_FIELDS = Object.keys(settingsShape) as readonly (keyof QuoteFormValues)[];
+export const SETTINGS_FIELDS = Object.keys(
+  settingsShape
+) as readonly (keyof QuoteFormValues)[];
 
 export const blankQuoteLine: LineFormValues = {
   title: '',
@@ -275,7 +325,10 @@ export const FIRST_SECTION_TITLE = 'General';
 
 /** How many lines the quote has, over all its sections. */
 export function lineCount(values: Pick<QuoteFormValues, 'sections'>): number {
-  return values.sections.reduce((sum, section) => sum + section.lines.length, 0);
+  return values.sections.reduce(
+    (sum, section) => sum + section.lines.length,
+    0
+  );
 }
 
 /** A line's units x hours per unit, in hundredths of an hour, or null while either is blank or invalid. */
@@ -283,7 +336,9 @@ export function lineHours(line: LineFormValues | undefined): number | null {
   if (line === undefined) return null;
   const units = line.units.trim();
   const hours = line.hoursPerUnit.trim();
-  return unitsProblem(units) === null && hoursProblem(hours) === null ? Number(units) * hundredthsOf(hours) : null;
+  return unitsProblem(units) === null && hoursProblem(hours) === null
+    ? Number(units) * hundredthsOf(hours)
+    : null;
 }
 
 export const emptyQuoteForm: QuoteFormValues = {
@@ -307,7 +362,9 @@ export const emptyQuoteForm: QuoteFormValues = {
 };
 
 export function toQuoteFormValues(row?: QuoteRow): QuoteFormValues {
-  const firstSection = () => [{ title: FIRST_SECTION_TITLE, lines: [{ ...blankQuoteLine }] }];
+  const firstSection = () => [
+    { title: FIRST_SECTION_TITLE, lines: [{ ...blankQuoteLine }] },
+  ];
   if (!row) return { ...emptyQuoteForm, sections: firstSection() };
   return {
     title: row.title,
@@ -415,15 +472,24 @@ export function toQuoteBody(values: QuoteFormValues): QuoteBody {
  * or wrong setting means no totals, never a wrong or broken one. The lines are those of every section, in order; a line
  * whose units or hours are invalid is left out, as if they were zero.
  */
-export function toCalcInput(values: QuoteFormValues): { settings: CalcSettings | null; lines: CalcLine[] } {
+export function toCalcInput(values: QuoteFormValues): {
+  settings: CalcSettings | null;
+  lines: CalcLine[];
+} {
   const lines = values.sections.flatMap((section) =>
     section.lines.flatMap((line) =>
       lineHours(line) === null
         ? []
-        : [{ units: Number(line.units.trim()), hoursHundredths: hundredthsOf(line.hoursPerUnit.trim()) }],
-    ),
+        : [
+            {
+              units: Number(line.units.trim()),
+              hoursHundredths: hundredthsOf(line.hoursPerUnit.trim()),
+            },
+          ]
+    )
   );
-  if (!settingsSchema.safeParse(values).success) return { settings: null, lines };
+  if (!settingsSchema.safeParse(values).success)
+    return { settings: null, lines };
 
   const whole = (text: string) => Number(text.trim());
   const percent = (text: string) => hundredthsOf(text.trim());
@@ -451,5 +517,8 @@ export function toCalcInput(values: QuoteFormValues): { settings: CalcSettings |
 /** Whether the final quote is above the largest amount the service accepts. False while the settings are invalid. */
 export function quoteTooLarge(values: QuoteFormValues): boolean {
   const { settings, lines } = toCalcInput(values);
-  return settings !== null && quoteTotals(settings, lines).finalQuoteCents > MAX_CENTS;
+  return (
+    settings !== null &&
+    quoteTotals(settings, lines).finalQuoteCents > MAX_CENTS
+  );
 }

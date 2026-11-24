@@ -23,7 +23,13 @@ export interface MonthFigures {
  * beneath them. Types are ordered by total, the biggest first, then by name.
  */
 export function monthFigures(rows: readonly ExpenseRow[]): MonthFigures {
-  const figures: MonthFigures = { total: 0, oneTime: 0, recurring: 0, count: rows.length, byType: [] };
+  const figures: MonthFigures = {
+    total: 0,
+    oneTime: 0,
+    recurring: 0,
+    count: rows.length,
+    byType: [],
+  };
   const byType = new Map<number, TypeFigure>();
   for (const row of rows) {
     figures.total += row.amountCents;
@@ -39,6 +45,8 @@ export function monthFigures(rows: readonly ExpenseRow[]): MonthFigures {
     type.count += 1;
     byType.set(row.expenseTypeId, type);
   }
-  figures.byType = [...byType.values()].sort((a, b) => b.totalCents - a.totalCents || a.name.localeCompare(b.name));
+  figures.byType = [...byType.values()].sort(
+    (a, b) => b.totalCents - a.totalCents || a.name.localeCompare(b.name)
+  );
   return figures;
 }

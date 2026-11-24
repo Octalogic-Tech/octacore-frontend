@@ -35,7 +35,7 @@ export type AllocationRow = z.output<typeof allocationRowSchema>;
 
 /** What the Project column of the ledger says: the project, the bench, or that the card was removed. */
 export const entryPlace = (row: Pick<AllocationRow, 'project' | 'removed'>) =>
-  row.removed ? 'Card removed' : (row.project?.name ?? 'Bench');
+  row.removed ? 'Card removed' : row.project?.name ?? 'Bench';
 
 /**
  * The ledger's search: the text is in the person's name, in the card ("Card 2"), or in what the Project column says
@@ -44,15 +44,21 @@ export const entryPlace = (row: Pick<AllocationRow, 'project' | 'removed'>) =>
 export function allocationMatches(row: AllocationRow, query: string): boolean {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
-  return [row.person.name, `Card ${row.card}`, entryPlace(row)].some((text) => text.toLowerCase().includes(needle));
+  return [row.person.name, `Card ${row.card}`, entryPlace(row)].some((text) =>
+    text.toLowerCase().includes(needle)
+  );
 }
 
 /**
  * The card numbers a person has an entry for (removed cards too: an entry can still be added to one), once each and in
  * order, with card 1 always: every person has it. What the entry form's Card field offers, besides a new card.
  */
-export function cardChoices(entries: readonly Pick<AllocationRow, 'card'>[]): number[] {
-  return [...new Set([1, ...entries.map((entry) => entry.card)])].sort((a, b) => a - b);
+export function cardChoices(
+  entries: readonly Pick<AllocationRow, 'card'>[]
+): number[] {
+  return [...new Set([1, ...entries.map((entry) => entry.card)])].sort(
+    (a, b) => a - b
+  );
 }
 
 // Every field is text, so a blank field can be told from a typed one: `personId` is '' until one is chosen, `card` is
@@ -61,19 +67,29 @@ export function cardChoices(entries: readonly Pick<AllocationRow, 'card'>[]): nu
 export const allocationFormSchema = z
   .object({
     personId: z.string().min(1, 'Choose a person'),
-    card: z.string().refine((value) => value === NEW_CARD || /^[1-9]\d*$/.test(value), 'Choose a card'),
+    card: z
+      .string()
+      .refine(
+        (value) => value === NEW_CARD || /^[1-9]\d*$/.test(value),
+        'Choose a card'
+      ),
     projectId: z
       .string()
       .refine(
-        (value) => value === BENCH || value === REMOVED || /^[1-9]\d*$/.test(value),
-        'Choose a project or the bench',
+        (value) =>
+          value === BENCH || value === REMOVED || /^[1-9]\d*$/.test(value),
+        'Choose a project or the bench'
       ),
     effectiveDate: z.string().min(1, 'Effective date is required'),
     note: z.string().trim(),
   })
   .superRefine((values, context) => {
     if (values.card === NEW_CARD && values.projectId === REMOVED) {
-      context.addIssue({ code: 'custom', path: ['projectId'], message: 'A new card cannot be removed' });
+      context.addIssue({
+        code: 'custom',
+        path: ['projectId'],
+        message: 'A new card cannot be removed',
+      });
     }
   });
 
@@ -83,12 +99,25 @@ export type AllocationFormValues = z.infer<typeof allocationFormSchema>;
  * A new entry opens dated today (the browser's local day) on card 1 and the bench option, with nobody chosen; an edit
  * opens on the entry.
  */
-export function toAllocationFormValues(row?: AllocationRow): AllocationFormValues {
-  if (!row) return { personId: '', card: '1', projectId: BENCH, effectiveDate: localToday(), note: '' };
+export function toAllocationFormValues(
+  row?: AllocationRow
+): AllocationFormValues {
+  if (!row)
+    return {
+      personId: '',
+      card: '1',
+      projectId: BENCH,
+      effectiveDate: localToday(),
+      note: '',
+    };
   return {
     personId: String(row.personId),
     card: String(row.card),
-    projectId: row.removed ? REMOVED : row.projectId === null ? BENCH : String(row.projectId),
+    projectId: row.removed
+      ? REMOVED
+      : row.projectId === null
+      ? BENCH
+      : String(row.projectId),
     effectiveDate: row.effectiveDate,
     note: row.note,
   };

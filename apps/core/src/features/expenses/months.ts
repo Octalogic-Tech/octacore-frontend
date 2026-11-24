@@ -21,7 +21,11 @@ export function monthRange(month: string): { from: string; to: string } {
   return { from: first, to: endOfMonth(first) };
 }
 
-const monthName = new Intl.DateTimeFormat('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' });
+const monthName = new Intl.DateTimeFormat('en-GB', {
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
 
 /** `October 2026`. Built on UTC, so the zone the browser is in cannot move the month. */
 export function monthLabel(month: string): string {

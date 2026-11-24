@@ -15,7 +15,9 @@ describe('IconButton', () => {
 
   it('is a 44px square target', () => {
     render(<IconButton label="Edit Acme" icon={LuPencil} />);
-    expect(screen.getByRole('button', { name: 'Edit Acme' })).toHaveClass('size-11');
+    expect(screen.getByRole('button', { name: 'Edit Acme' })).toHaveClass(
+      'size-11'
+    );
   });
 
   it('calls its handler, and does not submit a form', async () => {
@@ -24,7 +26,7 @@ describe('IconButton', () => {
     render(
       <form onSubmit={onSubmit}>
         <IconButton label="Edit Acme" icon={LuPencil} onClick={onClick} />
-      </form>,
+      </form>
     );
     await userEvent.click(screen.getByRole('button', { name: 'Edit Acme' }));
     expect(onClick).toHaveBeenCalledTimes(1);
@@ -33,7 +35,14 @@ describe('IconButton', () => {
 
   it('cannot be clicked while disabled', async () => {
     const onClick = vi.fn();
-    render(<IconButton label="Edit Acme" icon={LuPencil} disabled onClick={onClick} />);
+    render(
+      <IconButton
+        label="Edit Acme"
+        icon={LuPencil}
+        disabled
+        onClick={onClick}
+      />
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Edit Acme' }));
     expect(onClick).not.toHaveBeenCalled();
   });

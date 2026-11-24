@@ -15,10 +15,18 @@ export function PortfolioPage() {
         spec={portfolioSpec}
         actions={
           <>
-            <Button variant="quiet" id="preview-case-study" onClick={() => setCaseStudy(true)}>
+            <Button
+              variant="quiet"
+              id="preview-case-study"
+              onClick={() => setCaseStudy(true)}
+            >
               {caseStudyDialog.previewLabel}
             </Button>
-            <Button variant="quiet" id="preview-portfolio-link" onClick={() => setLink(true)}>
+            <Button
+              variant="quiet"
+              id="preview-portfolio-link"
+              onClick={() => setLink(true)}
+            >
               {portfolioLinkDialog.previewLabel}
             </Button>
           </>

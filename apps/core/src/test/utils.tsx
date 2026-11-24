@@ -5,11 +5,17 @@ import { MemoryRouter } from 'react-router-dom';
 import { queryDefaults } from '@/lib/query-client';
 
 /** Renders with a fresh query client (no retries) and a router, so pages can be tested whole. */
-export function renderWithProviders(ui: ReactElement, { route = '/' }: { route?: string } = {}) {
+export function renderWithProviders(
+  ui: ReactElement,
+  { route = '/' }: { route?: string } = {}
+) {
   const client = new QueryClient({
     defaultOptions: {
       queries: { retry: false, networkMode: queryDefaults.queries.networkMode },
-      mutations: { retry: false, networkMode: queryDefaults.mutations.networkMode },
+      mutations: {
+        retry: false,
+        networkMode: queryDefaults.mutations.networkMode,
+      },
     },
   });
   return {
@@ -17,7 +23,7 @@ export function renderWithProviders(ui: ReactElement, { route = '/' }: { route?:
     ...render(
       <QueryClientProvider client={client}>
         <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
-      </QueryClientProvider>,
+      </QueryClientProvider>
     ),
   };
 }

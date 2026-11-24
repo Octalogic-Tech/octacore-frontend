@@ -1,11 +1,23 @@
 import { isMonth, monthLabel, monthOf, monthRange, shiftMonth } from './months';
 
 describe('isMonth', () => {
-  it.each(['2026-10', '2026-01', '2026-12', '2000-06'])('accepts %j', (value) => {
-    expect(isMonth(value)).toBe(true);
-  });
+  it.each(['2026-10', '2026-01', '2026-12', '2000-06'])(
+    'accepts %j',
+    (value) => {
+      expect(isMonth(value)).toBe(true);
+    }
+  );
 
-  it.each([null, '', '2026-13', '2026-00', '2026-1', '2026-10-01', 'abcd-10', ' 2026-10'])('refuses %j', (value) => {
+  it.each([
+    null,
+    '',
+    '2026-13',
+    '2026-00',
+    '2026-1',
+    '2026-10-01',
+    'abcd-10',
+    ' 2026-10',
+  ])('refuses %j', (value) => {
     expect(isMonth(value)).toBe(false);
   });
 });

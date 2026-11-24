@@ -13,7 +13,9 @@ import { loginSchema, type LoginInput } from './schema';
 
 /** The page RequireAuth saved in router state, or the overview. Never read from the URL, so it cannot be a redirect trick. */
 function savedPath(state: unknown): string {
-  const from = (state as { from?: { pathname?: string; search?: string } } | null)?.from;
+  const from = (
+    state as { from?: { pathname?: string; search?: string } } | null
+  )?.from;
   if (!from?.pathname || from.pathname === '/login') return '/';
   return `${from.pathname}${from.search ?? ''}`;
 }
@@ -21,18 +23,25 @@ function savedPath(state: unknown): string {
 export function LoginPage() {
   const { status, signIn } = useAuth();
   const location = useLocation();
-  const [failure, setFailure] = useState<'credentials' | 'unreachable' | null>(null);
+  const [failure, setFailure] = useState<'credentials' | 'unreachable' | null>(
+    null
+  );
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginInput>({ resolver: zodResolver(loginSchema), defaultValues: { email: '', password: '' } });
+  } = useForm<LoginInput>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
 
   // The same neutral blank RequireAuth shows: a reload here with a valid cookie does not flash the form, and the
   // form cannot be sent before the restore has settled.
-  if (status === 'loading') return <div aria-busy="true" className="min-h-dvh" />;
+  if (status === 'loading')
+    return <div aria-busy="true" className="min-h-dvh" />;
   // Signing in flips the status, which brings the person back to the page they asked for.
-  if (status === 'authenticated') return <Navigate to={savedPath(location.state)} replace />;
+  if (status === 'authenticated')
+    return <Navigate to={savedPath(location.state)} replace />;
 
   const submit = handleSubmit(
     async (values) => {
@@ -43,26 +52,37 @@ export function LoginPage() {
         // A 422 is the service refusing the input itself (an address it cannot read, say): to the person that is a
         // failed sign-in like any other.
         const code = statusOf(error);
-        setFailure(code === 401 || code === 422 ? 'credentials' : 'unreachable');
+        setFailure(
+          code === 401 || code === 422 ? 'credentials' : 'unreachable'
+        );
       }
     },
     // A form sent again with a field missing is a new attempt: the last attempt's message no longer applies.
-    () => setFailure(null),
+    () => setFailure(null)
   );
 
   return (
     <main id="main" className="grid min-h-dvh place-items-center px-5 py-12">
       <div className="w-full max-w-md">
         <Logo height={30} />
-        <h1 className="mt-10 text-headline font-semibold text-foreground">Sign in</h1>
-        <p className="mt-2 text-body text-navy-80">Use the email and password an admin gave you.</p>
+        <h1 className="mt-10 text-headline font-semibold text-foreground">
+          Sign in
+        </h1>
+        <p className="mt-2 text-body text-navy-80">
+          Use the email and password an admin gave you.
+        </p>
         {hasPendingLogout() ? (
           <p className="mt-4 text-small font-semibold text-foreground">
-            We could not reach the service to end your last session. Close this browser window to be sure.
+            We could not reach the service to end your last session. Close this
+            browser window to be sure.
           </p>
         ) : null}
         <form onSubmit={submit} noValidate className="mt-8 grid gap-6">
-          <Field label="Email" htmlFor="login-email" error={errors.email?.message}>
+          <Field
+            label="Email"
+            htmlFor="login-email"
+            error={errors.email?.message}
+          >
             <Input
               {...fieldA11y('login-email', errors.email?.message)}
               {...register('email')}
@@ -70,7 +90,11 @@ export function LoginPage() {
               autoComplete="username"
             />
           </Field>
-          <Field label="Password" htmlFor="login-password" error={errors.password?.message}>
+          <Field
+            label="Password"
+            htmlFor="login-password"
+            error={errors.password?.message}
+          >
             <Input
               {...fieldA11y('login-password', errors.password?.message)}
               {...register('password')}
@@ -79,7 +103,10 @@ export function LoginPage() {
             />
           </Field>
           {failure ? (
-            <p role="alert" className="text-small font-semibold text-foreground">
+            <p
+              role="alert"
+              className="text-small font-semibold text-foreground"
+            >
               {failure === 'credentials'
                 ? 'Invalid email or password.'
                 : 'We could not sign you in. Check that the API is running, then try again.'}

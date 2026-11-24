@@ -24,14 +24,16 @@ const DRAFT = ['invoice-draft'] as const;
 export function useProjects() {
   return useQuery({
     queryKey: PROJECT_LIST,
-    queryFn: async () => unwrap((await coreApi.get('/projects')).data, projectRowsSchema),
+    queryFn: async () =>
+      unwrap((await coreApi.get('/projects')).data, projectRowsSchema),
   });
 }
 
 export function useProject(id: number) {
   return useQuery({
     queryKey: [...PROJECTS, 'detail', id] as const,
-    queryFn: async () => unwrap((await coreApi.get(`/projects/${id}`)).data, projectRowSchema),
+    queryFn: async () =>
+      unwrap((await coreApi.get(`/projects/${id}`)).data, projectRowSchema),
   });
 }
 
@@ -40,7 +42,10 @@ export function useInvoices(projectId: number) {
   return useQuery({
     queryKey: [...INVOICES, { projectId }] as const,
     queryFn: async () =>
-      unwrap((await coreApi.get('/invoices', { params: { projectId } })).data, invoiceRowsSchema),
+      unwrap(
+        (await coreApi.get('/invoices', { params: { projectId } })).data,
+        invoiceRowsSchema
+      ),
   });
 }
 
@@ -51,7 +56,8 @@ export function useInvoices(projectId: number) {
 export function useAllInvoices() {
   return useQuery({
     queryKey: [...INVOICES, 'all'] as const,
-    queryFn: async () => unwrap((await coreApi.get('/invoices')).data, invoiceRowsSchema),
+    queryFn: async () =>
+      unwrap((await coreApi.get('/invoices')).data, invoiceRowsSchema),
   });
 }
 
@@ -60,7 +66,11 @@ export function useProjectResources(projectId: number) {
   return useQuery({
     queryKey: [...RESOURCES, { projectId }] as const,
     queryFn: async () =>
-      unwrap((await coreApi.get('/project-resources', { params: { projectId } })).data, resourceRowsSchema),
+      unwrap(
+        (await coreApi.get('/project-resources', { params: { projectId } }))
+          .data,
+        resourceRowsSchema
+      ),
   });
 }
 
@@ -72,7 +82,11 @@ export function useProjectResources(projectId: number) {
 export function useInvoiceDraft(projectId: number, enabled: boolean) {
   return useQuery({
     queryKey: [...DRAFT, { projectId }] as const,
-    queryFn: async () => unwrap((await coreApi.get(`/projects/${projectId}/invoice-draft`)).data, invoiceDraftSchema),
+    queryFn: async () =>
+      unwrap(
+        (await coreApi.get(`/projects/${projectId}/invoice-draft`)).data,
+        invoiceDraftSchema
+      ),
     enabled,
     staleTime: 0,
     gcTime: 0,
@@ -83,13 +97,21 @@ export function useInvoiceDraft(projectId: number, enabled: boolean) {
 }
 
 /** Informs the Number field of the invoice form; nothing is reserved. Asked again for every issue date. */
-export function useNextInvoiceNumber(projectId: number, issueDate: string, enabled: boolean) {
+export function useNextInvoiceNumber(
+  projectId: number,
+  issueDate: string,
+  enabled: boolean
+) {
   return useQuery({
     queryKey: ['next-invoice-number', { projectId, issueDate }] as const,
     queryFn: async () =>
       unwrap(
-        (await coreApi.get(`/projects/${projectId}/next-invoice-number`, { params: { issueDate } })).data,
-        nextNumberSchema,
+        (
+          await coreApi.get(`/projects/${projectId}/next-invoice-number`, {
+            params: { issueDate },
+          })
+        ).data,
+        nextNumberSchema
       ),
     enabled,
     staleTime: 0,
@@ -114,7 +136,13 @@ async function deleteRecord(path: string) {
 export function useSaveProject() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: number | undefined; body: ProjectBody }) => {
+    mutationFn: async ({
+      id,
+      body,
+    }: {
+      id: number | undefined;
+      body: ProjectBody;
+    }) => {
       if (id === undefined) await coreApi.post('/projects', body);
       else await coreApi.patch(`/projects/${id}`, body);
     },
@@ -126,8 +154,15 @@ export function useSaveProject() {
 export function useSaveResource(projectId: number) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: number | undefined; body: ResourceBody }) => {
-      if (id === undefined) await coreApi.post('/project-resources', { projectId, ...body });
+    mutationFn: async ({
+      id,
+      body,
+    }: {
+      id: number | undefined;
+      body: ResourceBody;
+    }) => {
+      if (id === undefined)
+        await coreApi.post('/project-resources', { projectId, ...body });
       else await coreApi.patch(`/project-resources/${id}`, body);
     },
     // Nothing else on the page depends on a resource: an invoice keeps its own copy of the lines it was built from.
@@ -156,10 +191,22 @@ export function useDeleteProject() {
     onSuccess: (_data, id) =>
       Promise.all([
         client.invalidateQueries({ queryKey: PROJECT_LIST, exact: true }),
-        client.invalidateQueries({ queryKey: [...PROJECTS, 'detail', id], refetchType: 'none' }),
-        client.invalidateQueries({ queryKey: [...INVOICES, { projectId: id }], refetchType: 'none' }),
-        client.invalidateQueries({ queryKey: [...INVOICES, 'all'], refetchType: 'none' }),
-        client.invalidateQueries({ queryKey: [...RESOURCES, { projectId: id }], refetchType: 'none' }),
+        client.invalidateQueries({
+          queryKey: [...PROJECTS, 'detail', id],
+          refetchType: 'none',
+        }),
+        client.invalidateQueries({
+          queryKey: [...INVOICES, { projectId: id }],
+          refetchType: 'none',
+        }),
+        client.invalidateQueries({
+          queryKey: [...INVOICES, 'all'],
+          refetchType: 'none',
+        }),
+        client.invalidateQueries({
+          queryKey: [...RESOURCES, { projectId: id }],
+          refetchType: 'none',
+        }),
       ]),
   });
 }
@@ -178,8 +225,15 @@ function useRefreshInvoicesAndProjects() {
 export function useSaveInvoice(projectId: number) {
   const refresh = useRefreshInvoicesAndProjects();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: number | undefined; body: InvoiceBody }) => {
-      if (id === undefined) await coreApi.post('/invoices', { projectId, ...body });
+    mutationFn: async ({
+      id,
+      body,
+    }: {
+      id: number | undefined;
+      body: InvoiceBody;
+    }) => {
+      if (id === undefined)
+        await coreApi.post('/invoices', { projectId, ...body });
       else await coreApi.patch(`/invoices/${id}`, body);
     },
     onSuccess: refresh,
@@ -193,7 +247,13 @@ export function useSaveInvoice(projectId: number) {
 export function useSetInvoicePaid() {
   const refresh = useRefreshInvoicesAndProjects();
   return useMutation({
-    mutationFn: async ({ id, paidDate }: { id: number; paidDate: string | null }) => {
+    mutationFn: async ({
+      id,
+      paidDate,
+    }: {
+      id: number;
+      paidDate: string | null;
+    }) => {
       await coreApi.patch(`/invoices/${id}`, { paidDate });
     },
     onSettled: refresh,
@@ -210,7 +270,9 @@ export function useDeleteInvoice() {
 
 /** The PDF the service draws for an invoice, as a blob: a plain link would carry no sign-in token. */
 export async function fetchInvoicePdf(id: number): Promise<Blob> {
-  const response = await coreApi.get(`/invoices/${id}/pdf`, { responseType: 'blob' });
+  const response = await coreApi.get(`/invoices/${id}/pdf`, {
+    responseType: 'blob',
+  });
   return response.data as Blob;
 }
 
@@ -218,7 +280,11 @@ export async function fetchInvoicePdf(id: number): Promise<Blob> {
 export function useEmailDraft(invoiceId: number) {
   return useQuery({
     queryKey: ['email-draft', invoiceId] as const,
-    queryFn: async () => unwrap((await coreApi.get(`/invoices/${invoiceId}/email-draft`)).data, emailDraftSchema),
+    queryFn: async () =>
+      unwrap(
+        (await coreApi.get(`/invoices/${invoiceId}/email-draft`)).data,
+        emailDraftSchema
+      ),
     staleTime: 0,
     gcTime: 0,
     refetchOnMount: 'always',

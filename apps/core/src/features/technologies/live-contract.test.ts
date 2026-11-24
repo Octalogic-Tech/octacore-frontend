@@ -12,7 +12,11 @@ const base = process.env.CORE_API_WRITE_URL;
 
 let send: LiveSend;
 
-const listed = async () => unwrap(await (await send('GET', '/technologies')).json(), technologyRowsSchema);
+const listed = async () =>
+  unwrap(
+    await (await send('GET', '/technologies')).json(),
+    technologyRowsSchema
+  );
 
 describe.skipIf(!base)('the running core service, technologies', () => {
   beforeAll(async () => {
@@ -27,7 +31,11 @@ describe.skipIf(!base)('the running core service, technologies', () => {
     });
     expect(created.status).toBe(201);
     const row = unwrap(await created.json(), technologyRowSchema);
-    expect(row).toMatchObject({ name: 'Wiring check', description: 'Made by the live test', categoryId: null });
+    expect(row).toMatchObject({
+      name: 'Wiring check',
+      description: 'Made by the live test',
+      categoryId: null,
+    });
 
     try {
       expect(await listed()).toContainEqual(row);
@@ -47,13 +55,20 @@ describe.skipIf(!base)('the running core service, technologies', () => {
       const deleted = await send('DELETE', `/technologies/${row.id}`);
       expect(deleted.status).toBe(200);
     }
-    expect((await listed()).map((technology) => technology.id)).not.toContain(row.id);
+    expect((await listed()).map((technology) => technology.id)).not.toContain(
+      row.id
+    );
   });
 
   it('stores the category link the dialog sends and embeds the category in the answer', async () => {
     const category = unwrap(
-      await (await send('POST', '/categories', { name: 'Wiring category', description: 'Made by the live test' })).json(),
-      categoryRowSchema,
+      await (
+        await send('POST', '/categories', {
+          name: 'Wiring category',
+          description: 'Made by the live test',
+        })
+      ).json(),
+      categoryRowSchema
     );
     let technologyId: number | undefined;
     try {
@@ -65,7 +80,10 @@ describe.skipIf(!base)('the running core service, technologies', () => {
       expect(created.status).toBe(201);
       const row = unwrap(await created.json(), technologyRowSchema);
       technologyId = row.id;
-      expect(row).toMatchObject({ categoryId: category.id, categoryName: 'Wiring category' });
+      expect(row).toMatchObject({
+        categoryId: category.id,
+        categoryName: 'Wiring category',
+      });
       expect(await listed()).toContainEqual(row);
 
       const cleared = await send('PATCH', `/technologies/${row.id}`, {
@@ -73,16 +91,27 @@ describe.skipIf(!base)('the running core service, technologies', () => {
         description: 'Made by the live test',
         categoryId: null,
       });
-      expect(unwrap(await cleared.json(), technologyRowSchema)).toMatchObject({ categoryId: null, categoryName: '' });
+      expect(unwrap(await cleared.json(), technologyRowSchema)).toMatchObject({
+        categoryId: null,
+        categoryName: '',
+      });
     } finally {
-      if (technologyId !== undefined) expect((await send('DELETE', `/technologies/${technologyId}`)).status).toBe(200);
-      expect((await send('DELETE', `/categories/${category.id}`)).status).toBe(200);
+      if (technologyId !== undefined)
+        expect(
+          (await send('DELETE', `/technologies/${technologyId}`)).status
+        ).toBe(200);
+      expect((await send('DELETE', `/categories/${category.id}`)).status).toBe(
+        200
+      );
     }
   });
 
   it('answers a technology that does not exist with an error envelope', async () => {
     const response = await send('DELETE', '/technologies/99999');
     expect(response.status).toBe(404);
-    expect(await response.json()).toMatchObject({ statusCode: 404, data: null });
+    expect(await response.json()).toMatchObject({
+      statusCode: 404,
+      data: null,
+    });
   });
 });

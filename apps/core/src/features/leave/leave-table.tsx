@@ -7,7 +7,14 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { formatDate } from '@/lib/format';
 import { useDeleteLeave, useLeaves } from './api';
@@ -16,7 +23,9 @@ import { LEAVE_TYPES, leaveDates, leaveMatches, type LeaveRow } from './schema';
 
 const NONE = '—';
 
-const typeLabel = (row: LeaveRow) => LEAVE_TYPES.find((type) => type.value === row.leaveType)?.label ?? row.leaveType;
+const typeLabel = (row: LeaveRow) =>
+  LEAVE_TYPES.find((type) => type.value === row.leaveType)?.label ??
+  row.leaveType;
 
 interface LeaveTableProps {
   /** Only this person's leaves, on their own page: the Person column and the Person field are left out. */
@@ -32,7 +41,9 @@ export function LeaveTable({ personId }: LeaveTableProps) {
   const leaves = useLeaves(personId === undefined ? undefined : { personId });
   const remove = useDeleteLeave();
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState<{ open: boolean; leave?: LeaveRow }>({ open: false });
+  const [form, setForm] = useState<{ open: boolean; leave?: LeaveRow }>({
+    open: false,
+  });
   const [toDelete, setToDelete] = useState<LeaveRow | null>(null);
 
   const filtered = useMemo(
@@ -42,7 +53,8 @@ export function LeaveTable({ personId }: LeaveTableProps) {
   const paging = usePagedRows(filtered);
 
   // Names the row by what it says, since a person may have many. Their leaves cannot overlap, so a first day is unique.
-  const rowName = (leave: LeaveRow) => `${leave.person.name} from ${formatDate(leave.startDate)}`;
+  const rowName = (leave: LeaveRow) =>
+    `${leave.person.name} from ${formatDate(leave.startDate)}`;
 
   return (
     <>
@@ -56,7 +68,11 @@ export function LeaveTable({ personId }: LeaveTableProps) {
             paging.setPage(0);
           }}
         />
-        <Button id="add-leave" variant="quiet" onClick={() => setForm({ open: true })}>
+        <Button
+          id="add-leave"
+          variant="quiet"
+          onClick={() => setForm({ open: true })}
+        >
           Add leave
         </Button>
       </div>
@@ -70,7 +86,9 @@ export function LeaveTable({ personId }: LeaveTableProps) {
           empty={
             <div className="grid justify-items-start gap-1">
               <p className="text-body">
-                {personId === undefined ? 'No leave recorded yet.' : 'No leave recorded for this person yet.'}
+                {personId === undefined
+                  ? 'No leave recorded yet.'
+                  : 'No leave recorded for this person yet.'}
               </p>
               <Button variant="quiet" onClick={() => setForm({ open: true })}>
                 Add the first leave
@@ -86,7 +104,9 @@ export function LeaveTable({ personId }: LeaveTableProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Dates</TableHead>
-                    {personId === undefined ? <TableHead>Person</TableHead> : null}
+                    {personId === undefined ? (
+                      <TableHead>Person</TableHead>
+                    ) : null}
                     <TableHead>Type</TableHead>
                     <TableHead>Reason</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -95,12 +115,18 @@ export function LeaveTable({ personId }: LeaveTableProps) {
                 <TableBody>
                   {paging.pageRows.map((leave) => (
                     <TableRow key={leave.id}>
-                      <TableCell className="tabular whitespace-nowrap">{leaveDates(leave)}</TableCell>
+                      <TableCell className="tabular whitespace-nowrap">
+                        {leaveDates(leave)}
+                      </TableCell>
                       {personId === undefined ? (
-                        <TableCell className="font-semibold">{leave.person.name}</TableCell>
+                        <TableCell className="font-semibold">
+                          {leave.person.name}
+                        </TableCell>
                       ) : null}
                       <TableCell>{typeLabel(leave)}</TableCell>
-                      <TableCell className="min-w-[10rem]">{leave.reason || NONE}</TableCell>
+                      <TableCell className="min-w-[10rem]">
+                        {leave.reason || NONE}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         <IconButton
                           label={`Edit ${rowName(leave)}`}
@@ -143,7 +169,9 @@ export function LeaveTable({ personId }: LeaveTableProps) {
         onOpenChange={(open) => {
           if (!open) setToDelete(null);
         }}
-        title={`Delete the leave of “${toDelete?.person.name ?? ''}”, ${toDelete ? leaveDates(toDelete) : ''}?`}
+        title={`Delete the leave of “${toDelete?.person.name ?? ''}”, ${
+          toDelete ? leaveDates(toDelete) : ''
+        }?`}
         description="This cannot be undone."
         confirmLabel="Delete leave"
         fallbackFocusId="leave-search"

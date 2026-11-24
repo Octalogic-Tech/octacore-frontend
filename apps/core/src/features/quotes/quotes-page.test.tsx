@@ -41,12 +41,18 @@ function renderPage() {
         <Route path="/quotes/:id" element={<p>The editor, a quote</p>} />
       </Routes>
       <Where />
-    </>,
+    </>
   );
 }
 
-const rowOf = async (title: string) => within((await screen.findByRole('link', { name: title })).closest('tr') as HTMLElement);
-const listCalls = () => vi.mocked(coreApi.get).mock.calls.filter(([path]) => path === '/quotations');
+const rowOf = async (title: string) =>
+  within(
+    (await screen.findByRole('link', { name: title })).closest(
+      'tr'
+    ) as HTMLElement
+  );
+const listCalls = () =>
+  vi.mocked(coreApi.get).mock.calls.filter(([path]) => path === '/quotations');
 
 beforeEach(() => {
   serve();
@@ -67,7 +73,12 @@ describe('QuotesPage', () => {
   it('lists each quote with its lines, hours, final quote in its own currency, and last update', async () => {
     renderPage();
     const acme = await rowOf('Acme storefront');
-    expect(acme.getAllByRole('cell').slice(0, 5).map((cell) => cell.textContent)).toEqual([
+    expect(
+      acme
+        .getAllByRole('cell')
+        .slice(0, 5)
+        .map((cell) => cell.textContent)
+    ).toEqual([
       'Acme storefront',
       '53',
       '1,485',
@@ -75,33 +86,31 @@ describe('QuotesPage', () => {
       '15 Oct 2026',
     ]);
     const dashboard = await rowOf('Dashboard refresh');
-    expect(dashboard.getAllByRole('cell').slice(0, 5).map((cell) => cell.textContent)).toEqual([
-      'Dashboard refresh',
-      '3',
-      '36.34',
-      '$50,844.43',
-      '18 Oct 2026',
-    ]);
+    expect(
+      dashboard
+        .getAllByRole('cell')
+        .slice(0, 5)
+        .map((cell) => cell.textContent)
+    ).toEqual(['Dashboard refresh', '3', '36.34', '$50,844.43', '18 Oct 2026']);
     expect(screen.getByText('1–2 of 2')).toBeInTheDocument();
   });
 
   it('names the columns, the right-hand ones for figures', async () => {
     renderPage();
     await screen.findByText('Acme storefront');
-    expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
-      'Title',
-      'Lines',
-      'Hours',
-      'Final quote',
-      'Updated',
-      'Actions',
-    ]);
+    expect(
+      screen.getAllByRole('columnheader').map((header) => header.textContent)
+    ).toEqual(['Title', 'Lines', 'Hours', 'Final quote', 'Updated', 'Actions']);
   });
 
   it('links each title to its editor', async () => {
     renderPage();
-    expect(await screen.findByRole('link', { name: 'Acme storefront' })).toHaveAttribute('href', '/quotes/1');
-    expect(screen.getByRole('link', { name: 'Dashboard refresh' })).toHaveAttribute('href', '/quotes/2');
+    expect(
+      await screen.findByRole('link', { name: 'Acme storefront' })
+    ).toHaveAttribute('href', '/quotes/1');
+    expect(
+      screen.getByRole('link', { name: 'Dashboard refresh' })
+    ).toHaveAttribute('href', '/quotes/2');
   });
 
   it('searches the title', async () => {
@@ -126,7 +135,9 @@ describe('QuotesPage', () => {
     const user = userEvent.setup();
     renderPage();
     expect(await screen.findByText('No quotes yet.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Create the first quote' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Create the first quote' })
+    );
     expect(screen.getByTestId('where')).toHaveTextContent('/quotes/new');
   });
 
@@ -134,7 +145,9 @@ describe('QuotesPage', () => {
     vi.mocked(coreApi.get).mockRejectedValue(new Error('down'));
     const user = userEvent.setup();
     renderPage();
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not load this data'
+    );
     serve();
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByText('Acme storefront')).toBeInTheDocument();
@@ -143,13 +156,17 @@ describe('QuotesPage', () => {
   it('shows the error state for a bare array, which is not the envelope', async () => {
     serve(quoteRows);
     renderPage();
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not load this data'
+    );
   });
 
   it('shows the error state for a row that lacks its totals', async () => {
     serve(quotesEnvelope([{ ...quoteRows[0], totals: undefined }]));
     renderPage();
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not load this data'
+    );
   });
 });
 
@@ -165,7 +182,9 @@ describe('QuotesPage: going to the editor', () => {
   it('opens a quote from its Edit button', async () => {
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Edit Dashboard refresh' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit Dashboard refresh' })
+    );
     expect(screen.getByTestId('where')).toHaveTextContent('/quotes/2');
     expect(screen.getByText('The editor, a quote')).toBeInTheDocument();
   });
@@ -176,7 +195,9 @@ describe('QuotesPage: deleting', () => {
   const withoutQuote = (id: number) => {
     let deleted = false;
     vi.mocked(coreApi.get).mockImplementation((async () => ({
-      data: quotesEnvelope(deleted ? quoteRows.filter((row) => row.id !== id) : quoteRows),
+      data: quotesEnvelope(
+        deleted ? quoteRows.filter((row) => row.id !== id) : quoteRows
+      ),
     })) as never);
     return () => {
       deleted = true;
@@ -187,28 +208,46 @@ describe('QuotesPage: deleting', () => {
     const remove = withoutQuote(1);
     vi.mocked(coreApi.delete).mockImplementation((async () => {
       remove();
-      return { data: { statusCode: 200, message: 'deleted', data: null, meta: null } };
+      return {
+        data: { statusCode: 200, message: 'deleted', data: null, meta: null },
+      };
     }) as never);
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Delete Acme storefront' }));
-    expect(screen.getByText('Delete quote “Acme storefront”?')).toBeInTheDocument();
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete Acme storefront' })
+    );
+    expect(
+      screen.getByText('Delete quote “Acme storefront”?')
+    ).toBeInTheDocument();
     expect(coreApi.delete).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Delete quote' }));
-    await waitFor(() => expect(coreApi.delete).toHaveBeenCalledWith('/quotations/1'));
+    await waitFor(() =>
+      expect(coreApi.delete).toHaveBeenCalledWith('/quotations/1')
+    );
     expect(coreApi.delete).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(screen.queryByRole('link', { name: 'Acme storefront' })).not.toBeInTheDocument());
-    expect(screen.getByRole('link', { name: 'Dashboard refresh' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('link', { name: 'Acme storefront' })
+      ).not.toBeInTheDocument()
+    );
+    expect(
+      screen.getByRole('link', { name: 'Dashboard refresh' })
+    ).toBeInTheDocument();
     expect(screen.getByText('1–1 of 1')).toBeInTheDocument();
   });
 
   it('does not delete when the confirmation is cancelled', async () => {
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Delete Acme storefront' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete Acme storefront' })
+    );
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(coreApi.delete).not.toHaveBeenCalled();
-    expect(screen.getByRole('link', { name: 'Acme storefront' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Acme storefront' })
+    ).toBeInTheDocument();
   });
 
   it('treats a 404 on the delete as already deleted: the dialog closes without an error and the row goes', async () => {
@@ -220,13 +259,27 @@ describe('QuotesPage: deleting', () => {
     }) as never);
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Delete Dashboard refresh' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete Dashboard refresh' })
+    );
     await user.click(screen.getByRole('button', { name: 'Delete quote' }));
-    await waitFor(() => expect(coreApi.delete).toHaveBeenCalledWith('/quotations/2'));
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
-    expect(screen.queryByText('That did not work. Try again.')).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.queryByRole('link', { name: 'Dashboard refresh' })).not.toBeInTheDocument());
-    expect(screen.getByRole('link', { name: 'Acme storefront' })).toBeInTheDocument();
+    await waitFor(() =>
+      expect(coreApi.delete).toHaveBeenCalledWith('/quotations/2')
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    );
+    expect(
+      screen.queryByText('That did not work. Try again.')
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('link', { name: 'Dashboard refresh' })
+      ).not.toBeInTheDocument()
+    );
+    expect(
+      screen.getByRole('link', { name: 'Acme storefront' })
+    ).toBeInTheDocument();
     expect(listCalls()).toHaveLength(2);
   });
 
@@ -234,11 +287,17 @@ describe('QuotesPage: deleting', () => {
     vi.mocked(coreApi.delete).mockRejectedValue(new Error('down'));
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Delete Acme storefront' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete Acme storefront' })
+    );
     await user.click(screen.getByRole('button', { name: 'Delete quote' }));
-    expect(await screen.findByText('That did not work. Try again.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('That did not work. Try again.')
+    ).toBeInTheDocument();
     // The dialog is still open, so the page behind it is hidden from the accessibility tree: the row is still there.
     expect(screen.getByRole('alertdialog')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Acme storefront', hidden: true })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Acme storefront', hidden: true })
+    ).toBeInTheDocument();
   });
 });

@@ -34,7 +34,8 @@ class ResizeObserverStub {
   }
 }
 
-globalThis.ResizeObserver ??= ResizeObserverStub as unknown as typeof ResizeObserver;
+globalThis.ResizeObserver ??=
+  ResizeObserverStub as unknown as typeof ResizeObserver;
 window.HTMLElement.prototype.scrollIntoView ??= () => {
   /* inert stand-in */
 };
@@ -47,7 +48,11 @@ window.HTMLElement.prototype.releasePointerCapture ??= () => {
 // and it buries real warnings, so those two notices (and only those) are dropped.
 const warn = console.warn;
 console.warn = (...args: unknown[]) => {
-  if (typeof args[0] === 'string' && args[0].startsWith('⚠️ React Router Future Flag Warning')) return;
+  if (
+    typeof args[0] === 'string' &&
+    args[0].startsWith('⚠️ React Router Future Flag Warning')
+  )
+    return;
   warn(...args);
 };
 

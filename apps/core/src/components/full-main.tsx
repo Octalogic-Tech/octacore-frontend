@@ -1,7 +1,9 @@
 import { createContext, useContext, useLayoutEffect } from 'react';
 
 /** How a page asks the shell for its whole area: set by the shell, which owns `<main>`. Without a shell it does nothing. */
-export const FullMainContext = createContext<(full: boolean) => void>(() => undefined);
+export const FullMainContext = createContext<(full: boolean) => void>(
+  () => undefined
+);
 
 /**
  * Called by a page (or a tab of one) that wants the whole area beside the sidebar, edge to edge and down to the bottom

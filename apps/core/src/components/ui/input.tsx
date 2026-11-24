@@ -7,9 +7,20 @@ export const underlineField = cn(
   'rounded-none border-0 border-b border-input outline-none transition-colors',
   'hover:border-foreground focus:border-b-[3px] focus:border-foreground focus:pb-1 focus-visible:outline-none',
   'aria-invalid:border-b-2 aria-invalid:border-foreground aria-invalid:pb-[calc(0.25rem+1px)]',
-  'disabled:opacity-50',
+  'disabled:opacity-50'
 );
 
-export function Input({ className, type = 'text', ...props }: ComponentProps<'input'>) {
-  return <input data-slot="input" type={type} className={cn(underlineField, className)} {...props} />;
+export function Input({
+  className,
+  type = 'text',
+  ...props
+}: ComponentProps<'input'>) {
+  return (
+    <input
+      data-slot="input"
+      type={type}
+      className={cn(underlineField, className)}
+      {...props}
+    />
+  );
 }

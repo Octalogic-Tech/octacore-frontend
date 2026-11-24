@@ -27,14 +27,25 @@ interface PickerOptions {
  */
 export function countryPickerOptions(
   countries: readonly Country[],
-  { needsRate = false, withCurrency = false, current }: PickerOptions = {},
+  { needsRate = false, withCurrency = false, current }: PickerOptions = {}
 ): CountryOption[] {
-  const label = (name: string, code?: string) => (withCurrency && code ? `${name} · ${code}` : name);
+  const label = (name: string, code?: string) =>
+    withCurrency && code ? `${name} · ${code}` : name;
   const options = countries
-    .filter((country) => country.id === current?.id || (country.active && (!needsRate || country.rate !== null)))
-    .map((country) => ({ id: country.id, label: label(country.nicename, country.currencyCode) }));
+    .filter(
+      (country) =>
+        country.id === current?.id ||
+        (country.active && (!needsRate || country.rate !== null))
+    )
+    .map((country) => ({
+      id: country.id,
+      label: label(country.nicename, country.currencyCode),
+    }));
   if (current && !options.some((option) => option.id === current.id)) {
-    options.push({ id: current.id, label: label(current.name, current.currencyCode) });
+    options.push({
+      id: current.id,
+      label: label(current.name, current.currencyCode),
+    });
   }
   return options.sort((a, b) => a.label.localeCompare(b.label));
 }
@@ -43,8 +54,12 @@ export function countryPickerOptions(
  * The country a dollar amount is entered under: the United States while it is active, otherwise the first active
  * country that uses US dollars. The service keeps at least one, so this is undefined only while the list loads.
  */
-export function dollarCountry(countries: readonly Country[]): Country | undefined {
-  const dollars = countries.filter((country) => country.active && country.currencyCode === PRIMARY_CURRENCY);
+export function dollarCountry(
+  countries: readonly Country[]
+): Country | undefined {
+  const dollars = countries.filter(
+    (country) => country.active && country.currencyCode === PRIMARY_CURRENCY
+  );
   return dollars.find((country) => country.iso === 'US') ?? dollars[0];
 }
 
@@ -55,7 +70,12 @@ export function dollarCountry(countries: readonly Country[]): Country | undefine
  */
 export function indiaRate(countries: readonly Country[]): number | null {
   const india = countries
-    .filter((country) => country.currencyCode === 'INR' && country.active && country.rate !== null)
+    .filter(
+      (country) =>
+        country.currencyCode === 'INR' &&
+        country.active &&
+        country.rate !== null
+    )
     .sort((a, b) => a.id - b.id)[0];
   return india?.rate ?? null;
 }

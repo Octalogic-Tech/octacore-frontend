@@ -50,10 +50,18 @@ export function TablePager({
         {first}–{last} of {total}
       </p>
       <div className="flex items-center">
-        <Button variant="quiet" disabled={page === 0} onClick={() => onPageChange(page - 1)}>
+        <Button
+          variant="quiet"
+          disabled={page === 0}
+          onClick={() => onPageChange(page - 1)}
+        >
           Previous
         </Button>
-        <Button variant="quiet" disabled={page >= pageCount - 1} onClick={() => onPageChange(page + 1)}>
+        <Button
+          variant="quiet"
+          disabled={page >= pageCount - 1}
+          onClick={() => onPageChange(page + 1)}
+        >
           Next
         </Button>
       </div>

@@ -12,7 +12,11 @@ export function ProfitLossPage() {
       <PlannedFeature
         spec={profitLossSpec}
         actions={
-          <Button variant="quiet" id="preview-expense" onClick={() => setOpen(true)}>
+          <Button
+            variant="quiet"
+            id="preview-expense"
+            onClick={() => setOpen(true)}
+          >
             {expenseDialog.previewLabel}
           </Button>
         }

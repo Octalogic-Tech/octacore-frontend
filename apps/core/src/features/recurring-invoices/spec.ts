@@ -23,7 +23,8 @@ export const scheduleDialog: PlannedDialogSpec = {
 export const recurringInvoicesSpec: PlannedSpec = {
   id: 'recurring-invoices',
   title: 'Recurring retainer drafts',
-  summary: 'Draft each retainer project’s invoice on a set day, for a partner to review and send.',
+  summary:
+    'Draft each retainer project’s invoice on a set day, for a partner to review and send.',
   surface: 'page',
   home: 'Finance › Recurring invoices',
   size: 'S',

@@ -2,7 +2,6 @@ import { IBox } from '../types/grid';
 
 export const exceptions = [5, 7, 11, 13, 14, 17, 19, 21];
 
-
 export const gridExceptionHandler = (boxCount: number, boxArray: IBox[]) => {
   let columnCount = 1;
   let rowCount = 1;

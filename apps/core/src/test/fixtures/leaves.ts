@@ -5,7 +5,12 @@
 // people are the ones in fixtures/people.ts: Ada (1) took a long weekend in March 2026 and a week at the end of 2025,
 // Grace (2) a day off sick in August 2026 and a week of earned leave in February 2026.
 const stamp = '2026-10-15T09:30:00.000000Z';
-const audit = { status: 1, createdDate: stamp, updatedDate: stamp, deletedDate: null };
+const audit = {
+  status: 1,
+  createdDate: stamp,
+  updatedDate: stamp,
+  deletedDate: null,
+};
 
 const ada = { id: 1, name: 'Ada Lovelace' };
 const grace = { id: 2, name: 'Grace Hopper' };
@@ -61,7 +66,10 @@ export const leavesEnvelope = (data: unknown = leaveRows) => ({
 });
 
 /** What POST /leaves and PATCH /leaves/{id} answer: the leave. */
-export const leaveEnvelope = (data: unknown = leaveRows[1], statusCode = 200) => ({
+export const leaveEnvelope = (
+  data: unknown = leaveRows[1],
+  statusCode = 200
+) => ({
   statusCode,
   message: 'Successfully saved leave',
   data,

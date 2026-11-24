@@ -34,7 +34,6 @@ export const Home = () => {
     <div
       className={`p-4 h-full w-ful grid lg:grid-flow-col grid-cols-1 sm:grid-cols-2 lg:grid-cols-${columnCount} lg:grid-rows-${rowCount} gap-4 md:gap-6 lg:gap-8 mx-auto`}
     >
-      
       {boxArray.map((box) => (
         <ItemCard
           box={box}

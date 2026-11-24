@@ -24,7 +24,12 @@ export function AppShell() {
   }, [pathname]);
 
   return (
-    <div className={cn('lg:grid lg:grid-cols-[16rem_1fr]', full ? 'h-dvh lg:grid-rows-[minmax(0,1fr)]' : 'min-h-dvh')}>
+    <div
+      className={cn(
+        'lg:grid lg:grid-cols-[16rem_1fr]',
+        full ? 'h-dvh lg:grid-rows-[minmax(0,1fr)]' : 'min-h-dvh'
+      )}
+    >
       <a href="#main" className="skip-link">
         Skip to content
       </a>
@@ -35,7 +40,11 @@ export function AppShell() {
       </aside>
       <div className={cn('flex min-h-0 min-w-0 flex-col', full && 'h-full')}>
         <header className="flex h-16 items-center justify-between border-b border-rule px-5 md:px-8 lg:hidden">
-          <Link to="/" aria-label="Octalogic Tech home" className="inline-flex min-h-11 items-center">
+          <Link
+            to="/"
+            aria-label="Octalogic Tech home"
+            className="inline-flex min-h-11 items-center"
+          >
             <Logo height={30} className="hidden sm:inline-flex" />
             <LogoMark height={34} className="sm:hidden" />
           </Link>
@@ -59,7 +68,10 @@ export function AppShell() {
                 'w-full flex-1',
                 full
                   ? 'flex min-h-0 flex-col px-3 pb-3 pt-5 md:px-4 lg:pt-6'
-                  : cn('mx-auto px-5 py-8 md:px-8 lg:py-12 xl:px-10', !fullWidth && 'max-w-[75rem]'),
+                  : cn(
+                      'mx-auto px-5 py-8 md:px-8 lg:py-12 xl:px-10',
+                      !fullWidth && 'max-w-[75rem]'
+                    )
               )}
             >
               <FullMainContext.Provider value={setFull}>

@@ -8,8 +8,13 @@ import { RequireRole } from './require-role';
 
 function LoginProbe() {
   const { state } = useLocation();
-  const from = (state as { from?: { pathname: string; search: string } } | null)?.from;
-  return <p>login screen, from {from ? `${from.pathname}${from.search}` : 'nowhere'}</p>;
+  const from = (state as { from?: { pathname: string; search: string } } | null)
+    ?.from;
+  return (
+    <p>
+      login screen, from {from ? `${from.pathname}${from.search}` : 'nowhere'}
+    </p>
+  );
 }
 
 function renderRoutes(route: string, value: Partial<AuthContextValue> = {}) {
@@ -31,7 +36,7 @@ function renderRoutes(route: string, value: Partial<AuthContextValue> = {}) {
           </Route>
         </Routes>
       </MemoryRouter>
-    </AuthTestProvider>,
+    </AuthTestProvider>
   );
 }
 
@@ -43,7 +48,9 @@ describe('RequireAuth', () => {
 
   it('sends a signed-out visitor to the login page and remembers the page, query string included', () => {
     renderRoutes('/users?q=ada', { status: 'anonymous', user: null });
-    expect(screen.getByText('login screen, from /users?q=ada')).toBeInTheDocument();
+    expect(
+      screen.getByText('login screen, from /users?q=ada')
+    ).toBeInTheDocument();
   });
 
   it('shows neither the page nor the login page while the session is being restored', () => {
@@ -61,8 +68,12 @@ describe('RequireRole', () => {
   });
 
   it('shows the not-found page to a signed-in person without it', () => {
-    renderRoutes('/users', { user: { ...adminUser, id: 7, name: 'Vera Viewer', role: 'viewer' } });
+    renderRoutes('/users', {
+      user: { ...adminUser, id: 7, name: 'Vera Viewer', role: 'viewer' },
+    });
     expect(screen.queryByText('users screen')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Page not found' })
+    ).toBeInTheDocument();
   });
 });

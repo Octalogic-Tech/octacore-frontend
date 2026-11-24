@@ -7,7 +7,8 @@ import { AllocationLedger } from './allocation-ledger';
 // The page's tabs, in order. The chosen one is the `tab` in the address, so a reload, Back or a link lands on it.
 const TABS = ['board', 'ledger'] as const;
 type Tab = (typeof TABS)[number];
-const tabOf = (value: string | null): Tab => TABS.find((tab) => tab === value) ?? 'board';
+const tabOf = (value: string | null): Tab =>
+  TABS.find((tab) => tab === value) ?? 'board';
 
 /**
  * Where everyone is today (the board), and the dated history behind it (the ledger). The board fills the rest of the

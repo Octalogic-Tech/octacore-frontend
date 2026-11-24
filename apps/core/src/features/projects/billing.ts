@@ -6,7 +6,10 @@ import type { BillingSource, BillingTerms } from './schema';
 const formatPercent = (percent: number) => String(Number(percent.toFixed(2)));
 
 /** What a US dollar is worth in the currency, as `₹88.25 per $1`. The rate keeps up to six decimals. */
-export function rateText(currency: { currencySymbol: string }, exchangeRate: number): string {
+export function rateText(
+  currency: { currencySymbol: string },
+  exchangeRate: number
+): string {
   return `${currency.currencySymbol}${formatRate(exchangeRate)} per $1`;
 }
 
@@ -18,7 +21,11 @@ export function rateText(currency: { currencySymbol: string }, exchangeRate: num
 export function billingTermsText(terms: BillingTerms): string {
   const parts: string[] = [terms.currencyCode];
   if (terms.currencyCode !== PRIMARY_CURRENCY) {
-    parts.push(terms.exchangeRate === null ? 'no exchange rate yet' : rateText(terms, terms.exchangeRate));
+    parts.push(
+      terms.exchangeRate === null
+        ? 'no exchange rate yet'
+        : rateText(terms, terms.exchangeRate)
+    );
   }
   if (terms.taxRate > 0) parts.push(`tax ${formatPercent(terms.taxRate)}%`);
   return parts.join(' · ');
@@ -33,12 +40,15 @@ export const CLIENT_COUNTRY_SENTENCE =
   'With no billing country, new invoices are billed in the client’s country, or in US dollars when it is not active or has no rate.';
 
 /** What a new invoice of a saved project is billed in, from the project's `billing`. */
-export function billingSentence(billing: BillingTerms & { source: BillingSource }): string {
+export function billingSentence(
+  billing: BillingTerms & { source: BillingSource }
+): string {
   if (billing.exchangeRate === null) return NO_RATE_SENTENCE;
   if (billing.source === 'default') {
     return 'New invoices are billed in US dollars, the default: no billing country is chosen, and the client’s country is not active with a rate.';
   }
-  const origin = billing.source === 'client' ? ', from the client’s country' : '';
+  const origin =
+    billing.source === 'client' ? ', from the client’s country' : '';
   return `New invoices are billed in ${billingTermsText(billing)}${origin}.`;
 }
 

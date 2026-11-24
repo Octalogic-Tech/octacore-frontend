@@ -6,7 +6,10 @@ import { cn } from '@/lib/utils';
 export function LinkArrow({ className, children, ...props }: LinkProps) {
   return (
     <Link
-      className={cn('inline-flex min-h-11 items-center gap-[0.55em] font-semibold text-foreground', className)}
+      className={cn(
+        'inline-flex min-h-11 items-center gap-[0.55em] font-semibold text-foreground',
+        className
+      )}
       {...props}
     >
       {children}

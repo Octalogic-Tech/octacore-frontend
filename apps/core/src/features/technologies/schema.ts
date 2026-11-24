@@ -9,7 +9,9 @@ export const technologySchema = z.object({
 export type TechnologyInput = z.infer<typeof technologySchema>;
 
 /** What a save sends. `categoryId` is left out when the categories could not be loaded, so a PATCH keeps the link. */
-export type TechnologyChanges = Omit<TechnologyInput, 'categoryId'> & { categoryId?: number | null };
+export type TechnologyChanges = Omit<TechnologyInput, 'categoryId'> & {
+  categoryId?: number | null;
+};
 
 // Only what the page uses. The service also sends `status`, the dates, `resourceLink` and `imageLink`; unknown
 // keys are dropped. A technology saved without a description comes back with null, which the page treats as an
@@ -20,10 +22,16 @@ export const technologyRowSchema = z
   .object({
     id: z.number().int(),
     name: z.string(),
-    description: z.string().nullable().transform((text) => text ?? ''),
+    description: z
+      .string()
+      .nullable()
+      .transform((text) => text ?? ''),
     categoryId: z.number().int().nullable(),
     category: z.object({ id: z.number().int(), name: z.string() }).nullable(),
   })
-  .transform(({ category, ...row }) => ({ ...row, categoryName: category?.name ?? '' }));
+  .transform(({ category, ...row }) => ({
+    ...row,
+    categoryName: category?.name ?? '',
+  }));
 
 export const technologyRowsSchema = z.array(technologyRowSchema);

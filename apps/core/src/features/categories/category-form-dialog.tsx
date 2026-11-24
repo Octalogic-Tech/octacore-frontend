@@ -2,7 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,7 +24,11 @@ interface CategoryFormDialogProps {
   category?: Category;
 }
 
-export function CategoryFormDialog({ open, onOpenChange, category }: CategoryFormDialogProps) {
+export function CategoryFormDialog({
+  open,
+  onOpenChange,
+  category,
+}: CategoryFormDialogProps) {
   const create = useCreateCategory();
   const update = useUpdateCategory();
   const [saveFailed, setSaveFailed] = useState(false);
@@ -28,11 +37,18 @@ export function CategoryFormDialog({ open, onOpenChange, category }: CategoryFor
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<CategoryInput>({ resolver: zodResolver(categorySchema), defaultValues: emptyValues });
+  } = useForm<CategoryInput>({
+    resolver: zodResolver(categorySchema),
+    defaultValues: emptyValues,
+  });
 
   useEffect(() => {
     if (open) {
-      reset(category ? { name: category.name, description: category.description } : emptyValues);
+      reset(
+        category
+          ? { name: category.name, description: category.description }
+          : emptyValues
+      );
       setSaveFailed(false);
     }
   }, [open, category, reset]);
@@ -58,16 +74,39 @@ export function CategoryFormDialog({ open, onOpenChange, category }: CategoryFor
     >
       <DialogContent fallbackFocusId="category-search">
         <DialogTitle>{category ? 'Edit category' : 'New category'}</DialogTitle>
-        <DialogDescription>Give the category a name and a short description.</DialogDescription>
+        <DialogDescription>
+          Give the category a name and a short description.
+        </DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
-          <Field label="Name" htmlFor="category-name" error={errors.name?.message}>
-            <Input {...fieldA11y('category-name', errors.name?.message)} {...register('name')} autoComplete="off" />
+          <Field
+            label="Name"
+            htmlFor="category-name"
+            error={errors.name?.message}
+          >
+            <Input
+              {...fieldA11y('category-name', errors.name?.message)}
+              {...register('name')}
+              autoComplete="off"
+            />
           </Field>
-          <Field label="Description" htmlFor="category-description" error={errors.description?.message}>
-            <Textarea {...fieldA11y('category-description', errors.description?.message)} {...register('description')} />
+          <Field
+            label="Description"
+            htmlFor="category-description"
+            error={errors.description?.message}
+          >
+            <Textarea
+              {...fieldA11y(
+                'category-description',
+                errors.description?.message
+              )}
+              {...register('description')}
+            />
           </Field>
           {saveFailed ? (
-            <p role="alert" className="text-small font-semibold text-foreground">
+            <p
+              role="alert"
+              className="text-small font-semibold text-foreground"
+            >
               That did not save. Try again.
             </p>
           ) : null}
@@ -75,7 +114,11 @@ export function CategoryFormDialog({ open, onOpenChange, category }: CategoryFor
             <Button type="submit" disabled={isSubmitting}>
               Save
             </Button>
-            <Button variant="quiet" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
+            <Button
+              variant="quiet"
+              disabled={isSubmitting}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
           </div>

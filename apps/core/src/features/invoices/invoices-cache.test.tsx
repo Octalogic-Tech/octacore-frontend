@@ -1,7 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { useAllInvoices, useDeleteProject, useSetInvoicePaid } from '@/features/projects/api';
+import {
+  useAllInvoices,
+  useDeleteProject,
+  useSetInvoicePaid,
+} from '@/features/projects/api';
 import { coreApi } from '@/lib/core-api';
 import { queryDefaults } from '@/lib/query-client';
 import { invoicesEnvelope } from '@/test/fixtures/projects';
@@ -14,7 +18,10 @@ vi.mock('@/lib/core-api', async (importOriginal) => ({
 /** The app's own cache settings, where a fresh query is trusted for 30 seconds: that is how stale lists linger. */
 function setup() {
   const client = new QueryClient({
-    defaultOptions: { queries: { ...queryDefaults.queries, retry: false }, mutations: queryDefaults.mutations },
+    defaultOptions: {
+      queries: { ...queryDefaults.queries, retry: false },
+      mutations: queryDefaults.mutations,
+    },
   });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={client}>{children}</QueryClientProvider>
@@ -22,7 +29,9 @@ function setup() {
   return { wrapper };
 }
 
-const asked = () => vi.mocked(coreApi.get).mock.calls.filter(([path]) => path === '/invoices').length;
+const asked = () =>
+  vi.mocked(coreApi.get).mock.calls.filter(([path]) => path === '/invoices')
+    .length;
 
 beforeEach(() => {
   vi.mocked(coreApi.get).mockResolvedValue({ data: invoicesEnvelope() });
@@ -57,7 +66,9 @@ describe('the all-invoices list and the cache', () => {
     expect(asked()).toBe(1);
 
     const markPaid = renderHook(() => useSetInvoicePaid(), { wrapper });
-    await act(() => markPaid.result.current.mutateAsync({ id: 2, paidDate: '2026-11-20' }));
+    await act(() =>
+      markPaid.result.current.mutateAsync({ id: 2, paidDate: '2026-11-20' })
+    );
 
     await waitFor(() => expect(asked()).toBe(2));
   });

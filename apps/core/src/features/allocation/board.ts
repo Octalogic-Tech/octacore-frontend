@@ -1,5 +1,8 @@
 import type { PersonRow } from '@/features/people/schema';
-import { PROJECT_STATUS_LABELS, type ProjectRow } from '@/features/projects/schema';
+import {
+  PROJECT_STATUS_LABELS,
+  type ProjectRow,
+} from '@/features/projects/schema';
 import type { AllocationRow } from './schema';
 
 // The ledger answers "where is each of this person's cards on a day"; the board is that answer for today, worked out
@@ -47,7 +50,10 @@ export interface BoardColumn {
 
 /** Joined (no join date, or on or before `today`) and not yet left (no leave date, or on or after `today`). */
 export function isOnStaff(person: PersonRow, today: string): boolean {
-  return (person.joinDate === '' || person.joinDate <= today) && (person.leaveDate === '' || person.leaveDate >= today);
+  return (
+    (person.joinDate === '' || person.joinDate <= today) &&
+    (person.leaveDate === '' || person.leaveDate >= today)
+  );
 }
 
 /** A card of a person on a day: its number and the entry that places it, null for the implicit card 1. */
@@ -64,7 +70,11 @@ export interface PlacedCard {
  * start (its entry is null). When every card is removed, the implicit card 1 stands in, so a person on staff is never
  * missing from the board. The same rule is the service's, for the guards on removing a card.
  */
-export function cardsOf(entries: readonly AllocationRow[], personId: number, today: string): PlacedCard[] {
+export function cardsOf(
+  entries: readonly AllocationRow[],
+  personId: number,
+  today: string
+): PlacedCard[] {
   const latest = new Map<number, AllocationRow>();
   for (const entry of entries) {
     if (entry.personId !== personId || entry.effectiveDate > today) continue;
@@ -91,9 +101,16 @@ export function cardsOf(entries: readonly AllocationRow[], personId: number, tod
  * the paise left over go one each to the cards with the lowest numbers (`index` is the card's place in the person's
  * cards, from 0), so the shares add up to the salary exactly. Null for a person with no salary on file.
  */
-export function shareOf(salaryPaise: number | null, cardCount: number, index: number): number | null {
+export function shareOf(
+  salaryPaise: number | null,
+  cardCount: number,
+  index: number
+): number | null {
   if (salaryPaise === null) return null;
-  return Math.floor(salaryPaise / cardCount) + (index < salaryPaise % cardCount ? 1 : 0);
+  return (
+    Math.floor(salaryPaise / cardCount) +
+    (index < salaryPaise % cardCount ? 1 : 0)
+  );
 }
 
 /**
@@ -101,7 +118,9 @@ export function shareOf(salaryPaise: number | null, cardCount: number, index: nu
  * salary on file (they add 0). A salary of zero is a salary. The board's heads read this from the cards a column holds
  * now, which a card being dragged changes before anything is saved.
  */
-export function columnTotals(cards: readonly BoardCard[]): Pick<BoardColumn, 'monthlyCostPaise' | 'withoutSalary'> {
+export function columnTotals(
+  cards: readonly BoardCard[]
+): Pick<BoardColumn, 'monthlyCostPaise' | 'withoutSalary'> {
   let monthlyCostPaise = 0;
   let withoutSalary = 0;
   for (const { salaryShare } of cards) {
@@ -119,7 +138,8 @@ const byName =
 
 /** The order of the cards in a column: by the person's name, then id, then card number. */
 export const byPerson = (a: BoardCard, b: BoardCard) =>
-  byName((person: PersonRow) => person.name)(a.person, b.person) || a.card - b.card;
+  byName((person: PersonRow) => person.name)(a.person, b.person) ||
+  a.card - b.card;
 
 /**
  * The board for `today`: the bench first, then a column for each active project, by name. A person is on it when they
@@ -138,10 +158,18 @@ export function buildBoard({
   entries: readonly AllocationRow[];
   today: string;
 }): BoardColumn[] {
-  const statusOf = new Map(projects.map((project) => [project.id, project.projectStatus]));
+  const statusOf = new Map(
+    projects.map((project) => [project.id, project.projectStatus])
+  );
   const columns = new Map<string, BoardColumn>();
   const addColumn = (key: string, project: ProjectRow | null) => {
-    const column: BoardColumn = { key, project, cards: [], monthlyCostPaise: 0, withoutSalary: 0 };
+    const column: BoardColumn = {
+      key,
+      project,
+      cards: [],
+      monthlyCostPaise: 0,
+      withoutSalary: 0,
+    };
     columns.set(key, column);
     return column;
   };
@@ -152,7 +180,9 @@ export function buildBoard({
     .sort(byName((project) => project.name));
   for (const project of active) addColumn(`col-${project.id}`, project);
 
-  for (const person of [...people].filter((row) => isOnStaff(row, today)).sort(byName((row) => row.name))) {
+  for (const person of [...people]
+    .filter((row) => isOnStaff(row, today))
+    .sort(byName((row) => row.name))) {
     const placed = cardsOf(entries, person.id, today);
     placed.forEach(({ card, entry }, index) => {
       let column = bench;
@@ -175,8 +205,15 @@ export function buildBoard({
           // The project is not on the board: on hold or completed, or not in the list at all (deleted). The entry keeps
           // its name either way.
           const status = statusOf.get(entry.project.id);
-          const label = status === undefined ? 'deleted' : PROJECT_STATUS_LABELS[status].toLowerCase();
-          boardCard = { ...boardCard, since: null, note: `Last on ${entry.project.name} (${label})` };
+          const label =
+            status === undefined
+              ? 'deleted'
+              : PROJECT_STATUS_LABELS[status].toLowerCase();
+          boardCard = {
+            ...boardCard,
+            since: null,
+            note: `Last on ${entry.project.name} (${label})`,
+          };
         }
       }
 

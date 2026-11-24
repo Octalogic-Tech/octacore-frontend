@@ -11,12 +11,21 @@ describe('coreApi', () => {
 
 describe('unwrap', () => {
   it('returns the data of a well-formed envelope', () => {
-    const body = { statusCode: 200, message: 'ok', data: [{ id: 1 }], meta: null };
+    const body = {
+      statusCode: 200,
+      message: 'ok',
+      data: [{ id: 1 }],
+      meta: null,
+    };
     expect(unwrap(body, z.array(item))).toEqual([{ id: 1 }]);
   });
 
   it('drops fields the schema does not know', () => {
-    const body = { statusCode: 200, message: 'ok', data: [{ id: 1, extra: 'x' }] };
+    const body = {
+      statusCode: 200,
+      message: 'ok',
+      data: [{ id: 1, extra: 'x' }],
+    };
     expect(unwrap(body, z.array(item))).toEqual([{ id: 1 }]);
   });
 
@@ -30,6 +39,8 @@ describe('unwrap', () => {
   });
 
   it('rejects an envelope with no data', () => {
-    expect(() => unwrap({ statusCode: 200, message: 'ok', data: null }, z.array(item))).toThrow();
+    expect(() =>
+      unwrap({ statusCode: 200, message: 'ok', data: null }, z.array(item))
+    ).toThrow();
   });
 });

@@ -1,4 +1,10 @@
-import type { Announcements, DragCancelEvent, DragEndEvent, DragStartEvent, UniqueIdentifier } from '@dnd-kit/core';
+import type {
+  Announcements,
+  DragCancelEvent,
+  DragEndEvent,
+  DragStartEvent,
+  UniqueIdentifier,
+} from '@dnd-kit/core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useFullMain } from '@/components/full-main';
@@ -13,7 +19,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Kanban, KanbanBoard, KanbanColumn, KanbanItem, KanbanOverlay } from '@/components/ui/kanban';
+import {
+  Kanban,
+  KanbanBoard,
+  KanbanColumn,
+  KanbanItem,
+  KanbanOverlay,
+} from '@/components/ui/kanban';
 import { LinkArrow } from '@/components/ui/link-arrow';
 import { MoreMark } from '@/components/ui/marks';
 import { usePeople } from '@/features/people/api';
@@ -21,8 +33,19 @@ import { useProjects } from '@/features/projects/api';
 import { localToday } from '@/lib/format';
 import { serviceMessage } from '@/lib/core-api';
 import { formatInr } from '@/lib/money';
-import { useAddCard, useAllocations, useMoveAllocation, useRemoveCard } from './api';
-import { buildBoard, byPerson, columnTotals, type BoardCard, type BoardColumn } from './board';
+import {
+  useAddCard,
+  useAllocations,
+  useMoveAllocation,
+  useRemoveCard,
+} from './api';
+import {
+  buildBoard,
+  byPerson,
+  columnTotals,
+  type BoardCard,
+  type BoardColumn,
+} from './board';
 
 /** The cards of each column, by column key: the shape the Kanban component holds. */
 type Columns = Record<string, BoardCard[]>;
@@ -32,7 +55,9 @@ const toColumns = (board: readonly BoardColumn[]): Columns =>
 
 /** The key of the column that holds the card, or null. */
 const columnHolding = (columns: Columns, cardKey: string): string | null =>
-  Object.keys(columns).find((key) => columns[key].some((card) => card.key === cardKey)) ?? null;
+  Object.keys(columns).find((key) =>
+    columns[key].some((card) => card.key === cardKey)
+  ) ?? null;
 
 /**
  * The columns with the card taken out of wherever it is and put in the column `to`, by name. The other columns are
@@ -41,7 +66,10 @@ const columnHolding = (columns: Columns, cardKey: string): string | null =>
 function place(columns: Columns, card: BoardCard, to: string): Columns {
   if (!(to in columns)) return columns;
   const without = Object.fromEntries(
-    Object.entries(columns).map(([key, cards]) => [key, cards.filter((candidate) => candidate.key !== card.key)])
+    Object.entries(columns).map(([key, cards]) => [
+      key,
+      cards.filter((candidate) => candidate.key !== card.key),
+    ])
   );
   return { ...without, [to]: [...without[to], card].sort(byPerson) };
 }
@@ -51,27 +79,39 @@ function place(columns: Columns, card: BoardCard, to: string): Columns {
  * says now does not yet include its move (or, once the save has landed, says the same). A card that is gone, or whose
  * column is gone, follows the service.
  */
-function keepSaving(fromService: Columns, shown: Columns, saving: ReadonlySet<string>): Columns {
+function keepSaving(
+  fromService: Columns,
+  shown: Columns,
+  saving: ReadonlySet<string>
+): Columns {
   let next = fromService;
   for (const cardKey of saving) {
     const home = columnHolding(fromService, cardKey);
     const showing = columnHolding(shown, cardKey);
     if (home === null || showing === null || showing === home) continue;
-    const card = fromService[home].find((candidate) => candidate.key === cardKey);
+    const card = fromService[home].find(
+      (candidate) => candidate.key === cardKey
+    );
     if (card) next = place(next, card, showing);
   }
   return next;
 }
 
 /** Whether two lists hold the same cards, whatever their order. */
-const sameCards = (a: readonly BoardCard[] = [], b: readonly BoardCard[] = []) =>
-  a.length === b.length && a.every((card) => b.some((other) => other.key === card.key));
+const sameCards = (
+  a: readonly BoardCard[] = [],
+  b: readonly BoardCard[] = []
+) =>
+  a.length === b.length &&
+  a.every((card) => b.some((other) => other.key === card.key));
 
 const columnName = (column: BoardColumn) => column.project?.name ?? 'Bench';
 
 /** The person's name, and which of their cards it is when they have several: "Ada Lovelace, card 2 of 3". */
 const cardLabel = (card: BoardCard) =>
-  card.cardCount > 1 ? `${card.person.name}, card ${card.card} of ${card.cardCount}` : card.person.name;
+  card.cardCount > 1
+    ? `${card.person.name}, card ${card.card} of ${card.cardCount}`
+    : card.person.name;
 
 const cardLink =
   'inline-flex min-h-11 items-center font-semibold text-foreground decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline';
@@ -90,7 +130,8 @@ const CARD_ATTRIBUTES = { role: 'listitem', roleDescription: 'draggable card' };
 
 // A press or touch inside the menu is not the card's: it bubbles up the React tree through the portal, where the card's
 // drag listeners would take it.
-const keepToMenu = (event: { stopPropagation: () => void }) => event.stopPropagation();
+const keepToMenu = (event: { stopPropagation: () => void }) =>
+  event.stopPropagation();
 
 /**
  * Where everyone is today: the bench first, then a column for each active project, with the monthly salary cost at the
@@ -110,7 +151,13 @@ export function AllocationBoard() {
 
   const today = localToday();
   const board = useMemo(
-    () => buildBoard({ people: people.data ?? [], projects: projects.data ?? [], entries: entries.data ?? [], today }),
+    () =>
+      buildBoard({
+        people: people.data ?? [],
+        projects: projects.data ?? [],
+        entries: entries.data ?? [],
+        today,
+      }),
     [people.data, projects.data, entries.data, today]
   );
   const fromService = useMemo(() => toColumns(board), [board]);
@@ -133,7 +180,11 @@ export function AllocationBoard() {
   const refocus = useRef<string | null>(null);
   // The column a drag began from, which a drop on that column (or on nothing) puts the card back to, and whether it
   // was begun from the keyboard, which has a card to keep its place on.
-  const dragFrom = useRef<{ cardKey: string; column: string | null; keyboard: boolean } | null>(null);
+  const dragFrom = useRef<{
+    cardKey: string;
+    column: string | null;
+    keyboard: boolean;
+  } | null>(null);
   // What the board says when a save did not go through: ours for a move (the card is back where it was), the service's
   // own words for a copy or a removal that it refused.
   const [failed, setFailed] = useState<string | null>(null);
@@ -148,7 +199,12 @@ export function AllocationBoard() {
   useEffect(() => {
     if (refocus.current === null) return;
     const target = document.getElementById(refocus.current);
-    if (!target || (target as HTMLButtonElement).disabled || target.closest('[data-disabled="true"]')) return;
+    if (
+      !target ||
+      (target as HTMLButtonElement).disabled ||
+      target.closest('[data-disabled="true"]')
+    )
+      return;
     target.focus();
     refocus.current = null;
   });
@@ -173,12 +229,25 @@ export function AllocationBoard() {
    * and only that card, goes back (to where the service has it, by name) and the board says so. `focusId` is the element
    * of the card that has focus and will be replaced: it gets focus again once the card is unlocked.
    */
-  async function moveCard(cardKey: string, targetKey: string, from: string | null, focusId?: string) {
-    const target = latest.current.board.find((column) => column.key === targetKey);
+  async function moveCard(
+    cardKey: string,
+    targetKey: string,
+    from: string | null,
+    focusId?: string
+  ) {
+    const target = latest.current.board.find(
+      (column) => column.key === targetKey
+    );
     const card = Object.values(columns)
       .flat()
       .find((candidate) => candidate.key === cardKey);
-    if (!card || !target || from === targetKey || savingNow.current.has(cardKey)) return;
+    if (
+      !card ||
+      !target ||
+      from === targetKey ||
+      savingNow.current.has(cardKey)
+    )
+      return;
 
     lock([cardKey], true);
     setFailed(null);
@@ -206,8 +275,14 @@ export function AllocationBoard() {
    * service's to give, and the shares of the person's cards change), so every card of the person is locked until the save
    * has settled and the entries read back. A refusal is shown in the service's words.
    */
-  async function changeCards(card: BoardCard, save: () => Promise<unknown>, focusId: string) {
-    const keys = cardsOfPerson(card.person.id).map((candidate) => candidate.key);
+  async function changeCards(
+    card: BoardCard,
+    save: () => Promise<unknown>,
+    focusId: string
+  ) {
+    const keys = cardsOfPerson(card.person.id).map(
+      (candidate) => candidate.key
+    );
     if (keys.some((key) => savingNow.current.has(key))) return;
     lock(keys, true);
     setFailed(null);
@@ -225,7 +300,12 @@ export function AllocationBoard() {
   function duplicateCard(card: BoardCard) {
     return changeCards(
       card,
-      () => addCard.mutateAsync({ personId: card.person.id, projectId: card.projectId, effectiveDate: localToday() }),
+      () =>
+        addCard.mutateAsync({
+          personId: card.person.id,
+          projectId: card.projectId,
+          effectiveDate: localToday(),
+        }),
       `actions-${card.key}`
     );
   }
@@ -234,30 +314,40 @@ export function AllocationBoard() {
   function deleteCard(card: BoardCard) {
     if (card.cardCount < 2) return Promise.resolve();
     // The card is gone once this is saved: focus goes to the person's lowest numbered card that is left.
-    const left = cardsOfPerson(card.person.id).find((candidate) => candidate.key !== card.key);
+    const left = cardsOfPerson(card.person.id).find(
+      (candidate) => candidate.key !== card.key
+    );
     return changeCards(
       card,
-      () => removeCard.mutateAsync({ personId: card.person.id, card: card.card, effectiveDate: localToday() }),
+      () =>
+        removeCard.mutateAsync({
+          personId: card.person.id,
+          card: card.card,
+          effectiveDate: localToday(),
+        }),
       `actions-${left?.key ?? card.key}`
     );
   }
 
   /** Puts a card that was being dragged back where the drag began (or where the service has it): only that card. */
   function dropBack(cardKey: string) {
-    const from = dragFrom.current?.cardKey === cardKey ? dragFrom.current.column : null;
+    const from =
+      dragFrom.current?.cardKey === cardKey ? dragFrom.current.column : null;
     const back = from ?? columnHolding(latest.current.fromService, cardKey);
     const card = Object.values(columns)
       .flat()
       .find((candidate) => candidate.key === cardKey);
     if (card && back !== null) setColumns((now) => place(now, card, back));
-    if (dragFrom.current?.cardKey === cardKey && dragFrom.current.keyboard) refocus.current = cardKey;
+    if (dragFrom.current?.cardKey === cardKey && dragFrom.current.keyboard)
+      refocus.current = cardKey;
     dragFrom.current = null;
   }
 
   // The Kanban moves a card into the column it is over while it is dragged, and reorders a column's cards on a drop
   // inside it. Only the first is kept: the cards of a column stay sorted by name.
   function onValueChange(next: Columns) {
-    if (Object.keys(next).some((key) => !sameCards(columns[key], next[key]))) setColumns(next);
+    if (Object.keys(next).some((key) => !sameCards(columns[key], next[key])))
+      setColumns(next);
   }
 
   function onDragStart({ active, activatorEvent }: DragStartEvent) {
@@ -276,13 +366,17 @@ export function AllocationBoard() {
     if (savingNow.current.has(cardKey)) return;
     const now = columnHolding(columns, cardKey);
     const from =
-      (dragFrom.current?.cardKey === cardKey ? dragFrom.current.column : null) ??
-      columnHolding(latest.current.fromService, cardKey);
+      (dragFrom.current?.cardKey === cardKey
+        ? dragFrom.current.column
+        : null) ?? columnHolding(latest.current.fromService, cardKey);
     if (!over || now === null || now === from) {
       dropBack(cardKey);
       return;
     }
-    const focusId = dragFrom.current?.cardKey === cardKey && dragFrom.current.keyboard ? cardKey : undefined;
+    const focusId =
+      dragFrom.current?.cardKey === cardKey && dragFrom.current.keyboard
+        ? cardKey
+        : undefined;
     dragFrom.current = null;
     void moveCard(cardKey, now, from, focusId);
   }
@@ -298,19 +392,25 @@ export function AllocationBoard() {
     return card ? cardLabel(card) : 'The card';
   };
   const placeOf = (id: UniqueIdentifier) => {
-    const key = String(id) in columns ? String(id) : columnHolding(columns, String(id));
+    const key =
+      String(id) in columns ? String(id) : columnHolding(columns, String(id));
     const column = board.find((candidate) => candidate.key === key);
     return column ? columnName(column) : 'no column';
   };
   // The Kanban's own announcements name positions and column keys ("in col-3"); these name the person and the column.
   const announcements: Announcements = {
-    onDragStart: ({ active }) => `Picked up ${nameOf(active.id)}, from ${placeOf(active.id)}.`,
-    onDragOver: ({ active, over }) => (over ? `${nameOf(active.id)} is over ${placeOf(over.id)}.` : undefined),
+    onDragStart: ({ active }) =>
+      `Picked up ${nameOf(active.id)}, from ${placeOf(active.id)}.`,
+    onDragOver: ({ active, over }) =>
+      over ? `${nameOf(active.id)} is over ${placeOf(over.id)}.` : undefined,
     onDragEnd: ({ active, over }) =>
       over
         ? `${nameOf(active.id)} was dropped on ${placeOf(over.id)}.`
         : `${nameOf(active.id)} was not dropped on a column.`,
-    onDragCancel: ({ active }) => `Dragging was cancelled. ${nameOf(active.id)} is back on ${placeOf(active.id)}.`,
+    onDragCancel: ({ active }) =>
+      `Dragging was cancelled. ${nameOf(active.id)} is back on ${placeOf(
+        active.id
+      )}.`,
   };
 
   return (
@@ -325,14 +425,19 @@ export function AllocationBoard() {
       isEmpty={people.data?.length === 0}
       empty={
         <div className="grid justify-items-start gap-1">
-          <p className="text-body">There are no people to put on the board yet.</p>
+          <p className="text-body">
+            There are no people to put on the board yet.
+          </p>
           <LinkArrow to="/resources/people">Add people</LinkArrow>
         </div>
       }
     >
       <div className="flex min-h-0 flex-1 flex-col">
         {failed !== null ? (
-          <p role="alert" className="mb-3 shrink-0 text-small font-semibold text-foreground">
+          <p
+            role="alert"
+            className="mb-3 shrink-0 text-small font-semibold text-foreground"
+          >
             {failed}
           </p>
         ) : null}
@@ -345,7 +450,10 @@ export function AllocationBoard() {
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
             onDragCancel={onDragCancel}
-            accessibility={{ announcements, screenReaderInstructions: { draggable: INSTRUCTIONS } }}
+            accessibility={{
+              announcements,
+              screenReaderInstructions: { draggable: INSTRUCTIONS },
+            }}
           >
             <KanbanBoard>
               {board.map((column) => {
@@ -360,7 +468,10 @@ export function AllocationBoard() {
                     className="h-full min-h-0 w-72 shrink-0"
                   >
                     <div className="grid shrink-0 gap-1 border-b border-rule pb-3">
-                      <h2 id={`${column.key}-name`} className="text-body font-semibold">
+                      <h2
+                        id={`${column.key}-name`}
+                        className="text-body font-semibold"
+                      >
                         {column.project ? (
                           <Link
                             to={`/projects/${column.project.id}`}
@@ -373,17 +484,22 @@ export function AllocationBoard() {
                         )}
                       </h2>
                       <p className="text-small">
-                        <span className="tabular">{cards.length}</span> {cards.length === 1 ? 'card' : 'cards'},{' '}
+                        <span className="tabular">{cards.length}</span>{' '}
+                        {cards.length === 1 ? 'card' : 'cards'},{' '}
                         {formatInr(monthlyCostPaise)} a month
                       </p>
                       {withoutSalary > 0 ? (
-                        <p className="text-small text-navy-80">{withoutSalary} without a salary</p>
+                        <p className="text-small text-navy-80">
+                          {withoutSalary} without a salary
+                        </p>
                       ) : null}
                     </div>
 
                     {cards.length === 0 ? (
                       <p className="text-small text-navy-80">
-                        {column.project ? 'Nobody is on this project.' : 'Nobody is on the bench.'}
+                        {column.project
+                          ? 'Nobody is on this project.'
+                          : 'Nobody is on the bench.'}
                       </p>
                     ) : (
                       <ul className="-mx-2 grid min-h-0 flex-1 content-start gap-2 overflow-y-auto px-2 py-1">
@@ -392,7 +508,9 @@ export function AllocationBoard() {
                           const actionsId = `actions-${card.key}`;
                           const reasonId = `${card.key}-keeps-one`;
                           // A move of one of the person's cards still being saved: a copy or a removal waits for it.
-                          const personBusy = cardsOfPerson(card.person.id).some((other) => saving.has(other.key));
+                          const personBusy = cardsOfPerson(card.person.id).some(
+                            (other) => saving.has(other.key)
+                          );
                           return (
                             <KanbanItem
                               key={card.key}
@@ -407,7 +525,10 @@ export function AllocationBoard() {
                               <li className="border border-rule bg-background py-1 pl-3 pr-1">
                                 <div className="flex items-start justify-between gap-1">
                                   <div className="min-w-0 flex-1">
-                                    <Link to={`/resources/people/${card.person.id}`} className={cardLink}>
+                                    <Link
+                                      to={`/resources/people/${card.person.id}`}
+                                      className={cardLink}
+                                    >
                                       {card.person.name}
                                     </Link>
                                     {card.cardCount > 1 ? (
@@ -415,17 +536,27 @@ export function AllocationBoard() {
                                         Card {card.card} of {card.cardCount}
                                       </p>
                                     ) : null}
-                                    {card.note !== null ? <p className="text-small text-navy-80">{card.note}</p> : null}
+                                    {card.note !== null ? (
+                                      <p className="text-small text-navy-80">
+                                        {card.note}
+                                      </p>
+                                    ) : null}
                                     {card.salaryShare === null ? null : (
-                                      <p className="pb-2 text-small">{formatInr(card.salaryShare)}</p>
+                                      <p className="pb-2 text-small">
+                                        {formatInr(card.salaryShare)}
+                                      </p>
                                     )}
                                   </div>
                                   <DropdownMenu>
                                     <DropdownMenuTrigger
                                       id={actionsId}
-                                      aria-label={`Actions for ${cardLabel(card)}`}
+                                      aria-label={`Actions for ${cardLabel(
+                                        card
+                                      )}`}
                                       disabled={saving.has(card.key)}
-                                      className={buttonVariants({ variant: 'icon' })}
+                                      className={buttonVariants({
+                                        variant: 'icon',
+                                      })}
                                     >
                                       <MoreMark />
                                     </DropdownMenuTrigger>
@@ -434,10 +565,18 @@ export function AllocationBoard() {
                                       onMouseDown={keepToMenu}
                                       onTouchStart={keepToMenu}
                                     >
-                                      <DropdownMenuGroup aria-labelledby={menuLabel}>
-                                        <DropdownMenuLabel id={menuLabel}>Move to</DropdownMenuLabel>
+                                      <DropdownMenuGroup
+                                        aria-labelledby={menuLabel}
+                                      >
+                                        <DropdownMenuLabel id={menuLabel}>
+                                          Move to
+                                        </DropdownMenuLabel>
                                         {board
-                                          .filter((option) => option.key !== columnHolding(columns, card.key))
+                                          .filter(
+                                            (option) =>
+                                              option.key !==
+                                              columnHolding(columns, card.key)
+                                          )
                                           .map((option) => (
                                             <DropdownMenuItem
                                               key={option.key}
@@ -445,7 +584,10 @@ export function AllocationBoard() {
                                                 void moveCard(
                                                   card.key,
                                                   option.key,
-                                                  columnHolding(columns, card.key),
+                                                  columnHolding(
+                                                    columns,
+                                                    card.key
+                                                  ),
                                                   actionsId
                                                 )
                                               }
@@ -455,18 +597,32 @@ export function AllocationBoard() {
                                           ))}
                                       </DropdownMenuGroup>
                                       <DropdownMenuSeparator />
-                                      <DropdownMenuItem disabled={personBusy} onSelect={() => void duplicateCard(card)}>
+                                      <DropdownMenuItem
+                                        disabled={personBusy}
+                                        onSelect={() =>
+                                          void duplicateCard(card)
+                                        }
+                                      >
                                         Duplicate
                                       </DropdownMenuItem>
                                       <DropdownMenuItem
-                                        disabled={card.cardCount < 2 || personBusy}
-                                        aria-describedby={card.cardCount < 2 ? reasonId : undefined}
+                                        disabled={
+                                          card.cardCount < 2 || personBusy
+                                        }
+                                        aria-describedby={
+                                          card.cardCount < 2
+                                            ? reasonId
+                                            : undefined
+                                        }
                                         onSelect={() => void deleteCard(card)}
                                       >
                                         Delete card
                                       </DropdownMenuItem>
                                       {card.cardCount < 2 ? (
-                                        <p id={reasonId} className="px-3 pb-2 text-small text-navy-80">
+                                        <p
+                                          id={reasonId}
+                                          className="px-3 pb-2 text-small text-navy-80"
+                                        >
                                           {KEEPS_ONE}
                                         </p>
                                       ) : null}

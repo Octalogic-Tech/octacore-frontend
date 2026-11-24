@@ -18,7 +18,7 @@ export function PopoverContent({
         sideOffset={sideOffset}
         className={cn(
           'z-50 w-(--radix-popover-trigger-width) border border-navy bg-background p-3 text-foreground',
-          className,
+          className
         )}
         {...props}
       />

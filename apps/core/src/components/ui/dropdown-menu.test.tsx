@@ -16,8 +16,12 @@ function Menu({ onSelect }: { onSelect?: (name: string) => void }) {
       <DropdownMenuContent>
         <DropdownMenuGroup aria-label="Move to">
           <DropdownMenuLabel aria-hidden="true">Move to</DropdownMenuLabel>
-          <DropdownMenuItem onSelect={() => onSelect?.('Bench')}>Bench</DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => onSelect?.('Website')}>Website</DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onSelect?.('Bench')}>
+            Bench
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => onSelect?.('Website')}>
+            Website
+          </DropdownMenuItem>
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -39,7 +43,9 @@ describe('DropdownMenu', () => {
     ).toEqual(['Bench', 'Website']);
     await user.click(within(menu).getByRole('menuitem', { name: 'Website' }));
     expect(onSelect).toHaveBeenCalledWith('Website');
-    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    );
   });
 
   it('opens from the keyboard with Enter, Space or the down arrow, moves with the arrows, and picks with Enter', async () => {
@@ -51,7 +57,9 @@ describe('DropdownMenu', () => {
       await user.keyboard(key);
       expect(await screen.findByRole('menu')).toBeInTheDocument();
       await user.keyboard('{Escape}');
-      await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
+      await waitFor(() =>
+        expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+      );
     }
     screen.getByRole('button', { name: 'Actions' }).focus();
     await user.keyboard('{Enter}');
@@ -67,8 +75,12 @@ describe('DropdownMenu', () => {
     await user.click(screen.getByRole('button', { name: 'Actions' }));
     await screen.findByRole('menu');
     await user.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument());
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Actions' })).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Actions' })).toHaveFocus()
+    );
   });
 
   it('makes every item a 44px target, and the menu a flat square object in the brand tokens', async () => {
@@ -76,7 +88,8 @@ describe('DropdownMenu', () => {
     render(<Menu />);
     await user.click(screen.getByRole('button', { name: 'Actions' }));
     const menu = await screen.findByRole('menu');
-    for (const item of within(menu).getAllByRole('menuitem')) expect(item).toHaveClass('min-h-11');
+    for (const item of within(menu).getAllByRole('menuitem'))
+      expect(item).toHaveClass('min-h-11');
     expect(menu).toHaveClass('border', 'border-navy', 'bg-background');
     expect(menu.className).not.toMatch(/rounded|shadow/);
   });

@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { coreApi, statusOf, unwrap } from '@/lib/core-api';
-import { allocationRowsSchema, type AllocationBody, type AllocationRow } from './schema';
+import {
+  allocationRowsSchema,
+  type AllocationBody,
+  type AllocationRow,
+} from './schema';
 
 // Every list sits under this prefix, so a write refreshes them all: the board and the ledger read every entry, and a
 // person's page reads only theirs. The people page marks this key stale too (features/people/api.ts).
@@ -18,7 +22,11 @@ export interface AllocationFilter {
 export function useAllocations(filter?: AllocationFilter) {
   return useQuery({
     queryKey: [...ALLOCATIONS, filter ?? {}] as const,
-    queryFn: async () => unwrap((await coreApi.get('/allocations', { params: filter })).data, allocationRowsSchema),
+    queryFn: async () =>
+      unwrap(
+        (await coreApi.get('/allocations', { params: filter })).data,
+        allocationRowsSchema
+      ),
   });
 }
 
@@ -102,7 +110,12 @@ export function useMoveAllocation() {
       projectId: number | null;
       effectiveDate: string;
     }) => {
-      await coreApi.post('/allocations/move', { personId, card, projectId, effectiveDate });
+      await coreApi.post('/allocations/move', {
+        personId,
+        card,
+        projectId,
+        effectiveDate,
+      });
     },
     onSuccess: refresh,
   });
@@ -144,8 +157,20 @@ export function useAddCard() {
 export function useRemoveCard() {
   const refresh = useRefreshAllocations();
   return useMutation({
-    mutationFn: async ({ personId, card, effectiveDate }: { personId: number; card: number; effectiveDate: string }) => {
-      await coreApi.post('/allocations/remove', { personId, card, effectiveDate });
+    mutationFn: async ({
+      personId,
+      card,
+      effectiveDate,
+    }: {
+      personId: number;
+      card: number;
+      effectiveDate: string;
+    }) => {
+      await coreApi.post('/allocations/remove', {
+        personId,
+        card,
+        effectiveDate,
+      });
     },
     onSuccess: refresh,
   });

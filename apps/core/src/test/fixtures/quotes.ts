@@ -10,7 +10,12 @@
 // 50,844.43. Both are asserted against the mirror in `features/quotes/calc.ts` by `schema.test.ts`.
 const stamp = '2026-10-15T09:30:00.000000Z';
 const later = '2026-10-18T14:05:00.000000Z';
-const audit = { status: 1, createdDate: stamp, updatedDate: stamp, deletedDate: null };
+const audit = {
+  status: 1,
+  createdDate: stamp,
+  updatedDate: stamp,
+  deletedDate: null,
+};
 
 // The hours of a workbook line and how many lines have them.
 const workbookHours: [hours: number, lines: number][] = [
@@ -107,14 +112,34 @@ export const quoteRows = [
         id: 10,
         title: 'Screens',
         lines: [
-          { id: 54, title: 'Sign-in screens', description: 'Email and password, with a reset link', units: 2, hoursPerUnit: 7.5 },
-          { id: 55, title: 'Chart tiles', description: 'Revenue, hours and margin', units: 3, hoursPerUnit: 0.25 },
+          {
+            id: 54,
+            title: 'Sign-in screens',
+            description: 'Email and password, with a reset link',
+            units: 2,
+            hoursPerUnit: 7.5,
+          },
+          {
+            id: 55,
+            title: 'Chart tiles',
+            description: 'Revenue, hours and margin',
+            units: 3,
+            hoursPerUnit: 0.25,
+          },
         ],
       },
       {
         id: 11,
         title: 'Reports',
-        lines: [{ id: 56, title: 'Export to CSV', description: 'Every table, as shown', units: 1, hoursPerUnit: 12.34 }],
+        lines: [
+          {
+            id: 56,
+            title: 'Export to CSV',
+            description: 'Every table, as shown',
+            units: 1,
+            hoursPerUnit: 12.34,
+          },
+        ],
       },
     ],
     totals: {
@@ -171,17 +196,41 @@ export const bufferedQuoteRow = {
       id: 12,
       title: 'Discovery',
       lines: [
-        { id: 57, title: 'Discovery', description: 'Interviews and a written brief', units: 1, hoursPerUnit: 10.12 },
-        { id: 58, title: 'Workshops', description: 'Three sessions with the team', units: 3, hoursPerUnit: 2.5 },
+        {
+          id: 57,
+          title: 'Discovery',
+          description: 'Interviews and a written brief',
+          units: 1,
+          hoursPerUnit: 10.12,
+        },
+        {
+          id: 58,
+          title: 'Workshops',
+          description: 'Three sessions with the team',
+          units: 3,
+          hoursPerUnit: 2.5,
+        },
       ],
     },
     {
       id: 13,
       title: 'Design',
       lines: [
-        { id: 59, title: 'Wireframes', description: 'Two flows, low fidelity', units: 2, hoursPerUnit: 7.25 },
+        {
+          id: 59,
+          title: 'Wireframes',
+          description: 'Two flows, low fidelity',
+          units: 2,
+          hoursPerUnit: 7.25,
+        },
         // No description: it is optional, and the service sends it as empty text.
-        { id: 60, title: 'Hand-over', description: '', units: 1, hoursPerUnit: 0.2 },
+        {
+          id: 60,
+          title: 'Hand-over',
+          description: '',
+          units: 1,
+          hoursPerUnit: 0.2,
+        },
       ],
     },
   ],
@@ -210,8 +259,15 @@ export const bufferedQuoteRow = {
   },
 };
 
-const envelope = (message: string, data: unknown) => ({ statusCode: 200, message, data, meta: null });
+const envelope = (message: string, data: unknown) => ({
+  statusCode: 200,
+  message,
+  data,
+  meta: null,
+});
 
-export const quotesEnvelope = (data: unknown = quoteRows) => envelope('Successfully fetched quotations', data);
+export const quotesEnvelope = (data: unknown = quoteRows) =>
+  envelope('Successfully fetched quotations', data);
 
-export const quoteEnvelope = (data: unknown = quoteRows[0]) => envelope('Successfully fetched quotation', data);
+export const quoteEnvelope = (data: unknown = quoteRows[0]) =>
+  envelope('Successfully fetched quotation', data);

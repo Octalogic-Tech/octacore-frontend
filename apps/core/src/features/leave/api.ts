@@ -17,7 +17,11 @@ export interface LeaveFilter {
 export function useLeaves(filter?: LeaveFilter) {
   return useQuery({
     queryKey: [...LEAVES, filter ?? {}] as const,
-    queryFn: async () => unwrap((await coreApi.get('/leaves', { params: filter })).data, leaveRowsSchema),
+    queryFn: async () =>
+      unwrap(
+        (await coreApi.get('/leaves', { params: filter })).data,
+        leaveRowsSchema
+      ),
   });
 }
 
@@ -39,7 +43,12 @@ export function useSaveLeave() {
       if (id === undefined) await coreApi.post('/leaves', body);
       else {
         const { startDate, endDate, leaveType, reason } = body;
-        await coreApi.patch(`/leaves/${id}`, { startDate, endDate, leaveType, reason });
+        await coreApi.patch(`/leaves/${id}`, {
+          startDate,
+          endDate,
+          leaveType,
+          reason,
+        });
       }
     },
     onSuccess: refresh,

@@ -10,11 +10,17 @@ import {
   type PersonFormValues,
 } from './schema';
 
-const form = (over: Partial<PersonFormValues> = {}): PersonFormValues => ({ ...emptyPersonForm, name: 'Ada', ...over });
+const form = (over: Partial<PersonFormValues> = {}): PersonFormValues => ({
+  ...emptyPersonForm,
+  name: 'Ada',
+  ...over,
+});
 
 const messages = (values: PersonFormValues) => {
   const result = personFormSchema.safeParse(values);
-  return result.success ? [] : result.error.issues.map((issue) => issue.message);
+  return result.success
+    ? []
+    : result.error.issues.map((issue) => issue.message);
 };
 
 const WRONG_FORMAT = 'Enter an amount like 7.20, with no commas or signs';
@@ -61,10 +67,19 @@ describe('row schema', () => {
     ['a name', { ...personRows[0], name: undefined }],
     ['an id', { ...personRows[0], id: undefined }],
     ['the salary field', { ...personRows[0], monthlySalaryPaise: undefined }],
-    ['a salary that is not a number', { ...personRows[0], monthlySalaryPaise: '8500000' }],
-    ['a salary that is not a whole number of paise', { ...personRows[0], monthlySalaryPaise: 8_500_000.5 }],
+    [
+      'a salary that is not a number',
+      { ...personRows[0], monthlySalaryPaise: '8500000' },
+    ],
+    [
+      'a salary that is not a whole number of paise',
+      { ...personRows[0], monthlySalaryPaise: 8_500_000.5 },
+    ],
     ['the technologies missing', { ...personRows[0], technologies: undefined }],
-    ['a technology with no name', { ...personRows[0], technologies: [{ id: 1 }] }],
+    [
+      'a technology with no name',
+      { ...personRows[0], technologies: [{ id: 1 }] },
+    ],
   ])('rejects a person row with %s', (_label, row) => {
     expect(personRowsSchema.safeParse([row]).success).toBe(false);
   });
@@ -82,30 +97,50 @@ describe('personFormSchema', () => {
 
   it('accepts a valid email and refuses a bad one', () => {
     expect(messages(form({ email: 'ada@example.com' }))).toEqual([]);
-    expect(messages(form({ email: 'not-an-email' }))).toEqual(['Enter a valid email address']);
+    expect(messages(form({ email: 'not-an-email' }))).toEqual([
+      'Enter a valid email address',
+    ]);
   });
 
-  it.each(['0', '0.00', '85000', '85000.5', '85000.75', '100000000', '100000000.00'])(
-    'accepts a monthly salary of %s rupees',
-    (salary) => {
-      expect(messages(form({ monthlySalary: salary }))).toEqual([]);
-    },
-  );
+  it.each([
+    '0',
+    '0.00',
+    '85000',
+    '85000.5',
+    '85000.75',
+    '100000000',
+    '100000000.00',
+  ])('accepts a monthly salary of %s rupees', (salary) => {
+    expect(messages(form({ monthlySalary: salary }))).toEqual([]);
+  });
 
   it('does not need a salary', () => {
     expect(messages(form({ monthlySalary: '' }))).toEqual([]);
     expect(messages(form({ monthlySalary: '   ' }))).toEqual([]);
   });
 
-  it.each(['85,000', '₹85000', '$85000', '85000.755', '-5', '85 000', 'lots', '1e3', '.5', '5.'])(
+  it.each([
+    '85,000',
+    '₹85000',
+    '$85000',
+    '85000.755',
+    '-5',
+    '85 000',
+    'lots',
+    '1e3',
+    '.5',
+    '5.',
+  ])(
     'says what is wrong with a salary typed as “%s”, instead of dropping the odd character',
     (salary) => {
       expect(messages(form({ monthlySalary: salary }))).toEqual([WRONG_FORMAT]);
-    },
+    }
   );
 
   it('refuses a salary the service cannot store', () => {
-    expect(messages(form({ monthlySalary: '100000000.01' }))).toEqual(['The amount is too large']);
+    expect(messages(form({ monthlySalary: '100000000.01' }))).toEqual([
+      'The amount is too large',
+    ]);
   });
 });
 
@@ -131,11 +166,15 @@ describe('toFormValues', () => {
 
   it('opens a person without a salary on an empty salary, and a salary of zero on 0.00', () => {
     expect(toFormValues(linus).monthlySalary).toBe('');
-    expect(toFormValues({ ...linus, monthlySalaryPaise: 0 }).monthlySalary).toBe('0.00');
+    expect(
+      toFormValues({ ...linus, monthlySalaryPaise: 0 }).monthlySalary
+    ).toBe('0.00');
   });
 
   it('writes a salary to the paisa', () => {
-    expect(toFormValues({ ...linus, monthlySalaryPaise: 8_500_075 }).monthlySalary).toBe('85000.75');
+    expect(
+      toFormValues({ ...linus, monthlySalaryPaise: 8_500_075 }).monthlySalary
+    ).toBe('85000.75');
   });
 
   it.each([0, 1, 5, 1250, 15000, 8_500_075, MAX_CENTS])(
@@ -145,7 +184,7 @@ describe('toFormValues', () => {
 
       expect(messages(values)).toEqual([]);
       expect(toPersonBody(values).monthlySalaryPaise).toBe(paise);
-    },
+    }
   );
 
   it('opens a person who knows nothing with no technology ticked', () => {
@@ -177,13 +216,21 @@ describe('toPersonBody', () => {
   });
 
   it('sends the salary as a number of paise', () => {
-    expect(toPersonBody(form({ monthlySalary: '85000' })).monthlySalaryPaise).toBe(8_500_000);
-    expect(toPersonBody(form({ monthlySalary: '85000.75' })).monthlySalaryPaise).toBe(8_500_075);
-    expect(toPersonBody(form({ monthlySalary: '0' })).monthlySalaryPaise).toBe(0);
+    expect(
+      toPersonBody(form({ monthlySalary: '85000' })).monthlySalaryPaise
+    ).toBe(8_500_000);
+    expect(
+      toPersonBody(form({ monthlySalary: '85000.75' })).monthlySalaryPaise
+    ).toBe(8_500_075);
+    expect(toPersonBody(form({ monthlySalary: '0' })).monthlySalaryPaise).toBe(
+      0
+    );
   });
 
   it('sends the ticked technologies as ids, in the order they were ticked, and an empty list to clear them', () => {
-    expect(toPersonBody(form({ technologyIds: ['3', '1'] })).technologyIds).toEqual([3, 1]);
+    expect(
+      toPersonBody(form({ technologyIds: ['3', '1'] })).technologyIds
+    ).toEqual([3, 1]);
     expect(toPersonBody(form({ technologyIds: [] })).technologyIds).toEqual([]);
   });
 

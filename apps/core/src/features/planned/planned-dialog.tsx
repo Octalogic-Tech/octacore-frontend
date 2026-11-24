@@ -1,4 +1,9 @@
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import type { PlannedDialogSpec } from './types';
 
 interface PlannedDialogProps {
@@ -10,10 +15,18 @@ interface PlannedDialogProps {
 }
 
 /** What a feature's own dialog takes: the open state. It fills in its spec and its focus fallback. */
-export type PlannedDialogToggle = Pick<PlannedDialogProps, 'open' | 'onOpenChange'>;
+export type PlannedDialogToggle = Pick<
+  PlannedDialogProps,
+  'open' | 'onOpenChange'
+>;
 
 /** A dialog that is described but not built: its fields and what saving it does, as lists. Not a form. */
-export function PlannedDialog({ open, onOpenChange, spec, fallbackFocusId }: PlannedDialogProps) {
+export function PlannedDialog({
+  open,
+  onOpenChange,
+  spec,
+  fallbackFocusId,
+}: PlannedDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent fallbackFocusId={fallbackFocusId}>

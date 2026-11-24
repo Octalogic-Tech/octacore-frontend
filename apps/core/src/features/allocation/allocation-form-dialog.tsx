@@ -2,7 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -43,13 +48,20 @@ const DUPLICATE_DATE = 'This person already has an entry';
 
 /** The entry's own project is always an option, so a list that is loading, has failed or lost it cannot blank the select. */
 function withCurrent(options: Option[], current: Option | undefined): Option[] {
-  if (current && !options.some((option) => option.id === current.id)) return [...options, current];
+  if (current && !options.some((option) => option.id === current.id))
+    return [...options, current];
   return options;
 }
 
 const byLabel = (a: Option, b: Option) => a.label.localeCompare(b.label);
 
-export function AllocationFormDialog({ open, onOpenChange, entry, personId, fallbackFocusId }: AllocationFormDialogProps) {
+export function AllocationFormDialog({
+  open,
+  onOpenChange,
+  entry,
+  personId,
+  fallbackFocusId,
+}: AllocationFormDialogProps) {
   const people = usePeople();
   const projects = useProjects();
   const save = useSaveAllocation();
@@ -65,12 +77,19 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
     setValue,
     watch,
     formState: { errors, isSubmitting },
-  } = useForm<AllocationFormValues>({ resolver: zodResolver(allocationFormSchema), defaultValues: toAllocationFormValues() });
+  } = useForm<AllocationFormValues>({
+    resolver: zodResolver(allocationFormSchema),
+    defaultValues: toAllocationFormValues(),
+  });
 
   useEffect(() => {
     if (open) {
       const values = toAllocationFormValues(entry);
-      reset(entry === undefined && personId !== undefined ? { ...values, personId: String(personId) } : values);
+      reset(
+        entry === undefined && personId !== undefined
+          ? { ...values, personId: String(personId) }
+          : values
+      );
       setFailure(null);
     }
   }, [open, entry, personId, reset]);
@@ -78,28 +97,46 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
   // The cards the person has, for the Card field: from their entries (all of them when no person is fixed, which the
   // ledger has already read, and the chosen person's out of those).
   const chosenPerson = personId ?? (Number(watch('personId')) || undefined);
-  const entries = useAllocations(personId === undefined ? undefined : { personId });
+  const entries = useAllocations(
+    personId === undefined ? undefined : { personId }
+  );
   const cards = useMemo(
-    () => cardChoices((entries.data ?? []).filter((row) => row.personId === chosenPerson)),
-    [entries.data, chosenPerson],
+    () =>
+      cardChoices(
+        (entries.data ?? []).filter((row) => row.personId === chosenPerson)
+      ),
+    [entries.data, chosenPerson]
   );
   const chosenCard = watch('card');
   useEffect(() => {
     // Another person's cards are other numbers: a card they do not have is not kept.
-    if (!entry && chosenCard !== NEW_CARD && !cards.includes(Number(chosenCard))) setValue('card', '1');
+    if (
+      !entry &&
+      chosenCard !== NEW_CARD &&
+      !cards.includes(Number(chosenCard))
+    )
+      setValue('card', '1');
   }, [entry, chosenCard, cards, setValue]);
 
   const personOptions = useMemo(
-    () => (people.data ?? []).map((person) => ({ id: person.id, label: person.name })).sort(byLabel),
-    [people.data],
+    () =>
+      (people.data ?? [])
+        .map((person) => ({ id: person.id, label: person.name }))
+        .sort(byLabel),
+    [people.data]
   );
   const projectOptions = useMemo(
     () =>
       withCurrent(
-        (projects.data ?? []).map((project) => ({ id: project.id, label: project.name })),
-        entry?.project ? { id: entry.project.id, label: entry.project.name } : undefined,
+        (projects.data ?? []).map((project) => ({
+          id: project.id,
+          label: project.name,
+        })),
+        entry?.project
+          ? { id: entry.project.id, label: entry.project.name }
+          : undefined
       ).sort(byLabel),
-    [projects.data, entry],
+    [projects.data, entry]
   );
 
   const submit = handleSubmit(async (values) => {
@@ -132,7 +169,9 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
         setFocus('effectiveDate');
       } else if (entry !== undefined && status === 404) {
         // Saving again would repeat an edit that cannot succeed once the entry is gone.
-        setFailure('This entry was removed elsewhere, so it cannot be saved. Close this dialog and go back to the ledger.');
+        setFailure(
+          'This entry was removed elsewhere, so it cannot be saved. Close this dialog and go back to the ledger.'
+        );
       } else {
         setFailure(message ?? 'That did not save. Try again.');
       }
@@ -150,8 +189,13 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
       }}
     >
       <DialogContent fallbackFocusId={fallbackFocusId}>
-        <DialogTitle>{entry ? 'Edit allocation entry' : 'New allocation entry'}</DialogTitle>
-        <DialogDescription>From the date you choose, the person is on this project or on the bench.</DialogDescription>
+        <DialogTitle>
+          {entry ? 'Edit allocation entry' : 'New allocation entry'}
+        </DialogTitle>
+        <DialogDescription>
+          From the date you choose, the person is on this project or on the
+          bench.
+        </DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
           {personId !== undefined ? null : entry ? (
             <Field
@@ -159,7 +203,11 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
               htmlFor="allocation-person"
               hint="The person of an entry cannot be changed."
             >
-              <Input id="allocation-person" value={entry.person.name} readOnly />
+              <Input
+                id="allocation-person"
+                value={entry.person.name}
+                readOnly
+              />
             </Field>
           ) : (
             <Field
@@ -168,7 +216,10 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
               error={errors.personId?.message}
               hint={people.isError ? 'People could not be loaded.' : undefined}
             >
-              <Select {...fieldA11y('allocation-person', errors.personId?.message)} {...register('personId')}>
+              <Select
+                {...fieldA11y('allocation-person', errors.personId?.message)}
+                {...register('personId')}
+              >
                 <option value="">Choose…</option>
                 {personOptions.map((option) => (
                   <option key={option.id} value={String(option.id)}>
@@ -179,12 +230,27 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
             </Field>
           )}
           {entry ? (
-            <Field label="Card" htmlFor="allocation-card" hint="The card of an entry cannot be changed.">
-              <Input id="allocation-card" value={`Card ${entry.card}`} readOnly />
+            <Field
+              label="Card"
+              htmlFor="allocation-card"
+              hint="The card of an entry cannot be changed."
+            >
+              <Input
+                id="allocation-card"
+                value={`Card ${entry.card}`}
+                readOnly
+              />
             </Field>
           ) : (
-            <Field label="Card" htmlFor="allocation-card" error={errors.card?.message}>
-              <Select {...fieldA11y('allocation-card', errors.card?.message)} {...register('card')}>
+            <Field
+              label="Card"
+              htmlFor="allocation-card"
+              error={errors.card?.message}
+            >
+              <Select
+                {...fieldA11y('allocation-card', errors.card?.message)}
+                {...register('card')}
+              >
                 {cards.map((card) => (
                   <option key={card} value={String(card)}>
                     Card {card}
@@ -198,9 +264,14 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
             label="Project"
             htmlFor="allocation-project"
             error={errors.projectId?.message}
-            hint={projects.isError ? 'Projects could not be loaded.' : undefined}
+            hint={
+              projects.isError ? 'Projects could not be loaded.' : undefined
+            }
           >
-            <Select {...fieldA11y('allocation-project', errors.projectId?.message)} {...register('projectId')}>
+            <Select
+              {...fieldA11y('allocation-project', errors.projectId?.message)}
+              {...register('projectId')}
+            >
               <option value={BENCH}>Bench</option>
               {projectOptions.map((option) => (
                 <option key={option.id} value={String(option.id)}>
@@ -222,11 +293,22 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
               type="date"
             />
           </Field>
-          <Field label="Note" htmlFor="allocation-note" error={errors.note?.message}>
-            <Input {...fieldA11y('allocation-note', errors.note?.message)} {...register('note')} autoComplete="off" />
+          <Field
+            label="Note"
+            htmlFor="allocation-note"
+            error={errors.note?.message}
+          >
+            <Input
+              {...fieldA11y('allocation-note', errors.note?.message)}
+              {...register('note')}
+              autoComplete="off"
+            />
           </Field>
           {failure ? (
-            <p role="alert" className="text-small font-semibold text-foreground">
+            <p
+              role="alert"
+              className="text-small font-semibold text-foreground"
+            >
               {failure}
             </p>
           ) : null}
@@ -234,7 +316,11 @@ export function AllocationFormDialog({ open, onOpenChange, entry, personId, fall
             <Button type="submit" disabled={isSubmitting}>
               Save
             </Button>
-            <Button variant="quiet" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
+            <Button
+              variant="quiet"
+              disabled={isSubmitting}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
           </div>

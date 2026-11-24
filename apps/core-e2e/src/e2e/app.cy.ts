@@ -41,15 +41,21 @@ describe('core', () => {
     cy.location('pathname').should('eq', '/resources/people');
     cy.get(nav).contains('a', 'Allocation').click();
     cy.location('pathname').should('eq', '/resources/allocation');
-    cy.get(nav).contains('a', 'Allocation').should('have.attr', 'aria-current', 'page');
+    cy.get(nav)
+      .contains('a', 'Allocation')
+      .should('have.attr', 'aria-current', 'page');
     cy.get(nav).contains('a', 'Leave').click();
     cy.location('pathname').should('eq', '/resources/leave');
-    cy.get(nav).contains('a', 'Leave').should('have.attr', 'aria-current', 'page');
+    cy.get(nav)
+      .contains('a', 'Leave')
+      .should('have.attr', 'aria-current', 'page');
   });
 
   it('marks only the current page', () => {
     cy.get(nav).contains('a', 'Categories').click();
-    cy.get(`${nav} a[aria-current="page"]`).should('have.length', 1).and('contain', 'Categories');
+    cy.get(`${nav} a[aria-current="page"]`)
+      .should('have.length', 1)
+      .and('contain', 'Categories');
   });
 
   it('lists the clients with their primary contact', () => {
@@ -69,7 +75,9 @@ describe('core', () => {
     cy.contains('td', 'Nest, React').should('be.visible');
     cy.contains('td', '₹85,000.75').should('be.visible');
     cy.contains('td', 'Ben Cho').should('be.visible');
-    cy.get(`${nav} a[aria-current="page"]`).should('have.length', 1).and('contain', 'People');
+    cy.get(`${nav} a[aria-current="page"]`)
+      .should('have.length', 1)
+      .and('contain', 'People');
     // Search finds a person by a technology they know.
     cy.get('#person-search').type('nest');
     cy.contains('td', 'Asha Rao').should('be.visible');
@@ -83,7 +91,9 @@ describe('core', () => {
     cy.contains('h1', 'Asha Rao');
     // Placement comes from the latest entry on or before today.
     cy.contains('On Website since 12 Mar 2026').should('be.visible');
-    cy.contains('dt', 'Monthly salary').next().should('have.text', '₹85,000.75');
+    cy.contains('dt', 'Monthly salary')
+      .next()
+      .should('have.text', '₹85,000.75');
     cy.contains('dt', 'Technologies').next().should('have.text', 'Nest, React');
     cy.contains('[role="tab"]', 'Allocations').should('contain', '3');
     cy.contains('[role="tab"]', 'Leave').should('contain', '2');
@@ -92,11 +102,9 @@ describe('core', () => {
     cy.contains('[role="tab"]', 'Allocations').click();
     cy.location('search').should('eq', '?tab=allocations');
     cy.get('table[aria-label="Allocation ledger"] tbody tr').then((rows) => {
-      expect([...rows].map((row) => row.querySelector('td')?.textContent)).to.deep.equal([
-        '12 Mar 2026',
-        '15 Jan 2026',
-        '2 Jun 2025',
-      ]);
+      expect(
+        [...rows].map((row) => row.querySelector('td')?.textContent)
+      ).to.deep.equal(['12 Mar 2026', '15 Jan 2026', '2 Jun 2025']);
     });
     cy.contains('td', 'Bench').should('be.visible');
 
@@ -107,7 +115,9 @@ describe('core', () => {
     cy.contains('td', '4 May 2026').should('be.visible');
     // Only this person's: the table has no Person column here.
     cy.contains('th', 'Person').should('not.exist');
-    cy.get(`${nav} a[aria-current="page"]`).should('have.length', 1).and('contain', 'People');
+    cy.get(`${nav} a[aria-current="page"]`)
+      .should('have.length', 1)
+      .and('contain', 'People');
   });
 
   it('shows a person who does not exist as not found, with a way back', () => {
@@ -121,11 +131,20 @@ describe('core', () => {
   it('puts everyone on the allocation board today: the bench first, then the active projects, each with its monthly cost', () => {
     cy.get(nav).contains('a', 'Allocation').click();
     cy.contains('h1', 'Allocation');
-    cy.contains('[role="tab"]', 'Board').should('have.attr', 'aria-selected', 'true');
+    cy.contains('[role="tab"]', 'Board').should(
+      'have.attr',
+      'aria-selected',
+      'true'
+    );
     cy.location('search').should('eq', '');
     // Bench first, then the projects by name; the head says how many and what they cost a month in rupees.
     cy.get('main [role="group"] h2').then((heads) => {
-      expect([...heads].map((head) => head.textContent)).to.deep.equal(['Bench', 'Legacy portal', 'Mobile app', 'Website']);
+      expect([...heads].map((head) => head.textContent)).to.deep.equal([
+        'Bench',
+        'Legacy portal',
+        'Mobile app',
+        'Website',
+      ]);
     });
     cy.get('[aria-labelledby="col-bench-name"]').within(() => {
       cy.contains('1 card, ₹0.00 a month').should('be.visible');
@@ -143,11 +162,17 @@ describe('core', () => {
     // The board fills the window under the title and the tabs, and the page itself does not scroll.
     cy.get('main').should('have.attr', 'data-layout', 'full');
     cy.window().then((win) => {
-      expect(win.document.documentElement.scrollHeight).to.be.at.most(win.innerHeight);
-      expect(win.document.documentElement.scrollWidth).to.be.at.most(win.innerWidth);
+      expect(win.document.documentElement.scrollHeight).to.be.at.most(
+        win.innerHeight
+      );
+      expect(win.document.documentElement.scrollWidth).to.be.at.most(
+        win.innerWidth
+      );
     });
     // Every card has an Actions button, whose menu is the way to move without dragging: one item for each other column.
-    cy.get('button[aria-label="Actions for Asha Rao"]').should('be.visible').click();
+    cy.get('button[aria-label="Actions for Asha Rao"]')
+      .should('be.visible')
+      .click();
     cy.get('[role="menu"]').within(() => {
       cy.contains('Move to').should('be.visible');
       cy.get('[role="menuitem"]').then((items) => {
@@ -160,7 +185,11 @@ describe('core', () => {
         ]);
       });
       // A person keeps at least one card: with only one, Delete card is shown but cannot be chosen, and says why.
-      cy.contains('[role="menuitem"]', 'Delete card').should('have.attr', 'aria-disabled', 'true');
+      cy.contains('[role="menuitem"]', 'Delete card').should(
+        'have.attr',
+        'aria-disabled',
+        'true'
+      );
       cy.contains('A person keeps at least one card').should('be.visible');
     });
     cy.get('body').type('{esc}');
@@ -173,9 +202,15 @@ describe('core', () => {
 
     cy.contains('[role="tab"]', 'Ledger').click();
     cy.location('search').should('eq', '?tab=ledger');
-    cy.get('table[aria-label="Allocation ledger"] tbody tr').should('have.length', 3);
+    cy.get('table[aria-label="Allocation ledger"] tbody tr').should(
+      'have.length',
+      3
+    );
     cy.get('#allocation-search').type('mobile');
-    cy.get('table[aria-label="Allocation ledger"] tbody tr').should('have.length', 1);
+    cy.get('table[aria-label="Allocation ledger"] tbody tr').should(
+      'have.length',
+      1
+    );
     cy.contains('td', '2 Jun 2025').should('be.visible');
   });
 
@@ -192,8 +227,12 @@ describe('core', () => {
     cy.contains('[role="menu"] [role="menuitem"]', 'Duplicate').click();
     cy.get(website).within(() => {
       cy.contains('2 cards, ₹85,000.75 a month').should('be.visible');
-      cy.get('li[aria-label="Asha Rao, card 1 of 2"]').should('contain', 'Card 1 of 2').and('contain', '₹42,500.38');
-      cy.get('li[aria-label="Asha Rao, card 2 of 2"]').should('contain', 'Card 2 of 2').and('contain', '₹42,500.37');
+      cy.get('li[aria-label="Asha Rao, card 1 of 2"]')
+        .should('contain', 'Card 1 of 2')
+        .and('contain', '₹42,500.38');
+      cy.get('li[aria-label="Asha Rao, card 2 of 2"]')
+        .should('contain', 'Card 2 of 2')
+        .and('contain', '₹42,500.37');
     });
     cy.screenshot('allocation-two-cards', { capture: 'viewport' });
 
@@ -201,7 +240,9 @@ describe('core', () => {
     cy.get('button[aria-label="Actions for Asha Rao, card 2 of 2"]').click();
     cy.contains('[role="menu"] [role="menuitem"]', 'Mobile app').click();
     cy.get(mobileApp).scrollIntoView();
-    cy.get(mobileApp).contains('1 card, ₹42,500.37 a month').should('be.visible');
+    cy.get(mobileApp)
+      .contains('1 card, ₹42,500.37 a month')
+      .should('be.visible');
     cy.get(website).scrollIntoView();
     cy.get(website).contains('1 card, ₹42,500.38 a month').should('be.visible');
 
@@ -210,10 +251,16 @@ describe('core', () => {
     cy.contains('[role="menu"] [role="menuitem"]', 'Delete card').click();
     cy.get(website).within(() => {
       cy.contains('1 card, ₹85,000.75 a month').should('be.visible');
-      cy.get('li[aria-label="Asha Rao"]').should('contain', '₹85,000.75').and('not.contain', 'Card 1 of');
+      cy.get('li[aria-label="Asha Rao"]')
+        .should('contain', '₹85,000.75')
+        .and('not.contain', 'Card 1 of');
     });
     cy.get('button[aria-label="Actions for Asha Rao"]').click();
-    cy.contains('[role="menu"] [role="menuitem"]', 'Delete card').should('have.attr', 'aria-disabled', 'true');
+    cy.contains('[role="menu"] [role="menuitem"]', 'Delete card').should(
+      'have.attr',
+      'aria-disabled',
+      'true'
+    );
   });
 
   it('lists every leave in the register and finds one by its reason', () => {
@@ -221,10 +268,9 @@ describe('core', () => {
     cy.contains('h1', 'Leave');
     // Newest first, with the type, and a range or a single day.
     cy.get('table[aria-label="Leave"] tbody tr').then((rows) => {
-      expect([...rows].map((row) => row.querySelector('td')?.textContent)).to.deep.equal([
-        '4 May 2026',
-        '12 Mar 2026 to 14 Mar 2026',
-      ]);
+      expect(
+        [...rows].map((row) => row.querySelector('td')?.textContent)
+      ).to.deep.equal(['4 May 2026', '12 Mar 2026 to 14 Mar 2026']);
     });
     cy.contains('td', 'Sick').should('be.visible');
     cy.contains('td', 'Casual').should('be.visible');
@@ -247,7 +293,9 @@ describe('core', () => {
     cy.contains('a', 'Website').click();
     cy.contains('h1', 'Website');
     // The totals are in dollars: the invoice in rupees counts as its amount at its own rate, before tax.
-    cy.contains('p', '$14,266.29 outstanding of $50,266.29 invoiced.').should('be.visible');
+    cy.contains('p', '$14,266.29 outstanding of $50,266.29 invoiced.').should(
+      'be.visible'
+    );
     cy.contains('dt', 'Discount').next().should('have.text', '10%');
     // The overview holds the facts and what is owed; the tables are one tab each, and the tab is in the address.
     cy.contains('td', 'INV-001').should('not.exist');
@@ -268,11 +316,19 @@ describe('core', () => {
     cy.contains('button', 'Add invoice').click();
     cy.get('[role="dialog"]').invoke('outerWidth').should('be.gt', 1000);
     cy.get('[role="dialog"]').within(() => {
-      cy.get('input[aria-label="Line 1 description"]').should('have.value', 'Asha Rao — Mobile');
+      cy.get('input[aria-label="Line 1 description"]').should(
+        'have.value',
+        'Asha Rao — Mobile'
+      );
       // Acme is in India: the invoice is billed in rupees with the country's 18% tax, and the rates are typed in rupees.
-      cy.contains('Billed in INR · ₹88.25 per $1 · tax 18%').should('be.visible');
+      cy.contains('Billed in INR · ₹88.25 per $1 · tax 18%').should(
+        'be.visible'
+      );
       cy.contains('Rate (INR)').should('be.visible');
-      cy.get('input[aria-label="Line 1 rate"]').should('have.value', '13237.50');
+      cy.get('input[aria-label="Line 1 rate"]').should(
+        'have.value',
+        '13237.50'
+      );
       cy.get('#invoice-tax-rate').should('have.value', '18');
       // The project's 10% starts the invoice's discount; the tax is on what is left, and the dollars are before tax.
       cy.get('#invoice-discount').should('have.value', '10');
@@ -293,7 +349,9 @@ describe('core', () => {
     cy.contains('[role="tab"]', 'Invoices').click();
     cy.get('button[aria-label="Preview INV-001"]').click();
     cy.get('[role="dialog"]').within(() => {
-      cy.get('iframe[title="Invoice INV-001"]').should('have.attr', 'src').and('match', /^blob:/);
+      cy.get('iframe[title="Invoice INV-001"]')
+        .should('have.attr', 'src')
+        .and('match', /^blob:/);
     });
     cy.get('[role="dialog"]').find('button[aria-label="Close"]').click();
     cy.get('[role="dialog"]').should('not.exist');
@@ -303,7 +361,9 @@ describe('core', () => {
       cy.contains('button', 'Cancel').click();
     });
     cy.get('[role="dialog"]').should('not.exist');
-    cy.get(`${nav} a[aria-current="page"]`).should('have.length', 1).and('contain', 'Projects');
+    cy.get(`${nav} a[aria-current="page"]`)
+      .should('have.length', 1)
+      .and('contain', 'Projects');
   });
 
   it('names a project’s billing country and says what a new invoice would be billed in', () => {
@@ -315,7 +375,7 @@ describe('core', () => {
       cy.get('#project-country').should('have.value', '');
       cy.get('#project-country-hint').should(
         'have.text',
-        'New invoices are billed in INR · ₹88.25 per $1 · tax 18%, from the client’s country.',
+        'New invoices are billed in INR · ₹88.25 per $1 · tax 18%, from the client’s country.'
       );
       // The active countries with a rate, labelled with their currency; Japan has none yet.
       cy.get('#project-country option').then((options) => {
@@ -327,7 +387,10 @@ describe('core', () => {
         ]);
       });
       cy.get('#project-country').select('United States · USD');
-      cy.get('#project-country-hint').should('have.text', 'Once saved, new invoices are billed in USD.');
+      cy.get('#project-country-hint').should(
+        'have.text',
+        'Once saved, new invoices are billed in USD.'
+      );
       cy.contains('button', 'Cancel').click();
     });
     cy.get('[role="dialog"]').should('not.exist');
@@ -346,7 +409,9 @@ describe('core', () => {
 
     cy.get('button[aria-label="Delete Data"]').click();
     cy.get('[role="alertdialog"]').should('contain', 'This cannot be undone.');
-    cy.get('[role="alertdialog"]').contains('button', 'Delete category').click();
+    cy.get('[role="alertdialog"]')
+      .contains('button', 'Delete category')
+      .click();
     cy.contains('td', 'Data').should('not.exist');
   });
 
@@ -373,8 +438,12 @@ describe('core', () => {
         cy.contains('Active').should('be.visible');
       });
     cy.contains('button', 'Sync rates').click();
-    cy.contains('[role="status"]', 'Updated 3 rates as of 2026-10-19.').should('be.visible');
-    cy.contains('[role="status"]', 'No rate found for JPY.').should('be.visible');
+    cy.contains('[role="status"]', 'Updated 3 rates as of 2026-10-19.').should(
+      'be.visible'
+    );
+    cy.contains('[role="status"]', 'No rate found for JPY.').should(
+      'be.visible'
+    );
   });
 
   it('lists the unpaid invoices, and the paid ones when asked', () => {
@@ -383,8 +452,14 @@ describe('core', () => {
     cy.get('#invoices-status').should('have.value', 'active');
     cy.contains('td', 'INV-002').should('be.visible');
     // Each invoice is listed at what its client pays, in its own currency.
-    cy.contains('td', 'INV-002').parent('tr').contains('$12,000.00').should('be.visible');
-    cy.contains('td', 'INV-003').parent('tr').contains('₹2,36,000.00').should('be.visible');
+    cy.contains('td', 'INV-002')
+      .parent('tr')
+      .contains('$12,000.00')
+      .should('be.visible');
+    cy.contains('td', 'INV-003')
+      .parent('tr')
+      .contains('₹2,36,000.00')
+      .should('be.visible');
     cy.contains('td', 'INV-001').should('not.exist');
     cy.get('#invoices-status').select('Paid');
     cy.contains('td', 'INV-001').should('be.visible');
@@ -395,10 +470,19 @@ describe('core', () => {
     cy.get(nav).contains('a', 'Invoices').click();
     cy.contains('button', 'Export CSV').click();
     cy.readFile(`${Cypress.config('downloadsFolder')}/invoices.csv`)
-      .should('contain', 'Number,Client,Project,Issued,Due,Paid,Amount,Tax,Total,Currency,Status')
-      .and('contain', 'INV-002,Acme,Website,2026-11-01,,,12000.00,0.00,12000.00,USD,Unpaid')
+      .should(
+        'contain',
+        'Number,Client,Project,Issued,Due,Paid,Amount,Tax,Total,Currency,Status'
+      )
+      .and(
+        'contain',
+        'INV-002,Acme,Website,2026-11-01,,,12000.00,0.00,12000.00,USD,Unpaid'
+      )
       // The amount before tax, the tax and the total stay in the invoice's own currency, with its code beside them.
-      .and('contain', 'INV-003,Acme,Website,2026-11-02,,,200000.00,36000.00,236000.00,INR,Unpaid')
+      .and(
+        'contain',
+        'INV-003,Acme,Website,2026-11-02,,,200000.00,36000.00,236000.00,INR,Unpaid'
+      )
       .and('not.contain', 'INV-001');
   });
 });

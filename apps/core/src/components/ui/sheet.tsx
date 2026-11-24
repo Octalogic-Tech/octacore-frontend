@@ -16,7 +16,10 @@ export function SheetContent({
   const returnFocus = useReturnFocus();
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay data-slot="sheet-overlay" className="fixed inset-0 z-50 bg-scrim" />
+      <DialogPrimitive.Overlay
+        data-slot="sheet-overlay"
+        className="fixed inset-0 z-50 bg-scrim"
+      />
       <DialogPrimitive.Content
         data-slot="sheet-content"
         onOpenAutoFocus={returnFocus.onOpenAutoFocus}
@@ -24,11 +27,13 @@ export function SheetContent({
         aria-describedby={undefined}
         className={cn(
           'on-navy fixed inset-y-0 left-0 z-50 flex w-[min(22rem,100%)] flex-col overflow-y-auto bg-navy text-on-navy',
-          className,
+          className
         )}
         {...props}
       >
-        <DialogPrimitive.Title className="sr-only">{title}</DialogPrimitive.Title>
+        <DialogPrimitive.Title className="sr-only">
+          {title}
+        </DialogPrimitive.Title>
         {children}
         <DialogPrimitive.Close
           aria-label="Close menu"

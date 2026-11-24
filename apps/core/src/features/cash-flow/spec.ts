@@ -3,7 +3,8 @@ import type { PlannedSpec } from '@/features/planned/types';
 export const cashFlowSpec: PlannedSpec = {
   id: 'cash-flow',
   title: 'Cash-flow forecast',
-  summary: 'Forecast the coming weeks of cash in and out from invoices due, scheduled milestones and salaries.',
+  summary:
+    'Forecast the coming weeks of cash in and out from invoices due, scheduled milestones and salaries.',
   surface: 'page',
   home: 'Finance › Cash flow',
   size: 'S–M',

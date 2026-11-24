@@ -8,7 +8,14 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { formatDate, localToday } from '@/lib/format';
 import { useAllocations, useDeleteAllocation } from './api';
@@ -19,9 +26,12 @@ const NONE = '—';
 
 /** What a deleted entry stops saying: where the card was from that day, or that it was removed. */
 function whatItSaid(entry: AllocationRow): string {
-  if (entry.removed) return `Their card ${entry.card} was removed from that day.`;
+  if (entry.removed)
+    return `Their card ${entry.card} was removed from that day.`;
   const place = entry.project ? entry.project.name : 'the bench';
-  return entry.card > 1 ? `Their card ${entry.card} was on ${place} from that day.` : `They were on ${place} from that day.`;
+  return entry.card > 1
+    ? `Their card ${entry.card} was on ${place} from that day.`
+    : `They were on ${place} from that day.`;
 }
 
 interface AllocationLedgerProps {
@@ -35,23 +45,30 @@ interface AllocationLedgerProps {
  * marked Upcoming: it moves nobody yet.
  */
 export function AllocationLedger({ personId }: AllocationLedgerProps) {
-  const entries = useAllocations(personId === undefined ? undefined : { personId });
+  const entries = useAllocations(
+    personId === undefined ? undefined : { personId }
+  );
   const remove = useDeleteAllocation();
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState<{ open: boolean; entry?: AllocationRow }>({ open: false });
+  const [form, setForm] = useState<{ open: boolean; entry?: AllocationRow }>({
+    open: false,
+  });
   const [toDelete, setToDelete] = useState<AllocationRow | null>(null);
   const today = localToday();
 
   const filtered = useMemo(
-    () => (entries.data ?? []).filter((entry) => allocationMatches(entry, search)),
-    [entries.data, search],
+    () =>
+      (entries.data ?? []).filter((entry) => allocationMatches(entry, search)),
+    [entries.data, search]
   );
   const paging = usePagedRows(filtered);
 
   // Names the row by what it says, since a person may have many, and by its card when it is not the first, since two
   // cards can have an entry on one day.
   const rowName = (entry: AllocationRow) =>
-    `${entry.person.name} from ${formatDate(entry.effectiveDate)}${entry.card > 1 ? `, card ${entry.card}` : ''}`;
+    `${entry.person.name} from ${formatDate(entry.effectiveDate)}${
+      entry.card > 1 ? `, card ${entry.card}` : ''
+    }`;
 
   return (
     <>
@@ -65,7 +82,11 @@ export function AllocationLedger({ personId }: AllocationLedgerProps) {
             paging.setPage(0);
           }}
         />
-        <Button id="add-allocation" variant="quiet" onClick={() => setForm({ open: true })}>
+        <Button
+          id="add-allocation"
+          variant="quiet"
+          onClick={() => setForm({ open: true })}
+        >
           Add entry
         </Button>
       </div>
@@ -79,7 +100,9 @@ export function AllocationLedger({ personId }: AllocationLedgerProps) {
           empty={
             <div className="grid justify-items-start gap-1">
               <p className="text-body">
-                {personId === undefined ? 'No allocation entries yet.' : 'No allocations for this person yet.'}
+                {personId === undefined
+                  ? 'No allocation entries yet.'
+                  : 'No allocations for this person yet.'}
               </p>
               <Button variant="quiet" onClick={() => setForm({ open: true })}>
                 Add the first entry
@@ -95,7 +118,9 @@ export function AllocationLedger({ personId }: AllocationLedgerProps) {
                 <TableHeader>
                   <TableRow>
                     <TableHead>From</TableHead>
-                    {personId === undefined ? <TableHead>Person</TableHead> : null}
+                    {personId === undefined ? (
+                      <TableHead>Person</TableHead>
+                    ) : null}
                     <TableHead>Card</TableHead>
                     <TableHead>Project</TableHead>
                     <TableHead>Note</TableHead>
@@ -114,11 +139,17 @@ export function AllocationLedger({ personId }: AllocationLedgerProps) {
                         ) : null}
                       </TableCell>
                       {personId === undefined ? (
-                        <TableCell className="font-semibold">{entry.person.name}</TableCell>
+                        <TableCell className="font-semibold">
+                          {entry.person.name}
+                        </TableCell>
                       ) : null}
-                      <TableCell className="whitespace-nowrap">Card {entry.card}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        Card {entry.card}
+                      </TableCell>
                       <TableCell>{entryPlace(entry)}</TableCell>
-                      <TableCell className="min-w-[10rem]">{entry.note || NONE}</TableCell>
+                      <TableCell className="min-w-[10rem]">
+                        {entry.note || NONE}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         <IconButton
                           label={`Edit ${rowName(entry)}`}
@@ -161,8 +192,12 @@ export function AllocationLedger({ personId }: AllocationLedgerProps) {
         onOpenChange={(open) => {
           if (!open) setToDelete(null);
         }}
-        title={`Delete the entry for “${toDelete?.person.name ?? ''}”${toDelete && toDelete.card > 1 ? ` (card ${toDelete.card})` : ''} from ${toDelete ? formatDate(toDelete.effectiveDate) : ''}?`}
-        description={`${toDelete ? whatItSaid(toDelete) : ''} Where they are now is worked out again from their other entries. This cannot be undone.`}
+        title={`Delete the entry for “${toDelete?.person.name ?? ''}”${
+          toDelete && toDelete.card > 1 ? ` (card ${toDelete.card})` : ''
+        } from ${toDelete ? formatDate(toDelete.effectiveDate) : ''}?`}
+        description={`${
+          toDelete ? whatItSaid(toDelete) : ''
+        } Where they are now is worked out again from their other entries. This cannot be undone.`}
         confirmLabel="Delete entry"
         fallbackFocusId="allocation-search"
         onConfirm={async () => {

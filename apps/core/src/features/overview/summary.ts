@@ -21,7 +21,8 @@ export interface OverviewSummary {
   unpaidInvoices: InvoiceListRow[];
 }
 
-const sum = (numbers: number[]) => numbers.reduce((total, value) => total + value, 0);
+const sum = (numbers: number[]) =>
+  numbers.reduce((total, value) => total + value, 0);
 
 /** Due soonest first; with no due date, last. A tie goes to the older issue, then the earlier entry. */
 function dueSoonestFirst(a: InvoiceListRow, b: InvoiceListRow): number {
@@ -33,12 +34,19 @@ function dueSoonestFirst(a: InvoiceListRow, b: InvoiceListRow): number {
   return a.issueDate.localeCompare(b.issueDate) || a.id - b.id;
 }
 
-export function summarize(projects: ProjectRow[], invoices: InvoiceRow[]): OverviewSummary {
-  const unpaid = toListRows(invoices, projects).filter((invoice) => invoice.paidDate === null);
+export function summarize(
+  projects: ProjectRow[],
+  invoices: InvoiceRow[]
+): OverviewSummary {
+  const unpaid = toListRows(invoices, projects).filter(
+    (invoice) => invoice.paidDate === null
+  );
   return {
     projectCount: projects.length,
     totalValue: sum(projects.map((project) => project.totalValueCents)),
-    totalOutstanding: sum(projects.map((project) => project.totalOutstandingCents)),
+    totalOutstanding: sum(
+      projects.map((project) => project.totalOutstandingCents)
+    ),
     topOutstanding: projects
       .filter((project) => project.totalOutstandingCents > 0)
       .sort((a, b) => b.totalOutstandingCents - a.totalOutstandingCents)

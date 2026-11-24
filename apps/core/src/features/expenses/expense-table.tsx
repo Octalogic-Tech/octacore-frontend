@@ -2,7 +2,14 @@ import { LuPencil, LuTrash2 } from 'react-icons/lu';
 import { TablePager } from '@/components/table-pager';
 import { Badge } from '@/components/ui/badge';
 import { IconButton } from '@/components/ui/icon-button';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { formatDate } from '@/lib/format';
 import { formatUsd } from '@/lib/money';
@@ -40,7 +47,9 @@ export function ExpenseTable({ rows, onEdit, onDelete }: ExpenseTableProps) {
         <TableBody>
           {paging.pageRows.map((expense) => (
             <TableRow key={expense.id}>
-              <TableCell className="tabular whitespace-nowrap">{formatDate(expense.chargeDate)}</TableCell>
+              <TableCell className="tabular whitespace-nowrap">
+                {formatDate(expense.chargeDate)}
+              </TableCell>
               <TableCell>
                 <span className="font-semibold">{expense.name}</span>
                 {expense.recurringExpenseId !== null ? (
@@ -48,27 +57,39 @@ export function ExpenseTable({ rows, onEdit, onDelete }: ExpenseTableProps) {
                     Recurring
                   </Badge>
                 ) : null}
-                {expense.notes ? <div className="text-small text-navy-72">{expense.notes}</div> : null}
+                {expense.notes ? (
+                  <div className="text-small text-navy-72">{expense.notes}</div>
+                ) : null}
               </TableCell>
               <TableCell>{expense.expenseType.name}</TableCell>
               <TableCell>{expense.project?.name ?? NONE}</TableCell>
               <TableCell>{expense.person?.name ?? NONE}</TableCell>
               <TableCell className="tabular text-right">
                 {formatUsd(expense.amountCents)}
-                {expense.originalCountry && expense.originalAmount !== null && expense.exchangeRate !== null ? (
+                {expense.originalCountry &&
+                expense.originalAmount !== null &&
+                expense.exchangeRate !== null ? (
                   <div className="text-small text-navy-72">
-                    {formatMoney(expense.originalAmount, expense.originalCountry)} at {formatRate(expense.exchangeRate)}
+                    {formatMoney(
+                      expense.originalAmount,
+                      expense.originalCountry
+                    )}{' '}
+                    at {formatRate(expense.exchangeRate)}
                   </div>
                 ) : null}
               </TableCell>
               <TableCell className="whitespace-nowrap text-right">
                 <IconButton
-                  label={`Edit ${expense.name}, ${formatDate(expense.chargeDate)}`}
+                  label={`Edit ${expense.name}, ${formatDate(
+                    expense.chargeDate
+                  )}`}
                   icon={LuPencil}
                   onClick={() => onEdit(expense)}
                 />
                 <IconButton
-                  label={`Delete ${expense.name}, ${formatDate(expense.chargeDate)}`}
+                  label={`Delete ${expense.name}, ${formatDate(
+                    expense.chargeDate
+                  )}`}
                   icon={LuTrash2}
                   onClick={() => onDelete(expense)}
                 />

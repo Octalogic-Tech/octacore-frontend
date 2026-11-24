@@ -8,7 +8,8 @@ export const buttonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'min-h-[3.25rem] items-stretch bg-primary text-primary-foreground',
+        primary:
+          'min-h-[3.25rem] items-stretch bg-primary text-primary-foreground',
         quiet:
           'min-h-11 items-center px-3 text-foreground decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline',
         // A bare mark in a 44px square; the quiet button's teal underline is drawn as a bar under the mark.
@@ -16,15 +17,27 @@ export const buttonVariants = cva(
       },
     },
     defaultVariants: { variant: 'primary' },
-  },
+  }
 );
 
-type ButtonProps = ComponentProps<'button'> & VariantProps<typeof buttonVariants>;
+type ButtonProps = ComponentProps<'button'> &
+  VariantProps<typeof buttonVariants>;
 
 /** A label and a square arm cell; the arm does the signalling. One primary button per screen. */
-export function Button({ className, variant, type = 'button', children, ...props }: ButtonProps) {
+export function Button({
+  className,
+  variant,
+  type = 'button',
+  children,
+  ...props
+}: ButtonProps) {
   return (
-    <button data-slot="button" type={type} className={cn(buttonVariants({ variant }), className)} {...props}>
+    <button
+      data-slot="button"
+      type={type}
+      className={cn(buttonVariants({ variant }), className)}
+      {...props}
+    >
       {variant === 'quiet' ? (
         children
       ) : (

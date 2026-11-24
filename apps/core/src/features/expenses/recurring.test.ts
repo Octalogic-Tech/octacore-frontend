@@ -15,11 +15,20 @@ describe('sortRecurring', () => {
 
   it('orders one state by the next charge, then by name, and does not change its input', () => {
     const [figma] = rows;
-    const sooner = { ...figma, id: 20, name: 'Zoom', nextChargeDate: '2026-10-20' };
+    const sooner = {
+      ...figma,
+      id: 20,
+      name: 'Zoom',
+      nextChargeDate: '2026-10-20',
+    };
     const same = { ...figma, id: 21, name: 'Asana' };
     const input = [figma, sooner, same];
 
-    expect(sortRecurring(input).map((row) => row.name)).toEqual(['Zoom', 'Asana', 'Figma']);
+    expect(sortRecurring(input).map((row) => row.name)).toEqual([
+      'Zoom',
+      'Asana',
+      'Figma',
+    ]);
     expect(input.map((row) => row.name)).toEqual(['Figma', 'Zoom', 'Asana']);
   });
 });

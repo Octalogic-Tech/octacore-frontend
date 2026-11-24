@@ -33,8 +33,12 @@ const toId = (value: string) => (value === '' ? null : Number(value));
 export function OneTimeTab() {
   // Read each render, so the default range follows the date without a reload.
   const today = localToday();
-  const [filters, setFilters] = useState<OneTimeFilters>(() => defaultOneTimeFilters(localToday()));
-  const [form, setForm] = useState<{ open: boolean; expense?: ExpenseRow }>({ open: false });
+  const [filters, setFilters] = useState<OneTimeFilters>(() =>
+    defaultOneTimeFilters(localToday())
+  );
+  const [form, setForm] = useState<{ open: boolean; expense?: ExpenseRow }>({
+    open: false,
+  });
   const [toDelete, setToDelete] = useState<ExpenseRow | null>(null);
 
   const query = useMemo(() => toOneTimeQuery(filters), [filters]);
@@ -44,7 +48,10 @@ export function OneTimeTab() {
   const people = usePeople();
 
   const rows = useMemo(() => expenses.data ?? [], [expenses.data]);
-  const total = useMemo(() => rows.reduce((sum, row) => sum + row.amountCents, 0), [rows]);
+  const total = useMemo(
+    () => rows.reduce((sum, row) => sum + row.amountCents, 0),
+    [rows]
+  );
   const isDefault = isDefaultOneTimeFilters(filters, today);
 
   function update(patch: Partial<OneTimeFilters>) {
@@ -64,7 +71,9 @@ export function OneTimeTab() {
           <Select
             id="one-time-filter-type"
             value={filters.expenseTypeId ?? ''}
-            onChange={(event) => update({ expenseTypeId: toId(event.target.value) })}
+            onChange={(event) =>
+              update({ expenseTypeId: toId(event.target.value) })
+            }
           >
             <option value="">All types</option>
             {(types.data ?? []).map((type) => (
@@ -78,7 +87,9 @@ export function OneTimeTab() {
           <Select
             id="one-time-filter-project"
             value={filters.projectId ?? ''}
-            onChange={(event) => update({ projectId: toId(event.target.value) })}
+            onChange={(event) =>
+              update({ projectId: toId(event.target.value) })
+            }
           >
             <option value="">All projects</option>
             {(projects.data ?? []).map((project) => (
@@ -131,11 +142,18 @@ export function OneTimeTab() {
 
       <div className="mb-6 flex flex-wrap items-center gap-x-2">
         {isDefault ? null : (
-          <Button variant="quiet" onClick={() => setFilters(defaultOneTimeFilters(today))}>
+          <Button
+            variant="quiet"
+            onClick={() => setFilters(defaultOneTimeFilters(today))}
+          >
             Clear filters
           </Button>
         )}
-        <Button variant="quiet" disabled={rows.length === 0} onClick={() => downloadCsv('expenses.csv', expensesToCsv(rows))}>
+        <Button
+          variant="quiet"
+          disabled={rows.length === 0}
+          onClick={() => downloadCsv('expenses.csv', expensesToCsv(rows))}
+        >
           Export CSV
         </Button>
         {expenses.data ? (
@@ -146,7 +164,10 @@ export function OneTimeTab() {
       </div>
 
       {isRangeInverted(filters) ? (
-        <p role="alert" className="mb-4 text-small font-semibold text-foreground">
+        <p
+          role="alert"
+          className="mb-4 text-small font-semibold text-foreground"
+        >
           The start date is after the end date.
         </p>
       ) : null}
@@ -185,7 +206,11 @@ export function OneTimeTab() {
         expense={form.expense}
         fallbackFocusId="one-time-search"
       />
-      <DeleteExpenseDialog expense={toDelete} onClose={() => setToDelete(null)} fallbackFocusId="one-time-search" />
+      <DeleteExpenseDialog
+        expense={toDelete}
+        onClose={() => setToDelete(null)}
+        fallbackFocusId="one-time-search"
+      />
     </>
   );
 }

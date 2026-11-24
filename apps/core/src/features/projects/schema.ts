@@ -1,7 +1,12 @@
 import { z } from 'zod';
 import { taxRateProblem } from '@/features/countries/schema';
 import { convertToCents } from '@/features/expenses/money';
-import { MAX_CENTS, amountProblem, parseAmount, toAmountText } from '@/lib/money';
+import {
+  MAX_CENTS,
+  amountProblem,
+  parseAmount,
+  toAmountText,
+} from '@/lib/money';
 
 const nullToEmpty = (text: string | null) => text ?? '';
 const orNull = (text: string) => (text === '' ? null : text);
@@ -17,13 +22,19 @@ export const projectTypeSchema = z.enum(['resource_augmentation', 'product']);
 export type BillingType = z.infer<typeof billingTypeSchema>;
 export type ProjectType = z.infer<typeof projectTypeSchema>;
 
-export const BILLING_LABELS: Record<BillingType, string> = { retainer: 'Retainer', fixed_cost: 'Fixed cost' };
+export const BILLING_LABELS: Record<BillingType, string> = {
+  retainer: 'Retainer',
+  fixed_cost: 'Fixed cost',
+};
 export const PROJECT_TYPE_LABELS: Record<ProjectType, string> = {
   resource_augmentation: 'Resource augmentation',
   product: 'Product',
 };
 
-export const billingOptions = billingTypeSchema.options.map((value) => ({ value, label: BILLING_LABELS[value] }));
+export const billingOptions = billingTypeSchema.options.map((value) => ({
+  value,
+  label: BILLING_LABELS[value],
+}));
 export const projectTypeOptions = projectTypeSchema.options.map((value) => ({
   value,
   label: PROJECT_TYPE_LABELS[value],
@@ -39,10 +50,12 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
   completed: 'Completed',
 };
 
-export const projectStatusOptions = projectStatusSchema.options.map((value) => ({
-  value,
-  label: PROJECT_STATUS_LABELS[value],
-}));
+export const projectStatusOptions = projectStatusSchema.options.map(
+  (value) => ({
+    value,
+    label: PROJECT_STATUS_LABELS[value],
+  })
+);
 
 /**
  * The currency an invoice is issued in and the tax it carries, copied from a country: what a project bills in
@@ -107,7 +120,9 @@ export const projectRowSchema = z
     ...row,
     clientName: client?.name ?? '',
     // Flattened so the search can read them like any other column; empty while the project has no type.
-    projectTypeLabel: row.projectType ? PROJECT_TYPE_LABELS[row.projectType] : '',
+    projectTypeLabel: row.projectType
+      ? PROJECT_TYPE_LABELS[row.projectType]
+      : '',
     billingTypeLabel: row.billingType ? BILLING_LABELS[row.billingType] : '',
     projectStatusLabel: PROJECT_STATUS_LABELS[row.projectStatus],
   }));
@@ -161,7 +176,9 @@ export type InvoiceRow = z.output<typeof invoiceRowSchema>;
 
 /** Newest issue date first; on a tie the invoice entered later goes first. Leaves the list it is given alone. */
 export function sortInvoices(rows: readonly InvoiceRow[]): InvoiceRow[] {
-  return [...rows].sort((a, b) => b.issueDate.localeCompare(a.issueDate) || b.id - a.id);
+  return [...rows].sort(
+    (a, b) => b.issueDate.localeCompare(a.issueDate) || b.id - a.id
+  );
 }
 
 /**
@@ -169,9 +186,15 @@ export function sortInvoices(rows: readonly InvoiceRow[]): InvoiceRow[] {
  * (`YYYY-MM-DD`). An invoice with no due date is never overdue, and one due today is not yet. Each counts as its
  * `amountUsdCents`, so invoices in different currencies add up, before tax like every total.
  */
-export function overdueTotal(rows: readonly InvoiceRow[], today: string): number {
+export function overdueTotal(
+  rows: readonly InvoiceRow[],
+  today: string
+): number {
   return rows
-    .filter((invoice) => !invoice.paidDate && invoice.dueDate !== null && invoice.dueDate < today)
+    .filter(
+      (invoice) =>
+        !invoice.paidDate && invoice.dueDate !== null && invoice.dueDate < today
+    )
     .reduce((total, invoice) => total + invoice.amountUsdCents, 0);
 }
 
@@ -181,9 +204,16 @@ const discountField = z
   .trim()
   .superRefine((text, context) => {
     if (text === '') return;
-    if (!PERCENT_TEXT.test(text)) context.addIssue({ code: 'custom', message: 'Enter a percentage like 7.5' });
+    if (!PERCENT_TEXT.test(text))
+      context.addIssue({
+        code: 'custom',
+        message: 'Enter a percentage like 7.5',
+      });
     else if (Number(text) > MAX_DISCOUNT_PERCENT)
-      context.addIssue({ code: 'custom', message: `Discount must be from 0 to ${MAX_DISCOUNT_PERCENT}` });
+      context.addIssue({
+        code: 'custom',
+        message: `Discount must be from 0 to ${MAX_DISCOUNT_PERCENT}`,
+      });
   });
 
 /** The percentage a field holds, for a request body: empty is 0. */
@@ -195,15 +225,39 @@ export const projectFormSchema = z
     name: z.string().trim().min(1, 'Name is required'),
     description: z.string().trim(),
     // Capitals are applied as the person types and again on send; 2 to 10 letters or digits, or empty for none.
-    key: z.string().trim().refine((value) => value === '' || /^[A-Za-z0-9]{2,10}$/.test(value), 'Use 2 to 10 letters or digits'),
-    billingAddress: z.string().trim().max(1000, 'Keep the address under 1,000 characters'),
+    key: z
+      .string()
+      .trim()
+      .refine(
+        (value) => value === '' || /^[A-Za-z0-9]{2,10}$/.test(value),
+        'Use 2 to 10 letters or digits'
+      ),
+    billingAddress: z
+      .string()
+      .trim()
+      .max(1000, 'Keep the address under 1,000 characters'),
     discountPercent: discountField,
     clientId: z.string(),
     // The billing country; '' is None, and then the client's country decides.
     countryId: z.string(),
-    projectType: z.string().refine((value) => projectTypeSchema.safeParse(value).success, 'Choose a project type'),
-    billingType: z.string().refine((value) => billingTypeSchema.safeParse(value).success, 'Choose a billing type'),
-    projectStatus: z.string().refine((value) => projectStatusSchema.safeParse(value).success, 'Choose a status'),
+    projectType: z
+      .string()
+      .refine(
+        (value) => projectTypeSchema.safeParse(value).success,
+        'Choose a project type'
+      ),
+    billingType: z
+      .string()
+      .refine(
+        (value) => billingTypeSchema.safeParse(value).success,
+        'Choose a billing type'
+      ),
+    projectStatus: z
+      .string()
+      .refine(
+        (value) => projectStatusSchema.safeParse(value).success,
+        'Choose a status'
+      ),
     // `YYYY-MM-DD` from a date input, or empty.
     startDate: z.string(),
     endDate: z.string(),
@@ -211,8 +265,16 @@ export const projectFormSchema = z
     technologyIds: z.array(z.string()),
   })
   .superRefine((values, context) => {
-    if (values.startDate !== '' && values.endDate !== '' && values.endDate < values.startDate) {
-      context.addIssue({ code: 'custom', path: ['endDate'], message: 'The project must end on or after it starts' });
+    if (
+      values.startDate !== '' &&
+      values.endDate !== '' &&
+      values.endDate < values.startDate
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['endDate'],
+        message: 'The project must end on or after it starts',
+      });
     }
   });
 
@@ -243,16 +305,24 @@ export function toProjectFormValues(project?: ProjectRow): ProjectFormValues {
     billingAddress: project.billingAddress,
     discountPercent: String(project.discountPercent),
     // A client the service no longer embeds comes back as null: the form opens on None, not on a stale id.
-    clientId: project.clientId !== null && project.clientName !== '' ? String(project.clientId) : '',
+    clientId:
+      project.clientId !== null && project.clientName !== ''
+        ? String(project.clientId)
+        : '',
     // Likewise a country the service no longer embeds.
-    countryId: project.countryId !== null && project.country !== null ? String(project.countryId) : '',
+    countryId:
+      project.countryId !== null && project.country !== null
+        ? String(project.countryId)
+        : '',
     // A legacy project has no types yet: the selects open on "Choose" and saving asks for a pick.
     projectType: project.projectType ?? '',
     billingType: project.billingType ?? '',
     projectStatus: project.projectStatus,
     startDate: project.startDate ?? '',
     endDate: project.endDate ?? '',
-    technologyIds: project.technologies.map((technology) => String(technology.id)),
+    technologyIds: project.technologies.map((technology) =>
+      String(technology.id)
+    ),
   };
 }
 
@@ -313,7 +383,11 @@ export function lineAmount(line: LineFigures): number | null {
   const headcount = line.headcount.trim();
   const quantity = line.quantity.trim();
   const rate = line.rate.trim();
-  if (!WHOLE_NUMBER.test(headcount) || !WHOLE_NUMBER.test(quantity) || amountProblem(rate, { allowZero: true })) {
+  if (
+    !WHOLE_NUMBER.test(headcount) ||
+    !WHOLE_NUMBER.test(quantity) ||
+    amountProblem(rate, { allowZero: true })
+  ) {
     return null;
   }
   return Number(headcount) * Number(quantity) * parseAmount(rate);
@@ -354,8 +428,11 @@ export function discountAmount(subtotalCents: number, percent: string): number {
  */
 export function taxAmount(amountCents: number, percent: string): number {
   const text = percent.trim();
-  if (taxRateProblem(text) !== null || !Number.isSafeInteger(amountCents)) return 0;
-  return Number((BigInt(amountCents) * BigInt(hundredthsOf(text)) + 5000n) / 10000n);
+  if (taxRateProblem(text) !== null || !Number.isSafeInteger(amountCents))
+    return 0;
+  return Number(
+    (BigInt(amountCents) * BigInt(hundredthsOf(text)) + 5000n) / 10000n
+  );
 }
 
 /**
@@ -363,12 +440,24 @@ export function taxAmount(amountCents: number, percent: string): number {
  * after it, the tax on that, and the total the client pays. `usd` is the amount in US cents at `exchangeRate` (units per
  * dollar), half up: what the service keeps as `amountUsdCents`, before tax.
  */
-export function invoiceTotals(lines: readonly LineFigures[], discountPercent: string, taxPercent = '0', exchangeRate = 1) {
+export function invoiceTotals(
+  lines: readonly LineFigures[],
+  discountPercent: string,
+  taxPercent = '0',
+  exchangeRate = 1
+) {
   const subtotal = linesTotal(lines);
   const discount = discountAmount(subtotal, discountPercent);
   const amount = subtotal - discount;
   const tax = taxAmount(amount, taxPercent);
-  return { subtotal, discount, amount, tax, total: amount + tax, usd: convertToCents(amount, exchangeRate) };
+  return {
+    subtotal,
+    discount,
+    amount,
+    tax,
+    total: amount + tax,
+    usd: convertToCents(amount, exchangeRate),
+  };
 }
 
 // A rate is text in units and hundredths of the invoice's currency, so a blank field can be told from a typed one and a comma, a currency sign or
@@ -377,8 +466,12 @@ const rateField = z
   .string()
   .trim()
   .superRefine((text, context) => {
-    const problem = text === '' ? 'Rate is required' : amountProblem(text, { allowZero: true });
-    if (problem !== null) context.addIssue({ code: 'custom', message: problem });
+    const problem =
+      text === ''
+        ? 'Rate is required'
+        : amountProblem(text, { allowZero: true });
+    if (problem !== null)
+      context.addIssue({ code: 'custom', message: problem });
   });
 
 // Text, not number inputs: a comma or a currency sign must be told what is wrong, not dropped.
@@ -389,20 +482,35 @@ export const lineFormSchema = z
       .string()
       .trim()
       .superRefine((text, context) => {
-        if (text === '') context.addIssue({ code: 'custom', message: 'Qty is required' });
-        else if (!WHOLE_NUMBER.test(text)) context.addIssue({ code: 'custom', message: 'Enter a whole number, like 3' });
+        if (text === '')
+          context.addIssue({ code: 'custom', message: 'Qty is required' });
+        else if (!WHOLE_NUMBER.test(text))
+          context.addIssue({
+            code: 'custom',
+            message: 'Enter a whole number, like 3',
+          });
         else if (Number(text) < 1 || Number(text) > MAX_HEADCOUNT)
-          context.addIssue({ code: 'custom', message: 'Qty must be from 1 to 1,000' });
+          context.addIssue({
+            code: 'custom',
+            message: 'Qty must be from 1 to 1,000',
+          });
       }),
     quantity: z
       .string()
       .trim()
       .superRefine((text, context) => {
-        if (text === '') context.addIssue({ code: 'custom', message: 'Quantity is required' });
+        if (text === '')
+          context.addIssue({ code: 'custom', message: 'Quantity is required' });
         else if (!WHOLE_NUMBER.test(text))
-          context.addIssue({ code: 'custom', message: 'Enter a whole number, like 160' });
+          context.addIssue({
+            code: 'custom',
+            message: 'Enter a whole number, like 160',
+          });
         else if (Number(text) < 1 || Number(text) > MAX_QUANTITY)
-          context.addIssue({ code: 'custom', message: 'Quantity must be from 1 to 100,000' });
+          context.addIssue({
+            code: 'custom',
+            message: 'Quantity must be from 1 to 100,000',
+          });
       }),
     rate: rateField,
   })
@@ -413,24 +521,43 @@ export const lineFormSchema = z
     const amount = lineAmount(line);
     const headcount = Number(line.headcount.trim());
     const quantity = Number(line.quantity.trim());
-    const eachInRange = headcount >= 1 && headcount <= MAX_HEADCOUNT && quantity >= 1 && quantity <= MAX_QUANTITY;
+    const eachInRange =
+      headcount >= 1 &&
+      headcount <= MAX_HEADCOUNT &&
+      quantity >= 1 &&
+      quantity <= MAX_QUANTITY;
     if (amount !== null && eachInRange && amount > MAX_CENTS) {
-      context.addIssue({ code: 'custom', path: ['rate'], message: 'This line is too large' });
+      context.addIssue({
+        code: 'custom',
+        path: ['rate'],
+        message: 'This line is too large',
+      });
     }
   });
 
 export type LineFormValues = z.infer<typeof lineFormSchema>;
 
-export const blankLine: LineFormValues = { description: '', headcount: '1', quantity: '', rate: '' };
+export const blankLine: LineFormValues = {
+  description: '',
+  headcount: '1',
+  quantity: '',
+  rate: '',
+};
 
 /**
  * `numberRequired` is false only when adding to a project that has a key: then the server numbers an invoice left
  * without one. When editing, or on a project with no key, a number must be given.
  */
-export function makeInvoiceFormSchema({ numberRequired }: { numberRequired: boolean }) {
+export function makeInvoiceFormSchema({
+  numberRequired,
+}: {
+  numberRequired: boolean;
+}) {
   return z
     .object({
-      number: numberRequired ? z.string().trim().min(1, 'Number is required') : z.string().trim(),
+      number: numberRequired
+        ? z.string().trim().min(1, 'Number is required')
+        : z.string().trim(),
       description: z.string().trim(),
       issueDate: z.string().min(1, 'Issue date is required'),
       dueDate: z.string(),
@@ -440,10 +567,14 @@ export function makeInvoiceFormSchema({ numberRequired }: { numberRequired: bool
       discountPercent: discountField,
       // 0 to 100. Unlike the discount an empty field is told, not read as 0: 0 means no tax, and empty would leave the
       // service to guess.
-      taxRate: z.string().trim().superRefine((text, context) => {
-        const problem = taxRateProblem(text);
-        if (problem !== null) context.addIssue({ code: 'custom', message: problem });
-      }),
+      taxRate: z
+        .string()
+        .trim()
+        .superRefine((text, context) => {
+          const problem = taxRateProblem(text);
+          if (problem !== null)
+            context.addIssue({ code: 'custom', message: problem });
+        }),
       lines: z.array(lineFormSchema).min(1, 'Add at least one line'),
     })
     .superRefine((values, context) => {
@@ -456,12 +587,18 @@ export function makeInvoiceFormSchema({ numberRequired }: { numberRequired: bool
           message: 'Give both dates, or neither',
         });
       } else if (hasStart && values.periodEnd < values.periodStart) {
-        context.addIssue({ code: 'custom', path: ['periodEnd'], message: 'The period must end on or after it starts' });
+        context.addIssue({
+          code: 'custom',
+          path: ['periodEnd'],
+          message: 'The period must end on or after it starts',
+        });
       }
     });
 }
 
-export const invoiceFormSchema = makeInvoiceFormSchema({ numberRequired: true });
+export const invoiceFormSchema = makeInvoiceFormSchema({
+  numberRequired: true,
+});
 
 export type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 
@@ -484,8 +621,15 @@ export const emptyInvoiceForm: InvoiceFormValues = {
  * A new invoice starts from its project's discount and can change it; a saved invoice keeps the one it was given,
  * whatever its project has now, and the tax rate it was issued with.
  */
-export function toInvoiceFormValues(invoice?: InvoiceRow, projectDiscountPercent = 0): InvoiceFormValues {
-  if (!invoice) return { ...emptyInvoiceForm, discountPercent: String(projectDiscountPercent) };
+export function toInvoiceFormValues(
+  invoice?: InvoiceRow,
+  projectDiscountPercent = 0
+): InvoiceFormValues {
+  if (!invoice)
+    return {
+      ...emptyInvoiceForm,
+      discountPercent: String(projectDiscountPercent),
+    };
   return {
     number: invoice.number,
     description: invoice.description,
@@ -565,7 +709,7 @@ export const invoiceDraftSchema = billingTermsSchema.extend({
       headcount: z.number().int(),
       quantity: z.number().int(),
       rateCents: z.number().int(),
-    }),
+    })
   ),
 });
 
@@ -616,9 +760,16 @@ export const resourceFormSchema = z.object({
     .string()
     .trim()
     .superRefine((text, context) => {
-      if (text === '') context.addIssue({ code: 'custom', message: 'Number of people is required' });
+      if (text === '')
+        context.addIssue({
+          code: 'custom',
+          message: 'Number of people is required',
+        });
       else if (!/^\d+$/.test(text) || Number(text) < 1 || Number(text) > 1000)
-        context.addIssue({ code: 'custom', message: 'Enter a whole number from 1 to 1,000' });
+        context.addIssue({
+          code: 'custom',
+          message: 'Enter a whole number from 1 to 1,000',
+        });
     }),
   // Dollars and cents per hour, as typed.
   rate: rateField,
@@ -634,13 +785,18 @@ export const emptyResourceForm: ResourceFormValues = {
   rate: '',
 };
 
-export function toResourceFormValues(resource?: ResourceRow): ResourceFormValues {
+export function toResourceFormValues(
+  resource?: ResourceRow
+): ResourceFormValues {
   if (!resource) return emptyResourceForm;
   return {
     name: resource.name,
     // A person or a category the service no longer embeds comes back as null: the form opens on None, or on
     // "Choose", not on a stale id.
-    personId: resource.personId !== null && resource.personName !== '' ? String(resource.personId) : '',
+    personId:
+      resource.personId !== null && resource.personName !== ''
+        ? String(resource.personId)
+        : '',
     categoryId: resource.categoryName !== '' ? String(resource.categoryId) : '',
     headcount: String(resource.headcount),
     rate: toAmountText(resource.rateCents),
@@ -701,12 +857,27 @@ export const emailFormSchema = z.object({
   to: z.string().superRefine((text, context) => {
     const addresses = parseRecipients(text);
     const bad = addresses.find((address) => !EMAIL_ADDRESS.test(address));
-    if (addresses.length === 0) context.addIssue({ code: 'custom', message: 'Enter at least one email address' });
+    if (addresses.length === 0)
+      context.addIssue({
+        code: 'custom',
+        message: 'Enter at least one email address',
+      });
     else if (bad !== undefined)
-      context.addIssue({ code: 'custom', message: `That does not look like an email address: ${bad}` });
-    else if (addresses.length > 10) context.addIssue({ code: 'custom', message: 'Send to 10 addresses or fewer' });
+      context.addIssue({
+        code: 'custom',
+        message: `That does not look like an email address: ${bad}`,
+      });
+    else if (addresses.length > 10)
+      context.addIssue({
+        code: 'custom',
+        message: 'Send to 10 addresses or fewer',
+      });
   }),
-  subject: z.string().trim().min(1, 'Subject is required').max(200, 'Keep the subject under 200 characters'),
+  subject: z
+    .string()
+    .trim()
+    .min(1, 'Subject is required')
+    .max(200, 'Keep the subject under 200 characters'),
   message: z.string().max(10_000, 'Keep the message under 10,000 characters'),
 });
 
@@ -719,9 +890,17 @@ export interface SendBody {
 }
 
 export function toSendBody(values: EmailFormValues): SendBody {
-  return { to: parseRecipients(values.to), subject: values.subject.trim(), message: values.message };
+  return {
+    to: parseRecipients(values.to),
+    subject: values.subject.trim(),
+    message: values.message,
+  };
 }
 
 export function toEmailFormValues(draft: EmailDraft): EmailFormValues {
-  return { to: draft.to.join(', '), subject: draft.subject, message: draft.message };
+  return {
+    to: draft.to.join(', '),
+    subject: draft.subject,
+    message: draft.message,
+  };
 }

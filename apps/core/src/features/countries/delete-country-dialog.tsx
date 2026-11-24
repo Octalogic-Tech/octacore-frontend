@@ -13,7 +13,10 @@ interface DeleteCountryDialogProps {
  * Asks before deleting a country. The service refuses a country that a client, an expense or a recurring expense
  * uses, and the last active one that uses US dollars; its message says which, and is shown in the dialog.
  */
-export function DeleteCountryDialog({ country, onClose }: DeleteCountryDialogProps) {
+export function DeleteCountryDialog({
+  country,
+  onClose,
+}: DeleteCountryDialogProps) {
   const remove = useDeleteCountry();
   return (
     <ConfirmDialog

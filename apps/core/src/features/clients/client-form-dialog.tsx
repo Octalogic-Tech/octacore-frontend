@@ -2,7 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -32,7 +37,12 @@ interface ClientFormDialogProps {
 
 type Failure = 'client' | 'contact' | 'stale-contact' | null;
 
-export function ClientFormDialog({ open, onOpenChange, client, contact }: ClientFormDialogProps) {
+export function ClientFormDialog({
+  open,
+  onOpenChange,
+  client,
+  contact,
+}: ClientFormDialogProps) {
   const countries = useCountries();
   const saveClient = useSaveClient();
   const saveContact = useSaveContact();
@@ -44,7 +54,10 @@ export function ClientFormDialog({ open, onOpenChange, client, contact }: Client
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<ClientFormValues>({ resolver: zodResolver(clientFormSchema), defaultValues: emptyClientForm });
+  } = useForm<ClientFormValues>({
+    resolver: zodResolver(clientFormSchema),
+    defaultValues: emptyClientForm,
+  });
 
   useEffect(() => {
     if (open) {
@@ -64,14 +77,17 @@ export function ClientFormDialog({ open, onOpenChange, client, contact }: Client
             ? { id: client.countryId, name: client.countryName }
             : undefined,
       }),
-    [countries.data, client],
+    [countries.data, client]
   );
 
   const submit = handleSubmit(async (values) => {
     setFailure(null);
     let clientId: number;
     try {
-      clientId = await saveClient.mutateAsync({ id: savedId ?? client?.id, body: toClientBody(values) });
+      clientId = await saveClient.mutateAsync({
+        id: savedId ?? client?.id,
+        body: toClientBody(values),
+      });
     } catch {
       setFailure('client');
       return;
@@ -82,7 +98,9 @@ export function ClientFormDialog({ open, onOpenChange, client, contact }: Client
       try {
         await saveContact.mutateAsync(step);
       } catch (error) {
-        setFailure(contactChangedElsewhere(error) ? 'stale-contact' : 'contact');
+        setFailure(
+          contactChangedElsewhere(error) ? 'stale-contact' : 'contact'
+        );
         return;
       }
     }
@@ -99,21 +117,43 @@ export function ClientFormDialog({ open, onOpenChange, client, contact }: Client
     >
       <DialogContent fallbackFocusId="client-search">
         <DialogTitle>{client ? 'Edit client' : 'New client'}</DialogTitle>
-        <DialogDescription>Name the client and say where it is. A primary contact is optional.</DialogDescription>
+        <DialogDescription>
+          Name the client and say where it is. A primary contact is optional.
+        </DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
-          <Field label="Name" htmlFor="client-name" error={errors.name?.message}>
-            <Input {...fieldA11y('client-name', errors.name?.message)} {...register('name')} autoComplete="off" />
+          <Field
+            label="Name"
+            htmlFor="client-name"
+            error={errors.name?.message}
+          >
+            <Input
+              {...fieldA11y('client-name', errors.name?.message)}
+              {...register('name')}
+              autoComplete="off"
+            />
           </Field>
-          <Field label="Description" htmlFor="client-description" error={errors.description?.message}>
-            <Textarea {...fieldA11y('client-description', errors.description?.message)} {...register('description')} />
+          <Field
+            label="Description"
+            htmlFor="client-description"
+            error={errors.description?.message}
+          >
+            <Textarea
+              {...fieldA11y('client-description', errors.description?.message)}
+              {...register('description')}
+            />
           </Field>
           <Field
             label="Country"
             htmlFor="client-country"
             error={errors.countryId?.message}
-            hint={countries.isError ? 'Countries could not be loaded.' : undefined}
+            hint={
+              countries.isError ? 'Countries could not be loaded.' : undefined
+            }
           >
-            <Select {...fieldA11y('client-country', errors.countryId?.message)} {...register('countryId')}>
+            <Select
+              {...fieldA11y('client-country', errors.countryId?.message)}
+              {...register('countryId')}
+            >
               <option value="">None</option>
               {countryOptions.map((option) => (
                 <option key={option.id} value={String(option.id)}>
@@ -122,29 +162,60 @@ export function ClientFormDialog({ open, onOpenChange, client, contact }: Client
               ))}
             </Select>
           </Field>
-          <Field label="City" htmlFor="client-city" error={errors.city?.message}>
-            <Input {...fieldA11y('client-city', errors.city?.message)} {...register('city')} autoComplete="off" />
+          <Field
+            label="City"
+            htmlFor="client-city"
+            error={errors.city?.message}
+          >
+            <Input
+              {...fieldA11y('client-city', errors.city?.message)}
+              {...register('city')}
+              autoComplete="off"
+            />
           </Field>
           <fieldset className="grid gap-6">
-            <legend className="mb-2 text-body font-semibold text-foreground">Primary contact</legend>
-            <Field label="Contact name" htmlFor="client-contact-name" error={errors.contactName?.message}>
+            <legend className="mb-2 text-body font-semibold text-foreground">
+              Primary contact
+            </legend>
+            <Field
+              label="Contact name"
+              htmlFor="client-contact-name"
+              error={errors.contactName?.message}
+            >
               <Input
-                {...fieldA11y('client-contact-name', errors.contactName?.message)}
+                {...fieldA11y(
+                  'client-contact-name',
+                  errors.contactName?.message
+                )}
                 {...register('contactName')}
                 autoComplete="off"
               />
             </Field>
-            <Field label="Email" htmlFor="client-contact-email" error={errors.contactEmail?.message}>
+            <Field
+              label="Email"
+              htmlFor="client-contact-email"
+              error={errors.contactEmail?.message}
+            >
               <Input
-                {...fieldA11y('client-contact-email', errors.contactEmail?.message)}
+                {...fieldA11y(
+                  'client-contact-email',
+                  errors.contactEmail?.message
+                )}
                 {...register('contactEmail')}
                 type="email"
                 autoComplete="off"
               />
             </Field>
-            <Field label="Phone" htmlFor="client-contact-phone" error={errors.contactPhone?.message}>
+            <Field
+              label="Phone"
+              htmlFor="client-contact-phone"
+              error={errors.contactPhone?.message}
+            >
               <Input
-                {...fieldA11y('client-contact-phone', errors.contactPhone?.message)}
+                {...fieldA11y(
+                  'client-contact-phone',
+                  errors.contactPhone?.message
+                )}
                 {...register('contactPhone')}
                 type="tel"
                 autoComplete="off"
@@ -152,26 +223,39 @@ export function ClientFormDialog({ open, onOpenChange, client, contact }: Client
             </Field>
           </fieldset>
           {failure === 'client' ? (
-            <p role="alert" className="text-small font-semibold text-foreground">
+            <p
+              role="alert"
+              className="text-small font-semibold text-foreground"
+            >
               That did not save. Try again.
             </p>
           ) : null}
           {failure === 'contact' ? (
-            <p role="alert" className="text-small font-semibold text-foreground">
+            <p
+              role="alert"
+              className="text-small font-semibold text-foreground"
+            >
               The client was saved, but its contact was not. Try again.
             </p>
           ) : null}
           {failure === 'stale-contact' ? (
-            <p role="alert" className="text-small font-semibold text-foreground">
-              The client was saved, but its contact was not: the contact changed elsewhere. Close this dialog and
-              open the client again.
+            <p
+              role="alert"
+              className="text-small font-semibold text-foreground"
+            >
+              The client was saved, but its contact was not: the contact changed
+              elsewhere. Close this dialog and open the client again.
             </p>
           ) : null}
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={isSubmitting}>
               Save
             </Button>
-            <Button variant="quiet" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
+            <Button
+              variant="quiet"
+              disabled={isSubmitting}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
           </div>

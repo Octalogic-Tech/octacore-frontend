@@ -16,7 +16,8 @@ const LEAVES = ['leaves'] as const;
 export function usePeople() {
   return useQuery({
     queryKey: PERSON_LIST,
-    queryFn: async () => unwrap((await coreApi.get('/people')).data, personRowsSchema),
+    queryFn: async () =>
+      unwrap((await coreApi.get('/people')).data, personRowsSchema),
   });
 }
 
@@ -24,7 +25,8 @@ export function usePeople() {
 export function usePerson(id: number) {
   return useQuery({
     queryKey: personDetail(id),
-    queryFn: async () => unwrap((await coreApi.get(`/people/${id}`)).data, personRowSchema),
+    queryFn: async () =>
+      unwrap((await coreApi.get(`/people/${id}`)).data, personRowSchema),
   });
 }
 
@@ -43,9 +45,15 @@ function useRefreshPeople() {
         ? client.invalidateQueries({ queryKey: PEOPLE })
         : Promise.all([
             client.invalidateQueries({ queryKey: PERSON_LIST, exact: true }),
-            client.invalidateQueries({ queryKey: personDetail(deleted), refetchType: 'none' }),
+            client.invalidateQueries({
+              queryKey: personDetail(deleted),
+              refetchType: 'none',
+            }),
           ]),
-      client.invalidateQueries({ queryKey: PROJECT_RESOURCES, refetchType: 'none' }),
+      client.invalidateQueries({
+        queryKey: PROJECT_RESOURCES,
+        refetchType: 'none',
+      }),
       client.invalidateQueries({ queryKey: ALLOCATIONS, refetchType: 'none' }),
       client.invalidateQueries({ queryKey: LEAVES, refetchType: 'none' }),
     ]);
@@ -58,7 +66,13 @@ function useRefreshPeople() {
 export function useSavePerson() {
   const refresh = useRefreshPeople();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: number | undefined; body: PersonBody }) => {
+    mutationFn: async ({
+      id,
+      body,
+    }: {
+      id: number | undefined;
+      body: PersonBody;
+    }) => {
       if (id === undefined) await coreApi.post('/people', body);
       else await coreApi.patch(`/people/${id}`, body);
     },

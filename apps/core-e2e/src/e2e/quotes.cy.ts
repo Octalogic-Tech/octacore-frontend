@@ -36,11 +36,15 @@ function fillNewQuote() {
   // The description lives in a dialog, opened from the line's own button.
   cy.get('button[aria-label="Add description to line 1"]').click();
   cy.get('[role="dialog"]').within(() => {
-    cy.get('#line-1-description').type('The hero, the services and the contact form');
+    cy.get('#line-1-description').type(
+      'The hero, the services and the contact form'
+    );
     cy.contains('button', 'Done').click();
   });
   cy.get('[role="dialog"]').should('not.exist');
-  cy.get('button[aria-label="Edit description of line 1"]').should('be.visible');
+  cy.get('button[aria-label="Edit description of line 1"]').should(
+    'be.visible'
+  );
   // Add line, in the footer row under the section's lines, puts the new line in that section and moves to its title.
   // This one has no description.
   cy.get('button[aria-label="Add line to section 1"]').click();
@@ -76,7 +80,9 @@ describe('quotes', () => {
     cy.get(nav).contains('a', 'Quotes').click();
     cy.location('pathname').should('eq', '/quotes');
     cy.contains('h1', 'Quotes');
-    cy.get(`${nav} a[aria-current="page"]`).should('have.length', 1).and('contain', 'Quotes');
+    cy.get(`${nav} a[aria-current="page"]`)
+      .should('have.length', 1)
+      .and('contain', 'Quotes');
     cy.contains('No quotes yet.').should('be.visible');
   });
 
@@ -92,9 +98,14 @@ describe('quotes', () => {
     cy.get('#section-1-title').should('have.value', 'General');
     cy.get('#line-1-title').should('have.value', 'Home page');
     cy.get('button[aria-label="Edit description of line 1"]').click();
-    cy.get('#line-1-description').should('have.value', 'The hero, the services and the contact form');
+    cy.get('#line-1-description').should(
+      'have.value',
+      'The hero, the services and the contact form'
+    );
     cy.contains('[role="dialog"] button', 'Done').click();
-    cy.get('button[aria-label="Add description to line 2"]').should('be.visible');
+    cy.get('button[aria-label="Add description to line 2"]').should(
+      'be.visible'
+    );
     cy.get('#line-2-title').should('have.value', 'Checkout');
     cy.get('#line-1-units').should('have.value', '2');
     cy.get('#line-2-hoursPerUnit').should('have.value', '4');

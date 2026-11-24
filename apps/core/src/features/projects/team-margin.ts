@@ -30,15 +30,20 @@ export interface TeamMargin {
 export function teamMargin(
   resources: readonly ResourceRow[],
   people: readonly PersonRow[],
-  inrPerUsd: number | null,
+  inrPerUsd: number | null
 ): TeamMargin {
-  const salaryOf = new Map(people.map((person) => [person.id, person.monthlySalaryPaise]));
+  const salaryOf = new Map(
+    people.map((person) => [person.id, person.monthlySalaryPaise])
+  );
   const hasRate = inrPerUsd !== null && inrPerUsd > 0;
   let counted = 0;
   let billed = 0;
   let cost = 0;
   for (const resource of resources) {
-    const salary = resource.personId === null ? null : (salaryOf.get(resource.personId) ?? null);
+    const salary =
+      resource.personId === null
+        ? null
+        : salaryOf.get(resource.personId) ?? null;
     if (!hasRate || salary === null || resource.headcount !== 1) continue;
     counted += 1;
     billed += resource.rateCents * RETAINER_HOURS;
@@ -46,6 +51,9 @@ export function teamMargin(
   }
   const margin = billed - cost;
   // 100 x |margin| / billed, with a half going up, in integers so no float can put a half on the wrong side.
-  const percent = billed === 0 ? null : Math.floor((Math.abs(margin) * 200 + billed) / (2 * billed));
+  const percent =
+    billed === 0
+      ? null
+      : Math.floor((Math.abs(margin) * 200 + billed) / (2 * billed));
   return { counted, total: resources.length, billed, cost, margin, percent };
 }

@@ -50,10 +50,12 @@ export const expenseSummarySchema = z.object({
       name: z.string(),
       totalCents: z.number().int(),
       count: z.number().int(),
-    }),
+    })
   ),
   // `2026-09`, oldest first; a month with no spend is left out.
-  byMonth: z.array(z.object({ month: z.string(), totalCents: z.number().int() })),
+  byMonth: z.array(
+    z.object({ month: z.string(), totalCents: z.number().int() })
+  ),
 });
 
 export type ExpenseSummary = z.output<typeof expenseSummarySchema>;
@@ -65,7 +67,10 @@ export const FREQUENCY_LABELS: Record<Frequency, string> = {
   quarterly: 'Quarterly',
   yearly: 'Yearly',
 };
-export const FREQUENCY_OPTIONS = frequencySchema.options.map((value) => ({ value, label: FREQUENCY_LABELS[value] }));
+export const FREQUENCY_OPTIONS = frequencySchema.options.map((value) => ({
+  value,
+  label: FREQUENCY_LABELS[value],
+}));
 
 export const stateSchema = z.enum(['active', 'paused', 'cancelled']);
 export type RecurringState = z.infer<typeof stateSchema>;
@@ -121,7 +126,8 @@ export const expenseFormSchema = z
   })
   .superRefine((values, context) => {
     const problem = amountProblem(values.amount);
-    if (problem) context.addIssue({ code: 'custom', path: ['amount'], message: problem });
+    if (problem)
+      context.addIssue({ code: 'custom', path: ['amount'], message: problem });
   });
 
 export type ExpenseFormValues = z.infer<typeof expenseFormSchema>;
@@ -141,7 +147,10 @@ export const emptyExpenseForm: ExpenseFormValues = {
  * The form for a new expense (today as the charge date) or for an edit. A dollar expense leaves the country empty:
  * the dialog fills in a US dollar country once the country list says which one that is.
  */
-export function toExpenseFormValues(expense: ExpenseRow | undefined, today: string): ExpenseFormValues {
+export function toExpenseFormValues(
+  expense: ExpenseRow | undefined,
+  today: string
+): ExpenseFormValues {
   if (!expense) return { ...emptyExpenseForm, chargeDate: today };
   return {
     name: expense.name,
@@ -149,7 +158,9 @@ export function toExpenseFormValues(expense: ExpenseRow | undefined, today: stri
     projectId: expense.projectId === null ? '' : String(expense.projectId),
     personId: expense.personId === null ? '' : String(expense.personId),
     chargeDate: expense.chargeDate,
-    countryId: expense.originalCountry ? String(expense.originalCountry.id) : '',
+    countryId: expense.originalCountry
+      ? String(expense.originalCountry.id)
+      : '',
     amount: toAmountText(expense.originalAmount ?? expense.amountCents),
     notes: expense.notes,
   };
@@ -158,7 +169,7 @@ export function toExpenseFormValues(expense: ExpenseRow | undefined, today: stri
 /** The country and amount an expense is shown with (what was typed), or undefined while US dollars are unknown. */
 export function shownAmount(
   expense: ExpenseRow,
-  dollarCountryId: number | undefined,
+  dollarCountryId: number | undefined
 ): { countryId: number; amount: number } | undefined {
   const countryId = expense.originalCountry?.id ?? dollarCountryId;
   if (countryId === undefined) return undefined;
@@ -183,7 +194,7 @@ export interface ExpenseBody {
  */
 export function toExpenseBody(
   values: ExpenseFormValues,
-  shown?: { countryId: number; amount: number },
+  shown?: { countryId: number; amount: number }
 ): ExpenseBody {
   const countryId = Number(values.countryId);
   const amount = parseAmount(values.amount);
@@ -209,7 +220,9 @@ function scheduleDateProblem(value: string, label: string): string | null {
   if (value === '') return null;
   const match = /^(\d{4})-\d{2}-\d{2}$/.exec(value);
   const year = match ? Number(match[1]) : NaN;
-  return year >= 2000 && year <= 2100 ? null : `${label} must be between the years 2000 and 2100`;
+  return year >= 2000 && year <= 2100
+    ? null
+    : `${label} must be between the years 2000 and 2100`;
 }
 
 export const recurringFormSchema = z
@@ -226,14 +239,19 @@ export const recurringFormSchema = z
     notes: z.string().trim(),
   })
   .superRefine((values, context) => {
-    const issue = (path: string, message: string) => context.addIssue({ code: 'custom', path: [path], message });
+    const issue = (path: string, message: string) =>
+      context.addIssue({ code: 'custom', path: [path], message });
     const amount = amountProblem(values.amount);
     if (amount) issue('amount', amount);
     const start = scheduleDateProblem(values.startDate, 'The start date');
     if (start) issue('startDate', start);
     const end = scheduleDateProblem(values.endDate, 'The end date');
     if (end) issue('endDate', end);
-    else if (values.endDate !== '' && values.startDate !== '' && values.endDate < values.startDate) {
+    else if (
+      values.endDate !== '' &&
+      values.startDate !== '' &&
+      values.endDate < values.startDate
+    ) {
       issue('endDate', 'The end date must not be before the start date');
     }
   });
@@ -253,7 +271,10 @@ export const emptyRecurringForm: RecurringFormValues = {
   notes: '',
 };
 
-export function toRecurringFormValues(row: RecurringRow | undefined, today: string): RecurringFormValues {
+export function toRecurringFormValues(
+  row: RecurringRow | undefined,
+  today: string
+): RecurringFormValues {
   if (!row) return { ...emptyRecurringForm, startDate: today };
   return {
     name: row.name,

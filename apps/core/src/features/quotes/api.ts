@@ -14,14 +14,16 @@ const createdSchema = z.object({ id: z.number().int() });
 export function useQuotes() {
   return useQuery({
     queryKey: QUOTE_LIST,
-    queryFn: async () => unwrap((await coreApi.get('/quotations')).data, quoteRowsSchema),
+    queryFn: async () =>
+      unwrap((await coreApi.get('/quotations')).data, quoteRowsSchema),
   });
 }
 
 export function useQuote(id: number) {
   return useQuery({
     queryKey: quoteDetail(id),
-    queryFn: async () => unwrap((await coreApi.get(`/quotations/${id}`)).data, quoteRowSchema),
+    queryFn: async () =>
+      unwrap((await coreApi.get(`/quotations/${id}`)).data, quoteRowSchema),
   });
 }
 
@@ -34,7 +36,13 @@ export function useQuote(id: number) {
 export function useSaveQuote() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: number | undefined; body: QuoteBody }): Promise<number | undefined> => {
+    mutationFn: async ({
+      id,
+      body,
+    }: {
+      id: number | undefined;
+      body: QuoteBody;
+    }): Promise<number | undefined> => {
       if (id !== undefined) {
         await coreApi.patch(`/quotations/${id}`, body);
         return id;

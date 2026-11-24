@@ -8,10 +8,14 @@ describe('expensesToCsv', () => {
   it('writes a header and one line per expense, amounts as plain numbers', () => {
     const lines = expensesToCsv(rows).split('\r\n');
 
-    expect(lines[0]).toBe('Date,Name,Type,Project,Source,Amount (USD),Original amount,Original currency,Rate,Notes,Person');
-    expect(lines[1]).toBe('2026-10-01,Figma,Software subscription,,Recurring,15.00,,,,,');
+    expect(lines[0]).toBe(
+      'Date,Name,Type,Project,Source,Amount (USD),Original amount,Original currency,Rate,Notes,Person'
+    );
+    expect(lines[1]).toBe(
+      '2026-10-01,Figma,Software subscription,,Recurring,15.00,,,,,'
+    );
     expect(lines[2]).toBe(
-      '2026-09-15,Co-working desk,Travel,Website,One-time,100.00,8825.00,INR,88.25,Pune,Ada Lovelace',
+      '2026-09-15,Co-working desk,Travel,Website,One-time,100.00,8825.00,INR,88.25,Pune,Ada Lovelace'
     );
     expect(lines).toHaveLength(3);
   });
@@ -24,12 +28,14 @@ describe('expensesToCsv', () => {
   });
 
   it('quotes a name with a comma', () => {
-    expect(expensesToCsv([{ ...rows[0], name: 'Desk, Pune' }])).toContain('"Desk, Pune"');
+    expect(expensesToCsv([{ ...rows[0], name: 'Desk, Pune' }])).toContain(
+      '"Desk, Pune"'
+    );
   });
 
   it('is just the header with no expenses', () => {
     expect(expensesToCsv([])).toBe(
-      'Date,Name,Type,Project,Source,Amount (USD),Original amount,Original currency,Rate,Notes,Person',
+      'Date,Name,Type,Project,Source,Amount (USD),Original amount,Original currency,Rate,Notes,Person'
     );
   });
 });

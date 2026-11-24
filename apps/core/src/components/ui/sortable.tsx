@@ -96,7 +96,8 @@ const RootContext = React.createContext<SortableContextValue | null>(null);
 
 function useRoot(consumer: string) {
   const context = React.useContext(RootContext);
-  if (!context) throw new Error(`\`${consumer}\` must be used within \`Sortable\``);
+  if (!context)
+    throw new Error(`\`${consumer}\` must be used within \`Sortable\``);
   return context;
 }
 
@@ -133,24 +134,40 @@ function Sortable({
   // Where the held thing is now, and the last place a screen reader was told.
   const place = React.useRef<SortablePlace | null>(null);
   const told = React.useRef<SortablePlace | null>(null);
-  const ended = React.useRef<{ drag: SortableDrag; place: SortablePlace } | null>(null);
+  const ended = React.useRef<{
+    drag: SortableDrag;
+    place: SortablePlace;
+  } | null>(null);
 
-  const coordinateGetter: KeyboardCoordinateGetter = React.useCallback((event, { context, currentCoordinates }) => {
-    const step = event.code === KeyboardCode.Down ? 1 : event.code === KeyboardCode.Up ? -1 : 0;
-    const held = drag.current;
-    if (step === 0 || !held) return undefined;
-    event.preventDefault();
-    const target = keyboardTarget(groupsRef.current, held.id, keyboardOver.current, step);
-    if (target === null) return undefined;
-    keyboardOver.current = target;
-    const rect = context.droppableRects.get(target);
-    return rect ? { x: rect.left, y: rect.top } : currentCoordinates;
-  }, []);
+  const coordinateGetter: KeyboardCoordinateGetter = React.useCallback(
+    (event, { context, currentCoordinates }) => {
+      const step =
+        event.code === KeyboardCode.Down
+          ? 1
+          : event.code === KeyboardCode.Up
+          ? -1
+          : 0;
+      const held = drag.current;
+      if (step === 0 || !held) return undefined;
+      event.preventDefault();
+      const target = keyboardTarget(
+        groupsRef.current,
+        held.id,
+        keyboardOver.current,
+        step
+      );
+      if (target === null) return undefined;
+      keyboardOver.current = target;
+      const rect = context.droppableRects.get(target);
+      return rect ? { x: rect.left, y: rect.top } : currentCoordinates;
+    },
+    []
+  );
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: POINTER_ACTIVATION }),
     useSensor(TouchSensor, { activationConstraint: POINTER_ACTIVATION }),
-    useSensor(KeyboardSensor, { coordinateGetter }),
+    useSensor(KeyboardSensor, { coordinateGetter })
   );
 
   const collisionDetection: CollisionDetection = React.useCallback((args) => {
@@ -159,7 +176,9 @@ function Sortable({
     if (drag.current?.kind === 'group') {
       return closestCenter({
         ...args,
-        droppableContainers: args.droppableContainers.filter((container) => String(container.id) in groups),
+        droppableContainers: args.droppableContainers.filter(
+          (container) => String(container.id) in groups
+        ),
       });
     }
     return closestCorners(args);
@@ -178,7 +197,8 @@ function Sortable({
     if (!spot) return;
     const from = placeOf(spot);
     drag.current = { id: String(active.id), kind: spot.kind, from };
-    keyboardOver.current = activatorEvent instanceof KeyboardEvent ? String(active.id) : null;
+    keyboardOver.current =
+      activatorEvent instanceof KeyboardEvent ? String(active.id) : null;
     place.current = from;
     told.current = from;
     ended.current = null;
@@ -197,11 +217,19 @@ function Sortable({
     }
     const translated = active.rect.current.translated;
     const below =
-      translated !== null && over !== null && translated.top + translated.height / 2 > over.rect.top + over.rect.height / 2;
+      translated !== null &&
+      over !== null &&
+      translated.top + translated.height / 2 >
+        over.rect.top + over.rect.height / 2;
     const to = itemTarget(groups, spot, target, below);
     place.current = to;
     if (to.group !== spot.group) {
-      onMoveRef.current({ kind: 'item', id: held.id, from: { group: spot.group, index: spot.index }, to });
+      onMoveRef.current({
+        kind: 'item',
+        id: held.id,
+        from: { group: spot.group, index: spot.index },
+        to,
+      });
     }
   };
 
@@ -214,12 +242,23 @@ function Sortable({
     let at = placeOf(spot);
     if (target && spot.kind === 'group' && target.kind === 'group') {
       at = { group: target.group };
-      if (target.group !== spot.group) onMoveRef.current({ kind: 'group', id: held.id, from: spot.group, to: target.group });
+      if (target.group !== spot.group)
+        onMoveRef.current({
+          kind: 'group',
+          id: held.id,
+          from: spot.group,
+          to: target.group,
+        });
     } else if (target && spot.kind === 'item') {
       const to = itemTarget(groups, spot, target, false);
       at = to;
       if (to.group !== spot.group || to.index !== spot.index) {
-        onMoveRef.current({ kind: 'item', id: held.id, from: { group: spot.group, index: spot.index }, to });
+        onMoveRef.current({
+          kind: 'item',
+          id: held.id,
+          from: { group: spot.group, index: spot.index },
+          to,
+        });
       }
     }
     finish(held, at);
@@ -230,7 +269,11 @@ function Sortable({
     if (!held) return;
     const spot = locate(groupsRef.current, active.id);
     // Only a move to another group was made while held; put it back.
-    if (spot?.kind === 'item' && held.from.index !== undefined && (spot.group !== held.from.group || spot.index !== held.from.index)) {
+    if (
+      spot?.kind === 'item' &&
+      held.from.index !== undefined &&
+      (spot.group !== held.from.group || spot.index !== held.from.index)
+    ) {
       onMoveRef.current({
         kind: 'item',
         id: held.id,
@@ -244,7 +287,8 @@ function Sortable({
   // dnd-kit calls a handler above, then asks for the announcement: these read what the handler has just worked out.
   const accessibility: DndContextProps['accessibility'] = React.useMemo(() => {
     const said: Announcements = {
-      onDragStart: () => (drag.current ? announcements.pickedUp(drag.current) : undefined),
+      onDragStart: () =>
+        drag.current ? announcements.pickedUp(drag.current) : undefined,
       onDragOver: () => {
         const held = drag.current;
         const now = place.current;
@@ -252,15 +296,22 @@ function Sortable({
         told.current = now;
         return announcements.moved(held, now);
       },
-      onDragEnd: () => (ended.current ? announcements.dropped(ended.current.drag, ended.current.place) : undefined),
-      onDragCancel: () => (ended.current ? announcements.cancelled(ended.current.drag) : undefined),
+      onDragEnd: () =>
+        ended.current
+          ? announcements.dropped(ended.current.drag, ended.current.place)
+          : undefined,
+      onDragCancel: () =>
+        ended.current ? announcements.cancelled(ended.current.drag) : undefined,
     };
-    return { announcements: said, screenReaderInstructions: { draggable: instructions } };
+    return {
+      announcements: said,
+      screenReaderInstructions: { draggable: instructions },
+    };
   }, [announcements, instructions]);
 
   const contextValue = React.useMemo<SortableContextValue>(
     () => ({ value, activeId, modifiers }),
-    [value, activeId, modifiers],
+    [value, activeId, modifiers]
   );
 
   return (
@@ -311,27 +362,49 @@ const GroupHandleContext = React.createContext<HandleContextValue | null>(null);
 const ItemHandleContext = React.createContext<HandleContextValue | null>(null);
 
 // A group that moves keeps animating into its new place, as the kanban's columns do.
-const animateLayoutChanges: AnimateLayoutChanges = (args) => defaultAnimateLayoutChanges({ ...args, wasDragging: true });
+const animateLayoutChanges: AnimateLayoutChanges = (args) =>
+  defaultAnimateLayoutChanges({ ...args, wasDragging: true });
 
 interface SortableNodeProps extends PrimitiveProps {
   value: string;
   disabled?: boolean;
 }
 
-function useSortableNode(kind: 'group' | 'item', { value, disabled, style, ref }: SortableNodeProps) {
-  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({
+function useSortableNode(
+  kind: 'group' | 'item',
+  { value, disabled, style, ref }: SortableNodeProps
+) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
     id: value,
     disabled,
     animateLayoutChanges: kind === 'group' ? animateLayoutChanges : undefined,
   });
   const composedRef = useComposedRefs(ref, setNodeRef);
   const composedStyle = React.useMemo<React.CSSProperties>(
-    () => ({ transform: CSS.Translate.toString(transform), transition, ...style }),
-    [transform, transition, style],
+    () => ({
+      transform: CSS.Translate.toString(transform),
+      transition,
+      ...style,
+    }),
+    [transform, transition, style]
   );
   const handle = React.useMemo<HandleContextValue>(
-    () => ({ attributes, listeners, setActivatorNodeRef, isDragging, disabled }),
-    [attributes, listeners, setActivatorNodeRef, isDragging, disabled],
+    () => ({
+      attributes,
+      listeners,
+      setActivatorNodeRef,
+      isDragging,
+      disabled,
+    }),
+    [attributes, listeners, setActivatorNodeRef, isDragging, disabled]
   );
   return { composedRef, composedStyle, handle, isDragging };
 }
@@ -340,8 +413,14 @@ function useSortableNode(kind: 'group' | 'item', { value, disabled, style, ref }
 function SortableGroup(props: SortableNodeProps) {
   const { value, asChild, disabled, className, style, ref, ...rest } = props;
   const { value: groups } = useRoot('SortableGroup');
-  const { composedRef, composedStyle, handle, isDragging } = useSortableNode('group', { value, disabled, style, ref });
-  const items = React.useMemo(() => [...(groups[value] ?? [])], [groups, value]);
+  const { composedRef, composedStyle, handle, isDragging } = useSortableNode(
+    'group',
+    { value, disabled, style, ref }
+  );
+  const items = React.useMemo(
+    () => [...(groups[value] ?? [])],
+    [groups, value]
+  );
   const Primitive = asChild ? Slot : 'div';
   return (
     <GroupHandleContext.Provider value={handle}>
@@ -362,7 +441,10 @@ function SortableGroup(props: SortableNodeProps) {
 /** An item of a group, dragged by its `SortableItemHandle`. */
 function SortableItem(props: SortableNodeProps) {
   const { value, asChild, disabled, className, style, ref, ...rest } = props;
-  const { composedRef, composedStyle, handle, isDragging } = useSortableNode('item', { value, disabled, style, ref });
+  const { composedRef, composedStyle, handle, isDragging } = useSortableNode(
+    'item',
+    { value, disabled, style, ref }
+  );
   const Primitive = asChild ? Slot : 'div';
   return (
     <ItemHandleContext.Provider value={handle}>
@@ -392,7 +474,8 @@ function Handle({
   ...props
 }: HandleProps & { context: HandleContextValue | null; slot: string }) {
   const composedRef = useComposedRefs(ref, context?.setActivatorNodeRef);
-  if (!context) throw new Error(`\`${slot}\` must be used within its group or item`);
+  if (!context)
+    throw new Error(`\`${slot}\` must be used within its group or item`);
   const isDisabled = disabled ?? context.disabled;
   const Primitive = asChild ? Slot : 'button';
   return (
@@ -405,25 +488,45 @@ function Handle({
       {...(isDisabled ? {} : context.listeners)}
       ref={composedRef}
       disabled={isDisabled}
-      className={cn('cursor-grab touch-none select-none data-dragging:cursor-grabbing', className)}
+      className={cn(
+        'cursor-grab touch-none select-none data-dragging:cursor-grabbing',
+        className
+      )}
     />
   );
 }
 
 function SortableGroupHandle(props: HandleProps) {
-  return <Handle {...props} context={React.useContext(GroupHandleContext)} slot="sortable-group-handle" />;
+  return (
+    <Handle
+      {...props}
+      context={React.useContext(GroupHandleContext)}
+      slot="sortable-group-handle"
+    />
+  );
 }
 
 function SortableItemHandle(props: HandleProps) {
-  return <Handle {...props} context={React.useContext(ItemHandleContext)} slot="sortable-item-handle" />;
+  return (
+    <Handle
+      {...props}
+      context={React.useContext(ItemHandleContext)}
+      slot="sortable-item-handle"
+    />
+  );
 }
 
 const dropAnimation: DropAnimation = {
-  sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
+  sideEffects: defaultDropAnimationSideEffects({
+    styles: { active: { opacity: '0.4' } },
+  }),
 };
 
 interface SortableOverlayProps {
-  children: (held: { value: string; variant: 'group' | 'item' }) => React.ReactNode;
+  children: (held: {
+    value: string;
+    variant: 'group' | 'item';
+  }) => React.ReactNode;
 }
 
 /** What follows the pointer, or the keyboard, while something is held: the caller draws it. */
@@ -431,14 +534,23 @@ function SortableOverlay({ children }: SortableOverlayProps) {
   const { value, activeId, modifiers } = useRoot('SortableOverlay');
   const variant = activeId !== null && activeId in value ? 'group' : 'item';
   return ReactDOM.createPortal(
-    <DragOverlay dropAnimation={dropAnimation} modifiers={modifiers} className="cursor-grabbing">
+    <DragOverlay
+      dropAnimation={dropAnimation}
+      modifiers={modifiers}
+      className="cursor-grabbing"
+    >
       {activeId === null ? null : children({ value: activeId, variant })}
     </DragOverlay>,
-    document.body,
+    document.body
   );
 }
 
-export type { SortableAnnouncements, SortableDrag, SortableMove, SortablePlace } from './sortable-places';
+export type {
+  SortableAnnouncements,
+  SortableDrag,
+  SortableMove,
+  SortablePlace,
+} from './sortable-places';
 export {
   Sortable,
   SortableContent,

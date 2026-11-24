@@ -21,7 +21,8 @@ export const taxRateDialog: PlannedDialogSpec = {
 export const currencyTaxSpec: PlannedSpec = {
   id: 'currency-tax',
   title: 'Currency and tax',
-  summary: 'Bill in the client’s currency and add the tax that applies, instead of one fixed dollar sign and no tax.',
+  summary:
+    'Bill in the client’s currency and add the tax that applies, instead of one fixed dollar sign and no tax.',
   surface: 'page',
   home: 'Finance › Currency and tax',
   size: 'M–L',

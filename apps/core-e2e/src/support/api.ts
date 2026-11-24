@@ -25,7 +25,12 @@ const record = (fields: Row): Row => ({
 });
 
 /** The core service wraps every answer in this envelope. */
-const envelope = (data: unknown, statusCode = 200) => ({ statusCode, message: 'ok', data, meta: null });
+const envelope = (data: unknown, statusCode = 200) => ({
+  statusCode,
+  message: 'ok',
+  data,
+  meta: null,
+});
 
 const categories = (): Row[] =>
   Array.from({ length: 7 }, (_, index) =>
@@ -33,19 +38,44 @@ const categories = (): Row[] =>
       id: index + 1,
       name: index === 0 ? 'Web' : `Category ${index + 1}`,
       description: `anything category-${index + 1}`,
-    }),
+    })
   );
 
 const users = (): Row[] => [
-  record({ id: 1, name: 'Ada Admin', email: 'ada@example.com', role: 'admin', lastLoginDate: stamp }),
+  record({
+    id: 1,
+    name: 'Ada Admin',
+    email: 'ada@example.com',
+    role: 'admin',
+    lastLoginDate: stamp,
+  }),
 ];
 
-const acme = (): Row => record({ id: 1, name: 'Acme', description: 'Anvils and rockets.', countryId: 99, city: 'Pune' });
+const acme = (): Row =>
+  record({
+    id: 1,
+    name: 'Acme',
+    description: 'Anvils and rockets.',
+    countryId: 99,
+    city: 'Pune',
+  });
 
 // What a new invoice is billed in. Acme is in India (active, 88.25 rupees to the dollar, 18% tax in the countries stub),
 // so a project of Acme's with no country of its own bills in rupees; any other project is in dollars by default.
-const billedInRupees = { currencyCode: 'INR', currencySymbol: '₹', exchangeRate: 88.25, taxRate: 18, source: 'client' };
-const billedInDollars = { currencyCode: 'USD', currencySymbol: '$', exchangeRate: 1, taxRate: 0, source: 'default' };
+const billedInRupees = {
+  currencyCode: 'INR',
+  currencySymbol: '₹',
+  exchangeRate: 88.25,
+  taxRate: 18,
+  source: 'client',
+};
+const billedInDollars = {
+  currencyCode: 'USD',
+  currencySymbol: '$',
+  exchangeRate: 1,
+  taxRate: 0,
+  source: 'default',
+};
 
 const project = (fields: Row): Row =>
   record({
@@ -86,7 +116,12 @@ const projects = (): Row[] => [
     totalValueCents: 5_026_629,
     totalOutstandingCents: 1_426_629,
   }),
-  project({ id: 2, name: 'Mobile app', billingType: 'fixed_cost', totalValueCents: 3_200_000 }),
+  project({
+    id: 2,
+    name: 'Mobile app',
+    billingType: 'fixed_cost',
+    totalValueCents: 3_200_000,
+  }),
   project({
     id: 3,
     name: 'Legacy portal',
@@ -100,11 +135,31 @@ const projects = (): Row[] => [
 
 // Every amount the service sends is whole minor units of the invoice's currency: a rate of 15000 on a dollar invoice is
 // $150.00 an hour.
-const line = (id: number, invoiceId: number, description: string, quantity: number, rateCents: number): Row =>
-  record({ id, invoiceId, description, headcount: 1, quantity, rateCents, amountCents: quantity * rateCents });
+const line = (
+  id: number,
+  invoiceId: number,
+  description: string,
+  quantity: number,
+  rateCents: number
+): Row =>
+  record({
+    id,
+    invoiceId,
+    description,
+    headcount: 1,
+    quantity,
+    rateCents,
+    amountCents: quantity * rateCents,
+  });
 
 // Invoices from before currencies are in dollars at rate 1, with no tax.
-const dollars = { currencyCode: 'USD', currencySymbol: '$', exchangeRate: 1, taxRate: 0, taxCents: 0 };
+const dollars = {
+  currencyCode: 'USD',
+  currencySymbol: '$',
+  exchangeRate: 1,
+  taxRate: 0,
+  taxCents: 0,
+};
 
 const invoices = (): Row[] => [
   record({
@@ -123,7 +178,10 @@ const invoices = (): Row[] => [
     paidDate: '2026-10-12',
     periodStart: '2026-09-01',
     periodEnd: '2026-09-30',
-    lineItems: [line(1, 1, 'Asha Rao — Mobile', 160, 15000), line(2, 1, 'Ben Cho — Web', 160, 7500)],
+    lineItems: [
+      line(1, 1, 'Asha Rao — Mobile', 160, 15000),
+      line(2, 1, 'Ben Cho — Web', 160, 7500),
+    ],
   }),
   record({
     id: 2,
@@ -228,7 +286,8 @@ const people = (): Row[] => [
 // The ledger, newest first as the service sends it: Asha's card 1 was on the Mobile app, then the bench, and has been on
 // the Website since 12 March 2026. Ben has no entry, so his card 1 is on the bench with no date. A null project is the
 // bench. Every entry belongs to one card of a person, and a removed entry has no project.
-const entry = (fields: Row): Row => record({ note: null, card: 1, removed: false, ...fields });
+const entry = (fields: Row): Row =>
+  record({ note: null, card: 1, removed: false, ...fields });
 
 const allocations = (): Row[] => [
   entry({
@@ -286,15 +345,19 @@ const leaves = (): Row[] => [
 const cardsOn = (rows: Row[], personId: number, day: string): number[] => {
   const latest = new Map<number, Row>();
   for (const row of rows) {
-    if (row.personId !== personId || (row.effectiveDate as string) > day) continue;
+    if (row.personId !== personId || (row.effectiveDate as string) > day)
+      continue;
     const held = latest.get(row.card as number);
     const newer =
       !held ||
       (row.effectiveDate as string) > (held.effectiveDate as string) ||
-      (row.effectiveDate === held.effectiveDate && (row.id as number) > (held.id as number));
+      (row.effectiveDate === held.effectiveDate &&
+        (row.id as number) > (held.id as number));
     if (newer) latest.set(row.card as number, row);
   }
-  const live = [...latest.entries()].filter(([, row]) => !row.removed).map(([card]) => card);
+  const live = [...latest.entries()]
+    .filter(([, row]) => !row.removed)
+    .map(([card]) => card);
   if (!latest.has(1)) live.push(1);
   return live.length > 0 ? live.sort((a, b) => a - b) : [1];
 };
@@ -308,7 +371,8 @@ const matchesFilter = (row: Row, query: URLSearchParams, keys: string[]) =>
  * answer that names the page's own origin and allows credentials.
  */
 const corsHeaders = (origin: unknown) => ({
-  'access-control-allow-origin': typeof origin === 'string' ? origin : 'http://localhost:3000',
+  'access-control-allow-origin':
+    typeof origin === 'string' ? origin : 'http://localhost:3000',
   'access-control-allow-credentials': 'true',
 });
 
@@ -321,7 +385,7 @@ interface CoreAnswer {
 function stubCore(
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
   path: string,
-  answer: (request: { url: string; body: unknown }) => CoreAnswer,
+  answer: (request: { url: string; body: unknown }) => CoreAnswer
 ) {
   cy.intercept(xhr(method, path, CORE_API), (req) => {
     const { statusCode = 200, body } = answer({ url: req.url, body: req.body });
@@ -347,7 +411,11 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
   cy.intercept({ url: `${CORE_API}/**`, resourceType: 'xhr' }, (req) => {
     req.reply({
       statusCode: 501,
-      body: { statusCode: 501, message: `No e2e stub for ${req.method} ${req.url}`, data: null },
+      body: {
+        statusCode: 501,
+        message: `No e2e stub for ${req.method} ${req.url}`,
+        data: null,
+      },
       headers: corsHeaders(req.headers.origin),
     });
   });
@@ -364,9 +432,19 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
     });
   });
 
-  const sessionBody = () => envelope({ accessToken: 'e2e-access-token', expiresIn: 900, user: users()[0] });
-  const unauthorized = (): CoreAnswer => ({ statusCode: 401, body: envelope(null, 401) });
-  stubCore('POST', '/auth/refresh', () => (session ? { body: sessionBody() } : unauthorized()));
+  const sessionBody = () =>
+    envelope({
+      accessToken: 'e2e-access-token',
+      expiresIn: 900,
+      user: users()[0],
+    });
+  const unauthorized = (): CoreAnswer => ({
+    statusCode: 401,
+    body: envelope(null, 401),
+  });
+  stubCore('POST', '/auth/refresh', () =>
+    session ? { body: sessionBody() } : unauthorized()
+  );
   stubCore('POST', '/auth/login', ({ body }) => {
     if ((body as Row).password !== E2E_PASSWORD) return unauthorized();
     session = true;
@@ -411,9 +489,27 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
 
   stubCore('GET', '/technologies', () => ({
     body: envelope([
-      record({ id: 1, name: 'React', description: 'A library for user interfaces.', categoryId: 1, category: categories()[0] }),
-      record({ id: 2, name: 'Nest', description: 'A Node framework.', categoryId: null, category: null }),
-      record({ id: 3, name: 'Express', description: null, categoryId: null, category: null }),
+      record({
+        id: 1,
+        name: 'React',
+        description: 'A library for user interfaces.',
+        categoryId: 1,
+        category: categories()[0],
+      }),
+      record({
+        id: 2,
+        name: 'Nest',
+        description: 'A Node framework.',
+        categoryId: null,
+        category: null,
+      }),
+      record({
+        id: 3,
+        name: 'Express',
+        description: null,
+        categoryId: null,
+        category: null,
+      }),
     ]),
   }));
 
@@ -425,15 +521,36 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
         description: 'Anvils and rockets.',
         countryId: 99,
         city: 'Pune',
-        country: record({ id: 99, iso: 'IN', name: 'INDIA', nicename: 'India', iso3: 'IND', numcode: 356, phonecode: 91 }),
+        country: record({
+          id: 99,
+          iso: 'IN',
+          name: 'INDIA',
+          nicename: 'India',
+          iso3: 'IND',
+          numcode: 356,
+          phonecode: 91,
+        }),
       }),
-      record({ id: 2, name: 'Globex', description: null, countryId: null, city: null, country: null }),
+      record({
+        id: 2,
+        name: 'Globex',
+        description: null,
+        countryId: null,
+        city: null,
+        country: null,
+      }),
     ]),
   }));
 
   stubCore('GET', '/client-contacts', () => ({
     body: envelope([
-      record({ id: 1, clientId: 1, name: 'Ada Lovelace', email: 'ada@example.com', phone: '+91 20 5550 0100' }),
+      record({
+        id: 1,
+        clientId: 1,
+        name: 'Ada Lovelace',
+        email: 'ada@example.com',
+        phone: '+91 20 5550 0100',
+      }),
     ]),
   }));
 
@@ -447,8 +564,18 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
   stubCore('GET', '/projects/*/invoice-draft', () => ({
     body: envelope({
       lineItems: [
-        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rateCents: 1_323_750 },
-        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rateCents: 661_875 },
+        {
+          description: 'Asha Rao — Mobile',
+          headcount: 1,
+          quantity: 160,
+          rateCents: 1_323_750,
+        },
+        {
+          description: 'Ben Cho — Web',
+          headcount: 1,
+          quantity: 160,
+          rateCents: 661_875,
+        },
       ],
       currencyCode: 'INR',
       currencySymbol: '₹',
@@ -456,12 +583,18 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
       taxRate: 18,
     }),
   }));
-  stubCore('GET', '/project-resources*', () => ({ body: envelope(resources()) }));
+  stubCore('GET', '/project-resources*', () => ({
+    body: envelope(resources()),
+  }));
   stubCore('GET', '/people', () => ({ body: envelope(people()) }));
   // One person, for their own page; `*` does not cross a `/`, so the list's stub does not answer it.
   stubCore('GET', '/people/*', ({ url }) => {
-    const found = people().find((person) => person.id === Number(url.split('/').pop()));
-    return found ? { body: envelope(found) } : { statusCode: 404, body: envelope(null, 404) };
+    const found = people().find(
+      (person) => person.id === Number(url.split('/').pop())
+    );
+    return found
+      ? { body: envelope(found) }
+      : { statusCode: 404, body: envelope(null, 404) };
   });
   // Both lists carry a query string (`?personId=1`), hence the trailing `*`, and are filtered like the service does. The
   // ledger keeps state, so a card added, moved or removed shows up on the next read; it answers the writes by the
@@ -471,16 +604,32 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
   const newestFirst = (rows: Row[]) =>
     [...rows].sort(
       (a, b) =>
-        (b.effectiveDate as string).localeCompare(a.effectiveDate as string) || (b.id as number) - (a.id as number),
+        (b.effectiveDate as string).localeCompare(a.effectiveDate as string) ||
+        (b.id as number) - (a.id as number)
     );
   const nameOf = (rows: Row[], id: unknown) => {
     const found = rows.find((row) => row.id === id);
     return found ? { id: found.id, name: found.name } : null;
   };
   /** Sets the (person, card, day) entry, adding it when the card has none that day; answers it. */
-  const upsert = (personId: number, card: number, day: string, projectId: number | null, removed: boolean) => {
-    const held = ledger.find((row) => row.personId === personId && row.card === card && row.effectiveDate === day);
-    const fields = { projectId, removed, project: projectId === null ? null : nameOf(projects(), projectId) };
+  const upsert = (
+    personId: number,
+    card: number,
+    day: string,
+    projectId: number | null,
+    removed: boolean
+  ) => {
+    const held = ledger.find(
+      (row) =>
+        row.personId === personId &&
+        row.card === card &&
+        row.effectiveDate === day
+    );
+    const fields = {
+      projectId,
+      removed,
+      project: projectId === null ? null : nameOf(projects(), projectId),
+    };
     if (held) {
       Object.assign(held, fields);
       return held;
@@ -497,39 +646,85 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
     ledger = [added, ...ledger];
     return added;
   };
-  type EntryBody = { personId: number; card?: number; projectId: number | null; effectiveDate: string };
+  type EntryBody = {
+    personId: number;
+    card?: number;
+    projectId: number | null;
+    effectiveDate: string;
+  };
   stubCore('GET', '/allocations*', ({ url }) => {
     const query = new URL(url).searchParams;
-    return { body: envelope(newestFirst(ledger).filter((row) => matchesFilter(row, query, ['personId', 'projectId']))) };
+    return {
+      body: envelope(
+        newestFirst(ledger).filter((row) =>
+          matchesFilter(row, query, ['personId', 'projectId'])
+        )
+      ),
+    };
   });
   stubCore('POST', '/allocations/move', ({ body }) => {
     const { personId, card = 1, projectId, effectiveDate } = body as EntryBody;
-    if (card > 1 && !ledger.some((row) => row.personId === personId && row.card === card)) {
-      return { statusCode: 409, body: { ...envelope(null, 409), message: 'That card does not exist' } };
+    if (
+      card > 1 &&
+      !ledger.some((row) => row.personId === personId && row.card === card)
+    ) {
+      return {
+        statusCode: 409,
+        body: { ...envelope(null, 409), message: 'That card does not exist' },
+      };
     }
-    return { body: envelope(upsert(personId, card, effectiveDate, projectId, false)) };
+    return {
+      body: envelope(upsert(personId, card, effectiveDate, projectId, false)),
+    };
   });
   stubCore('POST', '/allocations/cards', ({ body }) => {
     const { personId, projectId, effectiveDate } = body as EntryBody;
-    const numbers = ledger.filter((row) => row.personId === personId).map((row) => row.card as number);
+    const numbers = ledger
+      .filter((row) => row.personId === personId)
+      .map((row) => row.card as number);
     // The next number the person has not had, removed cards counted; at least 2.
     const card = Math.max(1, ...numbers) + 1;
-    return { statusCode: 201, body: envelope(upsert(personId, card, effectiveDate, projectId, false), 201) };
+    return {
+      statusCode: 201,
+      body: envelope(
+        upsert(personId, card, effectiveDate, projectId, false),
+        201
+      ),
+    };
   });
   stubCore('POST', '/allocations/remove', ({ body }) => {
-    const { personId, card, effectiveDate } = body as { personId: number; card: number; effectiveDate: string };
+    const { personId, card, effectiveDate } = body as {
+      personId: number;
+      card: number;
+      effectiveDate: string;
+    };
     const cards = cardsOn(ledger, personId, effectiveDate);
     if (!cards.includes(card)) {
-      return { statusCode: 409, body: { ...envelope(null, 409), message: 'That card does not exist' } };
+      return {
+        statusCode: 409,
+        body: { ...envelope(null, 409), message: 'That card does not exist' },
+      };
     }
     if (cards.length < 2) {
-      return { statusCode: 409, body: { ...envelope(null, 409), message: 'A person keeps at least one card' } };
+      return {
+        statusCode: 409,
+        body: {
+          ...envelope(null, 409),
+          message: 'A person keeps at least one card',
+        },
+      };
     }
-    return { body: envelope(upsert(personId, card, effectiveDate, null, true)) };
+    return {
+      body: envelope(upsert(personId, card, effectiveDate, null, true)),
+    };
   });
   stubCore('GET', '/leaves*', ({ url }) => {
     const query = new URL(url).searchParams;
-    return { body: envelope(leaves().filter((row) => matchesFilter(row, query, ['personId']))) };
+    return {
+      body: envelope(
+        leaves().filter((row) => matchesFilter(row, query, ['personId']))
+      ),
+    };
   });
 
   // `*` does not cross a `/`: each invoice document route and the next-number route needs its own stub.
@@ -538,8 +733,11 @@ export function stubApi({ signedIn = true }: { signedIn?: boolean } = {}) {
     body: envelope({
       to: ['michael@example.com'],
       subject: 'Invoice INV-001 from Test Company LLP',
-      message: 'Hello Michael Jordan,\n\nPlease find attached invoice INV-001.\n\nRegards,\nTest Company LLP',
+      message:
+        'Hello Michael Jordan,\n\nPlease find attached invoice INV-001.\n\nRegards,\nTest Company LLP',
     }),
   }));
-  stubCore('GET', '/projects/*/next-invoice-number*', () => ({ body: envelope({ number: 'OCTA/26-27/WEB/001' }) }));
+  stubCore('GET', '/projects/*/next-invoice-number*', () => ({
+    body: envelope({ number: 'OCTA/26-27/WEB/001' }),
+  }));
 }

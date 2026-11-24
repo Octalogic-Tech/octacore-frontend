@@ -2,7 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { PRIMARY_CURRENCY, taxRateProblem } from '@/features/countries/schema';
@@ -51,7 +56,12 @@ const ROW_OF_FOUR = 'grid gap-6 sm:grid-cols-2 md:grid-cols-4';
 const LINE_FIELDS = ['description', 'headcount', 'quantity', 'rate'] as const;
 // The rate takes units and hundredths of the invoice's currency (dollars and cents, rupees and paise); Qty and hours are
 // whole numbers.
-const INPUT_MODES = { description: undefined, headcount: 'numeric', quantity: 'numeric', rate: 'decimal' } as const;
+const INPUT_MODES = {
+  description: undefined,
+  headcount: 'numeric',
+  quantity: 'numeric',
+  rate: 'decimal',
+} as const;
 
 export function InvoiceFormDialog({
   open,
@@ -75,7 +85,8 @@ export function InvoiceFormDialog({
       <DialogContent fallbackFocusId={fallbackFocusId} className="max-w-6xl">
         <DialogTitle>{invoice ? 'Edit invoice' : 'New invoice'}</DialogTitle>
         <DialogDescription>
-          An invoice sent to the client, made of lines. Fill in the paid date once it has been paid.
+          An invoice sent to the client, made of lines. Fill in the paid date
+          once it has been paid.
         </DialogDescription>
         {/* Mounted only while the dialog is open, so every opening starts from a fresh form and a fresh draft. */}
         <InvoiceEditor
@@ -130,12 +141,19 @@ function InvoiceEditor({
     resolver: zodResolver(makeInvoiceFormSchema({ numberRequired })),
     defaultValues: toInvoiceFormValues(invoice, projectDiscountPercent),
   });
-  const { fields, append, remove, replace } = useFieldArray({ control, name: 'lines' });
+  const { fields, append, remove, replace } = useFieldArray({
+    control,
+    name: 'lines',
+  });
   const lines = watch('lines');
   const discountPercent = watch('discountPercent');
   const taxRate = watch('taxRate');
   const issueDate = watch('issueDate');
-  const next = useNextInvoiceNumber(projectId, issueDate, !numberRequired && addMonths(issueDate, 0) !== '');
+  const next = useNextInvoiceNumber(
+    projectId,
+    issueDate,
+    !numberRequired && addMonths(issueDate, 0) !== ''
+  );
   const seeded = useRef(false);
   // The last value this form filled in by itself. A date is only ever replaced while it is empty or still exactly
   // this: a date the person typed, or one already saved on an invoice, is never touched.
@@ -157,7 +175,8 @@ function InvoiceEditor({
     seeded.current = true;
     const seed = draftToLines(draft.data);
     if (seed.length > 0) replace(seed);
-    if (getValues('taxRate') === '') setValue('taxRate', String(draft.data.taxRate));
+    if (getValues('taxRate') === '')
+      setValue('taxRate', String(draft.data.taxRate));
   }, [adding, draft.data, replace, getValues, setValue]);
 
   function fillDueDate(issue: string) {
@@ -185,9 +204,12 @@ function InvoiceEditor({
   const terms = invoice ?? draft.data;
   // Only a new invoice can be blocked: with no terms, or with a billing country that has no rate yet, the service
   // would refuse it, and typed amounts would be in a currency the person cannot see.
-  const unbillable = adding && (terms === undefined || terms.exchangeRate === null);
-  const dollars = terms === undefined || terms.currencyCode === PRIMARY_CURRENCY;
-  const money = (minor: number) => (terms ? formatMoney(minor, terms) : toAmountText(minor));
+  const unbillable =
+    adding && (terms === undefined || terms.exchangeRate === null);
+  const dollars =
+    terms === undefined || terms.currencyCode === PRIMARY_CURRENCY;
+  const money = (minor: number) =>
+    terms ? formatMoney(minor, terms) : toAmountText(minor);
 
   const submit = handleSubmit(async (values) => {
     if (unbillable) return;
@@ -208,13 +230,23 @@ function InvoiceEditor({
   const building = adding && draft.isLoading;
   const linesMessage = errors.lines?.root?.message ?? errors.lines?.message;
   const nextNumber = next.data?.number;
-  const totals = invoiceTotals(lines ?? [], discountPercent ?? '', taxRate ?? '', terms?.exchangeRate ?? 1);
+  const totals = invoiceTotals(
+    lines ?? [],
+    discountPercent ?? '',
+    taxRate ?? '',
+    terms?.exchangeRate ?? 1
+  );
   // The tax line, like the discount's two, only while it takes effect: otherwise the total is the sum.
-  const taxShown = taxRateProblem(taxRate ?? '') === null && Number(taxRate) > 0;
+  const taxShown =
+    taxRateProblem(taxRate ?? '') === null && Number(taxRate) > 0;
 
   return (
     <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
-      {terms ? <p className="text-small font-semibold text-navy-80">Billed in {billingTermsText(terms)}</p> : null}
+      {terms ? (
+        <p className="text-small font-semibold text-navy-80">
+          Billed in {billingTermsText(terms)}
+        </p>
+      ) : null}
 
       {/* Three lines, one grid column each from `md` up so they stay in line with each other. */}
       <div className={ROW_OF_TWO}>
@@ -222,12 +254,16 @@ function InvoiceEditor({
           label="Number"
           htmlFor="invoice-number"
           error={errors.number?.message}
-          hint={numberRequired ? undefined : 'Leave empty to use the next number.'}
+          hint={
+            numberRequired ? undefined : 'Leave empty to use the next number.'
+          }
         >
           <Input
             {...fieldA11y('invoice-number', errors.number?.message)}
             {...register('number')}
-            placeholder={!numberRequired && nextNumber ? `Next: ${nextNumber}` : undefined}
+            placeholder={
+              !numberRequired && nextNumber ? `Next: ${nextNumber}` : undefined
+            }
             autoComplete="off"
           />
         </Field>
@@ -246,7 +282,11 @@ function InvoiceEditor({
       </div>
 
       <div className={ROW_OF_THREE}>
-        <Field label="Issue date" htmlFor="invoice-issue-date" error={errors.issueDate?.message}>
+        <Field
+          label="Issue date"
+          htmlFor="invoice-issue-date"
+          error={errors.issueDate?.message}
+        >
           <Input
             {...fieldA11y('invoice-issue-date', errors.issueDate?.message)}
             {...issueField}
@@ -257,7 +297,11 @@ function InvoiceEditor({
             type="date"
           />
         </Field>
-        <Field label="Billing period start" htmlFor="invoice-period-start" error={errors.periodStart?.message}>
+        <Field
+          label="Billing period start"
+          htmlFor="invoice-period-start"
+          error={errors.periodStart?.message}
+        >
           <Input
             {...fieldA11y('invoice-period-start', errors.periodStart?.message)}
             {...startField}
@@ -268,7 +312,11 @@ function InvoiceEditor({
             type="date"
           />
         </Field>
-        <Field label="Billing period end" htmlFor="invoice-period-end" error={errors.periodEnd?.message}>
+        <Field
+          label="Billing period end"
+          htmlFor="invoice-period-end"
+          error={errors.periodEnd?.message}
+        >
           <Input
             {...fieldA11y('invoice-period-end', errors.periodEnd?.message)}
             {...register('periodEnd')}
@@ -278,8 +326,16 @@ function InvoiceEditor({
       </div>
 
       <div className={ROW_OF_FOUR}>
-        <Field label="Due date" htmlFor="invoice-due-date" error={errors.dueDate?.message}>
-          <Input {...fieldA11y('invoice-due-date', errors.dueDate?.message)} {...register('dueDate')} type="date" />
+        <Field
+          label="Due date"
+          htmlFor="invoice-due-date"
+          error={errors.dueDate?.message}
+        >
+          <Input
+            {...fieldA11y('invoice-due-date', errors.dueDate?.message)}
+            {...register('dueDate')}
+            type="date"
+          />
         </Field>
         <Field
           label="Paid date"
@@ -287,7 +343,11 @@ function InvoiceEditor({
           error={errors.paidDate?.message}
           hint="Leave empty if the client has not paid."
         >
-          <Input {...fieldA11y('invoice-paid-date', errors.paidDate?.message)} {...register('paidDate')} type="date" />
+          <Input
+            {...fieldA11y('invoice-paid-date', errors.paidDate?.message)}
+            {...register('paidDate')}
+            type="date"
+          />
         </Field>
         <Field
           label="Discount (%)"
@@ -306,7 +366,9 @@ function InvoiceEditor({
           label="Tax rate (%)"
           htmlFor="invoice-tax-rate"
           error={errors.taxRate?.message}
-          hint={`${adding ? 'Starts from the billing country’s rate. ' : ''}Change it for this invoice only; 0 is no tax.`}
+          hint={`${
+            adding ? 'Starts from the billing country’s rate. ' : ''
+          }Change it for this invoice only; 0 is no tax.`}
         >
           <Input
             {...fieldA11y('invoice-tax-rate', errors.taxRate?.message)}
@@ -328,9 +390,12 @@ function InvoiceEditor({
           <>
             {adding && draft.isError ? (
               <div role="alert" className="grid justify-items-start gap-1">
-                <p className="text-small font-semibold text-foreground">Could not build the lines.</p>
+                <p className="text-small font-semibold text-foreground">
+                  Could not build the lines.
+                </p>
                 <p className="text-small text-foreground">
-                  The billing terms are unknown, so the invoice cannot be saved yet.
+                  The billing terms are unknown, so the invoice cannot be saved
+                  yet.
                 </p>
                 <Button variant="quiet" onClick={() => void draft.refetch()}>
                   Try again
@@ -362,14 +427,27 @@ function InvoiceEditor({
                 quantity: `Line ${number} ${unit.toLowerCase()}`,
                 rate: `Line ${number} rate`,
               };
-              const placeholders = { description: 'Description', headcount: 'Qty', quantity: unit, rate: 'Rate' };
+              const placeholders = {
+                description: 'Description',
+                headcount: 'Qty',
+                quantity: unit,
+                rate: 'Rate',
+              };
               return (
-                <div key={field.id} role="group" aria-label={`Line ${number}`} className="grid gap-1">
+                <div
+                  key={field.id}
+                  role="group"
+                  aria-label={`Line ${number}`}
+                  className="grid gap-1"
+                >
                   <div className={`grid items-start gap-2 ${COLUMNS}`}>
                     {LINE_FIELDS.map((name) => (
                       <Input
                         key={name}
-                        {...fieldA11y(`line-${number}-${name}`, rowErrors?.[name]?.message)}
+                        {...fieldA11y(
+                          `line-${number}-${name}`,
+                          rowErrors?.[name]?.message
+                        )}
                         {...register(`lines.${index}.${name}`)}
                         aria-label={names[name]}
                         placeholder={placeholders[name]}
@@ -395,7 +473,12 @@ function InvoiceEditor({
                   {LINE_FIELDS.map((name) => {
                     const message = rowErrors?.[name]?.message;
                     return message ? (
-                      <p key={name} id={`line-${number}-${name}-error`} role="alert" className="text-small text-foreground">
+                      <p
+                        key={name}
+                        id={`line-${number}-${name}-error`}
+                        role="alert"
+                        className="text-small text-foreground"
+                      >
                         {message}
                       </p>
                     ) : null;
@@ -418,11 +501,14 @@ function InvoiceEditor({
                 <div className="grid justify-items-end gap-1">
                   {/* The subtotal, the discount and the tax only while they take effect: otherwise the total is the sum. */}
                   {totals.discount > 0 || taxShown ? (
-                    <p className="tabular text-small">Subtotal {money(totals.subtotal)}</p>
+                    <p className="tabular text-small">
+                      Subtotal {money(totals.subtotal)}
+                    </p>
                   ) : null}
                   {totals.discount > 0 ? (
                     <p className="tabular text-small">
-                      Discount ({Number(discountPercent)}%) -{money(totals.discount)}
+                      Discount ({Number(discountPercent)}%) -
+                      {money(totals.discount)}
                     </p>
                   ) : null}
                   {taxShown ? (
@@ -430,7 +516,9 @@ function InvoiceEditor({
                       Tax ({Number(taxRate)}%) {money(totals.tax)}
                     </p>
                   ) : null}
-                  <p className="tabular font-semibold">Total {money(totals.total)}</p>
+                  <p className="tabular font-semibold">
+                    Total {money(totals.total)}
+                  </p>
                   {/* What the service keeps for the reports: the amount after the discount, before tax. */}
                   {dollars || terms.exchangeRate === null ? null : (
                     <p className="tabular text-small text-navy-72">
@@ -445,16 +533,23 @@ function InvoiceEditor({
 
         {dollars ? null : (
           <p className="text-small text-navy-72">
-            Rates and amounts are in {terms?.currencyCode} ({terms?.currencySymbol}).
+            Rates and amounts are in {terms?.currencyCode} (
+            {terms?.currencySymbol}).
           </p>
         )}
         {billingType === 'retainer' ? (
-          <p className="text-small text-navy-72">Retainer lines are 160 hours a month.</p>
+          <p className="text-small text-navy-72">
+            Retainer lines are 160 hours a month.
+          </p>
         ) : null}
         {/* The resources' rates are in US dollars; the draft has converted them, and the person may change any line. */}
-        {adding && billingType === 'retainer' && !dollars && terms?.exchangeRate ? (
+        {adding &&
+        billingType === 'retainer' &&
+        !dollars &&
+        terms?.exchangeRate ? (
           <p className="text-small text-navy-72">
-            The resources’ dollar rates are converted to {terms.currencyCode} at {rateText(terms, terms.exchangeRate)}.
+            The resources’ dollar rates are converted to {terms.currencyCode} at{' '}
+            {rateText(terms, terms.exchangeRate)}.
           </p>
         ) : null}
       </div>
@@ -471,7 +566,8 @@ function InvoiceEditor({
       ) : null}
       {failure === 'changed-elsewhere' ? (
         <p role="alert" className="text-small font-semibold text-foreground">
-          This changed elsewhere, so it cannot be saved. Close this dialog and go back to Projects.
+          This changed elsewhere, so it cannot be saved. Close this dialog and
+          go back to Projects.
         </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-3">

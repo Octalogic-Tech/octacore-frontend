@@ -10,9 +10,19 @@ interface SearchFieldProps {
   className?: string;
 }
 
-export function SearchField({ id, label, value, onChange, className }: SearchFieldProps) {
+export function SearchField({
+  id,
+  label,
+  value,
+  onChange,
+  className,
+}: SearchFieldProps) {
   return (
-    <Field label={label} htmlFor={id} className={cn('w-full sm:max-w-xs', className)}>
+    <Field
+      label={label}
+      htmlFor={id}
+      className={cn('w-full sm:max-w-xs', className)}
+    >
       <Input
         id={id}
         type="search"

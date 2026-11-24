@@ -1,4 +1,12 @@
-import { bufferedHours, formatHours, hundredthsOf, quoteTotals, type CalcLine, type CalcSettings, type QuoteTotals } from './calc';
+import {
+  bufferedHours,
+  formatHours,
+  hundredthsOf,
+  quoteTotals,
+  type CalcLine,
+  type CalcSettings,
+  type QuoteTotals,
+} from './calc';
 
 /** The service's defaults (`DEFAULT_SETTINGS` in `app/core/quoting.py`): 3 developers at 3,100.00, a manager at 3,000.00. */
 const defaults: CalcSettings = {
@@ -21,9 +29,21 @@ const defaults: CalcSettings = {
 describe('quoteTotals', () => {
   it('the workbook lines give the workbook cost block', () => {
     // 53 lines of one unit: the hours per line and how many lines have them (1,188 hours in all).
-    const hoursByCount: Record<number, number> = { 16: 24, 24: 14, 32: 4, 8: 3, 20: 3, 48: 3, 56: 2 };
-    const lines: CalcLine[] = Object.entries(hoursByCount).flatMap(([hours, count]) =>
-      Array.from({ length: count }, () => ({ units: 1, hoursHundredths: Number(hours) * 100 })),
+    const hoursByCount: Record<number, number> = {
+      16: 24,
+      24: 14,
+      32: 4,
+      8: 3,
+      20: 3,
+      48: 3,
+      56: 2,
+    };
+    const lines: CalcLine[] = Object.entries(hoursByCount).flatMap(
+      ([hours, count]) =>
+        Array.from({ length: count }, () => ({
+          units: 1,
+          hoursHundredths: Number(hours) * 100,
+        }))
     );
     expect(lines).toHaveLength(53);
 
@@ -112,9 +132,10 @@ describe('quoteTotals', () => {
   it('one division gives the elapsed months: the build over the developers and the month together', () => {
     // 1.49 hours, two developers, 150 hours a month: 149 / 300 is 0 months. Dividing by the developers first (149 / 2 is 75
     // half up) and then by the month (75 / 150 is 0.5, 1 half up) would give 1. The service has the same test.
-    const totals = quoteTotals({ ...defaults, developerCount: 2, hoursPerMonth: 150 }, [
-      { units: 1, hoursHundredths: 149 },
-    ]);
+    const totals = quoteTotals(
+      { ...defaults, developerCount: 2, hoursPerMonth: 150 },
+      [{ units: 1, hoursHundredths: 149 }]
+    );
     expect(totals.buildHours).toBe(149);
     expect(totals.elapsedMonths).toBe(0);
   });
@@ -126,7 +147,10 @@ describe('quoteTotals', () => {
     // are the service's own (`compute_totals` in the backend on the same inputs, its hours in hundredths), not this file's.
     // The costs and the final quote come to more than 2^53, so they come back as the nearest `Number`; a float calculation
     // lands on a different one for the developer and manager costs and the final quote.
-    const lines: CalcLine[] = Array.from({ length: 200 }, () => ({ units: 99_999, hoursHundredths: 999_999 }));
+    const lines: CalcLine[] = Array.from({ length: 200 }, () => ({
+      units: 99_999,
+      hoursHundredths: 999_999,
+    }));
     const settings: CalcSettings = {
       developerCount: 1,
       developerRateCents: 9_999_999,
@@ -174,7 +198,10 @@ describe('quoteTotals', () => {
     // The same quote with the time buffer at 99.99 % and the discount at 49.99 %. The padded hours are 4 x 10^13 hundredths,
     // and the discount multiplies an amount of 4.8 x 10^19 cents by 4,999: far past 2^53, so a float would be off. The values
     // are the service's own (`compute_totals` with time_buffer_percent 99.99 and discount_percent 49.99).
-    const lines: CalcLine[] = Array.from({ length: 200 }, () => ({ units: 99_999, hoursHundredths: 999_999 }));
+    const lines: CalcLine[] = Array.from({ length: 200 }, () => ({
+      units: 99_999,
+      hoursHundredths: 999_999,
+    }));
     const settings: CalcSettings = {
       developerCount: 1,
       developerRateCents: 9_999_999,
@@ -278,7 +305,12 @@ describe('quoteTotals', () => {
       const { bufferedBaseHours } = quoteTotals(third, thirdLines);
       expect(bufferedBaseHours).toBe(1139 + 844 + 1631 + 23);
       // The same sum through the column's own helper, a line at a time.
-      expect([1012, 750, 1450, 20].reduce((sum, hours) => sum + bufferedHours(hours, 1250), 0)).toBe(bufferedBaseHours);
+      expect(
+        [1012, 750, 1450, 20].reduce(
+          (sum, hours) => sum + bufferedHours(hours, 1250),
+          0
+        )
+      ).toBe(bufferedBaseHours);
       expect(bufferedHours(3232, 1250)).toBe(3636);
     });
 
@@ -301,13 +333,23 @@ describe('quoteTotals', () => {
 
     it('takes nothing off while the discount is less than a cent, and the whole cents below a part of one', () => {
       const lines: CalcLine[] = [{ units: 1, hoursHundredths: 100 }];
-      const bare: CalcSettings = { ...defaults, managementBp: 0, negotiationBufferBp: 0 };
+      const bare: CalcSettings = {
+        ...defaults,
+        managementBp: 0,
+        negotiationBufferBp: 0,
+      };
       // 0.01 % of 99.99 is 0.9999 of a cent: half up would take a cent off, flooring takes none.
-      const nearlyACent = quoteTotals({ ...bare, developerRateCents: 9999, discountBp: 1 }, lines);
+      const nearlyACent = quoteTotals(
+        { ...bare, developerRateCents: 9999, discountBp: 1 },
+        lines
+      );
       expect(nearlyACent.discountCents).toBe(0);
       expect(nearlyACent.finalQuoteCents).toBe(9999);
       // 0.99 % of 999.99 is 989.9901 cents: 989, where half up would give 990.
-      const almost = quoteTotals({ ...bare, developerRateCents: 99_999, discountBp: 99 }, lines);
+      const almost = quoteTotals(
+        { ...bare, developerRateCents: 99_999, discountBp: 99 },
+        lines
+      );
       expect(almost.discountCents).toBe(989);
       expect(almost.finalQuoteCents).toBe(99_999 - 989);
     });
@@ -325,9 +367,16 @@ describe('quoteTotals', () => {
       const noBuffer = quoteTotals({ ...one, negotiationBufferBp: 0 }, lines);
       // 10 % off the subtotal alone is 1,235 and the 10 % buffer adds 1,235 back: that is not what the quote does.
       expect(noBuffer.finalQuoteCents).toBe(12_351 - 1235);
-      expect(both.discountCents).toBe(Math.floor((both.subtotalCents + both.negotiationBufferCents) / 10));
-      expect(both.finalQuoteCents).toBe(both.subtotalCents + both.negotiationBufferCents - both.discountCents);
-      const offTheSubtotalOnly = both.subtotalCents + both.negotiationBufferCents - Math.floor(both.subtotalCents / 10);
+      expect(both.discountCents).toBe(
+        Math.floor((both.subtotalCents + both.negotiationBufferCents) / 10)
+      );
+      expect(both.finalQuoteCents).toBe(
+        both.subtotalCents + both.negotiationBufferCents - both.discountCents
+      );
+      const offTheSubtotalOnly =
+        both.subtotalCents +
+        both.negotiationBufferCents -
+        Math.floor(both.subtotalCents / 10);
       expect(both.finalQuoteCents).not.toBe(offTheSubtotalOnly);
     });
 
@@ -348,8 +397,12 @@ describe('quoteTotals', () => {
         timeBufferBp: 5000,
         discountBp: 0,
       };
-      const padded = quoteTotals(settings, [{ units: 1, hoursHundredths: 1000 }]);
-      const direct = quoteTotals({ ...settings, timeBufferBp: 0 }, [{ units: 1, hoursHundredths: 1500 }]);
+      const padded = quoteTotals(settings, [
+        { units: 1, hoursHundredths: 1000 },
+      ]);
+      const direct = quoteTotals({ ...settings, timeBufferBp: 0 }, [
+        { units: 1, hoursHundredths: 1500 },
+      ]);
       expect(padded).toMatchObject({
         baseHours: 1000,
         timeBufferHours: 500,
@@ -370,8 +423,16 @@ describe('quoteTotals', () => {
         finalQuoteCents: 6_345_000,
       });
       // Everything after the lines is what 15 hours of lines give with no time buffer.
-      const { baseHours: _base, timeBufferHours: _added, ...afterTheLines } = padded;
-      const { baseHours: _directBase, timeBufferHours: _directAdded, ...directAfterTheLines } = direct;
+      const {
+        baseHours: _base,
+        timeBufferHours: _added,
+        ...afterTheLines
+      } = padded;
+      const {
+        baseHours: _directBase,
+        timeBufferHours: _directAdded,
+        ...directAfterTheLines
+      } = direct;
       void [_base, _added, _directBase, _directAdded];
       expect(afterTheLines).toEqual(directAfterTheLines);
     });
@@ -383,12 +444,19 @@ describe('quoteTotals', () => {
         { units: 1, hoursHundredths: 1650 },
       ];
       const none = quoteTotals({ ...defaults, negotiationBufferBp: 0 }, lines);
-      const some = quoteTotals({ ...defaults, negotiationBufferBp: 2500 }, lines);
-      const lots = quoteTotals({ ...defaults, negotiationBufferBp: 10_000 }, lines);
+      const some = quoteTotals(
+        { ...defaults, negotiationBufferBp: 2500 },
+        lines
+      );
+      const lots = quoteTotals(
+        { ...defaults, negotiationBufferBp: 10_000 },
+        lines
+      );
       const money = ['negotiationBufferCents', 'finalQuoteCents'] as const;
       for (const other of [some, lots]) {
         for (const field of Object.keys(none) as (keyof QuoteTotals)[]) {
-          if (!money.some((name) => name === field)) expect([field, other[field]]).toEqual([field, none[field]]);
+          if (!money.some((name) => name === field))
+            expect([field, other[field]]).toEqual([field, none[field]]);
         }
       }
       expect(none.negotiationBufferCents).toBe(0);
@@ -416,7 +484,10 @@ describe('quoteTotals', () => {
       });
 
       // The service's own figures (`compute_totals` on these settings and lines).
-      const padded = quoteTotals({ ...defaults, timeBufferBp: 1000, discountBp: 1000 }, lines);
+      const padded = quoteTotals(
+        { ...defaults, timeBufferBp: 1000, discountBp: 1000 },
+        lines
+      );
       expect(padded).toMatchObject({
         baseHours: 9650,
         timeBufferHours: 965,
@@ -439,7 +510,7 @@ describe('quoteTotals', () => {
 });
 
 describe('bufferedHours', () => {
-  it('adds the time buffer to a line\'s hours, half up', () => {
+  it("adds the time buffer to a line's hours, half up", () => {
     // The plan's example at a 25 % buffer: 24, 2 x 28 and 16.5 hours.
     expect(bufferedHours(2400, 2500)).toBe(3000);
     expect(bufferedHours(5600, 2500)).toBe(7000);

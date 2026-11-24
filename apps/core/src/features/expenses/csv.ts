@@ -30,11 +30,13 @@ export function expensesToCsv(expenses: readonly ExpenseRow[]): string {
       neutraliseFormula(expense.project?.name ?? ''),
       expense.recurringExpenseId === null ? 'One-time' : 'Recurring',
       toAmountText(expense.amountCents),
-      expense.originalAmount === null ? '' : toAmountText(expense.originalAmount),
+      expense.originalAmount === null
+        ? ''
+        : toAmountText(expense.originalAmount),
       expense.originalCountry?.currencyCode ?? '',
       expense.exchangeRate === null ? '' : String(expense.exchangeRate),
       neutraliseFormula(expense.notes),
       neutraliseFormula(expense.person?.name ?? ''),
-    ]),
+    ])
   );
 }

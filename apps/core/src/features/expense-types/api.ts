@@ -9,7 +9,8 @@ export const EXPENSE_TYPES_KEY = ['expense-types'] as const;
 export function useExpenseTypes() {
   return useQuery({
     queryKey: EXPENSE_TYPES_KEY,
-    queryFn: async () => unwrap((await coreApi.get('/expense-types')).data, expenseTypeRowsSchema),
+    queryFn: async () =>
+      unwrap((await coreApi.get('/expense-types')).data, expenseTypeRowsSchema),
   });
 }
 
@@ -18,7 +19,9 @@ function useRefresh() {
   const client = useQueryClient();
   return () =>
     Promise.all(
-      [EXPENSE_TYPES_KEY, EXPENSES_KEY, RECURRING_KEY].map((queryKey) => client.invalidateQueries({ queryKey })),
+      [EXPENSE_TYPES_KEY, EXPENSES_KEY, RECURRING_KEY].map((queryKey) =>
+        client.invalidateQueries({ queryKey })
+      )
     );
 }
 
@@ -26,7 +29,13 @@ function useRefresh() {
 export function useSaveExpenseType() {
   const refresh = useRefresh();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: number | undefined; body: ExpenseTypeBody }) => {
+    mutationFn: async ({
+      id,
+      body,
+    }: {
+      id: number | undefined;
+      body: ExpenseTypeBody;
+    }) => {
       if (id === undefined) await coreApi.post('/expense-types', body);
       else await coreApi.patch(`/expense-types/${id}`, body);
     },

@@ -19,10 +19,18 @@ const numbered = (count: number) =>
   }));
 
 /** The next GET answers with these rows, in the service's envelope. */
-const serve = (rows: unknown) => vi.mocked(coreApi.get).mockResolvedValue({ data: categoriesEnvelope(rows) });
+const serve = (rows: unknown) =>
+  vi.mocked(coreApi.get).mockResolvedValue({ data: categoriesEnvelope(rows) });
 
 /** What the service answers a save with; the page does not read it. */
-const saved = { data: { statusCode: 200, message: 'saved', data: categoryRows[0], meta: null } };
+const saved = {
+  data: {
+    statusCode: 200,
+    message: 'saved',
+    data: categoryRows[0],
+    meta: null,
+  },
+};
 
 beforeEach(() => {
   serve(categoryRows);
@@ -51,7 +59,9 @@ describe('CategoriesPage', () => {
     serve([{ ...categoryRows[1], description: null }]);
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
-    await user.click(await screen.findByRole('button', { name: 'Edit Mobile' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit Mobile' })
+    );
     expect(screen.getByLabelText('Description')).toHaveValue('');
   });
 
@@ -82,20 +92,29 @@ describe('CategoriesPage', () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
-    await user.click(await screen.findByRole('button', { name: 'Add category' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Add category' })
+    );
     await user.type(screen.getByLabelText('Name'), 'Data');
     await user.type(screen.getByLabelText('Description'), 'Data work');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
-      expect(coreApi.post).toHaveBeenCalledWith('/categories', { name: 'Data', description: 'Data work' }),
+      expect(coreApi.post).toHaveBeenCalledWith('/categories', {
+        name: 'Data',
+        description: 'Data work',
+      })
     );
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    );
   });
 
   it('blocks an empty form and sends nothing', async () => {
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
-    await user.click(await screen.findByRole('button', { name: 'Add category' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Add category' })
+    );
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Name is required')).toBeInTheDocument();
     expect(screen.getByText('Description is required')).toBeInTheDocument();
@@ -116,7 +135,7 @@ describe('CategoriesPage', () => {
       expect(coreApi.patch).toHaveBeenCalledWith('/categories/1', {
         name: 'Web 2',
         description: 'Websites and portals',
-      }),
+      })
     );
   });
 
@@ -135,9 +154,13 @@ describe('CategoriesPage', () => {
     renderWithProviders(<CategoriesPage />);
     await user.click(await screen.findByRole('button', { name: 'Delete Web' }));
     expect(coreApi.delete).not.toHaveBeenCalled();
-    expect(screen.getByRole('alertdialog', { name: 'Delete category “Web”?' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('alertdialog', { name: 'Delete category “Web”?' })
+    ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Delete category' }));
-    await waitFor(() => expect(coreApi.delete).toHaveBeenCalledWith('/categories/1'));
+    await waitFor(() =>
+      expect(coreApi.delete).toHaveBeenCalledWith('/categories/1')
+    );
   });
 
   it('marks the technologies stale after a delete, because they carry category names', async () => {
@@ -147,7 +170,9 @@ describe('CategoriesPage', () => {
     client.setQueryData(['technologies'], []);
     await user.click(await screen.findByRole('button', { name: 'Delete Web' }));
     await user.click(screen.getByRole('button', { name: 'Delete category' }));
-    await waitFor(() => expect(client.getQueryState(['technologies'])?.isInvalidated).toBe(true));
+    await waitFor(() =>
+      expect(client.getQueryState(['technologies'])?.isInvalidated).toBe(true)
+    );
   });
 
   it('marks the technologies stale after a rename, because they carry category names', async () => {
@@ -159,7 +184,9 @@ describe('CategoriesPage', () => {
     await user.clear(screen.getByLabelText('Name'));
     await user.type(screen.getByLabelText('Name'), 'Web 2');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(client.getQueryState(['technologies'])?.isInvalidated).toBe(true));
+    await waitFor(() =>
+      expect(client.getQueryState(['technologies'])?.isInvalidated).toBe(true)
+    );
   });
 
   it('lands on the last page that still exists after deleting the only row on the last page', async () => {
@@ -171,7 +198,9 @@ describe('CategoriesPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
     await user.click(await screen.findByRole('button', { name: 'Next' }));
-    await user.click(screen.getByRole('button', { name: 'Delete Category 11' }));
+    await user.click(
+      screen.getByRole('button', { name: 'Delete Category 11' })
+    );
     await user.click(screen.getByRole('button', { name: 'Delete category' }));
     expect(await screen.findByText('1–10 of 10')).toBeInTheDocument();
     expect(screen.getByText('Category 1')).toBeInTheDocument();
@@ -183,27 +212,41 @@ describe('CategoriesPage', () => {
       .mockResolvedValue({ data: categoriesEnvelope() });
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not load this data'
+    );
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByText('Web')).toBeInTheDocument();
   });
 
   it.each([
     ['a bare array, which is what the json-server mock sends', categoryRows],
-    ['an envelope whose row has lost its name', categoriesEnvelope([{ ...categoryRows[0], name: undefined }])],
-  ])('shows the error state, not a broken table, when the service answers with %s', async (_label, body) => {
-    vi.mocked(coreApi.get).mockResolvedValue({ data: body });
-    renderWithProviders(<CategoriesPage />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
-  });
+    [
+      'an envelope whose row has lost its name',
+      categoriesEnvelope([{ ...categoryRows[0], name: undefined }]),
+    ],
+  ])(
+    'shows the error state, not a broken table, when the service answers with %s',
+    async (_label, body) => {
+      vi.mocked(coreApi.get).mockResolvedValue({ data: body });
+      renderWithProviders(<CategoriesPage />);
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'We could not load this data'
+      );
+    }
+  );
 
   it('offers to add the first category when there are none', async () => {
     serve([]);
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
     expect(await screen.findByText('No categories yet.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Add the first category' }));
-    expect(screen.getByRole('dialog', { name: 'New category' })).toBeInTheDocument();
+    await user.click(
+      screen.getByRole('button', { name: 'Add the first category' })
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'New category' })
+    ).toBeInTheDocument();
   });
 });
 
@@ -214,18 +257,24 @@ describe('CategoriesPage dialogs', () => {
       (() =>
         new Promise((_, reject) => {
           fail = reject;
-        })) as never,
+        })) as never
     );
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
-    await user.click(await screen.findByRole('button', { name: 'Add category' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Add category' })
+    );
     await user.type(screen.getByLabelText('Name'), 'Data');
     await user.type(screen.getByLabelText('Description'), 'Data work');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await user.keyboard('{Escape}');
-    expect(screen.getByRole('dialog', { name: 'New category' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'New category' })
+    ).toBeInTheDocument();
     fail(new Error('down'));
-    expect(await screen.findByText('That did not save. Try again.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('That did not save. Try again.')
+    ).toBeInTheDocument();
   });
 
   it('moves focus to the search field after a delete removes the row that held it', async () => {
@@ -237,7 +286,9 @@ describe('CategoriesPage dialogs', () => {
     renderWithProviders(<CategoriesPage />);
     await user.click(await screen.findByRole('button', { name: 'Delete Web' }));
     await user.click(screen.getByRole('button', { name: 'Delete category' }));
-    await waitFor(() => expect(screen.getByLabelText('Search categories')).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByLabelText('Search categories')).toHaveFocus()
+    );
   });
 
   it('returns focus to the Delete button when the confirmation is cancelled', async () => {
@@ -245,7 +296,9 @@ describe('CategoriesPage dialogs', () => {
     renderWithProviders(<CategoriesPage />);
     await user.click(await screen.findByRole('button', { name: 'Delete Web' }));
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Delete Web' })).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Delete Web' })).toHaveFocus()
+    );
   });
 });
 
@@ -253,9 +306,13 @@ describe('CategoriesPage focus', () => {
   it('returns focus to the Add category button when the dialog is cancelled', async () => {
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
-    await user.click(await screen.findByRole('button', { name: 'Add category' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Add category' })
+    );
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Add category' })).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Add category' })).toHaveFocus()
+    );
   });
 
   it('moves focus to the search field when saving removes the button that opened the dialog', async () => {
@@ -266,10 +323,14 @@ describe('CategoriesPage focus', () => {
     }) as never);
     const user = userEvent.setup();
     renderWithProviders(<CategoriesPage />);
-    await user.click(await screen.findByRole('button', { name: 'Add the first category' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Add the first category' })
+    );
     await user.type(screen.getByLabelText('Name'), 'Data');
     await user.type(screen.getByLabelText('Description'), 'Data work');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(screen.getByLabelText('Search categories')).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByLabelText('Search categories')).toHaveFocus()
+    );
   });
 });

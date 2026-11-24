@@ -6,7 +6,8 @@ import { formatUsd } from '@/lib/money';
 import type { ResourceRow } from './schema';
 import { teamMargin } from './team-margin';
 
-const NO_RATE = "Set India's rate on the Countries page to see the team margin.";
+const NO_RATE =
+  "Set India's rate on the Countries page to see the team margin.";
 const RATE_FAILED = "India's rate could not be loaded.";
 
 function Figure({ cents }: { cents: number }) {
@@ -18,12 +19,22 @@ function Figure({ cents }: { cents: number }) {
  * out by. Only the total is shown, never one person's salary. Salaries are in rupees and the billing in dollars, so the
  * sentence needs India's rate; without one it says to set it.
  */
-export function TeamMarginNote({ resources }: { resources: readonly ResourceRow[] }) {
+export function TeamMarginNote({
+  resources,
+}: {
+  resources: readonly ResourceRow[];
+}) {
   const people = usePeople();
   const countries = useCountries();
   if (people.isLoading || countries.isLoading) return null;
-  if (people.data === undefined) return <p className="mt-4 text-small text-navy-72">Salaries could not be loaded.</p>;
-  if (countries.data === undefined) return <p className="mt-4 text-small text-navy-72">{RATE_FAILED}</p>;
+  if (people.data === undefined)
+    return (
+      <p className="mt-4 text-small text-navy-72">
+        Salaries could not be loaded.
+      </p>
+    );
+  if (countries.data === undefined)
+    return <p className="mt-4 text-small text-navy-72">{RATE_FAILED}</p>;
 
   const rate = indiaRate(countries.data);
   if (rate === null) {
@@ -37,16 +48,20 @@ export function TeamMarginNote({ resources }: { resources: readonly ResourceRow[
           'No margin yet: none of these resources has a person with a salary and a Qty of 1.'
         ) : (
           <>
-            At current salaries, {margin.counted} of {pluralize(margin.total, 'resource')}{' '}
-            {margin.counted === 1 ? 'bills' : 'bill'} <Figure cents={margin.billed} /> a month against{' '}
-            <Figure cents={margin.cost} /> in salary: {margin.margin >= 0 ? 'a margin' : 'a shortfall'} of{' '}
+            At current salaries, {margin.counted} of{' '}
+            {pluralize(margin.total, 'resource')}{' '}
+            {margin.counted === 1 ? 'bills' : 'bill'}{' '}
+            <Figure cents={margin.billed} /> a month against{' '}
+            <Figure cents={margin.cost} /> in salary:{' '}
+            {margin.margin >= 0 ? 'a margin' : 'a shortfall'} of{' '}
             <Figure cents={Math.abs(margin.margin)} />
             {margin.percent === null ? null : ` (${margin.percent}%)`}.
           </>
         )}
       </p>
       <p className="text-small text-navy-72">
-        Salary is today’s figure, not what was paid. Resources with no person, no salary or a Qty above 1 are left out.
+        Salary is today’s figure, not what was paid. Resources with no person,
+        no salary or a Qty above 1 are left out.
       </p>
     </div>
   );

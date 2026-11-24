@@ -51,36 +51,61 @@ afterEach(() => {
 describe('AllocationPage', () => {
   it('is titled Allocation, with a Board tab and a Ledger tab', async () => {
     renderAt('/resources/allocation');
-    expect(screen.getByRole('heading', { level: 1, name: 'Allocation' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Allocation' })
+    ).toBeInTheDocument();
     const tabs = screen.getByRole('tablist', { name: 'Allocation sections' });
     expect(
       within(tabs)
         .getAllByRole('tab')
         .map((tab) => tab.textContent)
     ).toEqual(['Board', 'Ledger']);
-    expect(await screen.findByRole('heading', { level: 2, name: 'Bench' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Bench' })
+    ).toBeInTheDocument();
   });
 
   it('opens on the board at the bare address, and only the board is on the page', async () => {
     renderAt('/resources/allocation');
-    expect(screen.getByRole('tab', { name: 'Board' })).toHaveAttribute('aria-selected', 'true');
-    expect(await screen.findByRole('heading', { level: 2, name: 'Bench' })).toBeInTheDocument();
-    expect(screen.queryByRole('table', { name: 'Allocation ledger' })).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Board' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Bench' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('table', { name: 'Allocation ledger' })
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId('search')).toHaveTextContent('');
   });
 
   it('opens the ledger from ?tab=ledger, which is the whole ledger, and not the board', async () => {
     renderAt('/resources/allocation?tab=ledger');
-    expect(screen.getByRole('tab', { name: 'Ledger' })).toHaveAttribute('aria-selected', 'true');
-    expect(await screen.findByRole('table', { name: 'Allocation ledger' })).toBeInTheDocument();
-    expect(screen.getByRole('columnheader', { name: 'Person' })).toBeInTheDocument();
-    expect(screen.queryByRole('heading', { level: 2, name: 'Bench' })).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Ledger' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(
+      await screen.findByRole('table', { name: 'Allocation ledger' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Person' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { level: 2, name: 'Bench' })
+    ).not.toBeInTheDocument();
   });
 
   it('opens the board for a tab it does not know', async () => {
     renderAt('/resources/allocation?tab=nope');
-    expect(screen.getByRole('tab', { name: 'Board' })).toHaveAttribute('aria-selected', 'true');
-    expect(await screen.findByRole('heading', { level: 2, name: 'Bench' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Board' })).toHaveAttribute(
+      'aria-selected',
+      'true'
+    );
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Bench' })
+    ).toBeInTheDocument();
   });
 
   it('puts the chosen tab in the address, and the board back to the bare address', async () => {
@@ -88,9 +113,13 @@ describe('AllocationPage', () => {
     renderAt('/resources/allocation');
     await user.click(screen.getByRole('tab', { name: 'Ledger' }));
     expect(screen.getByTestId('search')).toHaveTextContent('?tab=ledger');
-    expect(await screen.findByRole('table', { name: 'Allocation ledger' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('table', { name: 'Allocation ledger' })
+    ).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: 'Board' }));
     expect(screen.getByTestId('search')).toHaveTextContent('');
-    expect(await screen.findByRole('heading', { level: 2, name: 'Bench' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: 'Bench' })
+    ).toBeInTheDocument();
   });
 });

@@ -9,7 +9,13 @@ const backLink =
   'mb-4 inline-flex min-h-11 items-center font-semibold decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline';
 
 /** The skeleton page of a piece that is described but not built. Replace this with the real page when it is picked up. */
-export function PlannedFeature({ spec, actions }: { spec: PlannedSpec; actions?: ReactNode }) {
+export function PlannedFeature({
+  spec,
+  actions,
+}: {
+  spec: PlannedSpec;
+  actions?: ReactNode;
+}) {
   return (
     <>
       <Link to="/planned" className={backLink}>

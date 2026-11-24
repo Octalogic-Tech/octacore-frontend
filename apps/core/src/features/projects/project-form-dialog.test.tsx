@@ -21,10 +21,14 @@ const [website, , legacy] = projectRowsSchema.parse(projectRows);
 const onOpenChange = vi.fn();
 
 /** What the service answers a save with; the dialog never reads it. */
-const saved = { data: { statusCode: 200, message: 'saved', data: {}, meta: null } };
+const saved = {
+  data: { statusCode: 200, message: 'saved', data: {}, meta: null },
+};
 
 function openDialog(props: { project?: ProjectRow } = {}) {
-  return renderWithProviders(<ProjectFormDialog open onOpenChange={onOpenChange} {...props} />);
+  return renderWithProviders(
+    <ProjectFormDialog open onOpenChange={onOpenChange} {...props} />
+  );
 }
 
 beforeEach(() => {
@@ -45,7 +49,9 @@ describe('ProjectFormDialog: adding', () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
     openDialog();
-    expect(screen.getByRole('dialog', { name: 'New project' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'New project' })
+    ).toBeInTheDocument();
     await user.type(screen.getByLabelText('Name'), 'Hooli');
     await user.type(screen.getByLabelText('Description'), 'Search and more.');
     await screen.findByRole('option', { name: 'Acme' });
@@ -77,8 +83,14 @@ describe('ProjectFormDialog: adding', () => {
     const user = userEvent.setup();
     openDialog();
     await user.type(screen.getByLabelText('Name'), 'Hooli');
-    await user.selectOptions(screen.getByLabelText('Project type'), 'Resource augmentation');
-    await user.selectOptions(screen.getByLabelText('Billing type'), 'Fixed cost');
+    await user.selectOptions(
+      screen.getByLabelText('Project type'),
+      'Resource augmentation'
+    );
+    await user.selectOptions(
+      screen.getByLabelText('Billing type'),
+      'Fixed cost'
+    );
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.post).toHaveBeenCalledWith('/projects', {
@@ -116,7 +128,9 @@ describe('ProjectFormDialog: adding', () => {
     await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
     await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That did not save. Try again.'
+    );
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 });
@@ -126,9 +140,13 @@ describe('ProjectFormDialog: editing', () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     openDialog({ project: website });
-    expect(screen.getByRole('dialog', { name: 'Edit project' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Edit project' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Website');
-    expect(screen.getByLabelText('Project type')).toHaveValue('resource_augmentation');
+    expect(screen.getByLabelText('Project type')).toHaveValue(
+      'resource_augmentation'
+    );
     expect(screen.getByLabelText('Billing type')).toHaveValue('retainer');
     await screen.findByRole('option', { name: 'Acme' });
     expect(screen.getByLabelText('Client')).toHaveValue('1');
@@ -144,7 +162,8 @@ describe('ProjectFormDialog: editing', () => {
       projectType: 'resource_augmentation',
       billingType: 'retainer',
       key: 'WEB',
-      billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',      discountPercent: 0,
+      billingAddress: 'Acme Corporation\n1 Anvil Road\nPune, India',
+      discountPercent: 0,
       projectStatus: 'active',
       startDate: '2026-01-01',
       endDate: null,
@@ -159,10 +178,15 @@ describe('ProjectFormDialog: editing', () => {
     expect(screen.getByLabelText('Project type')).toHaveValue('');
     expect(screen.getByLabelText('Billing type')).toHaveValue('');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Choose a project type')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Choose a project type')
+    ).toBeInTheDocument();
     expect(coreApi.patch).not.toHaveBeenCalled();
     await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
-    await user.selectOptions(screen.getByLabelText('Billing type'), 'Fixed cost');
+    await user.selectOptions(
+      screen.getByLabelText('Billing type'),
+      'Fixed cost'
+    );
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.patch).toHaveBeenCalledWith('/projects/3', {
@@ -185,19 +209,26 @@ describe('ProjectFormDialog: editing', () => {
   it('opens on None for a client the service no longer embeds, and saves it as null', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
-    const [orphan] = projectRowsSchema.parse([{ ...projectRows[0], client: null }]);
+    const [orphan] = projectRowsSchema.parse([
+      { ...projectRows[0], client: null },
+    ]);
     openDialog({ project: orphan });
     await screen.findByRole('option', { name: 'Acme' });
     expect(screen.getByLabelText('Client')).toHaveValue('');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ clientId: null }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/projects/1',
+      expect.objectContaining({ clientId: null })
+    );
   });
 
   it("keeps the project's own client as an option while the client list fails", async () => {
     vi.mocked(coreApi.get).mockRejectedValue(new Error('down'));
     openDialog({ project: website });
-    expect(await screen.findByText('Clients could not be loaded.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Clients could not be loaded.')
+    ).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'Acme' })).toBeInTheDocument();
     expect(screen.getByLabelText('Client')).toHaveValue('1');
   });
@@ -221,8 +252,14 @@ describe('ProjectFormDialog: a project removed elsewhere', () => {
     openDialog({ project });
     if (!project) {
       await user.type(screen.getByLabelText('Name'), 'Hooli');
-      await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
-      await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
+      await user.selectOptions(
+        screen.getByLabelText('Project type'),
+        'Product'
+      );
+      await user.selectOptions(
+        screen.getByLabelText('Billing type'),
+        'Retainer'
+      );
     }
     await user.click(screen.getByRole('button', { name: 'Save' }));
   }
@@ -230,18 +267,25 @@ describe('ProjectFormDialog: a project removed elsewhere', () => {
   it('does not offer a retry that cannot work when the project is gone (404 on edit)', async () => {
     vi.mocked(coreApi.patch).mockRejectedValue(failure(404));
     await submit(website);
-    expect(await screen.findByRole('alert')).toHaveTextContent(REMOVED_ELSEWHERE);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      REMOVED_ELSEWHERE
+    );
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
   it.each([
     ['a 500 on edit', 'patch', website, 500],
     ['a 404 on add', 'post', undefined, 404],
-  ] as const)('still offers a retry for %s', async (_label, method, project, status) => {
-    vi.mocked(coreApi[method]).mockRejectedValue(failure(status));
-    await submit(project);
-    expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
-  });
+  ] as const)(
+    'still offers a retry for %s',
+    async (_label, method, project, status) => {
+      vi.mocked(coreApi[method]).mockRejectedValue(failure(status));
+      await submit(project);
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'That did not save. Try again.'
+      );
+    }
+  );
 });
 
 describe('ProjectFormDialog: key and billing address', () => {
@@ -252,7 +296,10 @@ describe('ProjectFormDialog: key and billing address', () => {
     await user.type(screen.getByLabelText('Name'), 'Hooli');
     await user.type(screen.getByLabelText('Key'), 'tko');
     expect(screen.getByLabelText('Key')).toHaveValue('TKO');
-    await user.type(screen.getByLabelText('Billing address'), 'Michael Jordan,{enter}Venice');
+    await user.type(
+      screen.getByLabelText('Billing address'),
+      'Michael Jordan,{enter}Venice'
+    );
     await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
     await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
     await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -265,7 +312,8 @@ describe('ProjectFormDialog: key and billing address', () => {
       projectType: 'product',
       billingType: 'retainer',
       key: 'TKO',
-      billingAddress: 'Michael Jordan,\nVenice',      discountPercent: 0,
+      billingAddress: 'Michael Jordan,\nVenice',
+      discountPercent: 0,
       projectStatus: 'active',
       startDate: null,
       endDate: null,
@@ -276,26 +324,47 @@ describe('ProjectFormDialog: key and billing address', () => {
   it('explains the key and the address', () => {
     openDialog();
 
-    expect(screen.getByText('A short code used to number invoices, like TKO. Leave empty to type invoice numbers by hand.')).toBeInTheDocument();
-    expect(screen.getByText('Printed under “Billed to” on the invoice.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'A short code used to number invoices, like TKO. Leave empty to type invoice numbers by hand.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Printed under “Billed to” on the invoice.')
+    ).toBeInTheDocument();
   });
 
-  it.each(['T', 'ABCDEFGHIJK', 'T-K', 'T K'])('refuses a key of %j and sends nothing', async (key) => {
-    const user = userEvent.setup();
-    openDialog();
-    await user.type(screen.getByLabelText('Name'), 'Hooli');
-    await user.type(screen.getByLabelText('Key'), key);
-    await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
-    await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Use 2 to 10 letters or digits')).toBeInTheDocument();
-    expect(coreApi.post).not.toHaveBeenCalled();
-  });
+  it.each(['T', 'ABCDEFGHIJK', 'T-K', 'T K'])(
+    'refuses a key of %j and sends nothing',
+    async (key) => {
+      const user = userEvent.setup();
+      openDialog();
+      await user.type(screen.getByLabelText('Name'), 'Hooli');
+      await user.type(screen.getByLabelText('Key'), key);
+      await user.selectOptions(
+        screen.getByLabelText('Project type'),
+        'Product'
+      );
+      await user.selectOptions(
+        screen.getByLabelText('Billing type'),
+        'Retainer'
+      );
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      expect(
+        await screen.findByText('Use 2 to 10 letters or digits')
+      ).toBeInTheDocument();
+      expect(coreApi.post).not.toHaveBeenCalled();
+    }
+  );
 
   it('says so on the key field, and stays open, when another project already uses it', async () => {
     const taken = new AxiosError('failed', 'ERR_BAD_REQUEST', undefined, null, {
       status: 409,
-      data: { statusCode: 409, message: 'Another project already uses the key "TKO"', data: null },
+      data: {
+        statusCode: 409,
+        message: 'Another project already uses the key "TKO"',
+        data: null,
+      },
       statusText: '409',
       headers: {},
       config: {} as never,
@@ -308,8 +377,12 @@ describe('ProjectFormDialog: key and billing address', () => {
     await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
     await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Another project already uses that key.')).toBeInTheDocument();
-    expect(screen.queryByText('That did not save. Try again.')).not.toBeInTheDocument();
+    expect(
+      await screen.findByText('Another project already uses that key.')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('That did not save. Try again.')
+    ).not.toBeInTheDocument();
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
@@ -318,12 +391,17 @@ describe('ProjectFormDialog: key and billing address', () => {
     const user = userEvent.setup();
     openDialog({ project: website });
     expect(screen.getByLabelText('Key')).toHaveValue('WEB');
-    expect(screen.getByLabelText('Billing address')).toHaveValue('Acme Corporation\n1 Anvil Road\nPune, India');
+    expect(screen.getByLabelText('Billing address')).toHaveValue(
+      'Acme Corporation\n1 Anvil Road\nPune, India'
+    );
     await user.clear(screen.getByLabelText('Key'));
     await user.clear(screen.getByLabelText('Billing address'));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ key: null, billingAddress: null }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/projects/1',
+      expect.objectContaining({ key: null, billingAddress: null })
+    );
   });
 });
 
@@ -339,7 +417,9 @@ describe('ProjectFormDialog: discount', () => {
 
     expect(screen.getByLabelText('Discount (%)')).toHaveValue('0');
     expect(
-      screen.getByText('Taken off every invoice of this project, up to 50. Each invoice can change it.'),
+      screen.getByText(
+        'Taken off every invoice of this project, up to 50. Each invoice can change it.'
+      )
     ).toBeInTheDocument();
   });
 
@@ -354,10 +434,14 @@ describe('ProjectFormDialog: discount', () => {
     openDialog();
     await fillRequired(user);
     await user.clear(screen.getByLabelText('Discount (%)'));
-    if (typed !== '') await user.type(screen.getByLabelText('Discount (%)'), typed);
+    if (typed !== '')
+      await user.type(screen.getByLabelText('Discount (%)'), typed);
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.post).toHaveBeenCalledWith('/projects', expect.objectContaining({ discountPercent: sent }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/projects',
+      expect.objectContaining({ discountPercent: sent })
+    );
   });
 
   it.each([
@@ -376,7 +460,10 @@ describe('ProjectFormDialog: discount', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText(message)).toBeInTheDocument();
-    expect(screen.getByLabelText('Discount (%)')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Discount (%)')).toHaveAttribute(
+      'aria-invalid',
+      'true'
+    );
     expect(coreApi.post).not.toHaveBeenCalled();
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
@@ -384,24 +471,34 @@ describe('ProjectFormDialog: discount', () => {
   it('opens on the project’s discount and saves it unchanged', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
-    const [discounted] = projectRowsSchema.parse([{ ...projectRows[0], discountPercent: 12.25 }]);
+    const [discounted] = projectRowsSchema.parse([
+      { ...projectRows[0], discountPercent: 12.25 },
+    ]);
     openDialog({ project: discounted });
     expect(screen.getByLabelText('Discount (%)')).toHaveValue('12.25');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ discountPercent: 12.25 }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/projects/1',
+      expect.objectContaining({ discountPercent: 12.25 })
+    );
   });
 
   it('changes a project’s discount, and takes it back to none with 0', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
-    const [discounted] = projectRowsSchema.parse([{ ...projectRows[0], discountPercent: 10 }]);
+    const [discounted] = projectRowsSchema.parse([
+      { ...projectRows[0], discountPercent: 10 },
+    ]);
     openDialog({ project: discounted });
     await user.clear(screen.getByLabelText('Discount (%)'));
     await user.type(screen.getByLabelText('Discount (%)'), '0');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ discountPercent: 0 }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/projects/1',
+      expect.objectContaining({ discountPercent: 0 })
+    );
   });
 });
 
@@ -420,7 +517,11 @@ describe('ProjectFormDialog: status and dates', () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.post).toHaveBeenCalledWith(
       '/projects',
-      expect.objectContaining({ projectStatus: 'active', startDate: null, endDate: null }),
+      expect.objectContaining({
+        projectStatus: 'active',
+        startDate: null,
+        endDate: null,
+      })
     );
   });
 
@@ -438,7 +539,11 @@ describe('ProjectFormDialog: status and dates', () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.post).toHaveBeenCalledWith(
       '/projects',
-      expect.objectContaining({ projectStatus: 'on_hold', startDate: '2026-02-01', endDate: '2026-11-30' }),
+      expect.objectContaining({
+        projectStatus: 'on_hold',
+        startDate: '2026-02-01',
+        endDate: '2026-11-30',
+      })
     );
   });
 
@@ -459,7 +564,11 @@ describe('ProjectFormDialog: status and dates', () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.patch).toHaveBeenCalledWith(
       '/projects/1',
-      expect.objectContaining({ projectStatus: 'active', startDate: null, endDate: null }),
+      expect.objectContaining({
+        projectStatus: 'active',
+        startDate: null,
+        endDate: null,
+      })
     );
   });
 
@@ -468,7 +577,9 @@ describe('ProjectFormDialog: status and dates', () => {
     openDialog({ project: website });
     await user.type(screen.getByLabelText('End date'), '2025-12-31');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('The project must end on or after it starts')).toBeInTheDocument();
+    expect(
+      await screen.findByText('The project must end on or after it starts')
+    ).toBeInTheDocument();
     expect(coreApi.patch).not.toHaveBeenCalled();
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
@@ -480,7 +591,11 @@ describe('ProjectFormDialog: technologies', () => {
   it('offers every technology as a chip, in name order, none chosen for a new project', async () => {
     openDialog();
     const chips = await within(await group()).findAllByRole('checkbox');
-    expect(chips.map((chip) => chip.closest('label')?.textContent)).toEqual(['Express', 'Nest', 'React']);
+    expect(chips.map((chip) => chip.closest('label')?.textContent)).toEqual([
+      'Express',
+      'Nest',
+      'React',
+    ]);
     for (const chip of chips) expect(chip).not.toBeChecked();
   });
 
@@ -491,11 +606,18 @@ describe('ProjectFormDialog: technologies', () => {
     await user.type(screen.getByLabelText('Name'), 'Hooli');
     await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
     await user.selectOptions(screen.getByLabelText('Billing type'), 'Retainer');
-    await user.click(within(await group()).getByRole('checkbox', { name: 'React' }));
-    await user.click(within(await group()).getByRole('checkbox', { name: 'Express' }));
+    await user.click(
+      within(await group()).getByRole('checkbox', { name: 'React' })
+    );
+    await user.click(
+      within(await group()).getByRole('checkbox', { name: 'Express' })
+    );
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.post).toHaveBeenCalledWith('/projects', expect.objectContaining({ technologyIds: [1, 3] }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/projects',
+      expect.objectContaining({ technologyIds: [1, 3] })
+    );
   });
 
   it('opens an edit with the project’s own technologies ticked', async () => {
@@ -504,7 +626,9 @@ describe('ProjectFormDialog: technologies', () => {
     expect(chips.getByRole('checkbox', { name: 'Nest' })).toBeChecked();
     expect(chips.getByRole('checkbox', { name: 'React' })).toBeChecked();
     // The rest of the list arrives after the project's own technologies, which are offered at once.
-    expect(await chips.findByRole('checkbox', { name: 'Express' })).not.toBeChecked();
+    expect(
+      await chips.findByRole('checkbox', { name: 'Express' })
+    ).not.toBeChecked();
   });
 
   it('sends an empty list when every technology is unticked, so the old set is cleared', async () => {
@@ -516,7 +640,10 @@ describe('ProjectFormDialog: technologies', () => {
     await user.click(chips.getByRole('checkbox', { name: 'React' }));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ technologyIds: [] }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/projects/1',
+      expect.objectContaining({ technologyIds: [] })
+    );
   });
 
   it('still offers and keeps the project’s own technologies when the technology list fails', async () => {
@@ -530,10 +657,15 @@ describe('ProjectFormDialog: technologies', () => {
     const chips = within(await group());
     expect(chips.getByRole('checkbox', { name: 'Nest' })).toBeChecked();
     expect(chips.getByRole('checkbox', { name: 'React' })).toBeChecked();
-    expect(await screen.findByText('Technologies could not be loaded.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Technologies could not be loaded.')
+    ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/projects/1', expect.objectContaining({ technologyIds: [2, 1] }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/projects/1',
+      expect.objectContaining({ technologyIds: [2, 1] })
+    );
   });
 
   it('does not say there are no technologies when the list failed to load for a new project', async () => {
@@ -542,7 +674,9 @@ describe('ProjectFormDialog: technologies', () => {
       throw new Error('down');
     }) as never);
     openDialog();
-    expect(await screen.findByText('Technologies could not be loaded.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Technologies could not be loaded.')
+    ).toBeInTheDocument();
     expect(screen.queryByText(/No technologies yet/)).not.toBeInTheDocument();
   });
 
@@ -553,13 +687,20 @@ describe('ProjectFormDialog: technologies', () => {
       throw new Error(`unexpected GET ${path}`);
     }) as never);
     openDialog();
-    expect(await screen.findByText('No technologies yet. Add some on the Technologies page.')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'No technologies yet. Add some on the Technologies page.'
+      )
+    ).toBeInTheDocument();
   });
 });
 
 describe('ProjectFormDialog: billing country', () => {
   const country = () => screen.getByLabelText('Billing country');
-  const optionNames = () => within(country()).getAllByRole('option').map((option) => option.textContent);
+  const optionNames = () =>
+    within(country())
+      .getAllByRole('option')
+      .map((option) => option.textContent);
 
   /** Waits for the countries, which fill the select once they arrive. */
   const loaded = () => screen.findByRole('option', { name: 'India · INR' });
@@ -575,7 +716,12 @@ describe('ProjectFormDialog: billing country', () => {
     await loaded();
 
     // Japan is active but has no rate yet, and Antarctica and France are switched off.
-    expect(optionNames()).toEqual(['None', 'Germany · EUR', 'India · INR', 'United States · USD']);
+    expect(optionNames()).toEqual([
+      'None',
+      'Germany · EUR',
+      'India · INR',
+      'United States · USD',
+    ]);
     expect(country()).toHaveValue('');
   });
 
@@ -583,9 +729,14 @@ describe('ProjectFormDialog: billing country', () => {
     openDialog();
     await loaded();
 
-    const order = ['Client', 'Billing country', 'Project type'].map((label) => screen.getByLabelText(label));
+    const order = ['Client', 'Billing country', 'Project type'].map((label) =>
+      screen.getByLabelText(label)
+    );
     order.slice(1).forEach((field, i) => {
-      expect(order[i].compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(
+        order[i].compareDocumentPosition(field) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
     });
   });
 
@@ -598,7 +749,10 @@ describe('ProjectFormDialog: billing country', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
 
-    expect(coreApi.post).toHaveBeenCalledWith('/projects', expect.objectContaining({ countryId: null }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/projects',
+      expect.objectContaining({ countryId: null })
+    );
   });
 
   it('sends a chosen country as its id', async () => {
@@ -611,7 +765,10 @@ describe('ProjectFormDialog: billing country', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
 
-    expect(coreApi.post).toHaveBeenCalledWith('/projects', expect.objectContaining({ countryId: 226 }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/projects',
+      expect.objectContaining({ countryId: 226 })
+    );
   });
 
   it('opens an edit on the project’s own country, and clears it with null', async () => {
@@ -626,7 +783,10 @@ describe('ProjectFormDialog: billing country', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
 
-    expect(coreApi.patch).toHaveBeenCalledWith('/projects/2', expect.objectContaining({ countryId: null }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/projects/2',
+      expect.objectContaining({ countryId: null })
+    );
   });
 
   it('keeps the project’s own country when it is saved unchanged', async () => {
@@ -637,19 +797,38 @@ describe('ProjectFormDialog: billing country', () => {
     expect(country()).toHaveValue('226');
     // Legacy portal predates the types, which a save asks for.
     await user.selectOptions(screen.getByLabelText('Project type'), 'Product');
-    await user.selectOptions(screen.getByLabelText('Billing type'), 'Fixed cost');
+    await user.selectOptions(
+      screen.getByLabelText('Billing type'),
+      'Fixed cost'
+    );
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
 
-    expect(coreApi.patch).toHaveBeenCalledWith('/projects/3', expect.objectContaining({ countryId: 226 }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/projects/3',
+      expect.objectContaining({ countryId: 226 })
+    );
   });
 
   it('keeps the project’s own country as an option though it is switched off, in its place A to Z', async () => {
-    const own = { id: 8, name: 'Antarctica', currencyCode: 'USD', currencySymbol: '$' };
-    const [project] = projectRowsSchema.parse([{ ...projectRows[1], countryId: 8, country: own }]);
+    const own = {
+      id: 8,
+      name: 'Antarctica',
+      currencyCode: 'USD',
+      currencySymbol: '$',
+    };
+    const [project] = projectRowsSchema.parse([
+      { ...projectRows[1], countryId: 8, country: own },
+    ]);
     openDialog({ project });
     await loaded();
-    expect(optionNames()).toEqual(['None', 'Antarctica · USD', 'Germany · EUR', 'India · INR', 'United States · USD']);
+    expect(optionNames()).toEqual([
+      'None',
+      'Antarctica · USD',
+      'Germany · EUR',
+      'India · INR',
+      'United States · USD',
+    ]);
     expect(country()).toHaveValue('8');
   });
 
@@ -658,13 +837,16 @@ describe('ProjectFormDialog: billing country', () => {
     const [, mobile] = projectRowsSchema.parse(projectRows);
     openDialog({ project: mobile });
 
-    expect(await screen.findByText(/Countries could not be loaded\./)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Countries could not be loaded\./)
+    ).toBeInTheDocument();
     expect(optionNames()).toEqual(['None', 'Germany · EUR']);
     expect(country()).toHaveValue('80');
   });
 
   describe('the line under it', () => {
-    const sentenceOf = () => document.getElementById('project-country-hint')?.textContent;
+    const sentenceOf = () =>
+      document.getElementById('project-country-hint')?.textContent;
 
     it('says a new project’s invoices are billed in its client’s country, or in dollars', async () => {
       openDialog();
@@ -677,7 +859,9 @@ describe('ProjectFormDialog: billing country', () => {
       openDialog({ project: website });
       await loaded();
 
-      expect(sentenceOf()).toBe('New invoices are billed in INR · ₹88.25 per $1 · tax 18%, from the client’s country.');
+      expect(sentenceOf()).toBe(
+        'New invoices are billed in INR · ₹88.25 per $1 · tax 18%, from the client’s country.'
+      );
     });
 
     it('says it for a country of the project’s own', async () => {
@@ -685,23 +869,35 @@ describe('ProjectFormDialog: billing country', () => {
       openDialog({ project: mobile });
       await loaded();
 
-      expect(sentenceOf()).toBe('New invoices are billed in EUR · €0.92 per $1 · tax 19%.');
+      expect(sentenceOf()).toBe(
+        'New invoices are billed in EUR · €0.92 per $1 · tax 19%.'
+      );
     });
 
     it('says so when it is the default: dollars, because no country applies', async () => {
-      const billing = { currencyCode: 'USD', currencySymbol: '$', exchangeRate: 1, taxRate: 0, source: 'default' };
-      const [project] = projectRowsSchema.parse([{ ...projectRows[1], countryId: null, country: null, billing }]);
+      const billing = {
+        currencyCode: 'USD',
+        currencySymbol: '$',
+        exchangeRate: 1,
+        taxRate: 0,
+        source: 'default',
+      };
+      const [project] = projectRowsSchema.parse([
+        { ...projectRows[1], countryId: null, country: null, billing },
+      ]);
       openDialog({ project });
       await loaded();
 
       expect(sentenceOf()).toBe(
-        'New invoices are billed in US dollars, the default: no billing country is chosen, and the client’s country is not active with a rate.',
+        'New invoices are billed in US dollars, the default: no billing country is chosen, and the client’s country is not active with a rate.'
       );
     });
 
     it('warns that nothing can be invoiced while the project’s country has no rate', async () => {
       const billing = { ...projectRows[1].billing, exchangeRate: null };
-      const [project] = projectRowsSchema.parse([{ ...projectRows[1], billing }]);
+      const [project] = projectRowsSchema.parse([
+        { ...projectRows[1], billing },
+      ]);
       openDialog({ project });
       await loaded();
 
@@ -714,14 +910,18 @@ describe('ProjectFormDialog: billing country', () => {
       await loaded();
       await user.selectOptions(country(), 'Germany · EUR');
 
-      expect(sentenceOf()).toBe('Once saved, new invoices are billed in EUR · €0.92 per $1 · tax 19%.');
+      expect(sentenceOf()).toBe(
+        'Once saved, new invoices are billed in EUR · €0.92 per $1 · tax 19%.'
+      );
 
       await user.selectOptions(country(), 'United States · USD');
       expect(sentenceOf()).toBe('Once saved, new invoices are billed in USD.');
 
       // Back on what is saved, the service’s own answer is right again.
       await user.selectOptions(country(), 'None');
-      expect(sentenceOf()).toBe('New invoices are billed in INR · ₹88.25 per $1 · tax 18%, from the client’s country.');
+      expect(sentenceOf()).toBe(
+        'New invoices are billed in INR · ₹88.25 per $1 · tax 18%, from the client’s country.'
+      );
     });
 
     it('says the client’s country decides once the project’s own is cleared', async () => {

@@ -10,7 +10,14 @@ import { Input } from '@/components/ui/input';
 import { LinkArrow } from '@/components/ui/link-arrow';
 import { Panel } from '@/components/ui/panel';
 import { Select } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { downloadCsv } from '@/lib/csv';
 import { formatDate, localToday } from '@/lib/format';
@@ -42,9 +49,16 @@ const STATUS_CHOICES: { value: StatusFilter; label: string }[] = [
 ];
 
 /** The words carry the status, as on a project's own page: outlined once paid, filled while money is still owed. */
-function StatusBadge({ invoice, today }: { invoice: InvoiceListRow; today: string }) {
+function StatusBadge({
+  invoice,
+  today,
+}: {
+  invoice: InvoiceListRow;
+  today: string;
+}) {
   const status = invoiceStatus(invoice, today);
-  if (status === 'paid' && invoice.paidDate) return <Badge variant="outline">Paid {formatDate(invoice.paidDate)}</Badge>;
+  if (status === 'paid' && invoice.paidDate)
+    return <Badge variant="outline">Paid {formatDate(invoice.paidDate)}</Badge>;
   return <Badge>{STATUS_LABELS[status]}</Badge>;
 }
 
@@ -59,11 +73,20 @@ export function InvoicesPage() {
   const today = localToday();
 
   const projectList = useMemo(() => projects.data ?? [], [projects.data]);
-  const rows = useMemo(() => toListRows(invoices.data ?? [], projectList), [invoices.data, projectList]);
-  const filtered = useMemo(() => filterInvoices(rows, filters, today), [rows, filters, today]);
+  const rows = useMemo(
+    () => toListRows(invoices.data ?? [], projectList),
+    [invoices.data, projectList]
+  );
+  const filtered = useMemo(
+    () => filterInvoices(rows, filters, today),
+    [rows, filters, today]
+  );
   const paging = usePagedRows(filtered);
   const clients = useMemo(() => clientOptions(projectList), [projectList]);
-  const projectChoices = useMemo(() => projectOptions(projectList, filters.clientId), [projectList, filters.clientId]);
+  const projectChoices = useMemo(
+    () => projectOptions(projectList, filters.clientId),
+    [projectList, filters.clientId]
+  );
   const inverted = isRangeInverted(filters);
 
   function update(patch: Partial<InvoiceFilters>) {
@@ -75,7 +98,9 @@ export function InvoicesPage() {
   function chooseClient(value: string) {
     const clientId = toId(value);
     const keepProject = projectList.some(
-      (project) => project.id === filters.projectId && (clientId === null || project.clientId === clientId),
+      (project) =>
+        project.id === filters.projectId &&
+        (clientId === null || project.clientId === clientId)
     );
     update({ clientId, projectId: keepProject ? filters.projectId : null });
   }
@@ -89,7 +114,9 @@ export function InvoicesPage() {
           <Select
             id="invoices-status"
             value={filters.status}
-            onChange={(event) => update({ status: event.target.value as StatusFilter })}
+            onChange={(event) =>
+              update({ status: event.target.value as StatusFilter })
+            }
           >
             {STATUS_CHOICES.map(({ value, label }) => (
               <option key={value} value={value}>
@@ -99,7 +126,11 @@ export function InvoicesPage() {
           </Select>
         </Field>
         <Field label="Client" htmlFor="invoices-client">
-          <Select id="invoices-client" value={filters.clientId ?? ''} onChange={(event) => chooseClient(event.target.value)}>
+          <Select
+            id="invoices-client"
+            value={filters.clientId ?? ''}
+            onChange={(event) => chooseClient(event.target.value)}
+          >
             <option value="">All clients</option>
             {clients.map((client) => (
               <option key={client.id} value={client.id}>
@@ -112,7 +143,9 @@ export function InvoicesPage() {
           <Select
             id="invoices-project"
             value={filters.projectId ?? ''}
-            onChange={(event) => update({ projectId: toId(event.target.value) })}
+            onChange={(event) =>
+              update({ projectId: toId(event.target.value) })
+            }
           >
             <option value="">All projects</option>
             {projectChoices.map((project) => (
@@ -123,10 +156,20 @@ export function InvoicesPage() {
           </Select>
         </Field>
         <Field label="Issued from" htmlFor="invoices-from">
-          <Input id="invoices-from" type="date" value={filters.from} onChange={(event) => update({ from: event.target.value })} />
+          <Input
+            id="invoices-from"
+            type="date"
+            value={filters.from}
+            onChange={(event) => update({ from: event.target.value })}
+          />
         </Field>
         <Field label="Issued to" htmlFor="invoices-to">
-          <Input id="invoices-to" type="date" value={filters.to} onChange={(event) => update({ to: event.target.value })} />
+          <Input
+            id="invoices-to"
+            type="date"
+            value={filters.to}
+            onChange={(event) => update({ to: event.target.value })}
+          />
         </Field>
       </div>
 
@@ -142,13 +185,22 @@ export function InvoicesPage() {
             Clear filters
           </Button>
         )}
-        <Button variant="quiet" disabled={filtered.length === 0} onClick={() => downloadCsv('invoices.csv', invoicesToCsv(filtered, today))}>
+        <Button
+          variant="quiet"
+          disabled={filtered.length === 0}
+          onClick={() =>
+            downloadCsv('invoices.csv', invoicesToCsv(filtered, today))
+          }
+        >
           Export CSV
         </Button>
       </div>
 
       {inverted ? (
-        <p role="alert" className="mb-4 text-small font-semibold text-foreground">
+        <p
+          role="alert"
+          className="mb-4 text-small font-semibold text-foreground"
+        >
           The start date is after the end date.
         </p>
       ) : null}
@@ -188,7 +240,9 @@ export function InvoicesPage() {
                 <TableBody>
                   {paging.pageRows.map((invoice) => (
                     <TableRow key={invoice.id}>
-                      <TableCell className="font-semibold">{invoice.number}</TableCell>
+                      <TableCell className="font-semibold">
+                        {invoice.number}
+                      </TableCell>
                       <TableCell>{invoice.clientName || NONE}</TableCell>
                       <TableCell>
                         {invoice.projectName ? (
@@ -202,11 +256,15 @@ export function InvoicesPage() {
                           NONE
                         )}
                       </TableCell>
-                      <TableCell className="tabular whitespace-nowrap">{formatDate(invoice.issueDate)}</TableCell>
+                      <TableCell className="tabular whitespace-nowrap">
+                        {formatDate(invoice.issueDate)}
+                      </TableCell>
                       <TableCell className="tabular whitespace-nowrap">
                         {invoice.dueDate ? formatDate(invoice.dueDate) : NONE}
                       </TableCell>
-                      <TableCell className="tabular text-right">{formatMoney(invoice.totalCents, invoice)}</TableCell>
+                      <TableCell className="tabular text-right">
+                        {formatMoney(invoice.totalCents, invoice)}
+                      </TableCell>
                       <TableCell>
                         <StatusBadge invoice={invoice} today={today} />
                       </TableCell>

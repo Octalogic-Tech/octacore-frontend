@@ -11,7 +11,11 @@ import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { LinkArrow } from '@/components/ui/link-arrow';
 import { Panel } from '@/components/ui/panel';
-import { Sortable, SortableContent, SortableOverlay } from '@/components/ui/sortable';
+import {
+  Sortable,
+  SortableContent,
+  SortableOverlay,
+} from '@/components/ui/sortable';
 import { serviceMessage, statusOf } from '@/lib/core-api';
 import { useQuote, useSaveQuote } from './api';
 import { quoteTotals } from './calc';
@@ -56,7 +60,9 @@ function QuoteNotFound() {
       <PageHeader title="Quote not found" />
       <Panel>
         <div className="grid justify-items-start gap-2 p-6">
-          <p className="text-body">This quote does not exist, or was deleted.</p>
+          <p className="text-body">
+            This quote does not exist, or was deleted.
+          </p>
           <LinkArrow to="/quotes">Back to quotes</LinkArrow>
         </div>
       </Panel>
@@ -108,7 +114,9 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   // A new quote's first save ends in this page being opened for it, and the form that was saved is gone: the navigation
   // carries the news, so the page says "Saved" like it does after any later save.
-  const arrivedSaved = quote !== undefined && (location.state as { saved?: boolean } | null)?.saved === true;
+  const arrivedSaved =
+    quote !== undefined &&
+    (location.state as { saved?: boolean } | null)?.saved === true;
   const [saved, setSaved] = useState(arrivedSaved);
   const [failure, setFailure] = useState<string | null>(null);
   const {
@@ -146,19 +154,29 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
 
   // The news is for this arrival alone: taken out of the history entry, a reload or a Back does not repeat it.
   useEffect(() => {
-    if (arrivedSaved) navigate({ pathname: location.pathname, search: location.search }, { replace: true, state: null });
+    if (arrivedSaved)
+      navigate(
+        { pathname: location.pathname, search: location.search },
+        { replace: true, state: null }
+      );
   }, [arrivedSaved, location.pathname, location.search, navigate]);
 
   const values = watch();
   const calc = toCalcInput(values);
   // Never asked for while a setting is invalid: the mirror throws on a zero count, day or month.
   const totals = calc.settings ? quoteTotals(calc.settings, calc.lines) : null;
-  const lineHours = calc.lines.reduce((sum, line) => sum + line.units * line.hoursHundredths, 0);
+  const lineHours = calc.lines.reduce(
+    (sum, line) => sum + line.units * line.hoursHundredths,
+    0
+  );
   // Null while the settings, the time buffer among them, are invalid: then no line or section shows hours with the buffer.
   const bufferBp = calc.settings?.timeBufferBp ?? null;
-  const settingsWrong = calc.settings === null || SETTINGS_FIELDS.some((name) => errors[name] !== undefined);
+  const settingsWrong =
+    calc.settings === null ||
+    SETTINGS_FIELDS.some((name) => errors[name] !== undefined);
   // The quote's own messages (a line in all, at most 200, too large) go under the sections.
-  const sectionsMessage = errors.sections?.root?.message ?? errors.sections?.message;
+  const sectionsMessage =
+    errors.sections?.root?.message ?? errors.sections?.message;
   const lines = lineCount(values);
   // Lines are numbered across the whole quote: each section starts after the lines of those before it.
   const firstLineNumbers: number[] = [];
@@ -184,7 +202,9 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
 
   /** A new section right after the one at `index`; with no line when the quote has no room for another. */
   function addSectionAfter(index: number) {
-    sectionFields.insert(index + 1, newSection(lines < MAX_LINES), { focusName: `sections.${index + 1}.title` });
+    sectionFields.insert(index + 1, newSection(lines < MAX_LINES), {
+      focusName: `sections.${index + 1}.title`,
+    });
   }
 
   const drag = useQuoteDrag({
@@ -203,29 +223,45 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
       setSaved(false);
       const editsAtSend = edits.current;
       try {
-        const id = await save.mutateAsync({ id: quote?.id, body: toQuoteBody(valid) });
+        const id = await save.mutateAsync({
+          id: quote?.id,
+          body: toQuoteBody(valid),
+        });
         if (quote === undefined) {
           // A new quote moves to its own address (which says "Saved" there); if the answer did not say where that is, to
           // the list it is on.
           if (id === undefined) navigate('/quotes', { replace: true });
-          else navigate(`/quotes/${id}`, { replace: true, state: { saved: true } });
+          else
+            navigate(`/quotes/${id}`, {
+              replace: true,
+              state: { saved: true },
+            });
           return;
         }
         // Whatever was typed, added or removed while the save was out stays: the form is made clean against what was
         // saved, not set back to it.
         const unchangedSince = edits.current === editsAtSend;
         const code = valid.currencyCode.toUpperCase();
-        reset({ ...valid, currencyCode: code }, { keepValues: true, keepErrors: true });
+        reset(
+          { ...valid, currencyCode: code },
+          { keepValues: true, keepErrors: true }
+        );
         // The code is kept in capitals, so show it so, unless it was changed meanwhile.
         const typed = getValues('currencyCode');
-        if (typed !== code && typed.trim() === valid.currencyCode) setValue('currencyCode', code);
+        if (typed !== code && typed.trim() === valid.currencyCode)
+          setValue('currencyCode', code);
         setSaved(unchangedSince);
       } catch (error) {
         const status = statusOf(error);
         if (quote !== undefined && status === 404) {
-          setFailure('This quote was deleted elsewhere, so it cannot be saved. Go back to the quotes.');
+          setFailure(
+            'This quote was deleted elsewhere, so it cannot be saved. Go back to the quotes.'
+          );
         } else {
-          setFailure((status === 422 ? serviceMessage(error) : undefined) ?? 'Could not save. Try again.');
+          setFailure(
+            (status === 422 ? serviceMessage(error) : undefined) ??
+              'Could not save. Try again.'
+          );
         }
       }
     },
@@ -237,14 +273,18 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
       }
       const first = firstWrongField(invalid, getValues());
       if (first) setFocus(first);
-    },
+    }
   );
 
   return (
     <>
       <BackToQuotes />
       <PageHeader title={quote?.title ?? 'New quote'}>
-        <Button id={SETTINGS_BUTTON} variant="quiet" onClick={() => setSettingsOpen(true)}>
+        <Button
+          id={SETTINGS_BUTTON}
+          variant="quiet"
+          onClick={() => setSettingsOpen(true)}
+        >
           {settingsWrong ? 'Settings (check)' : 'Settings'}
         </Button>
         <Button type="submit" form="quote-form" disabled={isSubmitting}>
@@ -268,8 +308,16 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
         <div className="grid items-start gap-8 2xl:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="grid min-w-0 gap-6">
             <div className="grid gap-6 sm:grid-cols-[minmax(0,1fr)_10rem]">
-              <Field label="Title" htmlFor="quote-title" error={errors.title?.message}>
-                <Input {...fieldA11y('quote-title', errors.title?.message)} {...register('title')} autoComplete="off" />
+              <Field
+                label="Title"
+                htmlFor="quote-title"
+                error={errors.title?.message}
+              >
+                <Input
+                  {...fieldA11y('quote-title', errors.title?.message)}
+                  {...register('title')}
+                  autoComplete="off"
+                />
               </Field>
               <CurrencyInput
                 control={control}
@@ -320,7 +368,10 @@ function QuoteForm({ quote }: { quote?: QuoteRow }) {
             </div>
           </div>
 
-          <aside aria-label="Quote totals" className="2xl:sticky 2xl:top-6 2xl:self-start">
+          <aside
+            aria-label="Quote totals"
+            className="2xl:sticky 2xl:top-6 2xl:self-start"
+          >
             <QuoteTotalsPanel
               settings={calc.settings}
               totals={totals}

@@ -1,7 +1,12 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { coreApi } from '@/lib/core-api';
-import { clientRows, clientsEnvelope, contactRows, contactsEnvelope } from '@/test/fixtures/clients';
+import {
+  clientRows,
+  clientsEnvelope,
+  contactRows,
+  contactsEnvelope,
+} from '@/test/fixtures/clients';
 import { countriesEnvelope } from '@/test/fixtures/countries';
 import { renderWithProviders } from '@/test/utils';
 import { ClientsPage } from './clients-page';
@@ -12,7 +17,10 @@ vi.mock('@/lib/core-api', async (importOriginal) => ({
 }));
 
 /** The next GETs answer with these bodies, in the service's envelope. */
-const serve = (clients: unknown = clientsEnvelope(), contacts: unknown = contactsEnvelope()) =>
+const serve = (
+  clients: unknown = clientsEnvelope(),
+  contacts: unknown = contactsEnvelope()
+) =>
   vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
     if (path === '/clients') return { data: clients };
     if (path === '/client-contacts') return { data: contacts };
@@ -21,9 +29,12 @@ const serve = (clients: unknown = clientsEnvelope(), contacts: unknown = contact
   }) as never);
 
 /** What the service answers a delete with; the page does not read it. */
-const saved = { data: { statusCode: 200, message: 'saved', data: clientRows[0], meta: null } };
+const saved = {
+  data: { statusCode: 200, message: 'saved', data: clientRows[0], meta: null },
+};
 
-const rowOf = async (name: string) => within((await screen.findByText(name)).closest('tr') as HTMLElement);
+const rowOf = async (name: string) =>
+  within((await screen.findByText(name)).closest('tr') as HTMLElement);
 
 beforeEach(() => {
   serve();
@@ -56,7 +67,12 @@ describe('ClientsPage', () => {
   it('keeps a client that has no contact, country, city or description', async () => {
     renderWithProviders(<ClientsPage />);
     const globex = await rowOf('Globex');
-    expect(globex.getAllByRole('cell').slice(0, 5).map((cell) => cell.textContent)).toEqual(['Globex', '', '', '', '']);
+    expect(
+      globex
+        .getAllByRole('cell')
+        .slice(0, 5)
+        .map((cell) => cell.textContent)
+    ).toEqual(['Globex', '', '', '', '']);
   });
 
   it('shows a contact that has only a phone', async () => {
@@ -68,7 +84,10 @@ describe('ClientsPage', () => {
   });
 
   it('shows an empty country for a client whose country the service no longer embeds', async () => {
-    serve(clientsEnvelope([{ ...clientRows[0], country: null }]), contactsEnvelope([]));
+    serve(
+      clientsEnvelope([{ ...clientRows[0], country: null }]),
+      contactsEnvelope([])
+    );
     renderWithProviders(<ClientsPage />);
     const acme = await rowOf('Acme');
     expect(acme.queryByText('India')).not.toBeInTheDocument();
@@ -88,7 +107,8 @@ describe('ClientsPage', () => {
     await screen.findByText('Acme');
     await user.type(screen.getByLabelText('Search clients'), query);
     for (const name of ['Acme', 'Globex', 'Initech']) {
-      if (expected.includes(name)) expect(screen.getByText(name)).toBeInTheDocument();
+      if (expected.includes(name))
+        expect(screen.getByText(name)).toBeInTheDocument();
       else expect(screen.queryByText(name)).not.toBeInTheDocument();
     }
   });
@@ -105,14 +125,18 @@ describe('ClientsPage', () => {
     serve(clientsEnvelope([]), contactsEnvelope([]));
     renderWithProviders(<ClientsPage />);
     expect(await screen.findByText('No clients yet.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add the first client' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Add the first client' })
+    ).toBeInTheDocument();
   });
 
   it('opens the dialog empty to add a client', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ClientsPage />);
     await user.click(await screen.findByRole('button', { name: 'Add client' }));
-    expect(screen.getByRole('dialog', { name: 'New client' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'New client' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('');
   });
 
@@ -120,7 +144,9 @@ describe('ClientsPage', () => {
     const user = userEvent.setup();
     renderWithProviders(<ClientsPage />);
     await user.click(await screen.findByRole('button', { name: 'Edit Acme' }));
-    expect(screen.getByRole('dialog', { name: 'Edit client' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Edit client' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Acme');
     expect(screen.getByLabelText('Contact name')).toHaveValue('Ada Lovelace');
   });
@@ -129,11 +155,15 @@ describe('ClientsPage', () => {
     vi.mocked(coreApi.delete).mockResolvedValue(saved);
     const user = userEvent.setup();
     renderWithProviders(<ClientsPage />);
-    await user.click(await screen.findByRole('button', { name: 'Delete Acme' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete Acme' })
+    );
     expect(screen.getByText('Delete client “Acme”?')).toBeInTheDocument();
     expect(coreApi.delete).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Delete client' }));
-    await waitFor(() => expect(coreApi.delete).toHaveBeenCalledWith('/clients/1'));
+    await waitFor(() =>
+      expect(coreApi.delete).toHaveBeenCalledWith('/clients/1')
+    );
     expect(coreApi.delete).toHaveBeenCalledTimes(1);
   });
 
@@ -144,9 +174,13 @@ describe('ClientsPage', () => {
     }) as never);
     const user = userEvent.setup();
     renderWithProviders(<ClientsPage />);
-    await user.click(await screen.findByRole('button', { name: 'Delete Acme' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete Acme' })
+    );
     await user.click(screen.getByRole('button', { name: 'Delete client' }));
-    await waitFor(() => expect(screen.getByLabelText('Search clients')).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByLabelText('Search clients')).toHaveFocus()
+    );
   });
 });
 
@@ -154,29 +188,59 @@ describe('ClientsPage: failures', () => {
   it('shows an error with a retry when the clients request fails', async () => {
     vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
       if (path === '/clients') throw new Error('down');
-      return { data: path === '/client-contacts' ? contactsEnvelope() : countriesEnvelope() };
+      return {
+        data:
+          path === '/client-contacts'
+            ? contactsEnvelope()
+            : countriesEnvelope(),
+      };
     }) as never);
     renderWithProviders(<ClientsPage />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not load this data'
+    );
+    expect(
+      screen.getByRole('button', { name: 'Try again' })
+    ).toBeInTheDocument();
   });
 
   it('shows an error with a retry when the contacts request fails', async () => {
     vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
       if (path === '/client-contacts') throw new Error('down');
-      return { data: path === '/clients' ? clientsEnvelope() : countriesEnvelope() };
+      return {
+        data: path === '/clients' ? clientsEnvelope() : countriesEnvelope(),
+      };
     }) as never);
     renderWithProviders(<ClientsPage />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not load this data'
+    );
   });
 
   it.each([
-    ['a bare array, which is what the json-server mock sends', clientRows, contactsEnvelope()],
-    ['a client row that has lost its name', clientsEnvelope([{ ...clientRows[0], name: undefined }]), contactsEnvelope()],
-    ['a contact row that has lost its client', clientsEnvelope(), contactsEnvelope([{ ...contactRows[0], clientId: undefined }])],
-  ])('shows the error state, not a broken table, when the service answers with %s', async (_label, clients, contacts) => {
-    serve(clients, contacts);
-    renderWithProviders(<ClientsPage />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
-  });
+    [
+      'a bare array, which is what the json-server mock sends',
+      clientRows,
+      contactsEnvelope(),
+    ],
+    [
+      'a client row that has lost its name',
+      clientsEnvelope([{ ...clientRows[0], name: undefined }]),
+      contactsEnvelope(),
+    ],
+    [
+      'a contact row that has lost its client',
+      clientsEnvelope(),
+      contactsEnvelope([{ ...contactRows[0], clientId: undefined }]),
+    ],
+  ])(
+    'shows the error state, not a broken table, when the service answers with %s',
+    async (_label, clients, contacts) => {
+      serve(clients, contacts);
+      renderWithProviders(<ClientsPage />);
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'We could not load this data'
+      );
+    }
+  );
 });

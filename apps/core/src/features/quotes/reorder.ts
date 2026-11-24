@@ -10,11 +10,17 @@ export interface LineSpot {
   index: number;
 }
 
-const clamp = (value: number, low: number, high: number) => Math.min(Math.max(value, low), high);
-const within = (value: number, length: number) => Number.isInteger(value) && value >= 0 && value < length;
+const clamp = (value: number, low: number, high: number) =>
+  Math.min(Math.max(value, low), high);
+const within = (value: number, length: number) =>
+  Number.isInteger(value) && value >= 0 && value < length;
 
 /** The sections with the one at `from` moved to `to` (its final position, kept inside the list). */
-export function moveSection<S>(sections: readonly S[], from: number, to: number): S[] {
+export function moveSection<S>(
+  sections: readonly S[],
+  from: number,
+  to: number
+): S[] {
   if (!within(from, sections.length)) return sections as S[];
   const target = clamp(to, 0, sections.length - 1);
   if (target === from) return sections as S[];
@@ -29,9 +35,18 @@ export function moveSection<S>(sections: readonly S[], from: number, to: number)
  * between the start and the end of that section, so an index past the end is the end). The two sections it touches are
  * new objects with new line arrays; every other section is the same object.
  */
-export function moveLine<S extends { lines: readonly unknown[] }>(sections: readonly S[], from: LineSpot, to: LineSpot): S[] {
+export function moveLine<S extends { lines: readonly unknown[] }>(
+  sections: readonly S[],
+  from: LineSpot,
+  to: LineSpot
+): S[] {
   const source = sections[from.section];
-  if (!within(from.section, sections.length) || !within(to.section, sections.length) || !source) return sections as S[];
+  if (
+    !within(from.section, sections.length) ||
+    !within(to.section, sections.length) ||
+    !source
+  )
+    return sections as S[];
   if (!within(from.index, source.lines.length)) return sections as S[];
 
   const lines = [...source.lines];
@@ -40,7 +55,9 @@ export function moveLine<S extends { lines: readonly unknown[] }>(sections: read
     const target = clamp(to.index, 0, lines.length);
     if (target === from.index) return sections as S[];
     lines.splice(target, 0, moved);
-    return sections.map((section, index) => (index === from.section ? { ...section, lines } : section));
+    return sections.map((section, index) =>
+      index === from.section ? { ...section, lines } : section
+    );
   }
 
   const destination = [...sections[to.section].lines];

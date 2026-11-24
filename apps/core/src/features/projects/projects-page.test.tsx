@@ -22,7 +22,10 @@ const serve = (projects: unknown = projectsEnvelope()) =>
     throw new Error(`unexpected GET ${path}`);
   }) as never);
 
-const rowOf = async (name: string) => within((await screen.findByRole('link', { name })).closest('tr') as HTMLElement);
+const rowOf = async (name: string) =>
+  within(
+    (await screen.findByRole('link', { name })).closest('tr') as HTMLElement
+  );
 
 beforeEach(() => {
   serve();
@@ -53,7 +56,12 @@ describe('ProjectsPage', () => {
   it('keeps a project that has no client or description', async () => {
     renderWithProviders(<ProjectsPage />);
     const mobile = await rowOf('Mobile app');
-    expect(mobile.getAllByRole('cell').slice(0, 7).map((cell) => cell.textContent)).toEqual([
+    expect(
+      mobile
+        .getAllByRole('cell')
+        .slice(0, 7)
+        .map((cell) => cell.textContent)
+    ).toEqual([
       'Mobile app',
       '',
       'Product',
@@ -67,7 +75,12 @@ describe('ProjectsPage', () => {
   it('shows a dash for the types of a project saved before they existed', async () => {
     renderWithProviders(<ProjectsPage />);
     const legacy = await rowOf('Legacy portal');
-    expect(legacy.getAllByRole('cell').slice(0, 7).map((cell) => cell.textContent)).toEqual([
+    expect(
+      legacy
+        .getAllByRole('cell')
+        .slice(0, 7)
+        .map((cell) => cell.textContent)
+    ).toEqual([
       'Legacy portal',
       'Acme',
       '—',
@@ -80,8 +93,13 @@ describe('ProjectsPage', () => {
 
   it('links each project name to its page', async () => {
     renderWithProviders(<ProjectsPage />);
-    expect(await screen.findByRole('link', { name: 'Website' })).toHaveAttribute('href', '/projects/1');
-    expect(screen.getByRole('link', { name: 'Legacy portal' })).toHaveAttribute('href', '/projects/3');
+    expect(
+      await screen.findByRole('link', { name: 'Website' })
+    ).toHaveAttribute('href', '/projects/1');
+    expect(screen.getByRole('link', { name: 'Legacy portal' })).toHaveAttribute(
+      'href',
+      '/projects/3'
+    );
   });
 
   it.each<[string, string, string[]]>([
@@ -96,7 +114,8 @@ describe('ProjectsPage', () => {
     await screen.findByText('Website');
     await user.type(screen.getByLabelText('Search projects'), query);
     for (const name of ['Website', 'Mobile app', 'Legacy portal']) {
-      if (expected.includes(name)) expect(screen.getByText(name)).toBeInTheDocument();
+      if (expected.includes(name))
+        expect(screen.getByText(name)).toBeInTheDocument();
       else expect(screen.queryByText(name)).not.toBeInTheDocument();
     }
   });
@@ -119,7 +138,9 @@ describe('ProjectsPage', () => {
     vi.mocked(coreApi.get).mockRejectedValue(new Error('down'));
     const user = userEvent.setup();
     renderWithProviders(<ProjectsPage />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not load this data'
+    );
     serve();
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByText('Website')).toBeInTheDocument();
@@ -128,40 +149,58 @@ describe('ProjectsPage', () => {
   it('shows the error state for a bare array, which is what the mock sent', async () => {
     serve(projectRows);
     renderWithProviders(<ProjectsPage />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not load this data'
+    );
   });
 
   it('shows the error state for a row that lacks a field the page needs', async () => {
-    serve(projectsEnvelope([{ ...projectRows[0], totalValueCents: undefined }]));
+    serve(
+      projectsEnvelope([{ ...projectRows[0], totalValueCents: undefined }])
+    );
     renderWithProviders(<ProjectsPage />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not load this data'
+    );
   });
 });
 
 /** What the service answers a delete with; the page does not read it. */
-const saved = { data: { statusCode: 200, message: 'saved', data: projectRows[0], meta: null } };
+const saved = {
+  data: { statusCode: 200, message: 'saved', data: projectRows[0], meta: null },
+};
 
 describe('ProjectsPage: writing', () => {
   it('offers to add the first project when there are none', async () => {
     serve(projectsEnvelope([]));
     renderWithProviders(<ProjectsPage />);
     expect(await screen.findByText('No projects yet.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add the first project' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Add the first project' })
+    ).toBeInTheDocument();
   });
 
   it('opens the dialog empty to add a project', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ProjectsPage />);
-    await user.click(await screen.findByRole('button', { name: 'Add project' }));
-    expect(screen.getByRole('dialog', { name: 'New project' })).toBeInTheDocument();
+    await user.click(
+      await screen.findByRole('button', { name: 'Add project' })
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'New project' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('');
   });
 
   it('opens the dialog on a project', async () => {
     const user = userEvent.setup();
     renderWithProviders(<ProjectsPage />);
-    await user.click(await screen.findByRole('button', { name: 'Edit Website' }));
-    expect(screen.getByRole('dialog', { name: 'Edit project' })).toBeInTheDocument();
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit Website' })
+    );
+    expect(
+      screen.getByRole('dialog', { name: 'Edit project' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Website');
   });
 
@@ -169,14 +208,20 @@ describe('ProjectsPage: writing', () => {
     vi.mocked(coreApi.delete).mockResolvedValue(saved);
     const user = userEvent.setup();
     renderWithProviders(<ProjectsPage />);
-    await user.click(await screen.findByRole('button', { name: 'Delete Website' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete Website' })
+    );
     expect(screen.getByText('Delete project “Website”?')).toBeInTheDocument();
     expect(
-      screen.getByText('Its resources and invoices are deleted with it. This cannot be undone.'),
+      screen.getByText(
+        'Its resources and invoices are deleted with it. This cannot be undone.'
+      )
     ).toBeInTheDocument();
     expect(coreApi.delete).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Delete project' }));
-    await waitFor(() => expect(coreApi.delete).toHaveBeenCalledWith('/projects/1'));
+    await waitFor(() =>
+      expect(coreApi.delete).toHaveBeenCalledWith('/projects/1')
+    );
     expect(coreApi.delete).toHaveBeenCalledTimes(1);
   });
 
@@ -184,10 +229,16 @@ describe('ProjectsPage: writing', () => {
     vi.mocked(coreApi.delete).mockResolvedValue(saved);
     const user = userEvent.setup();
     renderWithProviders(<ProjectsPage />);
-    await user.click(await screen.findByRole('button', { name: 'Delete Website' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete Website' })
+    );
     await user.click(screen.getByRole('button', { name: 'Delete project' }));
     await waitFor(() =>
-      expect(vi.mocked(coreApi.get).mock.calls.filter(([path]) => path === '/projects')).toHaveLength(2),
+      expect(
+        vi
+          .mocked(coreApi.get)
+          .mock.calls.filter(([path]) => path === '/projects')
+      ).toHaveLength(2)
     );
   });
 });
@@ -201,26 +252,39 @@ describe('ProjectsPage: a project removed elsewhere', () => {
         statusText: '404',
         headers: {},
         config: {} as never,
-      }),
+      })
     );
     const user = userEvent.setup();
     renderWithProviders(<ProjectsPage />);
-    await user.click(await screen.findByRole('button', { name: 'Delete Website' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete Website' })
+    );
     await user.click(screen.getByRole('button', { name: 'Delete project' }));
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
-    expect(screen.queryByText('That did not work. Try again.')).not.toBeInTheDocument();
     await waitFor(() =>
-      expect(vi.mocked(coreApi.get).mock.calls.filter(([path]) => path === '/projects')).toHaveLength(2),
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    );
+    expect(
+      screen.queryByText('That did not work. Try again.')
+    ).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        vi
+          .mocked(coreApi.get)
+          .mock.calls.filter(([path]) => path === '/projects')
+      ).toHaveLength(2)
     );
   });
 });
 
 describe('ProjectsPage: status', () => {
-  const names = () => screen.getAllByRole('link').map((link) => link.textContent);
+  const names = () =>
+    screen.getAllByRole('link').map((link) => link.textContent);
 
   it('shows each project’s status in its own column', async () => {
     renderWithProviders(<ProjectsPage />);
-    expect(await screen.findByRole('columnheader', { name: 'Status' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('columnheader', { name: 'Status' })
+    ).toBeInTheDocument();
     expect((await rowOf('Website')).getByText('Active')).toBeInTheDocument();
   });
 
@@ -241,13 +305,18 @@ describe('ProjectsPage: status', () => {
   });
 
   it('says so when no project has the chosen status', async () => {
-    const onlyActive = projectRows.map((row) => ({ ...row, projectStatus: 'active' }));
+    const onlyActive = projectRows.map((row) => ({
+      ...row,
+      projectStatus: 'active',
+    }));
     serve(projectsEnvelope(onlyActive));
     const user = userEvent.setup();
     renderWithProviders(<ProjectsPage />);
     await screen.findByText('Website');
     await user.selectOptions(screen.getByLabelText('Status'), 'Completed');
-    expect(screen.getByText('No projects have this status.')).toBeInTheDocument();
+    expect(
+      screen.getByText('No projects have this status.')
+    ).toBeInTheDocument();
   });
 
   it('uses the search wording, not the status wording, when search text and a status both match nothing', async () => {
@@ -255,9 +324,16 @@ describe('ProjectsPage: status', () => {
     renderWithProviders(<ProjectsPage />);
     await screen.findByText('Website');
     await user.selectOptions(screen.getByLabelText('Status'), 'Completed');
-    await user.type(screen.getByLabelText('Search projects'), 'nothing like this');
-    expect(screen.getByText('No projects match “nothing like this”.')).toBeInTheDocument();
-    expect(screen.queryByText('No projects have this status.')).not.toBeInTheDocument();
+    await user.type(
+      screen.getByLabelText('Search projects'),
+      'nothing like this'
+    );
+    expect(
+      screen.getByText('No projects match “nothing like this”.')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('No projects have this status.')
+    ).not.toBeInTheDocument();
   });
 
   it('returns to page 1 when the filter changes while the table is on a later page', async () => {

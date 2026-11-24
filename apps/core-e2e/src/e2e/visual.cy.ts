@@ -63,7 +63,9 @@ describe('visual captures: a person with two cards', () => {
       cy.get('li[aria-label="Asha Rao, card 2 of 2"]').should('exist');
       cy.get('li[aria-label="Asha Rao, card 1 of 2"]').scrollIntoView();
       cy.get('[role="status"][aria-label="Loading"]').should('not.exist');
-      cy.screenshot(`allocation-board-two-cards-${width}`, { capture: 'fullPage' });
+      cy.screenshot(`allocation-board-two-cards-${width}`, {
+        capture: 'fullPage',
+      });
     });
   }
 });

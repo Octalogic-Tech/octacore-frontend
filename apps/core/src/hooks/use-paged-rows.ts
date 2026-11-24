@@ -9,12 +9,23 @@ export function usePagedRows<T>(rows: readonly T[], initialPageSize = 10) {
   const page = Math.min(requestedPage, pageCount - 1);
   // Keep the clamped page, so rows coming back do not jump the table forward again.
   if (requestedPage !== page) setPage(page);
-  const pageRows = useMemo(() => rows.slice(page * pageSize, page * pageSize + pageSize), [rows, page, pageSize]);
+  const pageRows = useMemo(
+    () => rows.slice(page * pageSize, page * pageSize + pageSize),
+    [rows, page, pageSize]
+  );
 
   function setPageSize(size: number) {
     setPageSizeState(size);
     setPage(0);
   }
 
-  return { page, pageSize, pageCount, pageRows, total: rows.length, setPage, setPageSize };
+  return {
+    page,
+    pageSize,
+    pageCount,
+    pageRows,
+    total: rows.length,
+    setPage,
+    setPageSize,
+  };
 }
