@@ -1,0 +1,171 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  NX_NO_CLOUD: 'true'
+  NX_DAEMON: 'false'
+  CYPRESS_INSTALL_BINARY: '0'
+
+jobs:
+  prettier:
+    name: Prettier
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # pnpm version comes from "packageManager" in package.json (do not also set `version:`).
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Prettier
+        run: pnpm format:check
+
+  lint:
+    name: Lint (core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # pnpm version comes from "packageManager" in package.json (do not also set `version:`).
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (core)
+        run: pnpm exec nx lint core --maxWarnings=0
+
+  typecheck:
+    name: Typecheck (core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # pnpm version comes from "packageManager" in package.json (do not also set `version:`).
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck (core)
+        run: pnpm exec nx typecheck core
+
+  test:
+    name: Unit tests (core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      # pnpm version comes from "packageManager" in package.json (do not also set `version:`).
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit tests (core)
+        run: pnpm exec nx test core
+
+  build:
+    name: Build (core)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # pnpm version comes from "packageManager" in package.json (do not also set `version:`).
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (core)
+        run: pnpm exec nx build core
+        # Any URL will do in CI: it only proves the build works.
+        env:
+          VITE_CORE_API_URL: https://api.example.com/api/v1
+
+  other-projects:
+    name: Lint, test and build (other projects)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      # pnpm version comes from "packageManager" in package.json (do not also set `version:`).
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint, test and build (other projects)
+        run: pnpm exec nx run-many -t lint test build --exclude core
+        # core-e2e and portfolio-e2e (lint only) and external--portfolio (lint, test, build). The Cypress e2e
+        # targets are not run in CI.
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Docker build
+        run: docker build --build-arg VITE_CORE_API_URL=https://api.example.com/api/v1 -t octacore-frontend:ci .
+
+  # One stable check name for branch protection: it fails unless every job above succeeded.
+  ci-passed:
+    name: All checks passed
+    if: always()
+    needs: [prettier, lint, typecheck, test, build, other-projects, docker]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail if any job did not succeed
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') || contains(needs.*.result, 'skipped')
+        run: exit 1
+      - run: echo "All checks passed"
