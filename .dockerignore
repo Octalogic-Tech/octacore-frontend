@@ -1,0 +1,22 @@
+node_modules
+**/node_modules
+dist
+.nx
+.git
+.github
+coverage
+tmp
+# Cypress artifacts
+**/cypress/screenshots
+**/cypress/videos
+**/cypress/downloads
+# Local env files never go into an image (Vite would read apps/core/.env at build time)
+**/.env
+**/.env.*
+!**/.env.example
+.DS_Store
+.claude
+.vscode
+docs
+Dockerfile
+.dockerignore

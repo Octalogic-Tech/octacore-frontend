@@ -1,0 +1,29 @@
+server {
+  listen ${PORT};
+  server_name _;
+  root /usr/share/nginx/html;
+  index index.html;
+
+  gzip on;
+  gzip_vary on;
+  gzip_min_length 1024;
+  gzip_types text/plain text/css text/javascript application/javascript application/json image/svg+xml;
+
+  # Vite hashes every file under /assets, so a URL never changes content: cache it for a year.
+  # =404 keeps a stale hashed URL after a redeploy from falling through to index.html.
+  location /assets/ {
+    try_files $uri =404;
+    add_header Cache-Control "public, max-age=31536000, immutable";
+  }
+
+  # index.html names the current hashed files, so browsers must revalidate it. Deep links reach it
+  # through the try_files fallback below, which is an internal redirect to this location.
+  location = /index.html {
+    add_header Cache-Control "no-cache";
+  }
+
+  # SPA fallback: /users and other client routes are served index.html.
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+}
