@@ -1,11 +1,28 @@
+import { afterEach, vi } from 'vitest';
 import { z } from 'zod';
-import { coreApi, unwrap } from './core-api';
+import { unwrap } from './core-api';
 
 const item = z.object({ id: z.number() });
 
 describe('coreApi', () => {
-  it('points at the FastAPI core service by default', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  // The base URL is read when the module loads, so unset the variable (CI and the Docker build set it) and load it afresh.
+  it('points at the FastAPI core service by default', async () => {
+    vi.stubEnv('VITE_CORE_API_URL', undefined);
+    vi.resetModules();
+    const { coreApi } = await import('./core-api');
     expect(coreApi.defaults.baseURL).toBe('http://localhost:5001/api/v1');
+  });
+
+  it('takes the base URL from VITE_CORE_API_URL', async () => {
+    vi.stubEnv('VITE_CORE_API_URL', 'https://api.example.com/api/v1');
+    vi.resetModules();
+    const { coreApi } = await import('./core-api');
+    expect(coreApi.defaults.baseURL).toBe('https://api.example.com/api/v1');
   });
 });
 

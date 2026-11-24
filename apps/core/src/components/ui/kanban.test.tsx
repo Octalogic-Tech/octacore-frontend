@@ -45,11 +45,14 @@ type User = ReturnType<typeof userEvent.setup>;
 
 // dnd-kit puts its listeners on the document, which outlives a test: a drag still held at the end of one (a mouse not
 // released, a card not put down) would take the next test's click or Tab, and a click is swallowed for a moment after a
-// drag ends. So each test ends with everything let go and dnd-kit given the moment it takes to clean up.
+// drag ends. So each test ends with everything let go and dnd-kit given the moment it takes to clean up. dnd-kit takes
+// its document click listener off 50ms after a drag ends, and a listener shared by name: a shorter wait let that timer
+// of the last test remove the listener the next test's drag had just relied on, so the click that ends a drag followed
+// a link on a slow run. Timers fire in order of expiry, so a longer wait started later always runs after the 50ms one.
 afterEach(async () => {
   fireEvent.keyDown(document, { code: 'Escape' });
   fireEvent.mouseUp(document);
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await new Promise((resolve) => setTimeout(resolve, 60));
 });
 
 /**
