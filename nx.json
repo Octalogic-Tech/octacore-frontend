@@ -54,5 +54,5 @@
     }
   },
   "analytics": false,
-  "nxCloudAccessToken": "M2UxYmY4YjktZWJkNC00YTViLWI5ZWEtM2FkYmFkMWUyZjAyfHJlYWQtd3JpdGU="
+  "neverConnectToCloud": true
 }
