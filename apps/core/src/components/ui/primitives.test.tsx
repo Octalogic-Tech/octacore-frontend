@@ -9,7 +9,14 @@ import { Input } from './input';
 import { LinkArrow } from './link-arrow';
 import { Panel } from './panel';
 import { Select } from './select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './table';
 import { Textarea } from './textarea';
 
 describe('Button', () => {
@@ -25,7 +32,7 @@ describe('Button', () => {
       <form onSubmit={onSubmit}>
         <Button>Plain</Button>
         <Button type="submit">Send</Button>
-      </form>,
+      </form>
     );
     await userEvent.click(screen.getByRole('button', { name: 'Plain' }));
     expect(onSubmit).not.toHaveBeenCalled();
@@ -35,7 +42,11 @@ describe('Button', () => {
 
   it('has no arm cell in the quiet variant', () => {
     render(<Button variant="quiet">Edit</Button>);
-    expect(screen.getByRole('button', { name: 'Edit' }).querySelector('[aria-hidden="true"]')).toBeNull();
+    expect(
+      screen
+        .getByRole('button', { name: 'Edit' })
+        .querySelector('[aria-hidden="true"]')
+    ).toBeNull();
   });
 
   it('cannot be clicked while disabled', async () => {
@@ -43,7 +54,7 @@ describe('Button', () => {
     render(
       <Button disabled onClick={onClick}>
         Save
-      </Button>,
+      </Button>
     );
     await userEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(onClick).not.toHaveBeenCalled();
@@ -55,7 +66,7 @@ describe('Field', () => {
     render(
       <Field label="Name" htmlFor="name">
         <Input id="name" />
-      </Field>,
+      </Field>
     );
     expect(screen.getByLabelText('Name')).toBeInTheDocument();
   });
@@ -64,7 +75,7 @@ describe('Field', () => {
     render(
       <Field label="Name" htmlFor="name" error="Name is required">
         <Input {...fieldA11y('name', 'Name is required')} />
-      </Field>,
+      </Field>
     );
     expect(screen.getByRole('alert')).toHaveTextContent('Name is required');
     const input = screen.getByLabelText('Name');
@@ -76,15 +87,24 @@ describe('Field', () => {
     const { rerender } = render(
       <Field label="Phone" htmlFor="phone" hint="If you would rather we call.">
         <Input id="phone" />
-      </Field>,
+      </Field>
     );
-    expect(screen.getByText('If you would rather we call.')).toBeInTheDocument();
+    expect(
+      screen.getByText('If you would rather we call.')
+    ).toBeInTheDocument();
     rerender(
-      <Field label="Phone" htmlFor="phone" hint="If you would rather we call." error="Too short">
+      <Field
+        label="Phone"
+        htmlFor="phone"
+        hint="If you would rather we call."
+        error="Too short"
+      >
         <Input id="phone" />
-      </Field>,
+      </Field>
     );
-    expect(screen.queryByText('If you would rather we call.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('If you would rather we call.')
+    ).not.toBeInTheDocument();
   });
 
   it('keeps its label and control at the top of its cell, so a neighbour with a hint cannot push them down', () => {
@@ -93,13 +113,19 @@ describe('Field', () => {
     render(
       <Field label="Name" htmlFor="name">
         <Input id="name" />
-      </Field>,
+      </Field>
     );
-    expect(screen.getByLabelText('Name').closest('[data-slot="field"]')).toHaveClass('content-start');
+    expect(
+      screen.getByLabelText('Name').closest('[data-slot="field"]')
+    ).toHaveClass('content-start');
   });
 
   it('gives fieldA11y no error attributes when valid', () => {
-    expect(fieldA11y('x')).toEqual({ id: 'x', 'aria-invalid': undefined, 'aria-describedby': undefined });
+    expect(fieldA11y('x')).toEqual({
+      id: 'x',
+      'aria-invalid': undefined,
+      'aria-describedby': undefined,
+    });
   });
 });
 
@@ -112,11 +138,14 @@ describe('Textarea and Select', () => {
           <option value="a">A</option>
           <option value="b">B</option>
         </Select>
-      </>,
+      </>
     );
     await userEvent.type(screen.getByLabelText('Notes'), 'hello');
     expect(screen.getByLabelText('Notes')).toHaveValue('hello');
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Type' }), 'b');
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Type' }),
+      'b'
+    );
     expect(screen.getByRole('combobox', { name: 'Type' })).toHaveValue('b');
   });
 });
@@ -127,7 +156,7 @@ describe('Badge', () => {
       <>
         <Badge>Approved</Badge>
         <Badge variant="outline">Pending</Badge>
-      </>,
+      </>
     );
     expect(screen.getByText('Approved')).toHaveClass('bg-navy');
     expect(screen.getByText('Pending')).toHaveClass('border-navy');
@@ -149,9 +178,11 @@ describe('Table', () => {
             <TableCell>Web</TableCell>
           </TableRow>
         </TableBody>
-      </Table>,
+      </Table>
     );
-    expect(screen.getByRole('columnheader', { name: 'Name' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('columnheader', { name: 'Name' })
+    ).toBeInTheDocument();
     expect(screen.getByRole('cell', { name: 'Web' })).toBeInTheDocument();
   });
 });
@@ -169,7 +200,7 @@ describe('LinkArrow', () => {
     render(
       <MemoryRouter>
         <LinkArrow to="/projects">All projects</LinkArrow>
-      </MemoryRouter>,
+      </MemoryRouter>
     );
     const link = screen.getByRole('link', { name: 'All projects' });
     expect(link).toHaveAttribute('href', '/projects');

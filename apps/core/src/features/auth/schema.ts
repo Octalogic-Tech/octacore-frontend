@@ -5,7 +5,10 @@ import { z } from 'zod';
 // service's limit; it refuses anything longer.
 export const loginSchema = z.object({
   email: z.string().trim().min(1, 'Email is required'),
-  password: z.string().min(1, 'Password is required').max(128, 'Use at most 128 characters'),
+  password: z
+    .string()
+    .min(1, 'Password is required')
+    .max(128, 'Use at most 128 characters'),
 });
 
 export type LoginInput = z.infer<typeof loginSchema>;
@@ -14,7 +17,10 @@ export type LoginInput = z.infer<typeof loginSchema>;
 export const changePasswordSchema = z
   .object({
     currentPassword: z.string().min(1, 'Current password is required'),
-    newPassword: z.string().min(10, 'Use at least 10 characters').max(128, 'Use at most 128 characters'),
+    newPassword: z
+      .string()
+      .min(10, 'Use at least 10 characters')
+      .max(128, 'Use at most 128 characters'),
     confirmPassword: z.string(),
   })
   .refine((values) => values.newPassword === values.confirmPassword, {

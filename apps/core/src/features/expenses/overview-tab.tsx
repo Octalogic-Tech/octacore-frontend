@@ -4,7 +4,14 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Panel } from '@/components/ui/panel';
 import { Select } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useExpenseTypes } from '@/features/expense-types/api';
 import { usePeople } from '@/features/people/api';
 import { useProjects } from '@/features/projects/api';
@@ -13,7 +20,12 @@ import { useExpenses } from './api';
 import { DeleteExpenseDialog } from './delete-expense-dialog';
 import { ExpenseFormDialog } from './expense-form-dialog';
 import { ExpenseTable } from './expense-table';
-import { NO_OVERVIEW_FILTERS, hasOverviewFilters, toOverviewQuery, type OverviewFilters } from './filters';
+import {
+  NO_OVERVIEW_FILTERS,
+  hasOverviewFilters,
+  toOverviewQuery,
+  type OverviewFilters,
+} from './filters';
 import { monthLabel, shiftMonth } from './months';
 import { monthFigures } from './overview';
 import type { ExpenseRow } from './schema';
@@ -30,12 +42,21 @@ interface OverviewTabProps {
 const toId = (value: string) => (value === '' ? null : Number(value));
 
 /** One month of spending: what it came to, split into one-time and recurring, by type, and every expense in it. */
-export function OverviewTab({ month, thisMonth, onMonthChange }: OverviewTabProps) {
+export function OverviewTab({
+  month,
+  thisMonth,
+  onMonthChange,
+}: OverviewTabProps) {
   const [filters, setFilters] = useState<OverviewFilters>(NO_OVERVIEW_FILTERS);
-  const [form, setForm] = useState<{ open: boolean; expense?: ExpenseRow }>({ open: false });
+  const [form, setForm] = useState<{ open: boolean; expense?: ExpenseRow }>({
+    open: false,
+  });
   const [toDelete, setToDelete] = useState<ExpenseRow | null>(null);
 
-  const query = useMemo(() => toOverviewQuery(month, filters), [month, filters]);
+  const query = useMemo(
+    () => toOverviewQuery(month, filters),
+    [month, filters]
+  );
   const expenses = useExpenses(query);
   const types = useExpenseTypes();
   const projects = useProjects();
@@ -44,7 +65,10 @@ export function OverviewTab({ month, thisMonth, onMonthChange }: OverviewTabProp
   // While another month (or filter) loads, the data of the one before is still on hand. It is not shown: figures
   // and rows under a heading that names a different month would be wrong.
   const loaded = expenses.data !== undefined && !expenses.isPlaceholderData;
-  const rows = useMemo(() => (loaded ? (expenses.data ?? []) : []), [loaded, expenses.data]);
+  const rows = useMemo(
+    () => (loaded ? expenses.data ?? [] : []),
+    [loaded, expenses.data]
+  );
   const figures = useMemo(() => monthFigures(rows), [rows]);
   const filtered = hasOverviewFilters(filters);
   const label = monthLabel(month);
@@ -63,11 +87,17 @@ export function OverviewTab({ month, thisMonth, onMonthChange }: OverviewTabProp
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         <div className="flex flex-wrap items-center gap-x-2">
-          <Button variant="quiet" onClick={() => onMonthChange(shiftMonth(month, -1))}>
+          <Button
+            variant="quiet"
+            onClick={() => onMonthChange(shiftMonth(month, -1))}
+          >
             Previous month
           </Button>
           <h2 className="text-title font-semibold">{label}</h2>
-          <Button variant="quiet" onClick={() => onMonthChange(shiftMonth(month, 1))}>
+          <Button
+            variant="quiet"
+            onClick={() => onMonthChange(shiftMonth(month, 1))}
+          >
             Next month
           </Button>
           {month === thisMonth ? null : (
@@ -81,11 +111,16 @@ export function OverviewTab({ month, thisMonth, onMonthChange }: OverviewTabProp
         </Button>
       </div>
 
-      <dl aria-label={`Spend in ${label}`} className="mb-6 grid gap-x-6 gap-y-4 sm:grid-cols-3">
+      <dl
+        aria-label={`Spend in ${label}`}
+        className="mb-6 grid gap-x-6 gap-y-4 sm:grid-cols-3"
+      >
         {summary.map(({ name, cents }) => (
           <div key={name}>
             <dt className="text-small text-navy-72">{name}</dt>
-            <dd className="tabular text-title font-semibold">{loaded ? formatUsd(cents) : '—'}</dd>
+            <dd className="tabular text-title font-semibold">
+              {loaded ? formatUsd(cents) : '—'}
+            </dd>
           </div>
         ))}
       </dl>
@@ -95,7 +130,9 @@ export function OverviewTab({ month, thisMonth, onMonthChange }: OverviewTabProp
           <Select
             id="overview-filter-type"
             value={filters.expenseTypeId ?? ''}
-            onChange={(event) => update({ expenseTypeId: toId(event.target.value) })}
+            onChange={(event) =>
+              update({ expenseTypeId: toId(event.target.value) })
+            }
           >
             <option value="">All types</option>
             {(types.data ?? []).map((type) => (
@@ -109,7 +146,9 @@ export function OverviewTab({ month, thisMonth, onMonthChange }: OverviewTabProp
           <Select
             id="overview-filter-project"
             value={filters.projectId ?? ''}
-            onChange={(event) => update({ projectId: toId(event.target.value) })}
+            onChange={(event) =>
+              update({ projectId: toId(event.target.value) })
+            }
           >
             <option value="">All projects</option>
             {(projects.data ?? []).map((project) => (
@@ -137,7 +176,10 @@ export function OverviewTab({ month, thisMonth, onMonthChange }: OverviewTabProp
 
       {filtered ? (
         <div className="mb-6">
-          <Button variant="quiet" onClick={() => setFilters(NO_OVERVIEW_FILTERS)}>
+          <Button
+            variant="quiet"
+            onClick={() => setFilters(NO_OVERVIEW_FILTERS)}
+          >
             Clear filters
           </Button>
         </div>
@@ -189,8 +231,12 @@ export function OverviewTab({ month, thisMonth, onMonthChange }: OverviewTabProp
                 {figures.byType.map((row) => (
                   <TableRow key={row.expenseTypeId}>
                     <TableCell>{row.name}</TableCell>
-                    <TableCell className="tabular text-right">{row.count}</TableCell>
-                    <TableCell className="tabular text-right">{formatUsd(row.totalCents)}</TableCell>
+                    <TableCell className="tabular text-right">
+                      {row.count}
+                    </TableCell>
+                    <TableCell className="tabular text-right">
+                      {formatUsd(row.totalCents)}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -205,7 +251,11 @@ export function OverviewTab({ month, thisMonth, onMonthChange }: OverviewTabProp
         expense={form.expense}
         fallbackFocusId="overview-add"
       />
-      <DeleteExpenseDialog expense={toDelete} onClose={() => setToDelete(null)} fallbackFocusId="overview-add" />
+      <DeleteExpenseDialog
+        expense={toDelete}
+        onClose={() => setToDelete(null)}
+        fallbackFocusId="overview-add"
+      />
     </>
   );
 }

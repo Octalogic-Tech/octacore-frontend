@@ -8,7 +8,14 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { filterBy } from '@/lib/filter';
 import { formatDate } from '@/lib/format';
@@ -20,10 +27,15 @@ export function CategoriesPage() {
   const { data, isLoading, isError, refetch } = useCategories();
   const remove = useDeleteCategory();
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState<{ open: boolean; category?: Category }>({ open: false });
+  const [form, setForm] = useState<{ open: boolean; category?: Category }>({
+    open: false,
+  });
   const [toDelete, setToDelete] = useState<Category | null>(null);
 
-  const filtered = useMemo(() => filterBy(data ?? [], search, ['name', 'description']), [data, search]);
+  const filtered = useMemo(
+    () => filterBy(data ?? [], search, ['name', 'description']),
+    [data, search]
+  );
   const paging = usePagedRows(filtered);
 
   return (
@@ -60,7 +72,9 @@ export function CategoriesPage() {
           }
         >
           {filtered.length === 0 ? (
-            <p className="p-6 text-body">No categories match “{search.trim()}”.</p>
+            <p className="p-6 text-body">
+              No categories match “{search.trim()}”.
+            </p>
           ) : (
             <>
               <Table>
@@ -75,9 +89,15 @@ export function CategoriesPage() {
                 <TableBody>
                   {paging.pageRows.map((category) => (
                     <TableRow key={category.id}>
-                      <TableCell className="font-semibold">{category.name}</TableCell>
-                      <TableCell className="tabular">{formatDate(category.createdDate)}</TableCell>
-                      <TableCell className="tabular">{formatDate(category.updatedDate)}</TableCell>
+                      <TableCell className="font-semibold">
+                        {category.name}
+                      </TableCell>
+                      <TableCell className="tabular">
+                        {formatDate(category.createdDate)}
+                      </TableCell>
+                      <TableCell className="tabular">
+                        {formatDate(category.updatedDate)}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         <IconButton
                           label={`Edit ${category.name}`}

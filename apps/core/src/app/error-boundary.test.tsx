@@ -24,19 +24,26 @@ const originalAdapter = coreApi.defaults.adapter;
 
 function renderAt(route: string) {
   return render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
       <AuthTestProvider>
         <MemoryRouter initialEntries={[route]}>
           <App />
         </MemoryRouter>
       </AuthTestProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 
 beforeEach(() => {
   // The pages that still render use coreApi: answer it here so no request leaves the test.
-  coreApi.defaults.adapter = fakeAdapter(() => ({ status: 200, data: envelope([]) }));
+  coreApi.defaults.adapter = fakeAdapter(() => ({
+    status: 200,
+    data: envelope([]),
+  }));
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 });
 
@@ -49,21 +56,31 @@ describe('a page that throws while rendering', () => {
   it('shows a message inside the shell instead of a blank page, and the menu still works', async () => {
     const user = userEvent.setup();
     renderAt('/finance/invoices');
-    expect(await screen.findByText(/Something went wrong showing this page/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Something went wrong showing this page/)
+    ).toBeInTheDocument();
     const nav = screen.getByRole('navigation', { name: 'Main' });
     await user.click(within(nav).getByRole('link', { name: 'Categories' }));
-    expect(await screen.findByRole('heading', { level: 1, name: 'Categories' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Categories' })
+    ).toBeInTheDocument();
     expect(screen.queryByText(/Something went wrong/)).not.toBeInTheDocument();
   });
 
   it('protects the Overview too', async () => {
     renderAt('/');
-    expect(await screen.findByText(/Something went wrong showing this page/)).toBeInTheDocument();
-    expect(screen.getByRole('navigation', { name: 'Main' })).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Something went wrong showing this page/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: 'Main' })
+    ).toBeInTheDocument();
   });
 
   it('offers a link that reloads the page', async () => {
     renderAt('/finance/invoices');
-    expect(await screen.findByRole('link', { name: 'Reload this page' })).toHaveAttribute('href');
+    expect(
+      await screen.findByRole('link', { name: 'Reload this page' })
+    ).toHaveAttribute('href');
   });
 });

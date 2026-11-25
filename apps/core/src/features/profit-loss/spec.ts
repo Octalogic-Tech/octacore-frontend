@@ -23,7 +23,8 @@ export const expenseDialog: PlannedDialogSpec = {
 export const profitLossSpec: PlannedSpec = {
   id: 'profit-loss',
   title: 'Profit and loss',
-  summary: 'See each month’s revenue minus payroll and expenses, and which projects and clients earn the margin.',
+  summary:
+    'See each month’s revenue minus payroll and expenses, and which projects and clients earn the margin.',
   surface: 'page',
   home: 'Finance › Profit and loss',
   size: 'M',

@@ -20,14 +20,16 @@ const createdSchema = z.object({ id: z.number().int() });
 export function useClients() {
   return useQuery({
     queryKey: CLIENTS,
-    queryFn: async () => unwrap((await coreApi.get('/clients')).data, clientRowsSchema),
+    queryFn: async () =>
+      unwrap((await coreApi.get('/clients')).data, clientRowsSchema),
   });
 }
 
 export function useClientContacts() {
   return useQuery({
     queryKey: CONTACTS,
-    queryFn: async () => unwrap((await coreApi.get('/client-contacts')).data, contactRowsSchema),
+    queryFn: async () =>
+      unwrap((await coreApi.get('/client-contacts')).data, contactRowsSchema),
   });
 }
 
@@ -48,10 +50,19 @@ export function useClientDetails(clientId: number | null) {
   const clients = useClients();
   const contacts = useClientContacts();
   const client: ClientRow | null =
-    clientId === null ? null : ((clients.data ?? []).find((row) => row.id === clientId) ?? null);
+    clientId === null
+      ? null
+      : (clients.data ?? []).find((row) => row.id === clientId) ?? null;
   const contact: ContactRow | null =
-    clientId === null ? null : ((contacts.data ?? []).find((row) => row.clientId === clientId) ?? null);
-  return { client, contact, clientsState: listState(clients), contactsState: listState(contacts) };
+    clientId === null
+      ? null
+      : (contacts.data ?? []).find((row) => row.clientId === clientId) ?? null;
+  return {
+    client,
+    contact,
+    clientsState: listState(clients),
+    contactsState: listState(contacts),
+  };
 }
 
 /**
@@ -59,7 +70,8 @@ export function useClientDetails(clientId: number | null) {
  * contact again repeats the same call, so a retry cannot succeed: the person has to reopen the client.
  */
 export function contactChangedElsewhere(error: unknown): boolean {
-  const status = (error as { response?: { status?: number } } | null)?.response?.status;
+  const status = (error as { response?: { status?: number } } | null)?.response
+    ?.status;
   return status === 404 || status === 409;
 }
 
@@ -77,8 +89,18 @@ function useRefreshLists() {
 export function useSaveClient() {
   const refresh = useRefreshLists();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: number | undefined; body: ClientBody }) => {
-      if (id === undefined) return unwrap((await coreApi.post('/clients', body)).data, createdSchema).id;
+    mutationFn: async ({
+      id,
+      body,
+    }: {
+      id: number | undefined;
+      body: ClientBody;
+    }) => {
+      if (id === undefined)
+        return unwrap(
+          (await coreApi.post('/clients', body)).data,
+          createdSchema
+        ).id;
       await coreApi.patch(`/clients/${id}`, body);
       return id;
     },
@@ -90,8 +112,13 @@ export function useSaveContact() {
   const refresh = useRefreshLists();
   return useMutation({
     mutationFn: async (step: ContactStep) => {
-      if (step.kind === 'create') await coreApi.post('/client-contacts', { clientId: step.clientId, ...step.fields });
-      else if (step.kind === 'update') await coreApi.patch(`/client-contacts/${step.id}`, step.fields);
+      if (step.kind === 'create')
+        await coreApi.post('/client-contacts', {
+          clientId: step.clientId,
+          ...step.fields,
+        });
+      else if (step.kind === 'update')
+        await coreApi.patch(`/client-contacts/${step.id}`, step.fields);
       else await coreApi.delete(`/client-contacts/${step.id}`);
     },
     onSuccess: refresh,

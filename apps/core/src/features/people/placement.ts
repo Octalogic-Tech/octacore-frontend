@@ -53,7 +53,9 @@ export function placementOf({
     .sort((a, b) => a.card.card - b.card.card);
   const placed: CardPlacement[] = cards.map(({ column, card }) => ({
     card: card.card,
-    project: column.project ? { id: column.project.id, name: column.project.name } : null,
+    project: column.project
+      ? { id: column.project.id, name: column.project.name }
+      : null,
     since: card.since,
     note: card.note,
   }));
@@ -61,8 +63,12 @@ export function placementOf({
   if (placed.length > 1) return { kind: 'several', cards: placed };
 
   const [only] = placed;
-  if (only.project) return { kind: 'project', project: only.project, since: only.since ?? '' };
-  if (only.note !== null) return { kind: 'bench', since: null, note: only.note };
+  if (only.project)
+    return { kind: 'project', project: only.project, since: only.since ?? '' };
+  if (only.note !== null)
+    return { kind: 'bench', since: null, note: only.note };
   // Bench with no note and no date: nothing has put the card anywhere yet.
-  return only.since === null ? { kind: 'unallocated' } : { kind: 'bench', since: only.since, note: null };
+  return only.since === null
+    ? { kind: 'unallocated' }
+    : { kind: 'bench', since: only.since, note: null };
 }

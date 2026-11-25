@@ -43,7 +43,9 @@ const [legacy] = invoiceRowsSchema.parse([
 const onOpenChange = vi.fn();
 
 /** What the service answers a save with; the dialog never reads it. */
-const saved = { data: { statusCode: 200, message: 'saved', data: {}, meta: null } };
+const saved = {
+  data: { statusCode: 200, message: 'saved', data: {}, meta: null },
+};
 
 const failure = (status: number) =>
   new AxiosError('failed', 'ERR_BAD_REQUEST', undefined, null, {
@@ -54,7 +56,8 @@ const failure = (status: number) =>
     config: {} as never,
   });
 
-const CHANGED_ELSEWHERE = 'This changed elsewhere, so it cannot be saved. Close this dialog and go back to Projects.';
+const CHANGED_ELSEWHERE =
+  'This changed elsewhere, so it cannot be saved. Close this dialog and go back to Projects.';
 
 const DRAFT_PATH = '/projects/1/invoice-draft';
 const NEXT_PATH = '/projects/1/next-invoice-number';
@@ -63,8 +66,18 @@ const NEXT_PATH = '/projects/1/next-invoice-number';
 const SAMPLE_DRAFT = draftEnvelope({
   ...draftBody,
   lineItems: [
-    { description: 'Fullstack Developer', headcount: 3, quantity: 160, rateCents: 2700 },
-    { description: 'Project Lead', headcount: 1, quantity: 160, rateCents: 5400 },
+    {
+      description: 'Fullstack Developer',
+      headcount: 3,
+      quantity: 160,
+      rateCents: 2700,
+    },
+    {
+      description: 'Project Lead',
+      headcount: 1,
+      quantity: 160,
+      rateCents: 5400,
+    },
   ],
 });
 
@@ -75,18 +88,24 @@ interface Served {
 }
 
 const serve = ({ draft, next }: Served = {}) =>
-  vi.mocked(coreApi.get).mockImplementation((async (path: string, config?: { params?: { issueDate?: string } }) => {
+  vi.mocked(coreApi.get).mockImplementation((async (
+    path: string,
+    config?: { params?: { issueDate?: string } }
+  ) => {
     if (path === DRAFT_PATH) return { data: draft ?? draftEnvelope() };
     if (path === NEXT_PATH) {
       const issueDate = config?.params?.issueDate ?? '';
-      return { data: nextNumberEnvelope(next ? next(issueDate) : 'OCTA/26-27/WEB/008') };
+      return {
+        data: nextNumberEnvelope(next ? next(issueDate) : 'OCTA/26-27/WEB/008'),
+      };
     }
     throw new Error(`unexpected GET ${path}`);
   }) as never);
 
 const serveDraft = (draft: unknown = draftEnvelope()) => serve({ draft });
 
-const calls = (path: string) => vi.mocked(coreApi.get).mock.calls.filter(([called]) => called === path);
+const calls = (path: string) =>
+  vi.mocked(coreApi.get).mock.calls.filter(([called]) => called === path);
 
 interface DialogProps {
   invoice?: InvoiceRow;
@@ -97,7 +116,13 @@ interface DialogProps {
 
 function openDialog(props: DialogProps = {}) {
   return renderWithProviders(
-    <InvoiceFormDialog open onOpenChange={onOpenChange} projectId={1} billingType="retainer" {...props} />,
+    <InvoiceFormDialog
+      open
+      onOpenChange={onOpenChange}
+      projectId={1}
+      billingType="retainer"
+      {...props}
+    />
   );
 }
 
@@ -123,7 +148,9 @@ describe('InvoiceFormDialog: size', () => {
     openDialog();
     await screen.findByRole('group', { name: 'Line 1' });
 
-    expect(screen.getByRole('dialog', { name: 'New invoice' })).toHaveClass('max-w-6xl');
+    expect(screen.getByRole('dialog', { name: 'New invoice' })).toHaveClass(
+      'max-w-6xl'
+    );
   });
 });
 
@@ -134,12 +161,16 @@ describe('InvoiceFormDialog: the header', () => {
     openDialog();
     await screen.findByRole('group', { name: 'Line 1' });
 
-    const row = (label: string) => screen.getByLabelText(label).closest('[data-slot="field"]')?.parentElement;
+    const row = (label: string) =>
+      screen.getByLabelText(label).closest('[data-slot="field"]')
+        ?.parentElement;
     expect(row('Number')).toBe(row('Description'));
     expect(row('Issue date')).toBe(row('Billing period start'));
     expect(row('Issue date')).toBe(row('Billing period end'));
     expect(row('Due date')).toBe(row('Paid date'));
-    expect(new Set([row('Number'), row('Issue date'), row('Due date')]).size).toBe(3);
+    expect(
+      new Set([row('Number'), row('Issue date'), row('Due date')]).size
+    ).toBe(3);
   });
 
   it('reads, and tabs, in that order', async () => {
@@ -156,7 +187,10 @@ describe('InvoiceFormDialog: the header', () => {
       'Paid date',
     ].map((label) => screen.getByLabelText(label));
     order.slice(1).forEach((input, i) => {
-      expect(order[i].compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(
+        order[i].compareDocumentPosition(input) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
     });
   });
 });
@@ -166,17 +200,25 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
     openDialog();
-    expect(screen.getByRole('dialog', { name: 'New invoice' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'New invoice' })
+    ).toBeInTheDocument();
     await screen.findByRole('group', { name: 'Line 1' });
-    expect(screen.getByLabelText('Line 1 description')).toHaveValue('Asha Rao — Mobile');
+    expect(screen.getByLabelText('Line 1 description')).toHaveValue(
+      'Asha Rao — Mobile'
+    );
     expect(screen.getByLabelText('Line 1 qty')).toHaveValue('1');
     expect(screen.getByLabelText('Line 1 hours')).toHaveValue('160');
     expect(screen.getByLabelText('Line 1 rate')).toHaveValue('150.00');
     expect(within(line(1)).getByText('$24,000.00')).toBeInTheDocument();
-    expect(screen.getByLabelText('Line 2 description')).toHaveValue('Ben Cho — Web');
+    expect(screen.getByLabelText('Line 2 description')).toHaveValue(
+      'Ben Cho — Web'
+    );
     expect(within(line(2)).getByText('$12,000.00')).toBeInTheDocument();
     expect(screen.getByText('Total $36,000.00')).toBeInTheDocument();
-    expect(screen.getByText('Retainer lines are 160 hours a month.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Retainer lines are 160 hours a month.')
+    ).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Number'), 'INV-9');
     await user.type(screen.getByLabelText('Issue date'), '2026-10-01');
@@ -195,8 +237,18 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
       discountPercent: 0,
       taxRate: 0,
       lineItems: [
-        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rateCents: 15000 },
-        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rateCents: 7500 },
+        {
+          description: 'Asha Rao — Mobile',
+          headcount: 1,
+          quantity: 160,
+          rateCents: 15000,
+        },
+        {
+          description: 'Ben Cho — Web',
+          headcount: 1,
+          quantity: 160,
+          rateCents: 7500,
+        },
       ],
     });
   });
@@ -236,7 +288,9 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
     await user.type(screen.getByLabelText('Line 1 hours'), '80');
     expect(within(line(1)).getByText('$12,000.00')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Remove line 2' }));
-    expect(screen.queryByRole('group', { name: 'Line 2' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: 'Line 2' })
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Add line' }));
     expect(screen.getByLabelText('Line 2 qty')).toHaveValue('1');
     await user.type(screen.getByLabelText('Line 2 description'), 'Hosting');
@@ -251,10 +305,20 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
       '/invoices',
       expect.objectContaining({
         lineItems: [
-          { description: 'Asha Rao — Mobile', headcount: 1, quantity: 80, rateCents: 15000 },
-          { description: 'Hosting', headcount: 1, quantity: 1, rateCents: 30000 },
+          {
+            description: 'Asha Rao — Mobile',
+            headcount: 1,
+            quantity: 80,
+            rateCents: 15000,
+          },
+          {
+            description: 'Hosting',
+            headcount: 1,
+            quantity: 1,
+            rateCents: 30000,
+          },
         ],
-      }),
+      })
     );
   });
 
@@ -263,7 +327,9 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
     openDialog();
     await screen.findByRole('group', { name: 'Line 2' });
     await user.click(screen.getByRole('button', { name: 'Remove line 2' }));
-    expect(screen.getByRole('button', { name: 'Remove line 1' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Remove line 1' })
+    ).toBeDisabled();
   });
 
   it('says Building lines… until the draft settles, and keeps what was typed in the header', async () => {
@@ -271,13 +337,15 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
     vi.mocked(coreApi.get).mockReturnValue(
       new Promise((resolve) => {
         release = () => resolve({ data: draftEnvelope() });
-      }) as never,
+      }) as never
     );
     const user = userEvent.setup();
     openDialog();
     await user.type(screen.getByLabelText('Number'), 'INV-7');
     expect(screen.getByRole('status')).toHaveTextContent('Building lines…');
-    expect(screen.queryByRole('group', { name: 'Line 1' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: 'Line 1' })
+    ).not.toBeInTheDocument();
     act(() => release());
     await screen.findByRole('group', { name: 'Line 1' });
     expect(screen.getByLabelText('Number')).toHaveValue('INV-7');
@@ -288,11 +356,17 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
     vi.mocked(coreApi.get).mockRejectedValue(failure(500));
     const user = userEvent.setup();
     openDialog();
-    expect(await screen.findByRole('alert')).toHaveTextContent('Could not build the lines.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Could not build the lines.'
+    );
     expect(screen.getByLabelText('Line 1 description')).toHaveValue('');
     serveDraft();
     await user.click(screen.getByRole('button', { name: 'Try again' }));
-    await waitFor(() => expect(screen.getByLabelText('Line 1 description')).toHaveValue('Asha Rao — Mobile'));
+    await waitFor(() =>
+      expect(screen.getByLabelText('Line 1 description')).toHaveValue(
+        'Asha Rao — Mobile'
+      )
+    );
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -302,26 +376,46 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
       return (
         <>
           <button onClick={() => setOpen(true)}>Open it</button>
-          <InvoiceFormDialog open={open} onOpenChange={setOpen} projectId={1} billingType="retainer" />
+          <InvoiceFormDialog
+            open={open}
+            onOpenChange={setOpen}
+            projectId={1}
+            billingType="retainer"
+          />
         </>
       );
     }
     const user = userEvent.setup();
     renderWithProviders(<Harness />);
-    expect(await screen.findByDisplayValue('Asha Rao — Mobile')).toBeInTheDocument();
+    expect(
+      await screen.findByDisplayValue('Asha Rao — Mobile')
+    ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Cancel' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    );
 
     serveDraft(
       draftEnvelope({
         ...draftBody,
-        lineItems: [{ description: 'Cara Diaz — Web', headcount: 1, quantity: 160, rateCents: 9000 }],
-      }),
+        lineItems: [
+          {
+            description: 'Cara Diaz — Web',
+            headcount: 1,
+            quantity: 160,
+            rateCents: 9000,
+          },
+        ],
+      })
     );
     await user.click(screen.getByRole('button', { name: 'Open it' }));
 
-    expect(await screen.findByDisplayValue('Cara Diaz — Web')).toBeInTheDocument();
-    expect(screen.queryByDisplayValue('Asha Rao — Mobile')).not.toBeInTheDocument();
+    expect(
+      await screen.findByDisplayValue('Cara Diaz — Web')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByDisplayValue('Asha Rao — Mobile')
+    ).not.toBeInTheDocument();
     expect(calls(DRAFT_PATH)).toHaveLength(2);
   });
 
@@ -340,7 +434,7 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
     vi.mocked(coreApi.post).mockReturnValue(
       new Promise((resolve) => {
         release = () => resolve(saved);
-      }) as never,
+      }) as never
     );
     const user = userEvent.setup();
     openDialog();
@@ -358,7 +452,11 @@ describe('InvoiceFormDialog: adding to a retainer project', () => {
 });
 
 describe('InvoiceFormDialog: line validation', () => {
-  async function fillLine(fields: { qty?: string; hours: string; rate: string }) {
+  async function fillLine(fields: {
+    qty?: string;
+    hours: string;
+    rate: string;
+  }) {
     const user = userEvent.setup();
     // The draft is requested when the dialog mounts, so the mock must be in place before it opens.
     serveDraft(draftEnvelope({ ...draftBody, lineItems: [] }));
@@ -369,18 +467,28 @@ describe('InvoiceFormDialog: line validation', () => {
     await user.type(screen.getByLabelText('Line 1 description'), 'Milestone');
     if (fields.qty !== undefined) {
       await user.clear(screen.getByLabelText('Line 1 qty'));
-      if (fields.qty) await user.type(screen.getByLabelText('Line 1 qty'), fields.qty);
+      if (fields.qty)
+        await user.type(screen.getByLabelText('Line 1 qty'), fields.qty);
     }
-    if (fields.hours) await user.type(screen.getByLabelText('Line 1 units'), fields.hours);
-    if (fields.rate) await user.type(screen.getByLabelText('Line 1 rate'), fields.rate);
+    if (fields.hours)
+      await user.type(screen.getByLabelText('Line 1 units'), fields.hours);
+    if (fields.rate)
+      await user.type(screen.getByLabelText('Line 1 rate'), fields.rate);
     await user.click(screen.getByRole('button', { name: 'Save' }));
   }
 
-  it.each(['12.505', '$85', '1,200'])('says what is wrong with a rate of %s and sends nothing', async (rate) => {
-    await fillLine({ hours: '1', rate });
-    expect(await screen.findByText('Enter an amount like 7.20, with no commas or signs')).toBeInTheDocument();
-    expect(coreApi.post).not.toHaveBeenCalled();
-  });
+  it.each(['12.505', '$85', '1,200'])(
+    'says what is wrong with a rate of %s and sends nothing',
+    async (rate) => {
+      await fillLine({ hours: '1', rate });
+      expect(
+        await screen.findByText(
+          'Enter an amount like 7.20, with no commas or signs'
+        )
+      ).toBeInTheDocument();
+      expect(coreApi.post).not.toHaveBeenCalled();
+    }
+  );
 
   it('asks for hours and a rate on a line', async () => {
     await fillLine({ hours: '', rate: '' });
@@ -403,7 +511,9 @@ describe('InvoiceFormDialog: line validation', () => {
   it('refuses a line whose Qty x hours x rate is past the cap the service holds', async () => {
     // 1,000 x 100 x $1,000.01 is 10,000,100,000 cents, a hundred cents over the cap.
     await fillLine({ qty: '1000', hours: '100', rate: '1000.01' });
-    expect(await screen.findByText('This line is too large')).toBeInTheDocument();
+    expect(
+      await screen.findByText('This line is too large')
+    ).toBeInTheDocument();
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
@@ -415,9 +525,13 @@ describe('InvoiceFormDialog: line validation', () => {
       ['units', 'Quantity is required'],
       ['rate', 'Rate is required'],
     ] as const) {
-      const describedBy = screen.getByLabelText(`Line 1 ${field}`).getAttribute('aria-describedby');
+      const describedBy = screen
+        .getByLabelText(`Line 1 ${field}`)
+        .getAttribute('aria-describedby');
       expect(describedBy).toBeTruthy();
-      expect(document.getElementById(describedBy as string)).toHaveTextContent(message);
+      expect(document.getElementById(describedBy as string)).toHaveTextContent(
+        message
+      );
     }
   });
 });
@@ -429,12 +543,16 @@ describe('InvoiceFormDialog: adding to a fixed cost project', () => {
     const user = userEvent.setup();
     openDialog({ billingType: 'fixed_cost' });
     await screen.findByRole('group', { name: 'Line 1' });
-    expect(screen.queryByRole('group', { name: 'Line 2' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('group', { name: 'Line 2' })
+    ).not.toBeInTheDocument();
     expect(screen.getByText('Units')).toBeInTheDocument();
     expect(screen.queryByText('Hours')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Line 1 description')).toHaveValue('');
     expect(screen.getByLabelText('Line 1 qty')).toHaveValue('1');
-    expect(screen.queryByText('Retainer lines are 160 hours a month.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Retainer lines are 160 hours a month.')
+    ).not.toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Number'), 'INV-1');
     await user.type(screen.getByLabelText('Issue date'), '2026-10-01');
@@ -455,7 +573,14 @@ describe('InvoiceFormDialog: adding to a fixed cost project', () => {
       periodEnd: null,
       discountPercent: 0,
       taxRate: 0,
-      lineItems: [{ description: 'Milestone 1', headcount: 1, quantity: 1, rateCents: 500000 }],
+      lineItems: [
+        {
+          description: 'Milestone 1',
+          headcount: 1,
+          quantity: 1,
+          rateCents: 500000,
+        },
+      ],
     });
   });
 
@@ -481,8 +606,15 @@ describe('InvoiceFormDialog: adding to a fixed cost project', () => {
     expect(coreApi.post).toHaveBeenCalledWith(
       '/invoices',
       expect.objectContaining({
-        lineItems: [{ description: 'Support', headcount: 3, quantity: 160, rateCents: 1250 }],
-      }),
+        lineItems: [
+          {
+            description: 'Support',
+            headcount: 3,
+            quantity: 160,
+            rateCents: 1250,
+          },
+        ],
+      })
     );
   });
 
@@ -561,10 +693,14 @@ describe('InvoiceFormDialog: the billing period', () => {
     await screen.findByRole('group', { name: 'Line 1' });
 
     await pickDate('Billing period start', '2026-09-15');
-    expect(screen.getByLabelText('Billing period end')).toHaveValue('2026-09-30');
+    expect(screen.getByLabelText('Billing period end')).toHaveValue(
+      '2026-09-30'
+    );
 
     await pickDate('Billing period start', '2026-02-03');
-    expect(screen.getByLabelText('Billing period end')).toHaveValue('2026-02-28');
+    expect(screen.getByLabelText('Billing period end')).toHaveValue(
+      '2026-02-28'
+    );
   });
 
   it('never replaces an end the person typed', async () => {
@@ -575,17 +711,25 @@ describe('InvoiceFormDialog: the billing period', () => {
     await pickDate('Billing period end', '2026-09-20');
     await pickDate('Billing period start', '2026-09-02');
 
-    expect(screen.getByLabelText('Billing period end')).toHaveValue('2026-09-20');
+    expect(screen.getByLabelText('Billing period end')).toHaveValue(
+      '2026-09-20'
+    );
   });
 
   it('opens on an invoice’s saved period and leaves its end alone when the start changes', async () => {
     openDialog({ invoice: paid });
-    expect(screen.getByLabelText('Billing period start')).toHaveValue('2026-09-01');
-    expect(screen.getByLabelText('Billing period end')).toHaveValue('2026-09-30');
+    expect(screen.getByLabelText('Billing period start')).toHaveValue(
+      '2026-09-01'
+    );
+    expect(screen.getByLabelText('Billing period end')).toHaveValue(
+      '2026-09-30'
+    );
 
     await pickDate('Billing period start', '2026-09-10');
 
-    expect(screen.getByLabelText('Billing period end')).toHaveValue('2026-09-30');
+    expect(screen.getByLabelText('Billing period end')).toHaveValue(
+      '2026-09-30'
+    );
   });
 
   it('sends the period, and null for both when there is none', async () => {
@@ -600,7 +744,10 @@ describe('InvoiceFormDialog: the billing period', () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.post).toHaveBeenCalledWith(
       '/invoices',
-      expect.objectContaining({ periodStart: '2026-09-01', periodEnd: '2026-09-30' }),
+      expect.objectContaining({
+        periodStart: '2026-09-01',
+        periodEnd: '2026-09-30',
+      })
     );
   });
 
@@ -613,29 +760,44 @@ describe('InvoiceFormDialog: the billing period', () => {
     await pickDate('Billing period start', '2026-09-01');
     await userEvent.clear(screen.getByLabelText('Billing period end'));
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Give both dates, or neither')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Give both dates, or neither')
+    ).toBeInTheDocument();
 
     await pickDate('Billing period end', '2026-08-15');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('The period must end on or after it starts')).toBeInTheDocument();
+    expect(
+      await screen.findByText('The period must end on or after it starts')
+    ).toBeInTheDocument();
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 });
 
 describe('InvoiceFormDialog: the number', () => {
   it('is optional on a project with a key, says so, and shows the next number for the issue date', async () => {
-    serve({ next: (issueDate) => (issueDate >= '2027-04-01' ? 'OCTA/27-28/WEB/001' : 'OCTA/26-27/WEB/008') });
+    serve({
+      next: (issueDate) =>
+        issueDate >= '2027-04-01' ? 'OCTA/27-28/WEB/001' : 'OCTA/26-27/WEB/008',
+    });
     openDialog({ projectKey: 'WEB' });
     await screen.findByRole('group', { name: 'Line 1' });
-    expect(screen.getByText('Leave empty to use the next number.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Leave empty to use the next number.')
+    ).toBeInTheDocument();
     expect(calls(NEXT_PATH)).toHaveLength(0);
 
     await pickDate('Issue date', '2026-10-01');
-    expect(await screen.findByPlaceholderText('Next: OCTA/26-27/WEB/008')).toBeInTheDocument();
-    expect(calls(NEXT_PATH)[0][1]).toEqual({ params: { issueDate: '2026-10-01' } });
+    expect(
+      await screen.findByPlaceholderText('Next: OCTA/26-27/WEB/008')
+    ).toBeInTheDocument();
+    expect(calls(NEXT_PATH)[0][1]).toEqual({
+      params: { issueDate: '2026-10-01' },
+    });
 
     await pickDate('Issue date', '2027-04-01');
-    expect(await screen.findByPlaceholderText('Next: OCTA/27-28/WEB/001')).toBeInTheDocument();
+    expect(
+      await screen.findByPlaceholderText('Next: OCTA/27-28/WEB/001')
+    ).toBeInTheDocument();
   });
 
   it('is sent as null when left empty, so the server numbers it', async () => {
@@ -646,7 +808,10 @@ describe('InvoiceFormDialog: the number', () => {
     await user.type(screen.getByLabelText('Issue date'), '2026-10-01');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.post).toHaveBeenCalledWith('/invoices', expect.objectContaining({ number: null }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/invoices',
+      expect.objectContaining({ number: null })
+    );
   });
 
   it('is sent as typed when the person types one', async () => {
@@ -658,7 +823,10 @@ describe('InvoiceFormDialog: the number', () => {
     await user.type(screen.getByLabelText('Issue date'), '2026-10-01');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.post).toHaveBeenCalledWith('/invoices', expect.objectContaining({ number: 'OCTA/26-27/WEB/042' }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/invoices',
+      expect.objectContaining({ number: 'OCTA/26-27/WEB/042' })
+    );
   });
 
   it('shows no placeholder when the project has no number to offer', async () => {
@@ -676,7 +844,9 @@ describe('InvoiceFormDialog: the number', () => {
     openDialog();
     await screen.findByRole('group', { name: 'Line 1' });
     await user.type(screen.getByLabelText('Issue date'), '2026-10-01');
-    expect(screen.queryByText('Leave empty to use the next number.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Leave empty to use the next number.')
+    ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(await screen.findByText('Number is required')).toBeInTheDocument();
@@ -701,10 +871,14 @@ describe('InvoiceFormDialog: editing', () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     openDialog({ invoice: paid });
-    expect(screen.getByRole('dialog', { name: 'Edit invoice' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Edit invoice' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Number')).toHaveValue('INV-001');
     expect(screen.getByLabelText('Paid date')).toHaveValue('2026-10-12');
-    expect(screen.getByLabelText('Line 1 description')).toHaveValue('Asha Rao — Mobile');
+    expect(screen.getByLabelText('Line 1 description')).toHaveValue(
+      'Asha Rao — Mobile'
+    );
     expect(screen.getByLabelText('Line 2 rate')).toHaveValue('75.00');
     expect(screen.getByText('Total $36,000.00')).toBeInTheDocument();
     await user.clear(screen.getByLabelText('Paid date'));
@@ -722,8 +896,18 @@ describe('InvoiceFormDialog: editing', () => {
       discountPercent: 0,
       taxRate: 0,
       lineItems: [
-        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rateCents: 15000 },
-        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rateCents: 7500 },
+        {
+          description: 'Asha Rao — Mobile',
+          headcount: 1,
+          quantity: 160,
+          rateCents: 15000,
+        },
+        {
+          description: 'Ben Cho — Web',
+          headcount: 1,
+          quantity: 160,
+          rateCents: 7500,
+        },
       ],
     });
     expect(calls(DRAFT_PATH)).toHaveLength(0);
@@ -751,7 +935,14 @@ describe('InvoiceFormDialog: editing', () => {
       periodEnd: '2026-09-30',
       discountPercent: 0,
       taxRate: 0,
-      lineItems: [{ description: 'October retainer', headcount: 1, quantity: 1, rateCents: 3_600_000 }],
+      lineItems: [
+        {
+          description: 'October retainer',
+          headcount: 1,
+          quantity: 1,
+          rateCents: 3_600_000,
+        },
+      ],
     });
   });
 
@@ -763,7 +954,11 @@ describe('InvoiceFormDialog: editing', () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.patch).toHaveBeenCalledWith(
       '/invoices/2',
-      expect.objectContaining({ periodStart: null, periodEnd: null, dueDate: null }),
+      expect.objectContaining({
+        periodStart: null,
+        periodEnd: null,
+        dueDate: null,
+      })
     );
   });
 });
@@ -783,30 +978,41 @@ describe('InvoiceFormDialog: failures', () => {
   it('says so, and stays open, when an add fails for any other reason', async () => {
     vi.mocked(coreApi.post).mockRejectedValue(failure(500));
     await submitFilledForm();
-    expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That did not save. Try again.'
+    );
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
   it('does not offer a retry that cannot work when the project was removed elsewhere (409 on add)', async () => {
     vi.mocked(coreApi.post).mockRejectedValue(failure(409));
     await submitFilledForm();
-    expect(await screen.findByRole('alert')).toHaveTextContent(CHANGED_ELSEWHERE);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      CHANGED_ELSEWHERE
+    );
   });
 
   it('does not offer a retry that cannot work when the invoice was removed elsewhere (404 on edit)', async () => {
     vi.mocked(coreApi.patch).mockRejectedValue(failure(404));
     await submitFilledForm(paid);
-    expect(await screen.findByRole('alert')).toHaveTextContent(CHANGED_ELSEWHERE);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      CHANGED_ELSEWHERE
+    );
   });
 
   it.each([
     ['a 404 on add', 'post', undefined, 404],
     ['a 409 on edit', 'patch', paid, 409],
-  ] as const)('still offers a retry for %s', async (_label, method, invoice, status) => {
-    vi.mocked(coreApi[method]).mockRejectedValue(failure(status));
-    await submitFilledForm(invoice);
-    expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
-  });
+  ] as const)(
+    'still offers a retry for %s',
+    async (_label, method, invoice, status) => {
+      vi.mocked(coreApi[method]).mockRejectedValue(failure(status));
+      await submitFilledForm(invoice);
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'That did not save. Try again.'
+      );
+    }
+  );
 });
 
 describe('InvoiceFormDialog: the discount', () => {
@@ -827,7 +1033,11 @@ describe('InvoiceFormDialog: the discount', () => {
     await openOnLines({ projectDiscountPercent: 10 });
 
     expect(discountField()).toHaveValue('10');
-    expect(screen.getByText('Starts from the project’s discount. Change it for this invoice only.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Starts from the project’s discount. Change it for this invoice only.'
+      )
+    ).toBeInTheDocument();
   });
 
   it.each([
@@ -835,11 +1045,14 @@ describe('InvoiceFormDialog: the discount', () => {
     [12.25, '12.25'],
     [0, '0'],
     [undefined, '0'],
-  ])('starts at the project’s %s as %j', async (projectDiscountPercent, shown) => {
-    await openOnLines({ projectDiscountPercent });
+  ])(
+    'starts at the project’s %s as %j',
+    async (projectDiscountPercent, shown) => {
+      await openOnLines({ projectDiscountPercent });
 
-    expect(discountField()).toHaveValue(shown);
-  });
+      expect(discountField()).toHaveValue(shown);
+    }
+  );
 
   it('shows the subtotal, the discount and the total, and follows the discount as it is changed', async () => {
     const user = userEvent.setup();
@@ -864,7 +1077,10 @@ describe('InvoiceFormDialog: the discount', () => {
   it('follows the lines too, flooring the discount to the cent the way the service does', async () => {
     const user = userEvent.setup();
     serveDraft(draftEnvelope({ ...draftBody, lineItems: [] }));
-    await openOnLines({ projectDiscountPercent: 7.5, billingType: 'fixed_cost' });
+    await openOnLines({
+      projectDiscountPercent: 7.5,
+      billingType: 'fixed_cost',
+    });
     await user.type(screen.getByLabelText('Line 1 description'), 'Build');
     await user.type(screen.getByLabelText('Line 1 units'), '1');
     await user.type(screen.getByLabelText('Line 1 rate'), '10.10');
@@ -891,7 +1107,10 @@ describe('InvoiceFormDialog: the discount', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
 
-    expect(coreApi.post).toHaveBeenCalledWith('/invoices', expect.objectContaining({ projectId: 1, discountPercent: 10 }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/invoices',
+      expect.objectContaining({ projectId: 1, discountPercent: 10 })
+    );
   });
 
   it('sends the figure typed for this invoice, whatever the project has', async () => {
@@ -904,21 +1123,30 @@ describe('InvoiceFormDialog: the discount', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
 
-    expect(coreApi.post).toHaveBeenCalledWith('/invoices', expect.objectContaining({ discountPercent: 12.25 }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/invoices',
+      expect.objectContaining({ discountPercent: 12.25 })
+    );
   });
 
-  it.each([['0'], ['']])('sends 0 when the discount is taken off with %j', async (typed) => {
-    vi.mocked(coreApi.post).mockResolvedValue(saved);
-    const user = userEvent.setup();
-    await openOnLines({ projectDiscountPercent: 10 });
-    await fillHeader(user);
-    await user.clear(discountField());
-    if (typed !== '') await user.type(discountField(), typed);
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+  it.each([['0'], ['']])(
+    'sends 0 when the discount is taken off with %j',
+    async (typed) => {
+      vi.mocked(coreApi.post).mockResolvedValue(saved);
+      const user = userEvent.setup();
+      await openOnLines({ projectDiscountPercent: 10 });
+      await fillHeader(user);
+      await user.clear(discountField());
+      if (typed !== '') await user.type(discountField(), typed);
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
 
-    expect(coreApi.post).toHaveBeenCalledWith('/invoices', expect.objectContaining({ discountPercent: 0 }));
-  });
+      expect(coreApi.post).toHaveBeenCalledWith(
+        '/invoices',
+        expect.objectContaining({ discountPercent: 0 })
+      );
+    }
+  );
 
   it.each([
     ['50.01', 'Discount must be from 0 to 50'],
@@ -952,7 +1180,12 @@ describe('InvoiceFormDialog: the discount', () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     const [discounted] = invoiceRowsSchema.parse([
-      { ...invoiceRows[0], subtotalCents: 3_600_000, discountPercent: 7.5, amountCents: 3_330_000 },
+      {
+        ...invoiceRows[0],
+        subtotalCents: 3_600_000,
+        discountPercent: 7.5,
+        amountCents: 3_330_000,
+      },
     ]);
     openDialog({ invoice: discounted, projectDiscountPercent: 10 });
 
@@ -962,7 +1195,10 @@ describe('InvoiceFormDialog: the discount', () => {
     expect(calls(DRAFT_PATH)).toHaveLength(0);
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/invoices/1', expect.objectContaining({ discountPercent: 7.5 }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/invoices/1',
+      expect.objectContaining({ discountPercent: 7.5 })
+    );
   });
 
   it('opens an undiscounted invoice at 0 even when its project has a discount now', () => {
@@ -991,7 +1227,9 @@ describe('InvoiceFormDialog: billed in rupees', () => {
   it('says what the invoice is billed in, from the draft: the currency, the rate and the tax', async () => {
     await openOnRupeeLines();
 
-    expect(screen.getByText('Billed in INR · ₹88.25 per $1 · tax 18%')).toBeInTheDocument();
+    expect(
+      screen.getByText('Billed in INR · ₹88.25 per $1 · tax 18%')
+    ).toBeInTheDocument();
   });
 
   it('types the rates in rupees: the column and a line under the lines name the currency, and the lines come from the draft', async () => {
@@ -999,7 +1237,9 @@ describe('InvoiceFormDialog: billed in rupees', () => {
 
     expect(screen.getByText('Rate (INR)')).toBeInTheDocument();
     expect(screen.queryByText('Rate')).not.toBeInTheDocument();
-    expect(screen.getByText('Rates and amounts are in INR (₹).')).toBeInTheDocument();
+    expect(
+      screen.getByText('Rates and amounts are in INR (₹).')
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Line 1 rate')).toHaveValue('13237.50');
     expect(screen.getByLabelText('Line 2 rate')).toHaveValue('6618.75');
     // 160 hours at ₹13,237.50, and at ₹6,618.75, in rupees grouped the Indian way.
@@ -1010,32 +1250,48 @@ describe('InvoiceFormDialog: billed in rupees', () => {
   it('says the resources’ dollar rates were converted, at what rate, on a retainer only', async () => {
     await openOnRupeeLines();
 
-    expect(screen.getByText('The resources’ dollar rates are converted to INR at ₹88.25 per $1.')).toBeInTheDocument();
-    expect(screen.getByText('Retainer lines are 160 hours a month.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'The resources’ dollar rates are converted to INR at ₹88.25 per $1.'
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Retainer lines are 160 hours a month.')
+    ).toBeInTheDocument();
   });
 
   it('does not say it for a fixed cost project, a dollar invoice or an invoice already saved', async () => {
     serveDraft(draftEnvelope({ ...draftInrBody, lineItems: [] }));
     const { unmount } = openDialog({ billingType: 'fixed_cost' });
     await screen.findByRole('group', { name: 'Line 1' });
-    expect(screen.queryByText(/dollar rates are converted/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/dollar rates are converted/)
+    ).not.toBeInTheDocument();
     unmount();
 
     serveDraft();
     const dollarView = openDialog();
     await screen.findByRole('group', { name: 'Line 1' });
-    expect(screen.queryByText(/dollar rates are converted/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/dollar rates are converted/)
+    ).not.toBeInTheDocument();
     dollarView.unmount();
 
     openDialog({ invoice: rupees });
-    expect(screen.queryByText(/dollar rates are converted/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/dollar rates are converted/)
+    ).not.toBeInTheDocument();
   });
 
   it('starts the tax rate from the draft, and says it can be changed for this invoice only', async () => {
     await openOnRupeeLines();
 
     expect(taxField()).toHaveValue('18');
-    expect(screen.getByText('Starts from the billing country’s rate. Change it for this invoice only; 0 is no tax.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Starts from the billing country’s rate. Change it for this invoice only; 0 is no tax.'
+      )
+    ).toBeInTheDocument();
   });
 
   it('shows the subtotal, the tax, the total and the dollars it comes to, all worked out as the service does', async () => {
@@ -1046,7 +1302,9 @@ describe('InvoiceFormDialog: billed in rupees', () => {
     expect(screen.queryByText(/^Discount \(\d/)).not.toBeInTheDocument();
     expect(screen.getByText('Tax (18%) ₹5,71,860.00')).toBeInTheDocument();
     expect(screen.getByText('Total ₹37,48,860.00')).toBeInTheDocument();
-    expect(screen.getByText('About $36,000.00 in US dollars, before tax')).toBeInTheDocument();
+    expect(
+      screen.getByText('About $36,000.00 in US dollars, before tax')
+    ).toBeInTheDocument();
   });
 
   it('taxes what is left after the discount, flooring the discount and rounding the tax half up, and converts that', async () => {
@@ -1057,10 +1315,14 @@ describe('InvoiceFormDialog: billed in rupees', () => {
 
     // ₹31,77,000.00 less 10% (₹3,17,700.00) is ₹28,59,300.00; 18% is ₹5,14,674.00; $32,400.00 at 88.25.
     expect(screen.getByText('Subtotal ₹31,77,000.00')).toBeInTheDocument();
-    expect(screen.getByText('Discount (10%) -₹3,17,700.00')).toBeInTheDocument();
+    expect(
+      screen.getByText('Discount (10%) -₹3,17,700.00')
+    ).toBeInTheDocument();
     expect(screen.getByText('Tax (18%) ₹5,14,674.00')).toBeInTheDocument();
     expect(screen.getByText('Total ₹33,73,974.00')).toBeInTheDocument();
-    expect(screen.getByText('About $32,400.00 in US dollars, before tax')).toBeInTheDocument();
+    expect(
+      screen.getByText('About $32,400.00 in US dollars, before tax')
+    ).toBeInTheDocument();
   });
 
   it('matches the service at a rounding edge: a discount floored, a tax rounded up, dollars rounded up', async () => {
@@ -1078,7 +1340,9 @@ describe('InvoiceFormDialog: billed in rupees', () => {
     expect(screen.getByText('Discount (7.5%) -₹0.75')).toBeInTheDocument();
     expect(screen.getByText('Tax (18%) ₹1.68')).toBeInTheDocument();
     expect(screen.getByText('Total ₹11.03')).toBeInTheDocument();
-    expect(screen.getByText('About $0.11 in US dollars, before tax')).toBeInTheDocument();
+    expect(
+      screen.getByText('About $0.11 in US dollars, before tax')
+    ).toBeInTheDocument();
   });
 
   it('follows the tax rate as it is changed, and drops the tax line at 0', async () => {
@@ -1096,7 +1360,9 @@ describe('InvoiceFormDialog: billed in rupees', () => {
     expect(screen.queryByText(/^Tax \(/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Subtotal/)).not.toBeInTheDocument();
     expect(screen.getByText('Total ₹31,77,000.00')).toBeInTheDocument();
-    expect(screen.getByText('About $36,000.00 in US dollars, before tax')).toBeInTheDocument();
+    expect(
+      screen.getByText('About $36,000.00 in US dollars, before tax')
+    ).toBeInTheDocument();
   });
 
   it('shows no tax for text it refuses, and says what is wrong when Save is pressed', async () => {
@@ -1108,27 +1374,38 @@ describe('InvoiceFormDialog: billed in rupees', () => {
 
     expect(screen.queryByText(/^Tax \(/)).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('The tax rate cannot be more than 100')).toBeInTheDocument();
+    expect(
+      await screen.findByText('The tax rate cannot be more than 100')
+    ).toBeInTheDocument();
     expect(taxField()).toHaveAttribute('aria-invalid', 'true');
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
   it.each([
     ['', 'Enter a tax rate, or 0 for none'],
-    ['abc', 'Enter a tax rate like 18 or 7.25, with no commas and at most two decimals'],
-    ['1.234', 'Enter a tax rate like 18 or 7.25, with no commas and at most two decimals'],
+    [
+      'abc',
+      'Enter a tax rate like 18 or 7.25, with no commas and at most two decimals',
+    ],
+    [
+      '1.234',
+      'Enter a tax rate like 18 or 7.25, with no commas and at most two decimals',
+    ],
     ['100.01', 'The tax rate cannot be more than 100'],
-  ])('refuses a tax rate of %j with “%s” and sends nothing', async (typed, message) => {
-    const user = userEvent.setup();
-    await openOnRupeeLines();
-    await fillHeader(user);
-    await user.clear(taxField());
-    if (typed !== '') await user.type(taxField(), typed);
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+  ])(
+    'refuses a tax rate of %j with “%s” and sends nothing',
+    async (typed, message) => {
+      const user = userEvent.setup();
+      await openOnRupeeLines();
+      await fillHeader(user);
+      await user.clear(taxField());
+      if (typed !== '') await user.type(taxField(), typed);
+      await user.click(screen.getByRole('button', { name: 'Save' }));
 
-    expect(await screen.findByText(message)).toBeInTheDocument();
-    expect(coreApi.post).not.toHaveBeenCalled();
-  });
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      expect(coreApi.post).not.toHaveBeenCalled();
+    }
+  );
 
   it('sends the draft’s rates in paise, and the tax rate, with the new invoice', async () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
@@ -1150,8 +1427,18 @@ describe('InvoiceFormDialog: billed in rupees', () => {
       discountPercent: 0,
       taxRate: 18,
       lineItems: [
-        { description: 'Asha Rao — Mobile', headcount: 1, quantity: 160, rateCents: 1_323_750 },
-        { description: 'Ben Cho — Web', headcount: 1, quantity: 160, rateCents: 661_875 },
+        {
+          description: 'Asha Rao — Mobile',
+          headcount: 1,
+          quantity: 160,
+          rateCents: 1_323_750,
+        },
+        {
+          description: 'Ben Cho — Web',
+          headcount: 1,
+          quantity: 160,
+          rateCents: 661_875,
+        },
       ],
     });
   });
@@ -1160,18 +1447,24 @@ describe('InvoiceFormDialog: billed in rupees', () => {
     ['0', 0],
     ['7.25', 7.25],
     ['100', 100],
-  ])('sends the tax rate typed for this invoice, %s as %f, whatever the country has', async (typed, rate) => {
-    vi.mocked(coreApi.post).mockResolvedValue(saved);
-    const user = userEvent.setup();
-    await openOnRupeeLines();
-    await fillHeader(user);
-    await user.clear(taxField());
-    await user.type(taxField(), typed);
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+  ])(
+    'sends the tax rate typed for this invoice, %s as %f, whatever the country has',
+    async (typed, rate) => {
+      vi.mocked(coreApi.post).mockResolvedValue(saved);
+      const user = userEvent.setup();
+      await openOnRupeeLines();
+      await fillHeader(user);
+      await user.clear(taxField());
+      await user.type(taxField(), typed);
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
 
-    expect(coreApi.post).toHaveBeenCalledWith('/invoices', expect.objectContaining({ taxRate: rate }));
-  });
+      expect(coreApi.post).toHaveBeenCalledWith(
+        '/invoices',
+        expect.objectContaining({ taxRate: rate })
+      );
+    }
+  );
 
   it('takes a rate typed in rupees and sends it as paise', async () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
@@ -1188,7 +1481,16 @@ describe('InvoiceFormDialog: billed in rupees', () => {
 
     expect(coreApi.post).toHaveBeenCalledWith(
       '/invoices',
-      expect.objectContaining({ lineItems: [{ description: 'Support', headcount: 1, quantity: 10, rateCents: 150_050 }] }),
+      expect.objectContaining({
+        lineItems: [
+          {
+            description: 'Support',
+            headcount: 1,
+            quantity: 10,
+            rateCents: 150_050,
+          },
+        ],
+      })
     );
   });
 
@@ -1197,7 +1499,7 @@ describe('InvoiceFormDialog: billed in rupees', () => {
     vi.mocked(coreApi.get).mockReturnValue(
       new Promise((resolve) => {
         release = () => resolve({ data: INR_DRAFT });
-      }) as never,
+      }) as never
     );
     const user = userEvent.setup();
     openDialog();
@@ -1206,7 +1508,9 @@ describe('InvoiceFormDialog: billed in rupees', () => {
     await screen.findByRole('group', { name: 'Line 1' });
 
     expect(taxField()).toHaveValue('5');
-    expect(screen.getByText('Billed in INR · ₹88.25 per $1 · tax 18%')).toBeInTheDocument();
+    expect(
+      screen.getByText('Billed in INR · ₹88.25 per $1 · tax 18%')
+    ).toBeInTheDocument();
   });
 });
 
@@ -1218,8 +1522,12 @@ describe('InvoiceFormDialog: billed in dollars', () => {
     expect(screen.getByText('Billed in USD')).toBeInTheDocument();
     expect(screen.getByText('Rate')).toBeInTheDocument();
     expect(screen.queryByText(/Rate \(/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/^Rates and amounts are in/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/in US dollars, before tax/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/^Rates and amounts are in/)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/in US dollars, before tax/)
+    ).not.toBeInTheDocument();
     expect(screen.getByLabelText('Tax rate (%)')).toHaveValue('0');
     expect(screen.getByText('Total $36,000.00')).toBeInTheDocument();
     expect(screen.queryByText(/^Tax \(/)).not.toBeInTheDocument();
@@ -1235,7 +1543,9 @@ describe('InvoiceFormDialog: billed in dollars', () => {
     expect(screen.getByText('Subtotal $36,000.00')).toBeInTheDocument();
     expect(screen.getByText('Tax (5%) $1,800.00')).toBeInTheDocument();
     expect(screen.getByText('Total $37,800.00')).toBeInTheDocument();
-    expect(screen.queryByText(/in US dollars, before tax/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/in US dollars, before tax/)
+    ).not.toBeInTheDocument();
   });
 
   it('sends a tax rate of 0 with the invoice, so the service does not guess', async () => {
@@ -1248,7 +1558,10 @@ describe('InvoiceFormDialog: billed in dollars', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
 
-    expect(coreApi.post).toHaveBeenCalledWith('/invoices', expect.objectContaining({ taxRate: 0 }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/invoices',
+      expect.objectContaining({ taxRate: 0 })
+    );
   });
 });
 
@@ -1257,12 +1570,19 @@ describe('InvoiceFormDialog: the tax rate field', () => {
     openDialog();
     await screen.findByRole('group', { name: 'Line 1' });
 
-    const row = (label: string) => screen.getByLabelText(label).closest('[data-slot="field"]')?.parentElement;
+    const row = (label: string) =>
+      screen.getByLabelText(label).closest('[data-slot="field"]')
+        ?.parentElement;
     expect(row('Tax rate (%)')).toBe(row('Due date'));
     expect(row('Tax rate (%)')).toBe(row('Discount (%)'));
-    const order = ['Due date', 'Paid date', 'Discount (%)', 'Tax rate (%)'].map((label) => screen.getByLabelText(label));
+    const order = ['Due date', 'Paid date', 'Discount (%)', 'Tax rate (%)'].map(
+      (label) => screen.getByLabelText(label)
+    );
     order.slice(1).forEach((input, i) => {
-      expect(order[i].compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(
+        order[i].compareDocumentPosition(input) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
     });
   });
 });
@@ -1277,9 +1597,11 @@ describe('InvoiceFormDialog: a billing country with no rate', () => {
     await screen.findByRole('group', { name: 'Line 1' });
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'The billing country has no exchange rate yet, so no invoice can be created. Sync the rates on the Countries page, or choose another country.',
+      'The billing country has no exchange rate yet, so no invoice can be created. Sync the rates on the Countries page, or choose another country.'
     );
-    expect(screen.getByText('Billed in INR · no exchange rate yet · tax 18%')).toBeInTheDocument();
+    expect(
+      screen.getByText('Billed in INR · no exchange rate yet · tax 18%')
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
     await user.type(screen.getByLabelText('Number'), 'INV-9');
     await user.type(screen.getByLabelText('Issue date'), '2026-10-01');
@@ -1292,13 +1614,17 @@ describe('InvoiceFormDialog: a billing country with no rate', () => {
     openDialog();
     await screen.findByRole('group', { name: 'Line 1' });
 
-    expect(screen.queryByText(/in US dollars, before tax/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/in US dollars, before tax/)
+    ).not.toBeInTheDocument();
   });
 });
 
 describe('InvoiceFormDialog: billing terms that could not be loaded', () => {
   it('will not save while the draft is loading', async () => {
-    vi.mocked(coreApi.get).mockReturnValue(new Promise(() => undefined) as never);
+    vi.mocked(coreApi.get).mockReturnValue(
+      new Promise(() => undefined) as never
+    );
     openDialog();
 
     expect(screen.getByRole('status')).toHaveTextContent('Building lines…');
@@ -1313,7 +1639,9 @@ describe('InvoiceFormDialog: billing terms that could not be loaded', () => {
 
     const alert = await screen.findByRole('alert');
     expect(alert).toHaveTextContent('Could not build the lines.');
-    expect(alert).toHaveTextContent('The billing terms are unknown, so the invoice cannot be saved yet.');
+    expect(alert).toHaveTextContent(
+      'The billing terms are unknown, so the invoice cannot be saved yet.'
+    );
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
     expect(screen.queryByText(/^Billed in/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Total/)).not.toBeInTheDocument();
@@ -1338,7 +1666,10 @@ describe('InvoiceFormDialog: billing terms that could not be loaded', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
 
-    expect(coreApi.post).toHaveBeenCalledWith('/invoices', expect.objectContaining({ taxRate: 18 }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/invoices',
+      expect.objectContaining({ taxRate: 18 })
+    );
   });
 });
 
@@ -1346,11 +1677,15 @@ describe('InvoiceFormDialog: editing an invoice in rupees', () => {
   it('opens on the invoice’s own terms, not the project’s, and asks for no draft', async () => {
     openDialog({ invoice: rupees });
 
-    expect(screen.getByText('Billed in INR · ₹88.25 per $1 · tax 18%')).toBeInTheDocument();
+    expect(
+      screen.getByText('Billed in INR · ₹88.25 per $1 · tax 18%')
+    ).toBeInTheDocument();
     expect(screen.getByText('Rate (INR)')).toBeInTheDocument();
     expect(screen.getByLabelText('Line 1 rate')).toHaveValue('200000.00');
     expect(screen.getByLabelText('Tax rate (%)')).toHaveValue('18');
-    expect(screen.getByText('Change it for this invoice only; 0 is no tax.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Change it for this invoice only; 0 is no tax.')
+    ).toBeInTheDocument();
     expect(calls(DRAFT_PATH)).toHaveLength(0);
   });
 
@@ -1362,7 +1697,9 @@ describe('InvoiceFormDialog: editing an invoice in rupees', () => {
     expect(screen.getByText('Subtotal ₹2,00,000.00')).toBeInTheDocument();
     expect(screen.getByText('Tax (18%) ₹36,000.00')).toBeInTheDocument();
     expect(screen.getByText('Total ₹2,36,000.00')).toBeInTheDocument();
-    expect(screen.getByText('About $2,266.29 in US dollars, before tax')).toBeInTheDocument();
+    expect(
+      screen.getByText('About $2,266.29 in US dollars, before tax')
+    ).toBeInTheDocument();
     expect(inrInvoiceRow.taxCents).toBe(3_600_000);
     expect(inrInvoiceRow.totalCents).toBe(23_600_000);
     expect(inrInvoiceRow.amountUsdCents).toBe(226_629);
@@ -1386,7 +1723,14 @@ describe('InvoiceFormDialog: editing an invoice in rupees', () => {
       periodEnd: null,
       discountPercent: 0,
       taxRate: 18,
-      lineItems: [{ description: 'Mobile app build', headcount: 1, quantity: 1, rateCents: 20_000_000 }],
+      lineItems: [
+        {
+          description: 'Mobile app build',
+          headcount: 1,
+          quantity: 1,
+          rateCents: 20_000_000,
+        },
+      ],
     });
   });
 
@@ -1400,7 +1744,10 @@ describe('InvoiceFormDialog: editing an invoice in rupees', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
 
-    const body = vi.mocked(coreApi.patch).mock.calls[0][1] as Record<string, unknown>;
+    const body = vi.mocked(coreApi.patch).mock.calls[0][1] as Record<
+      string,
+      unknown
+    >;
     expect(body).toMatchObject({ taxRate: 12 });
     expect(body).not.toHaveProperty('currencyCode');
     expect(body).not.toHaveProperty('exchangeRate');
@@ -1414,6 +1761,8 @@ describe('InvoiceFormDialog: editing an invoice in rupees', () => {
     expect(screen.getByText('Rate')).toBeInTheDocument();
     expect(screen.getByLabelText('Tax rate (%)')).toHaveValue('0');
     expect(screen.getByText('Total $36,000.00')).toBeInTheDocument();
-    expect(screen.queryByText(/in US dollars, before tax/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/in US dollars, before tax/)
+    ).not.toBeInTheDocument();
   });
 });

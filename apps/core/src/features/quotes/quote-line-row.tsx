@@ -17,7 +17,8 @@ export const NONE = '—';
  * total hours, hours with buffer and the two icon buttons have fixed ones. Shared by the headings and every row, so they
  * line up.
  */
-export const LINE_COLUMNS = 'md:grid-cols-[2rem_minmax(0,1fr)_5rem_6.5rem_5.5rem_7rem_2rem_2rem]';
+export const LINE_COLUMNS =
+  'md:grid-cols-[2rem_minmax(0,1fr)_5rem_6.5rem_5.5rem_7rem_2rem_2rem]';
 
 /**
  * The line table's smaller type from `md` up. The owner asked for smaller fields and fonts to see more lines at once: an
@@ -29,10 +30,26 @@ const compactButton = 'md:size-8';
 
 export type LineField = 'title' | 'units' | 'hoursPerUnit';
 const FIELDS: readonly LineField[] = ['title', 'units', 'hoursPerUnit'];
-const LINE_NAMES = { title: 'title', units: 'units', hoursPerUnit: 'hours per unit' } as const;
-const PLACEHOLDERS = { title: 'Title', units: 'Units', hoursPerUnit: 'Hours' } as const;
-const LINE_LABELS = { title: 'Title', units: 'Units', hoursPerUnit: 'Hours per unit' } as const;
-const INPUT_MODES = { title: undefined, units: 'numeric', hoursPerUnit: 'decimal' } as const;
+const LINE_NAMES = {
+  title: 'title',
+  units: 'units',
+  hoursPerUnit: 'hours per unit',
+} as const;
+const PLACEHOLDERS = {
+  title: 'Title',
+  units: 'Units',
+  hoursPerUnit: 'Hours',
+} as const;
+const LINE_LABELS = {
+  title: 'Title',
+  units: 'Units',
+  hoursPerUnit: 'Hours per unit',
+} as const;
+const INPUT_MODES = {
+  title: undefined,
+  units: 'numeric',
+  hoursPerUnit: 'decimal',
+} as const;
 
 // Above each field of a stacked line, where the column headings are hidden; from `md` up the headings say it and these go.
 const narrowLabel = 'text-small font-semibold text-navy-80 md:hidden';
@@ -74,17 +91,31 @@ export function QuoteLineRow({
   const [describing, setDescribing] = useState(false);
   const total = lineHours(line);
   // The panel's hours with the buffer are `totals.bufferedBaseHours`, which pads each valid line the same way.
-  const buffered = total === null || bufferBp === null ? null : bufferedHours(total, bufferBp);
+  const buffered =
+    total === null || bufferBp === null ? null : bufferedHours(total, bufferBp);
   const described = (line?.description ?? '').trim() !== '';
 
   return (
     // A hairline under each line, so where one ends is plain.
     <SortableItem value={uid} asChild>
-      <div role="group" aria-label={`Line ${number}`} className="grid gap-2 border-b border-rule py-4 md:gap-1 md:py-1">
-        <div className={cn('grid items-start gap-2 md:items-center md:gap-x-2 md:gap-y-0', LINE_COLUMNS)}>
+      <div
+        role="group"
+        aria-label={`Line ${number}`}
+        className="grid gap-2 border-b border-rule py-4 md:gap-1 md:py-1"
+      >
+        <div
+          className={cn(
+            'grid items-start gap-2 md:items-center md:gap-x-2 md:gap-y-0',
+            LINE_COLUMNS
+          )}
+        >
           {/* Only the handle starts a drag, so the inputs stay editable. A 44px target on a phone, compact from `md`. */}
           <SortableItemHandle asChild>
-            <IconButton label={`Drag line ${number}`} icon={LuGripVertical} className={compactButton} />
+            <IconButton
+              label={`Drag line ${number}`}
+              icon={LuGripVertical}
+              className={compactButton}
+            />
           </SortableItemHandle>
           {FIELDS.map((name) => (
             <div key={name} className="grid gap-1">
@@ -93,22 +124,39 @@ export function QuoteLineRow({
               </span>
               <Input
                 {...fieldA11y(`line-${number}-${name}`, messages[name])}
-                {...register(`sections.${sectionIndex}.lines.${lineIndex}.${name}`)}
+                {...register(
+                  `sections.${sectionIndex}.lines.${lineIndex}.${name}`
+                )}
                 aria-label={`Line ${number} ${LINE_NAMES[name]}`}
                 placeholder={PLACEHOLDERS[name]}
                 inputMode={INPUT_MODES[name]}
                 autoComplete="off"
-                className={cn(compactInput, name !== 'title' && 'tabular md:text-right')}
+                className={cn(
+                  compactInput,
+                  name !== 'title' && 'tabular md:text-right'
+                )}
               />
             </div>
           ))}
-          <Figure label="Total hours" name={`Line ${number} total hours `} hundredths={total} />
-          <Figure label="Hours with buffer" name={`Line ${number} hours with buffer `} hundredths={buffered} />
+          <Figure
+            label="Total hours"
+            name={`Line ${number} total hours `}
+            hundredths={total}
+          />
+          <Figure
+            label="Hours with buffer"
+            name={`Line ${number} hours with buffer `}
+            hundredths={buffered}
+          />
           {/* Side by side under a stacked line; from `md` each button is a cell of the row. */}
           <div className="flex gap-2 md:contents">
             <span className="relative inline-flex">
               <IconButton
-                label={described ? `Edit description of line ${number}` : `Add description to line ${number}`}
+                label={
+                  described
+                    ? `Edit description of line ${number}`
+                    : `Add description to line ${number}`
+                }
                 icon={LuFileText}
                 onClick={() => setDescribing(true)}
                 className={compactButton}
@@ -140,7 +188,9 @@ export function QuoteLineRow({
               key={name}
               id={`line-${number}-${name}-error`}
               role="alert"
-              className={name === 'title' ? 'sr-only' : 'text-small text-foreground'}
+              className={
+                name === 'title' ? 'sr-only' : 'text-small text-foreground'
+              }
             >
               {message}
             </p>
@@ -160,13 +210,26 @@ export function QuoteLineRow({
 }
 
 /** A figure worked out from the line, right-aligned in the row, labelled when the line stacks. */
-function Figure({ label, name, hundredths }: { label: string; name: string; hundredths: number | null }) {
+function Figure({
+  label,
+  name,
+  hundredths,
+}: {
+  label: string;
+  name: string;
+  hundredths: number | null;
+}) {
   return (
     <div className="grid gap-1">
       <span aria-hidden="true" className={narrowLabel}>
         {label}
       </span>
-      <p className={cn('tabular py-3 text-small md:py-1 md:text-right', COMPACT_TEXT)}>
+      <p
+        className={cn(
+          'tabular py-3 text-small md:py-1 md:text-right',
+          COMPACT_TEXT
+        )}
+      >
         <span className="sr-only">{name}</span>
         {hundredths === null ? NONE : formatHours(hundredths)}
       </p>

@@ -1,5 +1,10 @@
 import { useState } from 'react';
-import { useFieldArray, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
+import {
+  useFieldArray,
+  type Control,
+  type FieldErrors,
+  type UseFormRegister,
+} from 'react-hook-form';
 import { LuGripVertical, LuTrash2 } from 'react-icons/lu';
 import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
@@ -10,7 +15,13 @@ import { SortableGroup, SortableGroupHandle } from '@/components/ui/sortable';
 import { cn } from '@/lib/utils';
 import { bufferedHours, formatHours } from './calc';
 import { LINE_COLUMNS, NONE, QuoteLineRow } from './quote-line-row';
-import { MAX_LINES, lineHours, type LineFormValues, type QuoteFormValues, type SectionFormValues } from './schema';
+import {
+  MAX_LINES,
+  lineHours,
+  type LineFormValues,
+  type QuoteFormValues,
+  type SectionFormValues,
+} from './schema';
 import { newLine } from './uids';
 
 interface QuoteSectionProps {
@@ -36,7 +47,8 @@ interface QuoteSectionProps {
 }
 
 /** Hundredths of an hour with the noun: `1 hour`, `2.5 hours`. */
-export const hoursText = (hundredths: number) => `${formatHours(hundredths)} ${hundredths === 100 ? 'hour' : 'hours'}`;
+export const hoursText = (hundredths: number) =>
+  `${formatHours(hundredths)} ${hundredths === 100 ? 'hour' : 'hours'}`;
 
 /** A section's hours: the sum of its valid lines', as its header shows them. */
 export const sectionHours = (lines: readonly LineFormValues[]) =>
@@ -69,21 +81,34 @@ export function QuoteSection({
 }: QuoteSectionProps) {
   const number = index + 1;
   // Only for adding and removing lines: the rows come from the form's values, keyed by each line's own uid.
-  const { append, remove } = useFieldArray({ control, name: `sections.${index}.lines` });
+  const { append, remove } = useFieldArray({
+    control,
+    name: `sections.${index}.lines`,
+  });
   const [asking, setAsking] = useState(false);
 
   const lines = section.lines;
   // The section's own sums, over its valid lines: the same figures the rows show, added up.
-  const totals = lines.map((line) => lineHours(line)).filter((hours): hours is number => hours !== null);
+  const totals = lines
+    .map((line) => lineHours(line))
+    .filter((hours): hours is number => hours !== null);
   const hours = totals.reduce((sum, value) => sum + value, 0);
   const buffered =
-    bufferBp === null ? null : totals.reduce((sum, value) => sum + bufferedHours(value, bufferBp), 0);
+    bufferBp === null
+      ? null
+      : totals.reduce((sum, value) => sum + bufferedHours(value, bufferBp), 0);
   // Anything typed in a line is worth a question before it goes; the units start at 1, so they do not count.
-  const holdsWork = lines.some((line) => hasText(line.title) || hasText(line.description) || hasText(line.hoursPerUnit));
+  const holdsWork = lines.some(
+    (line) =>
+      hasText(line.title) ||
+      hasText(line.description) ||
+      hasText(line.hoursPerUnit)
+  );
 
   const sectionErrors = errors.sections?.[index];
   const titleError = sectionErrors?.title?.message;
-  const linesMessage = sectionErrors?.lines?.root?.message ?? sectionErrors?.lines?.message;
+  const linesMessage =
+    sectionErrors?.lines?.root?.message ?? sectionErrors?.lines?.message;
   const titleId = `section-${number}-title`;
 
   return (
@@ -91,7 +116,10 @@ export function QuoteSection({
       <div role="group" aria-label={`Section ${number}`} className="grid gap-2">
         <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2 gap-y-2 md:grid-cols-[auto_minmax(0,1fr)_auto_auto] md:items-center md:gap-x-4">
           <SortableGroupHandle asChild>
-            <IconButton label={`Drag section ${number}`} icon={LuGripVertical} />
+            <IconButton
+              label={`Drag section ${number}`}
+              icon={LuGripVertical}
+            />
           </SortableGroupHandle>
           <div>
             <Input
@@ -111,7 +139,9 @@ export function QuoteSection({
           </div>
           <p className="tabular col-span-2 flex flex-wrap gap-x-3 text-small text-navy-80 md:col-span-1">
             <span>{hoursText(hours)}</span>
-            <span>{`${buffered === null ? NONE : formatHours(buffered)} with buffer`}</span>
+            <span>{`${
+              buffered === null ? NONE : formatHours(buffered)
+            } with buffer`}</span>
           </p>
           <IconButton
             label={`Remove section ${number}`}
@@ -128,7 +158,7 @@ export function QuoteSection({
               aria-hidden="true"
               className={cn(
                 'hidden gap-x-2 border-b border-rule pb-1 text-[0.75rem] font-semibold text-navy-80 md:grid',
-                LINE_COLUMNS,
+                LINE_COLUMNS
               )}
             >
               <span />
@@ -165,7 +195,9 @@ export function QuoteSection({
             })}
           </div>
         ) : (
-          <p className="text-small text-navy-72">No lines in this section yet.</p>
+          <p className="text-small text-navy-72">
+            No lines in this section yet.
+          </p>
         )}
 
         {linesMessage ? (
@@ -180,7 +212,11 @@ export function QuoteSection({
             variant="quiet"
             aria-label={`Add line to section ${number}`}
             disabled={lineCount >= MAX_LINES}
-            onClick={() => append(newLine(), { focusName: `sections.${index}.lines.${lines.length}.title` })}
+            onClick={() =>
+              append(newLine(), {
+                focusName: `sections.${index}.lines.${lines.length}.title`,
+              })
+            }
           >
             Add line
           </Button>

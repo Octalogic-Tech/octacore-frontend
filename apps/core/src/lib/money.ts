@@ -9,7 +9,10 @@
 export const MAX_CENTS = 10_000_000_000;
 const AMOUNT_TEXT = /^(\d{1,10})(?:\.(\d{1,2}))?$/;
 
-const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+const usd = new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD',
+});
 // India groups digits in thousands, then in twos (lakhs and crores): ₹1,23,456.78.
 const inr = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -37,13 +40,18 @@ export function toAmountText(cents: number): string {
  * What is wrong with typed amount text, or null. A comma, a sign or a third decimal is told, not dropped. Zero is
  * refused unless `allowZero` says it is a fair amount (a rate or a salary may be nothing).
  */
-export function amountProblem(text: string, options: { allowZero?: boolean } = {}): string | null {
+export function amountProblem(
+  text: string,
+  options: { allowZero?: boolean } = {}
+): string | null {
   const value = text.trim();
   if (value === '') return 'Enter an amount';
   const match = AMOUNT_TEXT.exec(value);
   if (!match) return 'Enter an amount like 7.20, with no commas or signs';
-  const cents = Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0'));
-  if (cents < 1 && !options.allowZero) return 'The amount must be more than zero';
+  const cents =
+    Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0'));
+  if (cents < 1 && !options.allowZero)
+    return 'The amount must be more than zero';
   if (cents > MAX_CENTS) return 'The amount is too large';
   return null;
 }

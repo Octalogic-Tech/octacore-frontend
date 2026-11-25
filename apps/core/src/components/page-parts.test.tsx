@@ -10,9 +10,11 @@ describe('PageHeader', () => {
     render(
       <PageHeader title="Categories">
         <button type="button">Add</button>
-      </PageHeader>,
+      </PageHeader>
     );
-    expect(screen.getByRole('heading', { level: 1, name: 'Categories' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Categories' })
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Add' })).toBeInTheDocument();
   });
 });
@@ -20,20 +22,28 @@ describe('PageHeader', () => {
 describe('SearchField', () => {
   it('reports what is typed', async () => {
     const onChange = vi.fn();
-    render(<SearchField id="s" label="Search items" value="" onChange={onChange} />);
+    render(
+      <SearchField id="s" label="Search items" value="" onChange={onChange} />
+    );
     await userEvent.type(screen.getByLabelText('Search items'), 'a');
     expect(onChange).toHaveBeenCalledWith('a');
   });
 });
 
 describe('QueryBoundary', () => {
-  const base = { isLoading: false, isError: false, onRetry: vi.fn(), isEmpty: false, empty: <p>Nothing here</p> };
+  const base = {
+    isLoading: false,
+    isError: false,
+    onRetry: vi.fn(),
+    isEmpty: false,
+    empty: <p>Nothing here</p>,
+  };
 
   it('shows a loading status first', () => {
     render(
       <QueryBoundary {...base} isLoading isError>
         <p>Rows</p>
-      </QueryBoundary>,
+      </QueryBoundary>
     );
     expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument();
     expect(screen.queryByText('Rows')).not.toBeInTheDocument();
@@ -44,9 +54,11 @@ describe('QueryBoundary', () => {
     render(
       <QueryBoundary {...base} isError onRetry={onRetry}>
         <p>Rows</p>
-      </QueryBoundary>,
+      </QueryBoundary>
     );
-    expect(screen.getByRole('alert')).toHaveTextContent('We could not load this data');
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'We could not load this data'
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
@@ -55,7 +67,7 @@ describe('QueryBoundary', () => {
     render(
       <QueryBoundary {...base} isEmpty>
         <p>Rows</p>
-      </QueryBoundary>,
+      </QueryBoundary>
     );
     expect(screen.getByText('Nothing here')).toBeInTheDocument();
     expect(screen.queryByText('Rows')).not.toBeInTheDocument();
@@ -65,14 +77,21 @@ describe('QueryBoundary', () => {
     render(
       <QueryBoundary {...base}>
         <p>Rows</p>
-      </QueryBoundary>,
+      </QueryBoundary>
     );
     expect(screen.getByText('Rows')).toBeInTheDocument();
   });
 });
 
 describe('TablePager', () => {
-  const props = { page: 0, pageCount: 3, pageSize: 5, total: 12, onPageChange: vi.fn(), onPageSizeChange: vi.fn() };
+  const props = {
+    page: 0,
+    pageCount: 3,
+    pageSize: 5,
+    total: 12,
+    onPageChange: vi.fn(),
+    onPageSizeChange: vi.fn(),
+  };
 
   it('reports the visible range', () => {
     render(<TablePager {...props} />);
@@ -98,18 +117,35 @@ describe('TablePager', () => {
 
   it('offers 10, 20 and 50 rows per page', () => {
     render(<TablePager {...props} pageSize={10} />);
-    const options = within(screen.getByRole('combobox', { name: 'Rows per page' })).getAllByRole('option');
-    expect(options.map((option) => option.textContent)).toEqual(['10', '20', '50']);
-    expect(screen.getByRole('combobox', { name: 'Rows per page' })).toHaveValue('10');
+    const options = within(
+      screen.getByRole('combobox', { name: 'Rows per page' })
+    ).getAllByRole('option');
+    expect(options.map((option) => option.textContent)).toEqual([
+      '10',
+      '20',
+      '50',
+    ]);
+    expect(screen.getByRole('combobox', { name: 'Rows per page' })).toHaveValue(
+      '10'
+    );
   });
 
   it('changes page and page size', async () => {
     const onPageChange = vi.fn();
     const onPageSizeChange = vi.fn();
-    render(<TablePager {...props} onPageChange={onPageChange} onPageSizeChange={onPageSizeChange} />);
+    render(
+      <TablePager
+        {...props}
+        onPageChange={onPageChange}
+        onPageSizeChange={onPageSizeChange}
+      />
+    );
     await userEvent.click(screen.getByRole('button', { name: 'Next' }));
     expect(onPageChange).toHaveBeenCalledWith(1);
-    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Rows per page' }), '10');
+    await userEvent.selectOptions(
+      screen.getByRole('combobox', { name: 'Rows per page' }),
+      '10'
+    );
     expect(onPageSizeChange).toHaveBeenCalledWith(10);
   });
 });

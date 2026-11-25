@@ -8,7 +8,14 @@
 // fixtures/people.ts and fixtures/projects.ts: Ada (1) is on the bench from 3 Nov 2025 and on Website (1) from 12 Mar 2026, Grace (2) is on
 // Mobile app (2) from 5 Jan 2026 and back on the bench from 3 Aug 2026.
 const stamp = '2026-10-15T09:30:00.000000Z';
-const audit = { status: 1, createdDate: stamp, updatedDate: stamp, deletedDate: null, card: 1, removed: false };
+const audit = {
+  status: 1,
+  createdDate: stamp,
+  updatedDate: stamp,
+  deletedDate: null,
+  card: 1,
+  removed: false,
+};
 
 const ada = { id: 1, name: 'Ada Lovelace' };
 const grace = { id: 2, name: 'Grace Hopper' };
@@ -66,7 +73,10 @@ export const allocationsEnvelope = (data: unknown = allocationRows) => ({
 });
 
 /** What POST /allocations, PATCH /allocations/{id} and POST /allocations/move answer: the entry. */
-export const allocationEnvelope = (data: unknown = allocationRows[1], statusCode = 200) => ({
+export const allocationEnvelope = (
+  data: unknown = allocationRows[1],
+  statusCode = 200
+) => ({
   statusCode,
   message: 'Successfully saved allocation',
   data,

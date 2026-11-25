@@ -7,7 +7,12 @@ import { MemoryRouter, useLocation } from 'react-router-dom';
 import { coreApi, refreshSession } from '@/lib/core-api';
 import { endSession, getAccessToken, setAccessToken } from '@/lib/session';
 import { userRows } from '@/test/fixtures/users';
-import { envelope, fakeAdapter, sessionEnvelope, type FakeReply } from '@/test/fake-adapter';
+import {
+  envelope,
+  fakeAdapter,
+  sessionEnvelope,
+  type FakeReply,
+} from '@/test/fake-adapter';
 import { AuthProvider, useAuth } from './auth-context';
 
 const originalAdapter = coreApi.defaults.adapter;
@@ -24,7 +29,8 @@ const unauthorized: FakeReply = { status: 401, data: envelope(null, 401) };
 /** A service that signs in, refreshes, changes passwords and signs out; any route can be overridden. */
 function server(
   overrides: Record<string, FakeReply> = {},
-  dynamic: (url: string) => FakeReply | Promise<FakeReply> | undefined = () => undefined,
+  dynamic: (url: string) => FakeReply | Promise<FakeReply> | undefined = () =>
+    undefined
 ) {
   return fakeAdapter((config) => {
     const url = config.url ?? '';
@@ -61,9 +67,17 @@ function Probe() {
         at {location.pathname}
         {location.state ? ' with state' : ''}
       </p>
-      <button onClick={() => void signIn('ada@example.com', 'a long enough password')}>sign in</button>
+      <button
+        onClick={() => void signIn('ada@example.com', 'a long enough password')}
+      >
+        sign in
+      </button>
       <button onClick={() => void signOut()}>sign out</button>
-      <button onClick={() => void changePassword('old password 1', 'new password 22')}>change</button>
+      <button
+        onClick={() => void changePassword('old password 1', 'new password 22')}
+      >
+        change
+      </button>
     </div>
   );
 }
@@ -72,7 +86,10 @@ beforeEach(() => {
   rendered = [];
 });
 
-function mount({ strict = false, route = '/' }: { strict?: boolean; route?: string } = {}) {
+function mount({
+  strict = false,
+  route = '/',
+}: { strict?: boolean; route?: string } = {}) {
   const client = new QueryClient();
   // AuthProvider sits inside the router, as in main.tsx: signing out navigates.
   const tree = (
@@ -93,7 +110,9 @@ describe('AuthProvider', () => {
     mount();
 
     expect(screen.getByText('status: loading')).toBeInTheDocument();
-    expect(await screen.findByText('status: authenticated')).toBeInTheDocument();
+    expect(
+      await screen.findByText('status: authenticated')
+    ).toBeInTheDocument();
     expect(screen.getByText('user: Ada Admin')).toBeInTheDocument();
     expect(getAccessToken()).toBe('refreshed');
   });
@@ -108,7 +127,9 @@ describe('AuthProvider', () => {
   });
 
   it('is signed out when the service cannot be reached', async () => {
-    coreApi.defaults.adapter = server({ '/auth/refresh': { status: 500, data: envelope(null, 500) } });
+    coreApi.defaults.adapter = server({
+      '/auth/refresh': { status: 500, data: envelope(null, 500) },
+    });
     mount();
 
     expect(await screen.findByText('status: anonymous')).toBeInTheDocument();
@@ -121,7 +142,9 @@ describe('AuthProvider', () => {
 
     await screen.findByText('status: authenticated');
 
-    expect(adapter.calls.filter((call) => call.url === '/auth/refresh')).toHaveLength(1);
+    expect(
+      adapter.calls.filter((call) => call.url === '/auth/refresh')
+    ).toHaveLength(1);
   });
 
   it('signs in with the email and password and holds the access token', async () => {
@@ -133,19 +156,35 @@ describe('AuthProvider', () => {
 
     await user.click(screen.getByRole('button', { name: 'sign in' }));
 
-    expect(await screen.findByText('status: authenticated')).toBeInTheDocument();
+    expect(
+      await screen.findByText('status: authenticated')
+    ).toBeInTheDocument();
     const login = adapter.calls.find((call) => call.url === '/auth/login');
-    expect(JSON.parse(login?.data as string)).toEqual({ email: 'ada@example.com', password: 'a long enough password' });
+    expect(JSON.parse(login?.data as string)).toEqual({
+      email: 'ada@example.com',
+      password: 'a long enough password',
+    });
     expect(getAccessToken()).toBe('logged-in');
   });
 
   it('a failed sign-in leaves the person signed out and lets the caller see the error', async () => {
-    coreApi.defaults.adapter = server({ '/auth/refresh': unauthorized, '/auth/login': unauthorized });
+    coreApi.defaults.adapter = server({
+      '/auth/refresh': unauthorized,
+      '/auth/login': unauthorized,
+    });
     const user = userEvent.setup();
     const errors: unknown[] = [];
     function Catcher() {
       const { signIn } = useAuth();
-      return <button onClick={() => signIn('a@b.c', 'x').catch((error) => errors.push(error))}>try</button>;
+      return (
+        <button
+          onClick={() =>
+            signIn('a@b.c', 'x').catch((error) => errors.push(error))
+          }
+        >
+          try
+        </button>
+      );
     }
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -155,7 +194,7 @@ describe('AuthProvider', () => {
             <Catcher />
           </AuthProvider>
         </MemoryRouter>
-      </QueryClientProvider>,
+      </QueryClientProvider>
     );
     await screen.findByText('status: anonymous');
 
@@ -176,13 +215,17 @@ describe('AuthProvider', () => {
     await user.click(screen.getByRole('button', { name: 'sign out' }));
 
     expect(await screen.findByText('status: anonymous')).toBeInTheDocument();
-    expect(adapter.calls.some((call) => call.url === '/auth/logout')).toBe(true);
+    expect(adapter.calls.some((call) => call.url === '/auth/logout')).toBe(
+      true
+    );
     expect(getAccessToken()).toBeNull();
     expect(client.getQueryData(['categories'])).toBeUndefined();
   });
 
   it('still signs out locally when the service cannot be reached', async () => {
-    coreApi.defaults.adapter = server({ '/auth/logout': { status: 500, data: envelope(null, 500) } });
+    coreApi.defaults.adapter = server({
+      '/auth/logout': { status: 500, data: envelope(null, 500) },
+    });
     const user = userEvent.setup();
     mount();
     await screen.findByText('status: authenticated');
@@ -206,7 +249,9 @@ describe('AuthProvider', () => {
   });
 
   it('when sign-out cannot reach the service, the next load ends that session instead of restoring it', async () => {
-    coreApi.defaults.adapter = server({ '/auth/logout': { status: 500, data: envelope(null, 500) } });
+    coreApi.defaults.adapter = server({
+      '/auth/logout': { status: 500, data: envelope(null, 500) },
+    });
     const user = userEvent.setup();
     const first = mount();
     await screen.findByText('status: authenticated');
@@ -227,7 +272,9 @@ describe('AuthProvider', () => {
 
   it('keeps the pending sign-out when the logout on load fails too', async () => {
     window.localStorage.setItem(PENDING_LOGOUT, '1');
-    const adapter = server({ '/auth/logout': { status: 503, data: envelope(null, 503) } });
+    const adapter = server({
+      '/auth/logout': { status: 503, data: envelope(null, 503) },
+    });
     coreApi.defaults.adapter = adapter;
     mount();
 
@@ -238,20 +285,29 @@ describe('AuthProvider', () => {
 
   it('signing in clears a pending sign-out: the new cookie replaces the old one', async () => {
     window.localStorage.setItem(PENDING_LOGOUT, '1');
-    coreApi.defaults.adapter = server({ '/auth/logout': { status: 503, data: envelope(null, 503) } });
+    coreApi.defaults.adapter = server({
+      '/auth/logout': { status: 503, data: envelope(null, 503) },
+    });
     const user = userEvent.setup();
     mount();
     await screen.findByText('status: anonymous');
 
     await user.click(screen.getByRole('button', { name: 'sign in' }));
 
-    expect(await screen.findByText('status: authenticated')).toBeInTheDocument();
+    expect(
+      await screen.findByText('status: authenticated')
+    ).toBeInTheDocument();
     expect(window.localStorage.getItem(PENDING_LOGOUT)).toBeNull();
   });
 
   it('a sign-out that times out still signs out locally, and the request has a 5 second timeout', async () => {
     const adapter = fakeAdapter((config) => {
-      if (config.url === '/auth/logout') throw new AxiosError('timeout of 5000ms exceeded', 'ECONNABORTED', config);
+      if (config.url === '/auth/logout')
+        throw new AxiosError(
+          'timeout of 5000ms exceeded',
+          'ECONNABORTED',
+          config
+        );
       return { status: 200, data: sessionEnvelope('refreshed') };
     });
     coreApi.defaults.adapter = adapter;
@@ -266,7 +322,9 @@ describe('AuthProvider', () => {
     expect(getAccessToken()).toBeNull();
     expect(client.getQueryData(['categories'])).toBeUndefined();
     expect(window.localStorage.getItem(PENDING_LOGOUT)).toBe('1');
-    expect(adapter.calls.find((call) => call.url === '/auth/logout')?.timeout).toBe(5000);
+    expect(
+      adapter.calls.find((call) => call.url === '/auth/logout')?.timeout
+    ).toBe(5000);
   });
 
   it('changes the password and carries on with the fresh token', async () => {
@@ -279,7 +337,9 @@ describe('AuthProvider', () => {
     await user.click(screen.getByRole('button', { name: 'change' }));
 
     await waitFor(() => expect(getAccessToken()).toBe('changed'));
-    const call = adapter.calls.find((entry) => entry.url === '/auth/change-password');
+    const call = adapter.calls.find(
+      (entry) => entry.url === '/auth/change-password'
+    );
     expect(JSON.parse(call?.data as string)).toEqual({
       currentPassword: 'old password 1',
       newPassword: 'new password 22',
@@ -357,7 +417,14 @@ describe('AuthProvider', () => {
     coreApi.defaults.adapter = server({}, (url) => {
       if (url !== '/auth/refresh') return undefined;
       refreshes += 1;
-      return { status: 200, data: envelope({ accessToken: 'grace', expiresIn: 900, user: refreshes === 1 ? userRows[0] : userRows[1] }) };
+      return {
+        status: 200,
+        data: envelope({
+          accessToken: 'grace',
+          expiresIn: 900,
+          user: refreshes === 1 ? userRows[0] : userRows[1],
+        }),
+      };
     });
     const { client } = mount();
     await screen.findByText('user: Ada Admin');
@@ -377,8 +444,14 @@ describe('AuthProvider', () => {
     coreApi.defaults.adapter = server({}, (url) => {
       if (url !== '/auth/refresh') return undefined;
       refreshes += 1;
-      const user = refreshes === 1 ? userRows[0] : { ...userRows[0], name: 'Ada Lovelace' };
-      return { status: 200, data: envelope({ accessToken: 'again', expiresIn: 900, user }) };
+      const user =
+        refreshes === 1
+          ? userRows[0]
+          : { ...userRows[0], name: 'Ada Lovelace' };
+      return {
+        status: 200,
+        data: envelope({ accessToken: 'again', expiresIn: 900, user }),
+      };
     });
     const { client } = mount();
     await screen.findByText('user: Ada Admin');

@@ -12,25 +12,43 @@ export const ROLES = ['admin'] as const;
 export function userFormSchema(editing: boolean) {
   return z.object({
     name: z.string().trim().min(1, 'Name is required'),
-    email: z.string().trim().min(1, 'Email is required').pipe(z.email('Enter a valid email address')),
+    email: z
+      .string()
+      .trim()
+      .min(1, 'Email is required')
+      .pipe(z.email('Enter a valid email address')),
     role: z.enum(ROLES),
     password: editing
       ? z
           .string()
           .refine(
-            (value) => value === '' || (value.length >= 10 && value.length <= 128),
-            'Use 10 to 128 characters, or leave it blank to keep the current password',
+            (value) =>
+              value === '' || (value.length >= 10 && value.length <= 128),
+            'Use 10 to 128 characters, or leave it blank to keep the current password'
           )
-      : z.string().min(10, 'Use at least 10 characters').max(128, 'Use at most 128 characters'),
+      : z
+          .string()
+          .min(10, 'Use at least 10 characters')
+          .max(128, 'Use at most 128 characters'),
   });
 }
 
 export type UserFormValues = z.infer<ReturnType<typeof userFormSchema>>;
 
-export const emptyUserForm: UserFormValues = { name: '', email: '', role: 'admin', password: '' };
+export const emptyUserForm: UserFormValues = {
+  name: '',
+  email: '',
+  role: 'admin',
+  password: '',
+};
 
 export function toCreateBody(values: UserFormValues) {
-  return { name: values.name, email: values.email, role: values.role, password: values.password };
+  return {
+    name: values.name,
+    email: values.email,
+    role: values.role,
+    password: values.password,
+  };
 }
 
 /** PATCH changes only what is sent, so a blank password is left out and the current one stays. */

@@ -1,9 +1,18 @@
 import type { ReactNode } from 'react';
-import { AuthContext, type AuthContextValue } from '@/features/auth/auth-context';
+import {
+  AuthContext,
+  type AuthContextValue,
+} from '@/features/auth/auth-context';
 import { adminUser } from '@/test/fixtures/users';
 
 /** Renders children as a signed-in admin by default; pass `value` to change the status, the user or a method. */
-export function AuthTestProvider({ children, value }: { children: ReactNode; value?: Partial<AuthContextValue> }) {
+export function AuthTestProvider({
+  children,
+  value,
+}: {
+  children: ReactNode;
+  value?: Partial<AuthContextValue>;
+}) {
   const context: AuthContextValue = {
     status: 'authenticated',
     user: adminUser,
@@ -12,5 +21,7 @@ export function AuthTestProvider({ children, value }: { children: ReactNode; val
     changePassword: vi.fn(async () => undefined),
     ...value,
   };
-  return <AuthContext.Provider value={context}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={context}>{children}</AuthContext.Provider>
+  );
 }

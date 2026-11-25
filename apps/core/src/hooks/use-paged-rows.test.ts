@@ -21,7 +21,10 @@ describe('usePagedRows', () => {
   });
 
   it('clamps to the last page when the rows shrink under it', () => {
-    const { result, rerender } = renderHook(({ data }) => usePagedRows(data, 5), { initialProps: { data: rows } });
+    const { result, rerender } = renderHook(
+      ({ data }) => usePagedRows(data, 5),
+      { initialProps: { data: rows } }
+    );
     act(() => result.current.setPage(2));
     rerender({ data: rows.slice(0, 10) });
     expect(result.current.page).toBe(1);
@@ -29,7 +32,10 @@ describe('usePagedRows', () => {
   });
 
   it('stays on the clamped page when rows come back, instead of jumping to the old page', () => {
-    const { result, rerender } = renderHook(({ data }) => usePagedRows(data, 5), { initialProps: { data: rows } });
+    const { result, rerender } = renderHook(
+      ({ data }) => usePagedRows(data, 5),
+      { initialProps: { data: rows } }
+    );
     act(() => result.current.setPage(2));
     rerender({ data: rows.slice(0, 10) });
     expect(result.current.page).toBe(1);

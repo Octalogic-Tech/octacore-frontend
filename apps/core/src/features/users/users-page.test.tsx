@@ -13,10 +13,13 @@ vi.mock('@/lib/core-api', async (importOriginal) => ({
   refreshSession: vi.fn(),
 }));
 
-const serve = (rows: unknown = userRows) => vi.mocked(coreApi.get).mockResolvedValue({ data: usersEnvelope(rows) });
+const serve = (rows: unknown = userRows) =>
+  vi.mocked(coreApi.get).mockResolvedValue({ data: usersEnvelope(rows) });
 
 /** What the service answers a save with; the page does not read it. */
-const saved = { data: { statusCode: 200, message: 'saved', data: userRows[1], meta: null } };
+const saved = {
+  data: { statusCode: 200, message: 'saved', data: userRows[1], meta: null },
+};
 
 const rejection = (status: number, message: string) =>
   new AxiosError('failed', 'ERR_BAD_REQUEST', undefined, null, {
@@ -28,14 +31,19 @@ const renderPage = () =>
   renderWithProviders(
     <AuthTestProvider>
       <UsersPage />
-    </AuthTestProvider>,
+    </AuthTestProvider>
   );
 
-const rowOf = async (name: string) => within((await screen.findByText(name)).closest('tr') as HTMLElement);
+const rowOf = async (name: string) =>
+  within((await screen.findByText(name)).closest('tr') as HTMLElement);
 
 beforeEach(() => {
   serve();
-  vi.mocked(refreshSession).mockResolvedValue({ accessToken: 'again', expiresIn: 900, user: userRows[0] });
+  vi.mocked(refreshSession).mockResolvedValue({
+    accessToken: 'again',
+    expiresIn: 900,
+    user: userRows[0],
+  });
 });
 
 afterEach(() => {
@@ -75,8 +83,12 @@ describe('UsersPage', () => {
   it('says it could not load the users and offers a retry', async () => {
     vi.mocked(coreApi.get).mockRejectedValue(new Error('down'));
     renderPage();
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not load this data'
+    );
+    expect(
+      screen.getByRole('button', { name: 'Try again' })
+    ).toBeInTheDocument();
   });
 
   it('creates a user from the dialog with all four fields', async () => {
@@ -86,7 +98,10 @@ describe('UsersPage', () => {
     await user.click(await screen.findByRole('button', { name: 'Add user' }));
     await user.type(screen.getByLabelText('Name'), 'Linus Torvalds');
     await user.type(screen.getByLabelText('Email'), 'linus@example.com');
-    await user.type(screen.getByLabelText('Password'), 'a long enough password');
+    await user.type(
+      screen.getByLabelText('Password'),
+      'a long enough password'
+    );
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(coreApi.post).toHaveBeenCalledWith('/users', {
@@ -94,9 +109,11 @@ describe('UsersPage', () => {
         email: 'linus@example.com',
         role: 'admin',
         password: 'a long enough password',
-      }),
+      })
     );
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    );
   });
 
   it('says what is missing and sends nothing', async () => {
@@ -111,68 +128,103 @@ describe('UsersPage', () => {
   });
 
   it('says the email is already in use, in words for people, and keeps the dialog open', async () => {
-    vi.mocked(coreApi.post).mockRejectedValue(rejection(409, 'A record with the same unique value already exists'));
+    vi.mocked(coreApi.post).mockRejectedValue(
+      rejection(409, 'A record with the same unique value already exists')
+    );
     const user = userEvent.setup();
     renderPage();
     await user.click(await screen.findByRole('button', { name: 'Add user' }));
     await user.type(screen.getByLabelText('Name'), 'Dup');
     await user.type(screen.getByLabelText('Email'), 'grace@example.com');
-    await user.type(screen.getByLabelText('Password'), 'a long enough password');
+    await user.type(
+      screen.getByLabelText('Password'),
+      'a long enough password'
+    );
     await user.click(screen.getByRole('button', { name: 'Save' }));
     const dialog = await screen.findByRole('dialog');
-    expect(await within(dialog).findByText('A user with that email already exists')).toBeInTheDocument();
+    expect(
+      await within(dialog).findByText('A user with that email already exists')
+    ).toBeInTheDocument();
   });
 
   it('says the email is already in use when an edit collides with another user', async () => {
-    vi.mocked(coreApi.patch).mockRejectedValue(rejection(409, 'A record with the same unique value already exists'));
+    vi.mocked(coreApi.patch).mockRejectedValue(
+      rejection(409, 'A record with the same unique value already exists')
+    );
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Edit Grace Hopper' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit Grace Hopper' })
+    );
     await user.clear(screen.getByLabelText('Email'));
     await user.type(screen.getByLabelText('Email'), 'ada@example.com');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('A user with that email already exists')).toBeInTheDocument();
+    expect(
+      await screen.findByText('A user with that email already exists')
+    ).toBeInTheDocument();
   });
 
   it("shows the service's own words for any other conflict", async () => {
-    vi.mocked(coreApi.patch).mockRejectedValue(rejection(409, 'The last admin cannot be changed'));
+    vi.mocked(coreApi.patch).mockRejectedValue(
+      rejection(409, 'The last admin cannot be changed')
+    );
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Edit Grace Hopper' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit Grace Hopper' })
+    );
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('The last admin cannot be changed')).toBeInTheDocument();
+    expect(
+      await screen.findByText('The last admin cannot be changed')
+    ).toBeInTheDocument();
   });
 
   it('says it did not save when the service answers with its generic validation failure', async () => {
-    vi.mocked(coreApi.post).mockRejectedValue(rejection(422, 'Validation failed'));
+    vi.mocked(coreApi.post).mockRejectedValue(
+      rejection(422, 'Validation failed')
+    );
     const user = userEvent.setup();
     renderPage();
     await user.click(await screen.findByRole('button', { name: 'Add user' }));
     await user.type(screen.getByLabelText('Name'), 'Linus');
     await user.type(screen.getByLabelText('Email'), 'linus@example.com');
-    await user.type(screen.getByLabelText('Password'), 'a long enough password');
+    await user.type(
+      screen.getByLabelText('Password'),
+      'a long enough password'
+    );
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('That did not save. Try again.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('That did not save. Try again.')
+    ).toBeInTheDocument();
     expect(screen.queryByText('Validation failed')).not.toBeInTheDocument();
   });
 
   it('says it did not save for any other failure', async () => {
-    vi.mocked(coreApi.post).mockRejectedValue(rejection(500, 'Internal server error'));
+    vi.mocked(coreApi.post).mockRejectedValue(
+      rejection(500, 'Internal server error')
+    );
     const user = userEvent.setup();
     renderPage();
     await user.click(await screen.findByRole('button', { name: 'Add user' }));
     await user.type(screen.getByLabelText('Name'), 'Linus');
     await user.type(screen.getByLabelText('Email'), 'linus@example.com');
-    await user.type(screen.getByLabelText('Password'), 'a long enough password');
+    await user.type(
+      screen.getByLabelText('Password'),
+      'a long enough password'
+    );
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('That did not save. Try again.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('That did not save. Try again.')
+    ).toBeInTheDocument();
   });
 
   it('edits a user, leaving the password out when it is left blank', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Edit Grace Hopper' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit Grace Hopper' })
+    );
     expect(screen.getByLabelText('Name')).toHaveValue('Grace Hopper');
     expect(screen.getByLabelText('New password')).toHaveValue('');
     await user.clear(screen.getByLabelText('Name'));
@@ -183,7 +235,7 @@ describe('UsersPage', () => {
         name: 'Rear Admiral Hopper',
         email: 'grace@example.com',
         role: 'admin',
-      }),
+      })
     );
   });
 
@@ -191,13 +243,20 @@ describe('UsersPage', () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Edit Grace Hopper' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit Grace Hopper' })
+    );
     await user.type(screen.getByLabelText('New password'), 'short');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText(/Use 10 to 128 characters/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Use 10 to 128 characters/)
+    ).toBeInTheDocument();
     expect(coreApi.patch).not.toHaveBeenCalled();
     await user.clear(screen.getByLabelText('New password'));
-    await user.type(screen.getByLabelText('New password'), 'a brand new passphrase');
+    await user.type(
+      screen.getByLabelText('New password'),
+      'a brand new passphrase'
+    );
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
       expect(coreApi.patch).toHaveBeenCalledWith('/users/2', {
@@ -205,7 +264,7 @@ describe('UsersPage', () => {
         email: 'grace@example.com',
         role: 'admin',
         password: 'a brand new passphrase',
-      }),
+      })
     );
   });
 
@@ -213,38 +272,62 @@ describe('UsersPage', () => {
     vi.mocked(coreApi.delete).mockResolvedValue(saved);
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Delete Grace Hopper' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Delete Grace Hopper' })
+    );
     const confirm = await screen.findByRole('alertdialog');
     expect(confirm).toHaveTextContent('Delete user “Grace Hopper”?');
-    await user.click(within(confirm).getByRole('button', { name: 'Delete user' }));
-    await waitFor(() => expect(coreApi.delete).toHaveBeenCalledWith('/users/2'));
+    await user.click(
+      within(confirm).getByRole('button', { name: 'Delete user' })
+    );
+    await waitFor(() =>
+      expect(coreApi.delete).toHaveBeenCalledWith('/users/2')
+    );
   });
 
   it('does not let you delete your own account', async () => {
     renderPage();
-    expect(await screen.findByRole('button', { name: 'Delete Ada Admin' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Delete Grace Hopper' })).toBeEnabled();
+    expect(
+      await screen.findByRole('button', { name: 'Delete Ada Admin' })
+    ).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Delete Grace Hopper' })
+    ).toBeEnabled();
   });
 
   it('does not offer a password field on your own row, and points to Change password instead', async () => {
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Edit Ada Admin' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit Ada Admin' })
+    );
     const dialog = await screen.findByRole('dialog');
-    expect(within(dialog).queryByLabelText('New password')).not.toBeInTheDocument();
-    expect(within(dialog).getByText('Use Change password to change your own password.')).toBeInTheDocument();
+    expect(
+      within(dialog).queryByLabelText('New password')
+    ).not.toBeInTheDocument();
+    expect(
+      within(dialog).getByText(
+        'Use Change password to change your own password.'
+      )
+    ).toBeInTheDocument();
   });
 
   it('after saving your own row, refreshes the session so the sidebar shows the new details', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Edit Ada Admin' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit Ada Admin' })
+    );
     await user.clear(screen.getByLabelText('Name'));
     await user.type(screen.getByLabelText('Name'), 'Ada Lovelace');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() =>
-      expect(coreApi.patch).toHaveBeenCalledWith('/users/1', { name: 'Ada Lovelace', email: 'ada@example.com', role: 'admin' }),
+      expect(coreApi.patch).toHaveBeenCalledWith('/users/1', {
+        name: 'Ada Lovelace',
+        email: 'ada@example.com',
+        role: 'admin',
+      })
     );
     await waitFor(() => expect(refreshSession).toHaveBeenCalledTimes(1));
   });
@@ -253,9 +336,13 @@ describe('UsersPage', () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     renderPage();
-    await user.click(await screen.findByRole('button', { name: 'Edit Grace Hopper' }));
+    await user.click(
+      await screen.findByRole('button', { name: 'Edit Grace Hopper' })
+    );
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    );
     expect(refreshSession).not.toHaveBeenCalled();
   });
 });

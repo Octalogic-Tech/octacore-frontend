@@ -3,13 +3,25 @@ import { projectRowSchema, type ProjectRow } from '@/features/projects/schema';
 import { allocationRows } from '@/test/fixtures/allocations';
 import { personRows } from '@/test/fixtures/people';
 import { projectRows } from '@/test/fixtures/projects';
-import { buildBoard, byPerson, cardsOf, columnTotals, isOnStaff, shareOf, type BoardColumn } from './board';
+import {
+  buildBoard,
+  byPerson,
+  cardsOf,
+  columnTotals,
+  isOnStaff,
+  shareOf,
+  type BoardColumn,
+} from './board';
 import { allocationRowSchema, type AllocationRow } from './schema';
 
 const TODAY = '2026-10-20';
 
 /** A person with no dates and a salary of ₹1,00,000.00 a month unless the test says otherwise. */
-const person = (id: number, name: string, over: Record<string, unknown> = {}): PersonRow =>
+const person = (
+  id: number,
+  name: string,
+  over: Record<string, unknown> = {}
+): PersonRow =>
   personRowSchema.parse({
     ...personRows[0],
     id,
@@ -21,7 +33,11 @@ const person = (id: number, name: string, over: Record<string, unknown> = {}): P
     ...over,
   });
 
-const project = (id: number, name: string, projectStatus = 'active'): ProjectRow =>
+const project = (
+  id: number,
+  name: string,
+  projectStatus = 'active'
+): ProjectRow =>
   projectRowSchema.parse({ ...projectRows[0], id, name, projectStatus });
 
 /** An entry: from `effectiveDate` the person's card (1 unless `over` says another) is on the project, or on the bench when `on` is null. */
@@ -47,7 +63,12 @@ const entry = (
   });
 
 /** An entry that says the card is gone from `effectiveDate`. */
-const removal = (id: number, who: PersonRow, card: number, effectiveDate: string): AllocationRow =>
+const removal = (
+  id: number,
+  who: PersonRow,
+  card: number,
+  effectiveDate: string
+): AllocationRow =>
   entry(id, who, null, effectiveDate, { card, removed: true });
 
 /** An entry of the person's card `card`. */
@@ -65,8 +86,10 @@ const linus = person(3, 'Linus', { monthlySalaryPaise: null });
 const apollo = project(10, 'Apollo');
 const borealis = project(11, 'Borealis');
 
-const names = (column: BoardColumn | undefined) => column?.cards.map((card) => card.person.name);
-const columnOf = (board: BoardColumn[], key: string) => board.find((column) => column.key === key);
+const names = (column: BoardColumn | undefined) =>
+  column?.cards.map((card) => card.person.name);
+const columnOf = (board: BoardColumn[], key: string) =>
+  board.find((column) => column.key === key);
 
 describe('isOnStaff', () => {
   it('counts a person with no dates', () => {
@@ -94,15 +117,33 @@ describe('isOnStaff', () => {
   });
 
   it('needs both: joined and not yet left', () => {
-    expect(isOnStaff(person(1, 'Ada', { joinDate: '2026-01-05', leaveDate: '2026-12-31' }), TODAY)).toBe(true);
-    expect(isOnStaff(person(1, 'Ada', { joinDate: '2026-11-01', leaveDate: '2026-12-31' }), TODAY)).toBe(false);
-    expect(isOnStaff(person(1, 'Ada', { joinDate: '2026-01-05', leaveDate: '2026-10-01' }), TODAY)).toBe(false);
+    expect(
+      isOnStaff(
+        person(1, 'Ada', { joinDate: '2026-01-05', leaveDate: '2026-12-31' }),
+        TODAY
+      )
+    ).toBe(true);
+    expect(
+      isOnStaff(
+        person(1, 'Ada', { joinDate: '2026-11-01', leaveDate: '2026-12-31' }),
+        TODAY
+      )
+    ).toBe(false);
+    expect(
+      isOnStaff(
+        person(1, 'Ada', { joinDate: '2026-01-05', leaveDate: '2026-10-01' }),
+        TODAY
+      )
+    ).toBe(false);
   });
 });
 
 /** The cards of a person as (card number, id of the entry that places it, or null for the implicit card 1). */
 const cardsSeen = (entries: AllocationRow[], personId = 1, today = TODAY) =>
-  cardsOf(entries, personId, today).map(({ card, entry: placing }) => [card, placing?.id ?? null]);
+  cardsOf(entries, personId, today).map(({ card, entry: placing }) => [
+    card,
+    placing?.id ?? null,
+  ]);
 
 describe('cardsOf: the cards a person has on a day', () => {
   it('is the implicit card 1, on the bench, for a person with no entries', () => {
@@ -121,13 +162,18 @@ describe('cardsOf: the cards a person has on a day', () => {
   });
 
   it('counts an entry dated today, and not one dated tomorrow', () => {
-    const entries = [entry(2, ada, apollo, '2026-10-20'), entry(1, ada, null, '2026-01-01')];
+    const entries = [
+      entry(2, ada, apollo, '2026-10-20'),
+      entry(1, ada, null, '2026-01-01'),
+    ];
     expect(cardsSeen(entries)).toEqual([[1, 2]]);
     expect(cardsSeen(entries, 1, '2026-10-19')).toEqual([[1, 1]]);
   });
 
   it('is still the implicit card 1 when card 1 has only entries that start later', () => {
-    expect(cardsSeen([entry(1, ada, apollo, '2026-10-21')])).toEqual([[1, null]]);
+    expect(cardsSeen([entry(1, ada, apollo, '2026-10-21')])).toEqual([
+      [1, null],
+    ]);
   });
 
   it('does not depend on the order of the list', () => {
@@ -142,29 +188,50 @@ describe('cardsOf: the cards a person has on a day', () => {
 
   it('keeps an entry backfilled before a later one from changing where the card is now', () => {
     // Entered last (id 9) but dated earliest: the card is still on Apollo.
-    expect(cardsSeen([entry(2, ada, apollo, '2026-03-12'), entry(9, ada, null, '2026-01-05')])).toEqual([[1, 2]]);
+    expect(
+      cardsSeen([
+        entry(2, ada, apollo, '2026-03-12'),
+        entry(9, ada, null, '2026-01-05'),
+      ])
+    ).toEqual([[1, 2]]);
   });
 
   it('makes the previous entry current once the current one is gone from the list', () => {
-    const entries = [entry(2, ada, apollo, '2026-03-12'), entry(1, ada, borealis, '2026-01-05')];
+    const entries = [
+      entry(2, ada, apollo, '2026-03-12'),
+      entry(1, ada, borealis, '2026-01-05'),
+    ];
     expect(cardsSeen(entries)).toEqual([[1, 2]]);
     // The service no longer lists a deleted entry.
     expect(cardsSeen(entries.filter((row) => row.id !== 2))).toEqual([[1, 1]]);
   });
 
   it('breaks a tie of dates by the later id: two entries cannot share a card and a day, but if they did', () => {
-    expect(cardsSeen([entry(4, ada, apollo, '2026-03-12'), entry(7, ada, borealis, '2026-03-12')])).toEqual([[1, 7]]);
+    expect(
+      cardsSeen([
+        entry(4, ada, apollo, '2026-03-12'),
+        entry(7, ada, borealis, '2026-03-12'),
+      ])
+    ).toEqual([[1, 7]]);
   });
 
   it('reads only the person asked about', () => {
-    const entries = [entry(2, grace, borealis, '2026-09-01'), entry(1, ada, apollo, '2026-03-12')];
+    const entries = [
+      entry(2, grace, borealis, '2026-09-01'),
+      entry(1, ada, apollo, '2026-03-12'),
+    ];
     expect(cardsSeen(entries, 1)).toEqual([[1, 1]]);
     expect(cardsSeen(entries, 2)).toEqual([[1, 2]]);
-    expect(cardsSeen([entry(1, grace, apollo, '2026-03-12')], 1)).toEqual([[1, null]]);
+    expect(cardsSeen([entry(1, grace, apollo, '2026-03-12')], 1)).toEqual([
+      [1, null],
+    ]);
   });
 
   it('has a card 2 from the day of its first entry, and not before', () => {
-    const entries = [onCard(2, ada, 2, borealis, '2026-06-01'), entry(1, ada, apollo, '2026-03-12')];
+    const entries = [
+      onCard(2, ada, 2, borealis, '2026-06-01'),
+      entry(1, ada, apollo, '2026-03-12'),
+    ];
     expect(cardsSeen(entries)).toEqual([
       [1, 1],
       [2, 2],
@@ -177,9 +244,12 @@ describe('cardsOf: the cards a person has on a day', () => {
   });
 
   it('has no card 2 when its only entries start later', () => {
-    expect(cardsSeen([onCard(2, ada, 2, borealis, '2026-10-21'), entry(1, ada, apollo, '2026-03-12')])).toEqual([
-      [1, 1],
-    ]);
+    expect(
+      cardsSeen([
+        onCard(2, ada, 2, borealis, '2026-10-21'),
+        entry(1, ada, apollo, '2026-03-12'),
+      ])
+    ).toEqual([[1, 1]]);
   });
 
   it('takes each card’s latest entry on its own: a move of one card leaves the other where it is', () => {
@@ -205,7 +275,9 @@ describe('cardsOf: the cards a person has on a day', () => {
       onCard(2, ada, 2, apollo, '2026-06-02'),
       entry(3, ada, null, '2026-06-03'),
     ];
-    expect(cardsOf(entries, 1, TODAY).map((placed) => placed.card)).toEqual([1, 2, 3]);
+    expect(cardsOf(entries, 1, TODAY).map((placed) => placed.card)).toEqual([
+      1, 2, 3,
+    ]);
   });
 
   it('drops a card whose latest entry says it is removed', () => {
@@ -256,7 +328,12 @@ describe('cardsOf: the cards a person has on a day', () => {
   });
 
   it('does not count a removal that starts later', () => {
-    expect(cardsSeen([removal(2, ada, 2, '2026-10-21'), onCard(1, ada, 2, borealis, '2026-06-01')])).toEqual([
+    expect(
+      cardsSeen([
+        removal(2, ada, 2, '2026-10-21'),
+        onCard(1, ada, 2, borealis, '2026-06-01'),
+      ])
+    ).toEqual([
       [1, null],
       [2, 1],
     ]);
@@ -269,13 +346,21 @@ describe('shareOf: a person’s salary split between their cards', () => {
   });
 
   it('is an even split when the salary divides', () => {
-    expect([0, 1].map((index) => shareOf(10_000_000, 2, index))).toEqual([5_000_000, 5_000_000]);
+    expect([0, 1].map((index) => shareOf(10_000_000, 2, index))).toEqual([
+      5_000_000, 5_000_000,
+    ]);
   });
 
   it('gives the leftover paise one each to the lowest cards first: 100001 over 3 is 33334, 33334, 33333', () => {
-    expect([0, 1, 2].map((index) => shareOf(100_001, 3, index))).toEqual([33_334, 33_334, 33_333]);
-    expect([0, 1, 2].map((index) => shareOf(100_002, 3, index))).toEqual([33_334, 33_334, 33_334]);
-    expect([0, 1, 2].map((index) => shareOf(100_000, 3, index))).toEqual([33_334, 33_333, 33_333]);
+    expect([0, 1, 2].map((index) => shareOf(100_001, 3, index))).toEqual([
+      33_334, 33_334, 33_333,
+    ]);
+    expect([0, 1, 2].map((index) => shareOf(100_002, 3, index))).toEqual([
+      33_334, 33_334, 33_334,
+    ]);
+    expect([0, 1, 2].map((index) => shareOf(100_000, 3, index))).toEqual([
+      33_334, 33_333, 33_333,
+    ]);
   });
 
   it('splits 1 paisa over 2 cards as 1 and 0', () => {
@@ -290,13 +375,19 @@ describe('shareOf: a person’s salary split between their cards', () => {
     [99_999_999, 7],
     [8_500_075, 4],
     [10_000_000_000, 13],
-  ])('adds up to the salary exactly, with nothing lost: %i paise over %i cards', (salary, count) => {
-    const shares = Array.from({ length: count }, (_, index) => shareOf(salary, count, index) as number);
-    expect(shares.reduce((sum, share) => sum + share, 0)).toBe(salary);
-    // No share is more than a paisa from another, and the bigger ones come first.
-    expect(Math.max(...shares) - Math.min(...shares)).toBeLessThanOrEqual(1);
-    expect([...shares].sort((a, b) => b - a)).toEqual(shares);
-  });
+  ])(
+    'adds up to the salary exactly, with nothing lost: %i paise over %i cards',
+    (salary, count) => {
+      const shares = Array.from(
+        { length: count },
+        (_, index) => shareOf(salary, count, index) as number
+      );
+      expect(shares.reduce((sum, share) => sum + share, 0)).toBe(salary);
+      // No share is more than a paisa from another, and the bigger ones come first.
+      expect(Math.max(...shares) - Math.min(...shares)).toBeLessThanOrEqual(1);
+      expect([...shares].sort((a, b) => b - a)).toEqual(shares);
+    }
+  );
 
   it('is nothing for a salary of zero, which is a salary', () => {
     expect([0, 1, 2].map((index) => shareOf(0, 3, index))).toEqual([0, 0, 0]);
@@ -304,7 +395,10 @@ describe('shareOf: a person’s salary split between their cards', () => {
 
   it('is null for a person with no salary on file, however many cards', () => {
     expect(shareOf(null, 1, 0)).toBeNull();
-    expect([0, 1].map((index) => shareOf(null, 2, index))).toEqual([null, null]);
+    expect([0, 1].map((index) => shareOf(null, 2, index))).toEqual([
+      null,
+      null,
+    ]);
   });
 });
 
@@ -312,11 +406,22 @@ describe('buildBoard: the columns', () => {
   it('puts the bench first, then the active projects by name, whatever the case', () => {
     const board = buildBoard({
       people: [],
-      projects: [project(12, 'zephyr'), borealis, project(13, 'Apollo 2'), apollo],
+      projects: [
+        project(12, 'zephyr'),
+        borealis,
+        project(13, 'Apollo 2'),
+        apollo,
+      ],
       entries: [],
       today: TODAY,
     });
-    expect(board.map((column) => column.key)).toEqual(['col-bench', 'col-10', 'col-13', 'col-11', 'col-12']);
+    expect(board.map((column) => column.key)).toEqual([
+      'col-bench',
+      'col-10',
+      'col-13',
+      'col-11',
+      'col-12',
+    ]);
     expect(board.map((column) => column.project?.name ?? null)).toEqual([
       null,
       'Apollo',
@@ -333,21 +438,38 @@ describe('buildBoard: the columns', () => {
       entries: [],
       today: TODAY,
     });
-    expect(board.map((column) => column.key)).toEqual(['col-bench', 'col-20', 'col-21']);
+    expect(board.map((column) => column.key)).toEqual([
+      'col-bench',
+      'col-20',
+      'col-21',
+    ]);
   });
 
   it('makes a column for an active project with nobody on it, and for the bench with nobody on it', () => {
-    const board = buildBoard({ people: [], projects: [apollo], entries: [], today: TODAY });
+    const board = buildBoard({
+      people: [],
+      projects: [apollo],
+      entries: [],
+      today: TODAY,
+    });
     expect(board).toHaveLength(2);
     for (const column of board) {
-      expect(column).toMatchObject({ cards: [], monthlyCostPaise: 0, withoutSalary: 0 });
+      expect(column).toMatchObject({
+        cards: [],
+        monthlyCostPaise: 0,
+        withoutSalary: 0,
+      });
     }
   });
 
   it('makes no column for a project that is on hold or completed', () => {
     const board = buildBoard({
       people: [],
-      projects: [apollo, project(11, 'Borealis', 'on_hold'), project(12, 'Cirrus', 'completed')],
+      projects: [
+        apollo,
+        project(11, 'Borealis', 'on_hold'),
+        project(12, 'Cirrus', 'completed'),
+      ],
       entries: [],
       today: TODAY,
     });
@@ -355,7 +477,12 @@ describe('buildBoard: the columns', () => {
   });
 
   it('gives the bench column no project, and a project column its project', () => {
-    const board = buildBoard({ people: [], projects: [apollo], entries: [], today: TODAY });
+    const board = buildBoard({
+      people: [],
+      projects: [apollo],
+      entries: [],
+      today: TODAY,
+    });
     expect(board[0].project).toBeNull();
     expect(board[1].project).toBe(apollo);
   });
@@ -366,7 +493,10 @@ describe('buildBoard: where each person stands', () => {
     const board = buildBoard({
       people: [ada],
       projects: [apollo, borealis],
-      entries: [entry(2, ada, apollo, '2026-03-12'), entry(1, ada, null, '2026-01-05')],
+      entries: [
+        entry(2, ada, apollo, '2026-03-12'),
+        entry(1, ada, null, '2026-01-05'),
+      ],
       today: TODAY,
     });
     expect(names(columnOf(board, 'col-10'))).toEqual(['Ada']);
@@ -385,7 +515,12 @@ describe('buildBoard: where each person stands', () => {
   });
 
   it('puts a person with no entry on the bench, with no date and no note', () => {
-    const board = buildBoard({ people: [ada], projects: [apollo], entries: [], today: TODAY });
+    const board = buildBoard({
+      people: [ada],
+      projects: [apollo],
+      entries: [],
+      today: TODAY,
+    });
     expect(columnOf(board, 'col-bench')?.cards).toEqual([
       {
         key: 'person-1-card-1',
@@ -404,7 +539,10 @@ describe('buildBoard: where each person stands', () => {
     const board = buildBoard({
       people: [ada],
       projects: [apollo],
-      entries: [entry(2, ada, null, '2026-09-01'), entry(1, ada, apollo, '2026-03-12')],
+      entries: [
+        entry(2, ada, null, '2026-09-01'),
+        entry(1, ada, apollo, '2026-03-12'),
+      ],
       today: TODAY,
     });
     expect(columnOf(board, 'col-bench')?.cards).toEqual([
@@ -423,8 +561,16 @@ describe('buildBoard: where each person stands', () => {
   });
 
   it('does not use the entry’s own note as the card’s note', () => {
-    const noted = { ...entry(1, ada, null, '2026-09-01'), note: 'Between projects' };
-    const board = buildBoard({ people: [ada], projects: [], entries: [noted], today: TODAY });
+    const noted = {
+      ...entry(1, ada, null, '2026-09-01'),
+      note: 'Between projects',
+    };
+    const board = buildBoard({
+      people: [ada],
+      projects: [],
+      entries: [noted],
+      today: TODAY,
+    });
     expect(columnOf(board, 'col-bench')?.cards[0].note).toBeNull();
   });
 
@@ -432,7 +578,10 @@ describe('buildBoard: where each person stands', () => {
     const board = buildBoard({
       people: [ada],
       projects: [apollo, borealis],
-      entries: [entry(2, ada, apollo, '2026-03-12'), entry(9, ada, borealis, '2026-01-05')],
+      entries: [
+        entry(2, ada, apollo, '2026-03-12'),
+        entry(9, ada, borealis, '2026-01-05'),
+      ],
       today: TODAY,
     });
     expect(names(columnOf(board, 'col-10'))).toEqual(['Ada']);
@@ -440,9 +589,22 @@ describe('buildBoard: where each person stands', () => {
   });
 
   it('puts the person back on the earlier entry when the current one is deleted (it is gone from the list)', () => {
-    const both = [entry(2, ada, apollo, '2026-03-12'), entry(1, ada, borealis, '2026-01-05')];
-    const before = buildBoard({ people: [ada], projects: [apollo, borealis], entries: both, today: TODAY });
-    const after = buildBoard({ people: [ada], projects: [apollo, borealis], entries: [both[1]], today: TODAY });
+    const both = [
+      entry(2, ada, apollo, '2026-03-12'),
+      entry(1, ada, borealis, '2026-01-05'),
+    ];
+    const before = buildBoard({
+      people: [ada],
+      projects: [apollo, borealis],
+      entries: both,
+      today: TODAY,
+    });
+    const after = buildBoard({
+      people: [ada],
+      projects: [apollo, borealis],
+      entries: [both[1]],
+      today: TODAY,
+    });
     expect(names(columnOf(before, 'col-10'))).toEqual(['Ada']);
     expect(names(columnOf(after, 'col-11'))).toEqual(['Ada']);
     expect(columnOf(after, 'col-11')?.cards[0].since).toBe('2026-01-05');
@@ -452,7 +614,10 @@ describe('buildBoard: where each person stands', () => {
     const board = buildBoard({
       people: [ada],
       projects: [apollo, borealis],
-      entries: [entry(2, ada, borealis, '2026-10-21'), entry(1, ada, apollo, '2026-03-12')],
+      entries: [
+        entry(2, ada, borealis, '2026-10-21'),
+        entry(1, ada, apollo, '2026-03-12'),
+      ],
       today: TODAY,
     });
     expect(names(columnOf(board, 'col-10'))).toEqual(['Ada']);
@@ -463,7 +628,10 @@ describe('buildBoard: where each person stands', () => {
     const board = buildBoard({
       people: [ada],
       projects: [apollo, borealis],
-      entries: [entry(2, ada, borealis, '2026-10-20'), entry(1, ada, apollo, '2026-03-12')],
+      entries: [
+        entry(2, ada, borealis, '2026-10-20'),
+        entry(1, ada, apollo, '2026-03-12'),
+      ],
       today: TODAY,
     });
     expect(names(columnOf(board, 'col-11'))).toEqual(['Ada']);
@@ -492,7 +660,11 @@ describe('buildBoard: where each person stands', () => {
       ],
       today: TODAY,
     });
-    expect(board.flatMap((column) => column.cards.map((card) => card.person.name)).sort()).toEqual(['Ada', 'Grace']);
+    expect(
+      board
+        .flatMap((column) => column.cards.map((card) => card.person.name))
+        .sort()
+    ).toEqual(['Ada', 'Grace']);
   });
 });
 
@@ -503,18 +675,31 @@ describe('buildBoard: who is on the board', () => {
     const board = buildBoard({
       people: [ada, left, notYet],
       projects: [apollo],
-      entries: [entry(1, left, apollo, '2026-03-12'), entry(2, notYet, apollo, '2026-03-12')],
+      entries: [
+        entry(1, left, apollo, '2026-03-12'),
+        entry(2, notYet, apollo, '2026-03-12'),
+      ],
       today: TODAY,
     });
-    expect(board.flatMap((column) => column.cards.map((card) => card.person.name))).toEqual(['Ada']);
+    expect(
+      board.flatMap((column) => column.cards.map((card) => card.person.name))
+    ).toEqual(['Ada']);
     // Nor do they cost anything.
-    expect(columnOf(board, 'col-10')).toMatchObject({ cards: [], monthlyCostPaise: 0 });
+    expect(columnOf(board, 'col-10')).toMatchObject({
+      cards: [],
+      monthlyCostPaise: 0,
+    });
   });
 
   it('keeps a person whose Left date is today, and one who joined today', () => {
     const leavingToday = person(4, 'Leaving', { leaveDate: TODAY });
     const joinedToday = person(5, 'Joined', { joinDate: TODAY });
-    const board = buildBoard({ people: [leavingToday, joinedToday], projects: [], entries: [], today: TODAY });
+    const board = buildBoard({
+      people: [leavingToday, joinedToday],
+      projects: [],
+      entries: [],
+      today: TODAY,
+    });
     expect(names(columnOf(board, 'col-bench'))).toEqual(['Joined', 'Leaving']);
   });
 });
@@ -523,28 +708,34 @@ describe('buildBoard: a project that is no longer active', () => {
   it.each([
     ['on_hold', 'Last on Apollo (on hold)'],
     ['completed', 'Last on Apollo (completed)'],
-  ])('puts the people of a %s project on the bench, with the note %j', (status, note) => {
-    const board = buildBoard({
-      people: [ada],
-      projects: [project(10, 'Apollo', status), borealis],
-      entries: [entry(1, ada, apollo, '2026-03-12')],
-      today: TODAY,
-    });
-    expect(board.map((column) => column.key)).toEqual(['col-bench', 'col-11']);
-    // The card keeps the project it is on underneath, which a copy of it starts from.
-    expect(columnOf(board, 'col-bench')?.cards).toEqual([
-      {
-        key: 'person-1-card-1',
-        person: ada,
-        card: 1,
-        cardCount: 1,
-        projectId: 10,
-        salaryShare: 10_000_000,
-        since: null,
-        note,
-      },
-    ]);
-  });
+  ])(
+    'puts the people of a %s project on the bench, with the note %j',
+    (status, note) => {
+      const board = buildBoard({
+        people: [ada],
+        projects: [project(10, 'Apollo', status), borealis],
+        entries: [entry(1, ada, apollo, '2026-03-12')],
+        today: TODAY,
+      });
+      expect(board.map((column) => column.key)).toEqual([
+        'col-bench',
+        'col-11',
+      ]);
+      // The card keeps the project it is on underneath, which a copy of it starts from.
+      expect(columnOf(board, 'col-bench')?.cards).toEqual([
+        {
+          key: 'person-1-card-1',
+          person: ada,
+          card: 1,
+          cardCount: 1,
+          projectId: 10,
+          salaryShare: 10_000_000,
+          since: null,
+          note,
+        },
+      ]);
+    }
+  );
 
   it('puts the people of a project that is not in the list at all (deleted) on the bench, and says so', () => {
     const board = buildBoard({
@@ -575,15 +766,30 @@ describe('buildBoard: a project that is no longer active', () => {
       entries: [entry(1, ada, gone, '2026-03-12')],
       today: TODAY,
     });
-    expect(columnOf(board, 'col-bench')?.cards[0].note).toBe('Last on Old name kept in the ledger (deleted)');
+    expect(columnOf(board, 'col-bench')?.cards[0].note).toBe(
+      'Last on Old name kept in the ledger (deleted)'
+    );
   });
 
   it('puts the person back on a project that is active again, with no note', () => {
     const entries = [entry(1, ada, apollo, '2026-03-12')];
-    const held = buildBoard({ people: [ada], projects: [project(10, 'Apollo', 'on_hold')], entries, today: TODAY });
-    const back = buildBoard({ people: [ada], projects: [apollo], entries, today: TODAY });
+    const held = buildBoard({
+      people: [ada],
+      projects: [project(10, 'Apollo', 'on_hold')],
+      entries,
+      today: TODAY,
+    });
+    const back = buildBoard({
+      people: [ada],
+      projects: [apollo],
+      entries,
+      today: TODAY,
+    });
     expect(names(columnOf(held, 'col-bench'))).toEqual(['Ada']);
-    expect(columnOf(back, 'col-10')?.cards[0]).toMatchObject({ since: '2026-03-12', note: null });
+    expect(columnOf(back, 'col-10')?.cards[0]).toMatchObject({
+      since: '2026-03-12',
+      note: null,
+    });
   });
 
   it('counts the person’s salary in the bench’s cost', () => {
@@ -593,7 +799,10 @@ describe('buildBoard: a project that is no longer active', () => {
       entries: [entry(1, ada, apollo, '2026-03-12')],
       today: TODAY,
     });
-    expect(columnOf(board, 'col-bench')).toMatchObject({ monthlyCostPaise: 10_000_000, withoutSalary: 0 });
+    expect(columnOf(board, 'col-bench')).toMatchObject({
+      monthlyCostPaise: 10_000_000,
+      withoutSalary: 0,
+    });
   });
 });
 
@@ -605,10 +814,16 @@ describe('buildBoard: the cost of a column', () => {
         person(2, 'Grace', { monthlySalaryPaise: 11_500_000 }),
       ],
       projects: [apollo],
-      entries: [entry(1, person(1, 'Ada'), apollo, '2026-03-12'), entry(2, person(2, 'Grace'), apollo, '2026-03-12')],
+      entries: [
+        entry(1, person(1, 'Ada'), apollo, '2026-03-12'),
+        entry(2, person(2, 'Grace'), apollo, '2026-03-12'),
+      ],
       today: TODAY,
     });
-    expect(columnOf(board, 'col-10')).toMatchObject({ monthlyCostPaise: 20_000_000, withoutSalary: 0 });
+    expect(columnOf(board, 'col-10')).toMatchObject({
+      monthlyCostPaise: 20_000_000,
+      withoutSalary: 0,
+    });
     expect(columnOf(board, 'col-bench')).toMatchObject({ monthlyCostPaise: 0 });
   });
 
@@ -623,14 +838,25 @@ describe('buildBoard: the cost of a column', () => {
       ],
       today: TODAY,
     });
-    expect(columnOf(board, 'col-10')).toMatchObject({ monthlyCostPaise: 10_000_000, withoutSalary: 2 });
+    expect(columnOf(board, 'col-10')).toMatchObject({
+      monthlyCostPaise: 10_000_000,
+      withoutSalary: 2,
+    });
     expect(names(columnOf(board, 'col-10'))).toEqual(['Ada', 'Linus', 'Mary']);
   });
 
   it('counts a salary of zero as a salary, not as a missing one', () => {
     const intern = person(5, 'Intern', { monthlySalaryPaise: 0 });
-    const board = buildBoard({ people: [intern], projects: [], entries: [], today: TODAY });
-    expect(columnOf(board, 'col-bench')).toMatchObject({ monthlyCostPaise: 0, withoutSalary: 0 });
+    const board = buildBoard({
+      people: [intern],
+      projects: [],
+      entries: [],
+      today: TODAY,
+    });
+    expect(columnOf(board, 'col-bench')).toMatchObject({
+      monthlyCostPaise: 0,
+      withoutSalary: 0,
+    });
   });
 
   it('costs the bench for those on it, with no entry or an entry to the bench', () => {
@@ -640,13 +866,23 @@ describe('buildBoard: the cost of a column', () => {
       entries: [entry(1, grace, null, '2026-09-01')],
       today: TODAY,
     });
-    expect(columnOf(board, 'col-bench')).toMatchObject({ monthlyCostPaise: 20_000_000, withoutSalary: 1 });
-    expect(names(columnOf(board, 'col-bench'))).toEqual(['Ada', 'Grace', 'Linus']);
+    expect(columnOf(board, 'col-bench')).toMatchObject({
+      monthlyCostPaise: 20_000_000,
+      withoutSalary: 1,
+    });
+    expect(names(columnOf(board, 'col-bench'))).toEqual([
+      'Ada',
+      'Grace',
+      'Linus',
+    ]);
   });
 
   it('keeps the cost in whole paise, exact to the unit', () => {
     const board = buildBoard({
-      people: [person(1, 'Ada', { monthlySalaryPaise: 8_500_075 }), person(2, 'Grace', { monthlySalaryPaise: 1 })],
+      people: [
+        person(1, 'Ada', { monthlySalaryPaise: 8_500_075 }),
+        person(2, 'Grace', { monthlySalaryPaise: 1 }),
+      ],
       projects: [],
       entries: [],
       today: TODAY,
@@ -658,17 +894,24 @@ describe('buildBoard: the cost of a column', () => {
 describe('buildBoard: the cards', () => {
   it('lists the cards of a column by name, whatever the case, then by id', () => {
     const board = buildBoard({
-      people: [person(3, 'zoe'), person(2, 'Bea'), person(1, 'bea'), person(4, 'Adam')],
+      people: [
+        person(3, 'zoe'),
+        person(2, 'Bea'),
+        person(1, 'bea'),
+        person(4, 'Adam'),
+      ],
       projects: [],
       entries: [],
       today: TODAY,
     });
-    expect(columnOf(board, 'col-bench')?.cards.map((card) => card.key)).toEqual([
-      'person-4-card-1',
-      'person-1-card-1',
-      'person-2-card-1',
-      'person-3-card-1',
-    ]);
+    expect(columnOf(board, 'col-bench')?.cards.map((card) => card.key)).toEqual(
+      [
+        'person-4-card-1',
+        'person-1-card-1',
+        'person-2-card-1',
+        'person-3-card-1',
+      ]
+    );
   });
 
   it('keys columns and cards apart, so the two kinds of id cannot collide', () => {
@@ -689,7 +932,10 @@ describe('buildBoard: the cards', () => {
   it('does not change the lists it is given', () => {
     const people = [person(2, 'Grace'), person(1, 'Ada')];
     const projects = [borealis, apollo];
-    const entries = [entry(1, people[0], apollo, '2026-03-12'), entry(2, people[1], borealis, '2026-03-12')];
+    const entries = [
+      entry(1, people[0], apollo, '2026-03-12'),
+      entry(2, people[1], borealis, '2026-03-12'),
+    ];
     const before = JSON.stringify({ people, projects, entries });
     buildBoard({ people, projects, entries, today: TODAY });
     expect(JSON.stringify({ people, projects, entries })).toBe(before);
@@ -698,7 +944,10 @@ describe('buildBoard: the cards', () => {
 
 describe('buildBoard: a person with several cards', () => {
   const senior = person(1, 'Senior', { monthlySalaryPaise: 10_000_001 });
-  const twoCards = (second: AllocationRow) => [second, entry(1, senior, apollo, '2026-03-12')];
+  const twoCards = (second: AllocationRow) => [
+    second,
+    entry(1, senior, apollo, '2026-03-12'),
+  ];
 
   it('puts each card in the column of its own project, keyed by person and card, each with its share of the salary', () => {
     const board = buildBoard({
@@ -742,7 +991,9 @@ describe('buildBoard: a person with several cards', () => {
     });
     expect(columnOf(board, 'col-10')?.monthlyCostPaise).toBe(5_000_001);
     expect(columnOf(board, 'col-11')?.monthlyCostPaise).toBe(5_000_000);
-    expect(board.reduce((sum, column) => sum + column.monthlyCostPaise, 0)).toBe(10_000_001);
+    expect(
+      board.reduce((sum, column) => sum + column.monthlyCostPaise, 0)
+    ).toBe(10_000_001);
   });
 
   it('puts two cards in one column when both are on the project (a card just copied), side by side, by card number', () => {
@@ -752,8 +1003,14 @@ describe('buildBoard: a person with several cards', () => {
       entries: twoCards(onCard(2, senior, 2, apollo, '2026-10-20')),
       today: TODAY,
     });
-    expect(columnOf(board, 'col-10')?.cards.map((card) => card.key)).toEqual(['person-1-card-1', 'person-1-card-2']);
-    expect(columnOf(board, 'col-10')).toMatchObject({ monthlyCostPaise: 10_000_001, withoutSalary: 0 });
+    expect(columnOf(board, 'col-10')?.cards.map((card) => card.key)).toEqual([
+      'person-1-card-1',
+      'person-1-card-2',
+    ]);
+    expect(columnOf(board, 'col-10')).toMatchObject({
+      monthlyCostPaise: 10_000_001,
+      withoutSalary: 0,
+    });
   });
 
   it('counts a card on the bench as a card of the person, with a share', () => {
@@ -791,7 +1048,10 @@ describe('buildBoard: a person with several cards', () => {
     const board = buildBoard({
       people: [senior],
       projects: [apollo, borealis],
-      entries: [removal(3, senior, 2, '2026-07-01'), ...twoCards(onCard(2, senior, 2, borealis, '2026-06-01'))],
+      entries: [
+        removal(3, senior, 2, '2026-07-01'),
+        ...twoCards(onCard(2, senior, 2, borealis, '2026-06-01')),
+      ],
       today: TODAY,
     });
     expect(names(columnOf(board, 'col-11'))).toEqual([]);
@@ -805,11 +1065,19 @@ describe('buildBoard: a person with several cards', () => {
     const board = buildBoard({
       people: [unpaid],
       projects: [apollo],
-      entries: [onCard(2, unpaid, 2, apollo, '2026-06-01'), entry(1, unpaid, apollo, '2026-03-12')],
+      entries: [
+        onCard(2, unpaid, 2, apollo, '2026-06-01'),
+        entry(1, unpaid, apollo, '2026-03-12'),
+      ],
       today: TODAY,
     });
-    expect(columnOf(board, 'col-10')).toMatchObject({ monthlyCostPaise: 0, withoutSalary: 2 });
-    expect(columnOf(board, 'col-10')?.cards.map((card) => card.salaryShare)).toEqual([null, null]);
+    expect(columnOf(board, 'col-10')).toMatchObject({
+      monthlyCostPaise: 0,
+      withoutSalary: 2,
+    });
+    expect(
+      columnOf(board, 'col-10')?.cards.map((card) => card.salaryShare)
+    ).toEqual([null, null]);
   });
 
   it('keeps a salary of zero a salary on every card', () => {
@@ -817,10 +1085,16 @@ describe('buildBoard: a person with several cards', () => {
     const board = buildBoard({
       people: [intern],
       projects: [apollo],
-      entries: [onCard(2, intern, 2, apollo, '2026-06-01'), entry(1, intern, apollo, '2026-03-12')],
+      entries: [
+        onCard(2, intern, 2, apollo, '2026-06-01'),
+        entry(1, intern, apollo, '2026-03-12'),
+      ],
       today: TODAY,
     });
-    expect(columnOf(board, 'col-10')).toMatchObject({ monthlyCostPaise: 0, withoutSalary: 0 });
+    expect(columnOf(board, 'col-10')).toMatchObject({
+      monthlyCostPaise: 0,
+      withoutSalary: 0,
+    });
   });
 
   it('leaves a person who has left or not joined off the board, all their cards', () => {
@@ -828,7 +1102,10 @@ describe('buildBoard: a person with several cards', () => {
     const board = buildBoard({
       people: [left],
       projects: [apollo],
-      entries: [onCard(2, left, 2, apollo, '2026-06-01'), entry(1, left, apollo, '2026-03-12')],
+      entries: [
+        onCard(2, left, 2, apollo, '2026-06-01'),
+        entry(1, left, apollo, '2026-03-12'),
+      ],
       today: TODAY,
     });
     expect(board.flatMap((column) => column.cards)).toEqual([]);
@@ -863,17 +1140,29 @@ describe('buildBoard: a person with several cards', () => {
       today: TODAY,
     });
     expect(columnOf(board, 'col-bench')?.cards).toMatchObject([
-      { key: 'person-1-card-1', cardCount: 1, salaryShare: 10_000_001, since: null, note: null },
+      {
+        key: 'person-1-card-1',
+        cardCount: 1,
+        salaryShare: 10_000_001,
+        since: null,
+        note: null,
+      },
     ]);
   });
 });
 
 describe('columnTotals', () => {
   const benchCards = (...people: PersonRow[]) =>
-    columnOf(buildBoard({ people, projects: [], entries: [], today: TODAY }), 'col-bench')?.cards ?? [];
+    columnOf(
+      buildBoard({ people, projects: [], entries: [], today: TODAY }),
+      'col-bench'
+    )?.cards ?? [];
 
   it('adds up the monthly salaries and counts the people with none', () => {
-    expect(columnTotals(benchCards(ada, grace, linus))).toEqual({ monthlyCostPaise: 20_000_000, withoutSalary: 1 });
+    expect(columnTotals(benchCards(ada, grace, linus))).toEqual({
+      monthlyCostPaise: 20_000_000,
+      withoutSalary: 1,
+    });
   });
 
   it('is nothing for no cards', () => {
@@ -881,7 +1170,9 @@ describe('columnTotals', () => {
   });
 
   it('counts a salary of zero as a salary', () => {
-    expect(columnTotals(benchCards(person(5, 'Intern', { monthlySalaryPaise: 0 })))).toEqual({
+    expect(
+      columnTotals(benchCards(person(5, 'Intern', { monthlySalaryPaise: 0 })))
+    ).toEqual({
       monthlyCostPaise: 0,
       withoutSalary: 0,
     });
@@ -892,10 +1183,16 @@ describe('columnTotals', () => {
     const board = buildBoard({
       people: [senior],
       projects: [apollo],
-      entries: [onCard(2, senior, 2, apollo, '2026-06-01'), entry(1, senior, apollo, '2026-03-12')],
+      entries: [
+        onCard(2, senior, 2, apollo, '2026-06-01'),
+        entry(1, senior, apollo, '2026-03-12'),
+      ],
       today: TODAY,
     });
-    expect(columnTotals(columnOf(board, 'col-10')?.cards ?? [])).toEqual({ monthlyCostPaise: 9, withoutSalary: 0 });
+    expect(columnTotals(columnOf(board, 'col-10')?.cards ?? [])).toEqual({
+      monthlyCostPaise: 9,
+      withoutSalary: 0,
+    });
   });
 
   it('counts a card with no salary share as one without a salary, for each card', () => {
@@ -903,14 +1200,25 @@ describe('columnTotals', () => {
     const board = buildBoard({
       people: [unpaid],
       projects: [apollo],
-      entries: [onCard(2, unpaid, 2, apollo, '2026-06-01'), entry(1, unpaid, apollo, '2026-03-12')],
+      entries: [
+        onCard(2, unpaid, 2, apollo, '2026-06-01'),
+        entry(1, unpaid, apollo, '2026-03-12'),
+      ],
       today: TODAY,
     });
-    expect(columnTotals(columnOf(board, 'col-10')?.cards ?? [])).toEqual({ monthlyCostPaise: 0, withoutSalary: 2 });
+    expect(columnTotals(columnOf(board, 'col-10')?.cards ?? [])).toEqual({
+      monthlyCostPaise: 0,
+      withoutSalary: 2,
+    });
   });
 
   it('is what a column of the board carries', () => {
-    const board = buildBoard({ people: [ada, linus], projects: [], entries: [], today: TODAY });
+    const board = buildBoard({
+      people: [ada, linus],
+      projects: [],
+      entries: [],
+      today: TODAY,
+    });
     const bench = columnOf(board, 'col-bench');
     expect(bench).toMatchObject(columnTotals(bench?.cards ?? []));
   });
@@ -919,7 +1227,12 @@ describe('columnTotals', () => {
 describe('byPerson', () => {
   it('orders cards the way a column lists them: by name whatever the case, then by id', () => {
     const board = buildBoard({
-      people: [person(3, 'zoe'), person(2, 'Bea'), person(1, 'bea'), person(4, 'Adam')],
+      people: [
+        person(3, 'zoe'),
+        person(2, 'Bea'),
+        person(1, 'bea'),
+        person(4, 'Adam'),
+      ],
       projects: [],
       entries: [],
       today: TODAY,

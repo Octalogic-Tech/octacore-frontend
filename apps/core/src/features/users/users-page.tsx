@@ -8,7 +8,14 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { useAuth } from '@/features/auth/auth-context';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { filterBy } from '@/lib/filter';
@@ -22,10 +29,15 @@ export function UsersPage() {
   const { data, isLoading, isError, refetch } = useUsers();
   const remove = useDeleteUser();
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState<{ open: boolean; user?: User }>({ open: false });
+  const [form, setForm] = useState<{ open: boolean; user?: User }>({
+    open: false,
+  });
   const [toDelete, setToDelete] = useState<User | null>(null);
 
-  const filtered = useMemo(() => filterBy(data ?? [], search, ['name', 'email', 'role']), [data, search]);
+  const filtered = useMemo(
+    () => filterBy(data ?? [], search, ['name', 'email', 'role']),
+    [data, search]
+  );
   const paging = usePagedRows(filtered);
 
   return (
@@ -79,11 +91,19 @@ export function UsersPage() {
                 <TableBody>
                   {paging.pageRows.map((row) => (
                     <TableRow key={row.id}>
-                      <TableCell className="font-semibold">{row.name}</TableCell>
+                      <TableCell className="font-semibold">
+                        {row.name}
+                      </TableCell>
                       <TableCell>{row.email}</TableCell>
                       <TableCell>{row.role}</TableCell>
-                      <TableCell className="tabular">{row.lastLoginDate ? formatDate(row.lastLoginDate) : 'Never'}</TableCell>
-                      <TableCell className="tabular">{formatDate(row.createdDate)}</TableCell>
+                      <TableCell className="tabular">
+                        {row.lastLoginDate
+                          ? formatDate(row.lastLoginDate)
+                          : 'Never'}
+                      </TableCell>
+                      <TableCell className="tabular">
+                        {formatDate(row.createdDate)}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         <IconButton
                           label={`Edit ${row.name}`}

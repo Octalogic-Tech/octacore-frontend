@@ -23,7 +23,9 @@ vi.mock('@/lib/core-api', async (importOriginal) => ({
 const [figma, desk] = recurringRowsSchema.parse(recurringRows); // active in dollars, paused in rupees
 const onOpenChange = vi.fn();
 const onSaved = vi.fn();
-const created = (generatedCount: number) => ({ data: expensesEnvelope({ generatedCount }) });
+const created = (generatedCount: number) => ({
+  data: expensesEnvelope({ generatedCount }),
+});
 
 beforeEach(() => {
   vi.useFakeTimers({ toFake: ['Date'] });
@@ -34,7 +36,7 @@ beforeEach(() => {
       '/projects': projectRows,
       '/countries': countryRows,
       '/people': personRows,
-    }),
+    })
   );
 });
 
@@ -44,23 +46,44 @@ afterEach(() => {
 });
 
 async function openDialog(expense?: RecurringRow) {
-  renderWithProviders(<RecurringFormDialog open onOpenChange={onOpenChange} expense={expense} onSaved={onSaved} />);
-  await waitFor(() => expect(screen.getByRole('option', { name: 'United States · USD' })).toBeInTheDocument());
+  renderWithProviders(
+    <RecurringFormDialog
+      open
+      onOpenChange={onOpenChange}
+      expense={expense}
+      onSaved={onSaved}
+    />
+  );
+  await waitFor(() =>
+    expect(
+      screen.getByRole('option', { name: 'United States · USD' })
+    ).toBeInTheDocument()
+  );
 }
 
 describe('RecurringFormDialog: adding', () => {
   it('starts monthly, from today, in US dollars', async () => {
     await openDialog();
-    expect(screen.getByRole('dialog', { name: 'New recurring expense' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'New recurring expense' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Frequency')).toHaveValue('monthly');
     expect(screen.getByLabelText('Start date')).toHaveValue('2026-10-16');
-    await waitFor(() => expect(screen.getByLabelText('Country')).toHaveValue('226'));
+    await waitFor(() =>
+      expect(screen.getByLabelText('Country')).toHaveValue('226')
+    );
   });
 
   it('offers the active countries that have a rate, labelled with their currency, A to Z', async () => {
     await openDialog();
-    const options = screen.getAllByRole('option', { name: /·/ }).map((option) => option.textContent);
-    expect(options).toEqual(['Germany · EUR', 'India · INR', 'United States · USD']);
+    const options = screen
+      .getAllByRole('option', { name: /·/ })
+      .map((option) => option.textContent);
+    expect(options).toEqual([
+      'Germany · EUR',
+      'India · INR',
+      'United States · USD',
+    ]);
   });
 
   it('creates the expense and reports how many charges it made at once', async () => {
@@ -70,7 +93,9 @@ describe('RecurringFormDialog: adding', () => {
     await user.type(screen.getByLabelText('Name'), 'Figma');
     await user.selectOptions(screen.getByLabelText('Type'), '1');
     await user.type(screen.getByLabelText('Amount'), '15');
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '2026-08-01' } });
+    fireEvent.change(screen.getByLabelText('Start date'), {
+      target: { value: '2026-08-01' },
+    });
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onSaved).toHaveBeenCalledWith(3));
     expect(onOpenChange).toHaveBeenCalledWith(false);
@@ -97,14 +122,23 @@ describe('RecurringFormDialog: adding', () => {
     await user.selectOptions(screen.getByLabelText('Frequency'), 'yearly');
     await user.selectOptions(screen.getByLabelText('Country'), '99');
     await user.type(screen.getByLabelText('Amount'), '1500');
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2030-10-16' } });
+    fireEvent.change(screen.getByLabelText('End date'), {
+      target: { value: '2030-10-16' },
+    });
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(coreApi.post).toHaveBeenCalled());
     expect(coreApi.post).toHaveBeenCalledWith(
       '/recurring-expenses',
-      expect.objectContaining({ frequency: 'yearly', countryId: 99, amount: 150000, endDate: '2030-10-16' }),
+      expect.objectContaining({
+        frequency: 'yearly',
+        countryId: 99,
+        amount: 150000,
+        endDate: '2030-10-16',
+      })
     );
-    expect(screen.getByText('About $17.00 at 88.25 INR per $1.')).toBeInTheDocument(); // 150000 / 88.25 = 1699.7 cents
+    expect(
+      screen.getByText('About $17.00 at 88.25 INR per $1.')
+    ).toBeInTheDocument(); // 150000 / 88.25 = 1699.7 cents
   });
 
   it('blocks an empty form and sends nothing', async () => {
@@ -123,19 +157,34 @@ describe('RecurringFormDialog: adding', () => {
     await user.type(screen.getByLabelText('Name'), 'Figma');
     await user.selectOptions(screen.getByLabelText('Type'), '1');
     await user.type(screen.getByLabelText('Amount'), '15');
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '2026-10-01' } });
+    fireEvent.change(screen.getByLabelText('End date'), {
+      target: { value: '2026-10-01' },
+    });
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('The end date must not be before the start date')).toBeInTheDocument();
-    fireEvent.change(screen.getByLabelText('Start date'), { target: { value: '1999-12-31' } });
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '' } });
+    expect(
+      await screen.findByText('The end date must not be before the start date')
+    ).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Start date'), {
+      target: { value: '1999-12-31' },
+    });
+    fireEvent.change(screen.getByLabelText('End date'), {
+      target: { value: '' },
+    });
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('The start date must be between the years 2000 and 2100')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'The start date must be between the years 2000 and 2100'
+      )
+    ).toBeInTheDocument();
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
   it('shows the service’s own message and stays open when it refuses', async () => {
     vi.mocked(coreApi.post).mockRejectedValue(
-      rejection(422, 'That amount is less than one US cent at this country’s rate'),
+      rejection(
+        422,
+        'That amount is less than one US cent at this country’s rate'
+      )
     );
     const user = userEvent.setup();
     await openDialog();
@@ -143,7 +192,11 @@ describe('RecurringFormDialog: adding', () => {
     await user.selectOptions(screen.getByLabelText('Type'), '1');
     await user.type(screen.getByLabelText('Amount'), '15');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('That amount is less than one US cent at this country’s rate')).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        'That amount is less than one US cent at this country’s rate'
+      )
+    ).toBeInTheDocument();
     expect(onSaved).not.toHaveBeenCalled();
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
@@ -152,7 +205,9 @@ describe('RecurringFormDialog: adding', () => {
 describe('RecurringFormDialog: editing', () => {
   it('starts from the expense, a rupee expense in rupees', async () => {
     await openDialog(desk);
-    expect(screen.getByRole('dialog', { name: 'Edit recurring expense' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Edit recurring expense' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Name')).toHaveValue('Co-working desk');
     expect(screen.getByLabelText('Country')).toHaveValue('99');
     expect(screen.getByLabelText('Person')).toHaveValue('1');
@@ -165,29 +220,54 @@ describe('RecurringFormDialog: editing', () => {
   it('keeps the expense’s own country in the list after it was switched off, and sends it unchanged', async () => {
     vi.mocked(coreApi.patch).mockResolvedValue({ data: expensesEnvelope({}) });
     const user = userEvent.setup();
-    const pound = { id: 225, name: 'United Kingdom', currencyCode: 'GBP', currencySymbol: '£' };
+    const pound = {
+      id: 225,
+      name: 'United Kingdom',
+      currencyCode: 'GBP',
+      currencySymbol: '£',
+    };
     await openDialog({ ...desk, countryId: 225, country: pound });
-    expect(screen.getByRole('option', { name: 'United Kingdom · GBP' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'United Kingdom · GBP' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Country')).toHaveValue('225');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(coreApi.patch).toHaveBeenCalled());
-    expect(coreApi.patch).toHaveBeenCalledWith('/recurring-expenses/8', expect.objectContaining({ countryId: 225 }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/recurring-expenses/8',
+      expect.objectContaining({ countryId: 225 })
+    );
   });
 
   it('says so when the expense’s own country has no rate, rather than showing a conversion', async () => {
-    const yen = { id: 107, name: 'Japan', currencyCode: 'JPY', currencySymbol: '¥' };
+    const yen = {
+      id: 107,
+      name: 'Japan',
+      currencyCode: 'JPY',
+      currencySymbol: '¥',
+    };
     await openDialog({ ...desk, countryId: 107, country: yen });
-    expect(screen.getByText('JPY has no exchange rate yet. Sync the rates on the Countries page.')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'JPY has no exchange rate yet. Sync the rates on the Countries page.'
+      )
+    ).toBeInTheDocument();
   });
 
   it('locks the start date once a charge exists, and not before', async () => {
     await openDialog(figma);
     expect(screen.getByLabelText('Start date')).toHaveAttribute('readonly');
-    expect(screen.getByText('Fixed once a charge has been created.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Fixed once a charge has been created.')
+    ).toBeInTheDocument();
   });
 
   it('leaves the start date open while no charge has been created', async () => {
-    await openDialog({ ...figma, lastChargeDate: null, startDate: '2027-01-01' });
+    await openDialog({
+      ...figma,
+      lastChargeDate: null,
+      startDate: '2027-01-01',
+    });
     expect(screen.getByLabelText('Start date')).not.toHaveAttribute('readonly');
   });
 
@@ -219,17 +299,24 @@ describe('RecurringFormDialog: editing', () => {
     const user = userEvent.setup();
     await openDialog({ ...figma, endDate: '2027-06-30' });
     expect(screen.getByLabelText('End date')).toHaveValue('2027-06-30');
-    fireEvent.change(screen.getByLabelText('End date'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('End date'), {
+      target: { value: '' },
+    });
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(coreApi.patch).toHaveBeenCalled());
-    expect(coreApi.patch).toHaveBeenCalledWith('/recurring-expenses/7', expect.objectContaining({ endDate: null }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/recurring-expenses/7',
+      expect.objectContaining({ endDate: null })
+    );
   });
 });
 
 describe('RecurringFormDialog: the person', () => {
   it('lists the people to choose from, none being the starting choice', async () => {
     await openDialog();
-    expect(await screen.findByRole('option', { name: 'Ada Lovelace' })).toBeInTheDocument();
+    expect(
+      await screen.findByRole('option', { name: 'Ada Lovelace' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Person')).toHaveValue('');
   });
 
@@ -244,7 +331,10 @@ describe('RecurringFormDialog: the person', () => {
     await user.type(screen.getByLabelText('Amount'), '15');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(coreApi.post).toHaveBeenCalled());
-    expect(coreApi.post).toHaveBeenCalledWith('/recurring-expenses', expect.objectContaining({ personId: 1 }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/recurring-expenses',
+      expect.objectContaining({ personId: 1 })
+    );
   });
 
   it('clears the person by choosing none', async () => {
@@ -254,6 +344,9 @@ describe('RecurringFormDialog: the person', () => {
     await user.selectOptions(screen.getByLabelText('Person'), '');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(coreApi.patch).toHaveBeenCalled());
-    expect(coreApi.patch).toHaveBeenCalledWith('/recurring-expenses/8', expect.objectContaining({ personId: null }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/recurring-expenses/8',
+      expect.objectContaining({ personId: null })
+    );
   });
 });

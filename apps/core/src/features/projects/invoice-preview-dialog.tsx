@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { fetchInvoicePdf } from './api';
 import { downloadInvoicePdf, notSetUpMessage } from './invoice-pdf';
 
@@ -17,12 +22,21 @@ interface InvoicePreviewDialogProps {
   fallbackFocusId?: string;
 }
 
-export function InvoicePreviewDialog({ open, onOpenChange, invoice, fallbackFocusId }: InvoicePreviewDialogProps) {
+export function InvoicePreviewDialog({
+  open,
+  onOpenChange,
+  invoice,
+  fallbackFocusId,
+}: InvoicePreviewDialogProps) {
   return (
     <Dialog open={open && invoice !== null} onOpenChange={onOpenChange}>
       <DialogContent fallbackFocusId={fallbackFocusId} className="max-w-5xl">
-        <DialogTitle>{invoice ? `Preview ${invoice.number}` : 'Preview'}</DialogTitle>
-        <DialogDescription>The invoice as the client receives it, drawn from what is saved.</DialogDescription>
+        <DialogTitle>
+          {invoice ? `Preview ${invoice.number}` : 'Preview'}
+        </DialogTitle>
+        <DialogDescription>
+          The invoice as the client receives it, drawn from what is saved.
+        </DialogDescription>
         {/* Mounted only while open: every opening asks for the file again, so it always shows what is saved now. */}
         {invoice ? <PreviewBody invoice={invoice} /> : null}
       </DialogContent>
@@ -30,7 +44,10 @@ export function InvoicePreviewDialog({ open, onOpenChange, invoice, fallbackFocu
   );
 }
 
-type Preview = { status: 'loading' } | { status: 'ready'; url: string } | { status: 'error'; message: string };
+type Preview =
+  | { status: 'loading' }
+  | { status: 'ready'; url: string }
+  | { status: 'error'; message: string };
 
 function PreviewBody({ invoice }: { invoice: InvoiceRef }) {
   const [preview, setPreview] = useState<Preview>({ status: 'loading' });
@@ -48,8 +65,13 @@ function PreviewBody({ invoice }: { invoice: InvoiceRef }) {
         setPreview({ status: 'ready', url });
       },
       (error: unknown) => {
-        if (!cancelled) setPreview({ status: 'error', message: notSetUpMessage(error) ?? 'The invoice could not be shown.' });
-      },
+        if (!cancelled)
+          setPreview({
+            status: 'error',
+            message:
+              notSetUpMessage(error) ?? 'The invoice could not be shown.',
+          });
+      }
     );
     return () => {
       cancelled = true;
@@ -62,7 +84,9 @@ function PreviewBody({ invoice }: { invoice: InvoiceRef }) {
     try {
       await downloadInvoicePdf(invoice);
     } catch (error) {
-      setDownloadFailure(notSetUpMessage(error) ?? 'That did not download. Try again.');
+      setDownloadFailure(
+        notSetUpMessage(error) ?? 'That did not download. Try again.'
+      );
     }
   }
 
@@ -76,13 +100,20 @@ function PreviewBody({ invoice }: { invoice: InvoiceRef }) {
       {preview.status === 'error' ? (
         <div role="alert" className="grid justify-items-start gap-2">
           <p className="text-body">{preview.message}</p>
-          <Button variant="quiet" onClick={() => setAttempt((count) => count + 1)}>
+          <Button
+            variant="quiet"
+            onClick={() => setAttempt((count) => count + 1)}
+          >
             Try again
           </Button>
         </div>
       ) : null}
       {preview.status === 'ready' ? (
-        <iframe title={`Invoice ${invoice.number}`} src={preview.url} className="h-[70vh] w-full border border-navy" />
+        <iframe
+          title={`Invoice ${invoice.number}`}
+          src={preview.url}
+          className="h-[70vh] w-full border border-navy"
+        />
       ) : null}
       {downloadFailure ? (
         <p role="alert" className="text-small font-semibold text-foreground">
@@ -90,7 +121,10 @@ function PreviewBody({ invoice }: { invoice: InvoiceRef }) {
         </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-3">
-        <Button disabled={preview.status !== 'ready'} onClick={() => void download()}>
+        <Button
+          disabled={preview.status !== 'ready'}
+          onClick={() => void download()}
+        >
           Download
         </Button>
       </div>

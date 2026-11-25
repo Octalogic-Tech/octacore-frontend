@@ -1,11 +1,29 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { UserRow } from '@/lib/auth-schema';
 import { refreshSession } from '@/lib/core-api';
-import { endSession, onSessionEnded, onSessionUser, setAccessToken } from '@/lib/session';
+import {
+  endSession,
+  onSessionEnded,
+  onSessionUser,
+  setAccessToken,
+} from '@/lib/session';
 import { changePassword as requestPasswordChange, login, logout } from './api';
-import { clearPendingLogout, hasPendingLogout, markPendingLogout } from './pending-logout';
+import {
+  clearPendingLogout,
+  hasPendingLogout,
+  markPendingLogout,
+} from './pending-logout';
 
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous';
 
@@ -14,7 +32,10 @@ export interface AuthContextValue {
   user: UserRow | null;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  changePassword: (
+    currentPassword: string,
+    newPassword: string
+  ) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -67,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       refreshSession().then(
         (session) => settle({ status: 'authenticated', user: session.user }),
-        () => settle(SIGNED_OUT),
+        () => settle(SIGNED_OUT)
       );
     }
     return () => {
@@ -82,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryClient.clear();
         apply(SIGNED_OUT);
       }),
-    [queryClient, apply],
+    [queryClient, apply]
   );
 
   // A refresh says whose session it is. Another person signing in in another tab replaces the shared cookie, so a
@@ -100,7 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           apply({ status: 'authenticated', user });
         }
       }),
-    [queryClient, apply],
+    [queryClient, apply]
   );
 
   // A sign-out in another tab ends the session here too, without asking the service again.
@@ -124,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearPendingLogout();
       apply({ status: 'authenticated', user: session.user });
     },
-    [apply],
+    [apply]
   );
 
   const signOut = useCallback(async () => {
@@ -150,12 +171,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const session = await requestPasswordChange(currentPassword, newPassword);
       apply({ status: 'authenticated', user: session.user });
     },
-    [apply],
+    [apply]
   );
 
   const value = useMemo(
     () => ({ ...state, signIn, signOut, changePassword }),
-    [state, signIn, signOut, changePassword],
+    [state, signIn, signOut, changePassword]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

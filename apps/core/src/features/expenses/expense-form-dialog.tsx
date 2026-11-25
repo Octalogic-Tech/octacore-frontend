@@ -2,7 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -56,7 +61,10 @@ export function ExpenseFormDialog({
     getValues,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<ExpenseFormValues>({ resolver: zodResolver(expenseFormSchema), defaultValues: emptyExpenseForm });
+  } = useForm<ExpenseFormValues>({
+    resolver: zodResolver(expenseFormSchema),
+    defaultValues: emptyExpenseForm,
+  });
 
   const usdId = dollarCountry(countries.data ?? [])?.id;
 
@@ -69,7 +77,8 @@ export function ExpenseFormDialog({
 
   // US dollars are the starting currency, once the list is here to say which country that is.
   useEffect(() => {
-    if (open && usdId !== undefined && getValues('countryId') === '') setValue('countryId', String(usdId));
+    if (open && usdId !== undefined && getValues('countryId') === '')
+      setValue('countryId', String(usdId));
   }, [open, usdId, expense, getValues, setValue]);
 
   // The expense's own type and project are always options, so an edit cannot blank a select whose list is loading.
@@ -77,33 +86,49 @@ export function ExpenseFormDialog({
     () =>
       withCurrent(
         (types.data ?? []).map((type) => ({ id: type.id, label: type.name })),
-        expense && { id: expense.expenseTypeId, label: expense.expenseType.name },
+        expense && {
+          id: expense.expenseTypeId,
+          label: expense.expenseType.name,
+        }
       ),
-    [types.data, expense],
+    [types.data, expense]
   );
   const projectOptions = useMemo(
     () =>
       withCurrent(
-        (projects.data ?? []).map((project) => ({ id: project.id, label: project.name })),
-        expense?.project ? { id: expense.project.id, label: expense.project.name } : undefined,
+        (projects.data ?? []).map((project) => ({
+          id: project.id,
+          label: project.name,
+        })),
+        expense?.project
+          ? { id: expense.project.id, label: expense.project.name }
+          : undefined
       ),
-    [projects.data, expense],
+    [projects.data, expense]
   );
 
   const personOptions = useMemo(
     () =>
       withCurrent(
-        (people.data ?? []).map((person) => ({ id: person.id, label: person.name })),
-        expense?.person ? { id: expense.person.id, label: expense.person.name } : undefined,
+        (people.data ?? []).map((person) => ({
+          id: person.id,
+          label: person.name,
+        })),
+        expense?.person
+          ? { id: expense.person.id, label: expense.person.name }
+          : undefined
       ),
-    [people.data, expense],
+    [people.data, expense]
   );
 
   const submit = handleSubmit(async (values) => {
     setFailure(null);
     try {
       const shown = expense ? shownAmount(expense, usdId) : undefined;
-      await save.mutateAsync({ id: expense?.id, body: toExpenseBody(values, shown) });
+      await save.mutateAsync({
+        id: expense?.id,
+        body: toExpenseBody(values, shown),
+      });
     } catch (error) {
       // A 422 (an amount under one US cent, a country with no rate) carries a message written for people.
       setFailure(serviceMessage(error) ?? 'That did not save. Try again.');
@@ -123,11 +148,20 @@ export function ExpenseFormDialog({
       <DialogContent fallbackFocusId={fallbackFocusId}>
         <DialogTitle>{expense ? 'Edit expense' : 'New expense'}</DialogTitle>
         <DialogDescription>
-          One charge. For something that repeats, add a recurring expense and its charges are created for you.
+          One charge. For something that repeats, add a recurring expense and
+          its charges are created for you.
         </DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
-          <Field label="Name" htmlFor="expense-name" error={errors.name?.message}>
-            <Input {...fieldA11y('expense-name', errors.name?.message)} {...register('name')} autoComplete="off" />
+          <Field
+            label="Name"
+            htmlFor="expense-name"
+            error={errors.name?.message}
+          >
+            <Input
+              {...fieldA11y('expense-name', errors.name?.message)}
+              {...register('name')}
+              autoComplete="off"
+            />
           </Field>
           <Field
             label="Type"
@@ -135,7 +169,10 @@ export function ExpenseFormDialog({
             error={errors.expenseTypeId?.message}
             hint={types.isError ? 'Types could not be loaded.' : undefined}
           >
-            <Select {...fieldA11y('expense-type', errors.expenseTypeId?.message)} {...register('expenseTypeId')}>
+            <Select
+              {...fieldA11y('expense-type', errors.expenseTypeId?.message)}
+              {...register('expenseTypeId')}
+            >
               <option value="">Choose…</option>
               {typeOptions.map((option) => (
                 <option key={option.id} value={String(option.id)}>
@@ -144,8 +181,16 @@ export function ExpenseFormDialog({
               ))}
             </Select>
           </Field>
-          <Field label="Charge date" htmlFor="expense-date" error={errors.chargeDate?.message}>
-            <Input {...fieldA11y('expense-date', errors.chargeDate?.message)} {...register('chargeDate')} type="date" />
+          <Field
+            label="Charge date"
+            htmlFor="expense-date"
+            error={errors.chargeDate?.message}
+          >
+            <Input
+              {...fieldA11y('expense-date', errors.chargeDate?.message)}
+              {...register('chargeDate')}
+              type="date"
+            />
           </Field>
           <AmountField
             idPrefix="expense"
@@ -163,9 +208,14 @@ export function ExpenseFormDialog({
             label="Project"
             htmlFor="expense-project"
             error={errors.projectId?.message}
-            hint={projects.isError ? 'Projects could not be loaded.' : undefined}
+            hint={
+              projects.isError ? 'Projects could not be loaded.' : undefined
+            }
           >
-            <Select {...fieldA11y('expense-project', errors.projectId?.message)} {...register('projectId')}>
+            <Select
+              {...fieldA11y('expense-project', errors.projectId?.message)}
+              {...register('projectId')}
+            >
               <option value="">None</option>
               {projectOptions.map((option) => (
                 <option key={option.id} value={String(option.id)}>
@@ -180,7 +230,10 @@ export function ExpenseFormDialog({
             error={errors.personId?.message}
             hint={people.isError ? 'People could not be loaded.' : undefined}
           >
-            <Select {...fieldA11y('expense-person', errors.personId?.message)} {...register('personId')}>
+            <Select
+              {...fieldA11y('expense-person', errors.personId?.message)}
+              {...register('personId')}
+            >
               <option value="">None</option>
               {personOptions.map((option) => (
                 <option key={option.id} value={String(option.id)}>
@@ -189,11 +242,22 @@ export function ExpenseFormDialog({
               ))}
             </Select>
           </Field>
-          <Field label="Notes" htmlFor="expense-notes" error={errors.notes?.message}>
-            <Textarea {...fieldA11y('expense-notes', errors.notes?.message)} {...register('notes')} rows={3} />
+          <Field
+            label="Notes"
+            htmlFor="expense-notes"
+            error={errors.notes?.message}
+          >
+            <Textarea
+              {...fieldA11y('expense-notes', errors.notes?.message)}
+              {...register('notes')}
+              rows={3}
+            />
           </Field>
           {failure ? (
-            <p role="alert" className="text-small font-semibold text-foreground">
+            <p
+              role="alert"
+              className="text-small font-semibold text-foreground"
+            >
               {failure}
             </p>
           ) : null}
@@ -201,7 +265,11 @@ export function ExpenseFormDialog({
             <Button type="submit" disabled={isSubmitting}>
               Save
             </Button>
-            <Button variant="quiet" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
+            <Button
+              variant="quiet"
+              disabled={isSubmitting}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
           </div>

@@ -14,12 +14,12 @@ describe('App', () => {
     expect(baseElement).toBeTruthy();
   });
 
-  it('should have a greeting as the title', () => {
+  it('should list the industries', () => {
     const { getByText } = render(
       <BrowserRouter>
         <App />
       </BrowserRouter>
     );
-    expect(getByText(/Welcome external--portfolio/gi)).toBeTruthy();
+    expect(getByText('Education')).toBeTruthy();
   });
 });

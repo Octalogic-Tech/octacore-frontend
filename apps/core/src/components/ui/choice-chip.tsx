@@ -1,7 +1,9 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-type ChoiceChipProps = Omit<ComponentProps<'input'>, 'type' | 'children'> & { children: ReactNode };
+type ChoiceChipProps = Omit<ComponentProps<'input'>, 'type' | 'children'> & {
+  children: ReactNode;
+};
 
 /**
  * One choice among several, as a native checkbox drawn as a 44px chip: the chosen chip is a navy block. The box is
@@ -16,7 +18,7 @@ export function ChoiceChip({ className, children, ...props }: ChoiceChipProps) {
         'has-[:checked]:bg-navy has-[:checked]:text-on-navy',
         'after:pointer-events-none after:absolute after:inset-x-0 after:-bottom-px after:h-[3px] has-[:focus-visible]:after:bg-teal',
         'has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60',
-        className,
+        className
       )}
     >
       <input type="checkbox" className="sr-only" {...props} />

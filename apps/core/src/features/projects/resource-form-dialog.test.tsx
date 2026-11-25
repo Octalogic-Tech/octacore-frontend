@@ -18,7 +18,9 @@ const [asha] = resourceRowsSchema.parse(resourceRows);
 const onOpenChange = vi.fn();
 
 /** What the service answers a save with; the dialog never reads it. */
-const saved = { data: { statusCode: 200, message: 'saved', data: {}, meta: null } };
+const saved = {
+  data: { statusCode: 200, message: 'saved', data: {}, meta: null },
+};
 
 const failure = (status: number) =>
   new AxiosError('failed', 'ERR_BAD_REQUEST', undefined, null, {
@@ -29,7 +31,8 @@ const failure = (status: number) =>
     config: {} as never,
   });
 
-const CHANGED_ELSEWHERE = 'This changed elsewhere, so it cannot be saved. Close this dialog and go back to Projects.';
+const CHANGED_ELSEWHERE =
+  'This changed elsewhere, so it cannot be saved. Close this dialog and go back to Projects.';
 
 const serve = (opts: { people?: 'fail' } = {}) =>
   vi.mocked(coreApi.get).mockImplementation((async (path: string) => {
@@ -42,7 +45,14 @@ const serve = (opts: { people?: 'fail' } = {}) =>
   }) as never);
 
 function openDialog(props: { resource?: ResourceRow } = {}) {
-  return renderWithProviders(<ResourceFormDialog open onOpenChange={onOpenChange} projectId={1} {...props} />);
+  return renderWithProviders(
+    <ResourceFormDialog
+      open
+      onOpenChange={onOpenChange}
+      projectId={1}
+      {...props}
+    />
+  );
 }
 
 beforeEach(() => {
@@ -58,11 +68,15 @@ describe('ResourceFormDialog: adding', () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
     openDialog();
-    expect(screen.getByRole('dialog', { name: 'New resource' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'New resource' })
+    ).toBeInTheDocument();
     await screen.findByRole('option', { name: 'Mobile' });
     await user.type(screen.getByLabelText('Name'), 'Zoë Müller');
     await user.selectOptions(screen.getByLabelText('Category'), 'Mobile');
-    expect(screen.getByText('Dollars and cents, like 85.50.')).toBeInTheDocument();
+    expect(
+      screen.getByText('Dollars and cents, like 85.50.')
+    ).toBeInTheDocument();
     await user.type(screen.getByLabelText('Rate per hour'), '85.50');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
@@ -120,17 +134,24 @@ describe('ResourceFormDialog: adding', () => {
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
-  it.each(['12.505', '$85', '1,200'])('says what is wrong with a rate of %s and sends nothing', async (rate) => {
-    const user = userEvent.setup();
-    openDialog();
-    await screen.findByRole('option', { name: 'Mobile' });
-    await user.type(screen.getByLabelText('Name'), 'Zoë');
-    await user.selectOptions(screen.getByLabelText('Category'), 'Mobile');
-    await user.type(screen.getByLabelText('Rate per hour'), rate);
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Enter an amount like 7.20, with no commas or signs')).toBeInTheDocument();
-    expect(coreApi.post).not.toHaveBeenCalled();
-  });
+  it.each(['12.505', '$85', '1,200'])(
+    'says what is wrong with a rate of %s and sends nothing',
+    async (rate) => {
+      const user = userEvent.setup();
+      openDialog();
+      await screen.findByRole('option', { name: 'Mobile' });
+      await user.type(screen.getByLabelText('Name'), 'Zoë');
+      await user.selectOptions(screen.getByLabelText('Category'), 'Mobile');
+      await user.type(screen.getByLabelText('Rate per hour'), rate);
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      expect(
+        await screen.findByText(
+          'Enter an amount like 7.20, with no commas or signs'
+        )
+      ).toBeInTheDocument();
+      expect(coreApi.post).not.toHaveBeenCalled();
+    }
+  );
 
   it('refuses a rate past the cap the service holds', async () => {
     const user = userEvent.setup();
@@ -140,14 +161,18 @@ describe('ResourceFormDialog: adding', () => {
     await user.selectOptions(screen.getByLabelText('Category'), 'Mobile');
     await user.type(screen.getByLabelText('Rate per hour'), '100000000.01');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('The amount is too large')).toBeInTheDocument();
+    expect(
+      await screen.findByText('The amount is too large')
+    ).toBeInTheDocument();
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
   it('says so when the people could not be loaded, and still lets a resource be saved without one', async () => {
     serve({ people: 'fail' });
     openDialog();
-    expect(await screen.findByText('People could not be loaded.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('People could not be loaded.')
+    ).toBeInTheDocument();
   });
 });
 
@@ -156,7 +181,9 @@ describe('ResourceFormDialog: editing', () => {
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     openDialog({ resource: asha });
-    expect(screen.getByRole('dialog', { name: 'Edit resource' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Edit resource' })
+    ).toBeInTheDocument();
     await screen.findByRole('option', { name: 'Ben Cho' });
     expect(screen.getByLabelText('Name')).toHaveValue('Asha Rao');
     expect(screen.getByLabelText('Person')).toHaveValue('1');
@@ -176,14 +203,20 @@ describe('ResourceFormDialog: editing', () => {
   });
 
   it('keeps the linked person as an option while the people are still loading', async () => {
-    vi.mocked(coreApi.get).mockImplementation((() => new Promise(() => undefined)) as never);
+    vi.mocked(coreApi.get).mockImplementation(
+      (() => new Promise(() => undefined)) as never
+    );
     openDialog({ resource: asha });
     expect(screen.getByLabelText('Person')).toHaveValue('1');
-    expect(screen.getByRole('option', { name: 'Asha Rao' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'Asha Rao' })
+    ).toBeInTheDocument();
   });
 
   it('opens on None and Choose for a person and a category the service no longer lists, and asks for a category', async () => {
-    const [orphan] = resourceRowsSchema.parse([{ ...resourceRows[0], person: null, category: null }]);
+    const [orphan] = resourceRowsSchema.parse([
+      { ...resourceRows[0], person: null, category: null },
+    ]);
     const user = userEvent.setup();
     openDialog({ resource: orphan });
     await screen.findByRole('option', { name: 'Mobile' });
@@ -211,30 +244,41 @@ describe('ResourceFormDialog: failures', () => {
   it('says so, and stays open, when an add fails for any other reason', async () => {
     vi.mocked(coreApi.post).mockRejectedValue(failure(500));
     await submitFilledForm();
-    expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That did not save. Try again.'
+    );
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
   it('does not offer a retry that cannot work when the project, person or category is gone (409 on add)', async () => {
     vi.mocked(coreApi.post).mockRejectedValue(failure(409));
     await submitFilledForm();
-    expect(await screen.findByRole('alert')).toHaveTextContent(CHANGED_ELSEWHERE);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      CHANGED_ELSEWHERE
+    );
   });
 
   it('does not offer a retry that cannot work when the resource was removed elsewhere (404 on edit)', async () => {
     vi.mocked(coreApi.patch).mockRejectedValue(failure(404));
     await submitFilledForm(asha);
-    expect(await screen.findByRole('alert')).toHaveTextContent(CHANGED_ELSEWHERE);
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      CHANGED_ELSEWHERE
+    );
   });
 
   it.each([
     ['a 404 on add', 'post', undefined, 404],
     ['a 409 on edit', 'patch', asha, 409],
-  ] as const)('still offers a retry for %s', async (_label, method, resource, status) => {
-    vi.mocked(coreApi[method]).mockRejectedValue(failure(status));
-    await submitFilledForm(resource);
-    expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
-  });
+  ] as const)(
+    'still offers a retry for %s',
+    async (_label, method, resource, status) => {
+      vi.mocked(coreApi[method]).mockRejectedValue(failure(status));
+      await submitFilledForm(resource);
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        'That did not save. Try again.'
+      );
+    }
+  );
 });
 
 describe('ResourceFormDialog: number of people', () => {
@@ -244,7 +288,9 @@ describe('ResourceFormDialog: number of people', () => {
     openDialog();
     await screen.findByRole('option', { name: 'Mobile' });
     expect(screen.getByLabelText('Number of people')).toHaveValue('1');
-    expect(screen.getByText('How many people this row stands for.')).toBeInTheDocument();
+    expect(
+      screen.getByText('How many people this row stands for.')
+    ).toBeInTheDocument();
     await user.type(screen.getByLabelText('Name'), 'Fullstack Developer');
     await user.selectOptions(screen.getByLabelText('Category'), 'Mobile');
     await user.clear(screen.getByLabelText('Number of people'));
@@ -262,19 +308,27 @@ describe('ResourceFormDialog: number of people', () => {
     });
   });
 
-  it.each(['0', '1001', '2.5', ''])('refuses %j people and sends nothing', async (people) => {
-    const user = userEvent.setup();
-    openDialog();
-    await screen.findByRole('option', { name: 'Mobile' });
-    await user.type(screen.getByLabelText('Name'), 'Zoë');
-    await user.selectOptions(screen.getByLabelText('Category'), 'Mobile');
-    await user.type(screen.getByLabelText('Rate per hour'), '85');
-    await user.clear(screen.getByLabelText('Number of people'));
-    if (people) await user.type(screen.getByLabelText('Number of people'), people);
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText(/Number of people is required|Enter a whole number from 1 to 1,000/)).toBeInTheDocument();
-    expect(coreApi.post).not.toHaveBeenCalled();
-  });
+  it.each(['0', '1001', '2.5', ''])(
+    'refuses %j people and sends nothing',
+    async (people) => {
+      const user = userEvent.setup();
+      openDialog();
+      await screen.findByRole('option', { name: 'Mobile' });
+      await user.type(screen.getByLabelText('Name'), 'Zoë');
+      await user.selectOptions(screen.getByLabelText('Category'), 'Mobile');
+      await user.type(screen.getByLabelText('Rate per hour'), '85');
+      await user.clear(screen.getByLabelText('Number of people'));
+      if (people)
+        await user.type(screen.getByLabelText('Number of people'), people);
+      await user.click(screen.getByRole('button', { name: 'Save' }));
+      expect(
+        await screen.findByText(
+          /Number of people is required|Enter a whole number from 1 to 1,000/
+        )
+      ).toBeInTheDocument();
+      expect(coreApi.post).not.toHaveBeenCalled();
+    }
+  );
 
   it('opens on the resource’s headcount', async () => {
     openDialog({ resource: asha });

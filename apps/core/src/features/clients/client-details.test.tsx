@@ -47,15 +47,27 @@ afterEach(() => {
 describe('useClientDetails', () => {
   it('starts with both lists loading and nothing found', () => {
     const { result } = setup(1);
-    expect(result.current).toMatchObject({ client: null, contact: null, clientsState: 'loading', contactsState: 'loading' });
+    expect(result.current).toMatchObject({
+      client: null,
+      contact: null,
+      clientsState: 'loading',
+      contactsState: 'loading',
+    });
   });
 
   it('finds the client and its contact by the client’s id', async () => {
     const { result } = setup(1);
     await waitFor(() => expect(result.current.contactsState).toBe('ready'));
     await waitFor(() => expect(result.current.clientsState).toBe('ready'));
-    expect(result.current.client).toMatchObject({ name: 'Acme', city: 'Pune', countryName: 'India' });
-    expect(result.current.contact).toMatchObject({ name: 'Ada Lovelace', email: 'ada@example.com' });
+    expect(result.current.client).toMatchObject({
+      name: 'Acme',
+      city: 'Pune',
+      countryName: 'India',
+    });
+    expect(result.current.contact).toMatchObject({
+      name: 'Ada Lovelace',
+      email: 'ada@example.com',
+    });
   });
 
   it('finds a client that has no contact', async () => {
@@ -69,13 +81,16 @@ describe('useClientDetails', () => {
   it.each([
     ['no client id', null],
     ['an id neither list holds', 999],
-  ])('finds nothing for %s, and says both lists are ready', async (_name, clientId) => {
-    const { result } = setup(clientId);
-    await waitFor(() => expect(result.current.contactsState).toBe('ready'));
-    await waitFor(() => expect(result.current.clientsState).toBe('ready'));
-    expect(result.current.client).toBeNull();
-    expect(result.current.contact).toBeNull();
-  });
+  ])(
+    'finds nothing for %s, and says both lists are ready',
+    async (_name, clientId) => {
+      const { result } = setup(clientId);
+      await waitFor(() => expect(result.current.contactsState).toBe('ready'));
+      await waitFor(() => expect(result.current.clientsState).toBe('ready'));
+      expect(result.current.client).toBeNull();
+      expect(result.current.contact).toBeNull();
+    }
+  );
 
   it('reports a failed contacts list on its own, and still finds the client', async () => {
     serve('contacts');

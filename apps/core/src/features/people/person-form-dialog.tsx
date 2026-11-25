@@ -3,7 +3,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { ChoiceChip } from '@/components/ui/choice-chip';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Arm } from '@/components/ui/marks';
@@ -42,7 +47,10 @@ export function PersonFormDialog({
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<PersonFormValues>({ resolver: zodResolver(personFormSchema), defaultValues: emptyPersonForm });
+  } = useForm<PersonFormValues>({
+    resolver: zodResolver(personFormSchema),
+    defaultValues: emptyPersonForm,
+  });
 
   useEffect(() => {
     if (open) {
@@ -54,9 +62,13 @@ export function PersonFormDialog({
   // The person's own technologies are always offered, so a technology list that is still loading, has failed or has
   // since lost one cannot clear them on save.
   const technologyOptions = useMemo(() => {
-    const options = (technologies.data ?? []).map((technology) => ({ id: technology.id, label: technology.name }));
+    const options = (technologies.data ?? []).map((technology) => ({
+      id: technology.id,
+      label: technology.name,
+    }));
     for (const own of person?.technologies ?? []) {
-      if (!options.some((option) => option.id === own.id)) options.push({ id: own.id, label: own.name });
+      if (!options.some((option) => option.id === own.id))
+        options.push({ id: own.id, label: own.name });
     }
     return options.sort((a, b) => a.label.localeCompare(b.label));
   }, [technologies.data, person]);
@@ -84,10 +96,22 @@ export function PersonFormDialog({
         <DialogTitle>{person ? 'Edit person' : 'New person'}</DialogTitle>
         <DialogDescription>Only the name is required.</DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
-          <Field label="Name" htmlFor="person-name" error={errors.name?.message}>
-            <Input {...fieldA11y('person-name', errors.name?.message)} {...register('name')} autoComplete="off" />
+          <Field
+            label="Name"
+            htmlFor="person-name"
+            error={errors.name?.message}
+          >
+            <Input
+              {...fieldA11y('person-name', errors.name?.message)}
+              {...register('name')}
+              autoComplete="off"
+            />
           </Field>
-          <Field label="Email" htmlFor="person-email" error={errors.email?.message}>
+          <Field
+            label="Email"
+            htmlFor="person-email"
+            error={errors.email?.message}
+          >
             <Input
               {...fieldA11y('person-email', errors.email?.message)}
               {...register('email')}
@@ -95,7 +119,11 @@ export function PersonFormDialog({
               autoComplete="off"
             />
           </Field>
-          <Field label="Phone" htmlFor="person-phone" error={errors.phone?.message}>
+          <Field
+            label="Phone"
+            htmlFor="person-phone"
+            error={errors.phone?.message}
+          >
             <Input
               {...fieldA11y('person-phone', errors.phone?.message)}
               {...register('phone')}
@@ -103,17 +131,33 @@ export function PersonFormDialog({
               autoComplete="off"
             />
           </Field>
-          <Field label="Joined" htmlFor="person-join-date" error={errors.joinDate?.message}>
-            <Input {...fieldA11y('person-join-date', errors.joinDate?.message)} {...register('joinDate')} type="date" />
+          <Field
+            label="Joined"
+            htmlFor="person-join-date"
+            error={errors.joinDate?.message}
+          >
+            <Input
+              {...fieldA11y('person-join-date', errors.joinDate?.message)}
+              {...register('joinDate')}
+              type="date"
+            />
           </Field>
-          <Field label="Left" htmlFor="person-leave-date" error={errors.leaveDate?.message}>
+          <Field
+            label="Left"
+            htmlFor="person-leave-date"
+            error={errors.leaveDate?.message}
+          >
             <Input
               {...fieldA11y('person-leave-date', errors.leaveDate?.message)}
               {...register('leaveDate')}
               type="date"
             />
           </Field>
-          <Field label="Image link" htmlFor="person-image-link" error={errors.imageLink?.message}>
+          <Field
+            label="Image link"
+            htmlFor="person-image-link"
+            error={errors.imageLink?.message}
+          >
             <Input
               {...fieldA11y('person-image-link', errors.imageLink?.message)}
               {...register('imageLink')}
@@ -121,9 +165,16 @@ export function PersonFormDialog({
               autoComplete="off"
             />
           </Field>
-          <Field label="Contract link" htmlFor="person-contract-link" error={errors.contractLink?.message}>
+          <Field
+            label="Contract link"
+            htmlFor="person-contract-link"
+            error={errors.contractLink?.message}
+          >
             <Input
-              {...fieldA11y('person-contract-link', errors.contractLink?.message)}
+              {...fieldA11y(
+                'person-contract-link',
+                errors.contractLink?.message
+              )}
               {...register('contractLink')}
               type="url"
               autoComplete="off"
@@ -136,7 +187,10 @@ export function PersonFormDialog({
             hint="Rupees and paise, like 85000.00."
           >
             <Input
-              {...fieldA11y('person-monthly-salary', errors.monthlySalary?.message)}
+              {...fieldA11y(
+                'person-monthly-salary',
+                errors.monthlySalary?.message
+              )}
               {...register('monthlySalary')}
               inputMode="decimal"
               autoComplete="off"
@@ -152,7 +206,9 @@ export function PersonFormDialog({
                   Technologies
                 </legend>
                 {technologyOptions.length === 0 && technologies.isSuccess ? (
-                  <p className="text-small text-navy-72">No technologies yet. Add some on the Technologies page.</p>
+                  <p className="text-small text-navy-72">
+                    No technologies yet. Add some on the Technologies page.
+                  </p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
                     {technologyOptions.map((option) => {
@@ -163,7 +219,9 @@ export function PersonFormDialog({
                           checked={field.value.includes(id)}
                           onChange={(event) =>
                             field.onChange(
-                              event.target.checked ? [...field.value, id] : field.value.filter((value) => value !== id),
+                              event.target.checked
+                                ? [...field.value, id]
+                                : field.value.filter((value) => value !== id)
                             )
                           }
                         >
@@ -174,13 +232,18 @@ export function PersonFormDialog({
                   </div>
                 )}
                 {technologies.isError ? (
-                  <p className="text-small text-navy-72">Technologies could not be loaded.</p>
+                  <p className="text-small text-navy-72">
+                    Technologies could not be loaded.
+                  </p>
                 ) : null}
               </fieldset>
             )}
           />
           {failed ? (
-            <p role="alert" className="text-small font-semibold text-foreground">
+            <p
+              role="alert"
+              className="text-small font-semibold text-foreground"
+            >
               That did not save. Try again.
             </p>
           ) : null}
@@ -188,7 +251,11 @@ export function PersonFormDialog({
             <Button type="submit" disabled={isSubmitting}>
               Save
             </Button>
-            <Button variant="quiet" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
+            <Button
+              variant="quiet"
+              disabled={isSubmitting}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
           </div>

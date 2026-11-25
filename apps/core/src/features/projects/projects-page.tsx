@@ -11,14 +11,25 @@ import { Field } from '@/components/ui/field';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
 import { Select } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { filterBy } from '@/lib/filter';
 import { formatUsd } from '@/lib/money';
 import { useDeleteProject, useProjects } from './api';
 import { ProjectFormDialog } from './project-form-dialog';
 import { ProjectStatusBadge } from './project-status-badge';
-import { projectStatusOptions, type ProjectRow, type ProjectStatus } from './schema';
+import {
+  projectStatusOptions,
+  type ProjectRow,
+  type ProjectStatus,
+} from './schema';
 
 const NONE = '—';
 
@@ -26,19 +37,31 @@ export function ProjectsPage() {
   const projects = useProjects();
   const remove = useDeleteProject();
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState<{ open: boolean; project?: ProjectRow }>({ open: false });
+  const [form, setForm] = useState<{ open: boolean; project?: ProjectRow }>({
+    open: false,
+  });
   const [toDelete, setToDelete] = useState<ProjectRow | null>(null);
 
   const [status, setStatus] = useState<'all' | ProjectStatus>('all');
 
   const rows = useMemo(() => projects.data ?? [], [projects.data]);
   const withStatus = useMemo(
-    () => (status === 'all' ? rows : rows.filter((row) => row.projectStatus === status)),
-    [rows, status],
+    () =>
+      status === 'all'
+        ? rows
+        : rows.filter((row) => row.projectStatus === status),
+    [rows, status]
   );
   const filtered = useMemo(
-    () => filterBy(withStatus, search, ['name', 'description', 'clientName', 'projectTypeLabel', 'billingTypeLabel']),
-    [withStatus, search],
+    () =>
+      filterBy(withStatus, search, [
+        'name',
+        'description',
+        'clientName',
+        'projectTypeLabel',
+        'billingTypeLabel',
+      ]),
+    [withStatus, search]
   );
   const paging = usePagedRows(filtered);
 
@@ -94,7 +117,9 @@ export function ProjectsPage() {
         >
           {filtered.length === 0 ? (
             <p className="p-6 text-body">
-              {search.trim() ? `No projects match “${search.trim()}”.` : 'No projects have this status.'}
+              {search.trim()
+                ? `No projects match “${search.trim()}”.`
+                : 'No projects have this status.'}
             </p>
           ) : (
             <>
@@ -128,8 +153,12 @@ export function ProjectsPage() {
                       <TableCell>
                         <ProjectStatusBadge status={project.projectStatus} />
                       </TableCell>
-                      <TableCell className="tabular text-right">{formatUsd(project.totalValueCents)}</TableCell>
-                      <TableCell className="tabular text-right">{formatUsd(project.totalOutstandingCents)}</TableCell>
+                      <TableCell className="tabular text-right">
+                        {formatUsd(project.totalValueCents)}
+                      </TableCell>
+                      <TableCell className="tabular text-right">
+                        {formatUsd(project.totalOutstandingCents)}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         <IconButton
                           label={`Edit ${project.name}`}

@@ -6,7 +6,11 @@ import { ChoiceChip } from './choice-chip';
 function Chip({ disabled = false }: { disabled?: boolean }) {
   const [checked, setChecked] = useState(false);
   return (
-    <ChoiceChip checked={checked} disabled={disabled} onChange={(event) => setChecked(event.target.checked)}>
+    <ChoiceChip
+      checked={checked}
+      disabled={disabled}
+      onChange={(event) => setChecked(event.target.checked)}
+    >
       React
     </ChoiceChip>
   );

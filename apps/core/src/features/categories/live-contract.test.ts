@@ -11,7 +11,8 @@ const base = process.env.CORE_API_WRITE_URL;
 
 let send: LiveSend;
 
-const listed = async () => unwrap(await (await send('GET', '/categories')).json(), categoryRowsSchema);
+const listed = async () =>
+  unwrap(await (await send('GET', '/categories')).json(), categoryRowsSchema);
 
 describe.skipIf(!base)('the running core service, categories', () => {
   beforeAll(async () => {
@@ -19,16 +20,25 @@ describe.skipIf(!base)('the running core service, categories', () => {
   });
 
   it('takes the bodies the page sends and answers in the shape the app expects', async () => {
-    const created = await send('POST', '/categories', { name: 'Wiring check', description: 'Made by the live test' });
+    const created = await send('POST', '/categories', {
+      name: 'Wiring check',
+      description: 'Made by the live test',
+    });
     expect(created.status).toBe(201);
     const row = unwrap(await created.json(), categoryRowSchema);
-    expect(row).toMatchObject({ name: 'Wiring check', description: 'Made by the live test' });
+    expect(row).toMatchObject({
+      name: 'Wiring check',
+      description: 'Made by the live test',
+    });
     expect(row.createdDate).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 
     try {
       expect(await listed()).toContainEqual(row);
 
-      const updated = await send('PATCH', `/categories/${row.id}`, { name: 'Wiring check 2', description: 'Edited' });
+      const updated = await send('PATCH', `/categories/${row.id}`, {
+        name: 'Wiring check 2',
+        description: 'Edited',
+      });
       expect(updated.status).toBe(200);
       expect(unwrap(await updated.json(), categoryRowSchema)).toMatchObject({
         id: row.id,
@@ -39,12 +49,17 @@ describe.skipIf(!base)('the running core service, categories', () => {
       const deleted = await send('DELETE', `/categories/${row.id}`);
       expect(deleted.status).toBe(200);
     }
-    expect((await listed()).map((category) => category.id)).not.toContain(row.id);
+    expect((await listed()).map((category) => category.id)).not.toContain(
+      row.id
+    );
   });
 
   it('answers a category that does not exist with an error envelope', async () => {
     const response = await send('DELETE', '/categories/99999');
     expect(response.status).toBe(404);
-    expect(await response.json()).toMatchObject({ statusCode: 404, data: null });
+    expect(await response.json()).toMatchObject({
+      statusCode: 404,
+      data: null,
+    });
   });
 });

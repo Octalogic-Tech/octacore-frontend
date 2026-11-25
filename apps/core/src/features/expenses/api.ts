@@ -1,4 +1,9 @@
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { coreApi, unwrap } from '@/lib/core-api';
 import {
   expenseRowsSchema,
@@ -27,7 +32,11 @@ export interface ExpenseQuery {
 export function useExpenses(query: ExpenseQuery) {
   return useQuery({
     queryKey: [...EXPENSES_KEY, 'list', query] as const,
-    queryFn: async () => unwrap((await coreApi.get('/expenses', { params: query })).data, expenseRowsSchema),
+    queryFn: async () =>
+      unwrap(
+        (await coreApi.get('/expenses', { params: query })).data,
+        expenseRowsSchema
+      ),
     placeholderData: keepPreviousData,
   });
 }
@@ -39,7 +48,13 @@ export function useExpenses(query: ExpenseQuery) {
 export function useSaveExpense() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: number | undefined; body: ExpenseBody }) => {
+    mutationFn: async ({
+      id,
+      body,
+    }: {
+      id: number | undefined;
+      body: ExpenseBody;
+    }) => {
       if (id === undefined) await coreApi.post('/expenses', body);
       else await coreApi.patch(`/expenses/${id}`, body);
     },
@@ -60,7 +75,11 @@ export function useDeleteExpense() {
 export function useRecurringExpenses() {
   return useQuery({
     queryKey: RECURRING_KEY,
-    queryFn: async () => unwrap((await coreApi.get('/recurring-expenses')).data, recurringRowsSchema),
+    queryFn: async () =>
+      unwrap(
+        (await coreApi.get('/recurring-expenses')).data,
+        recurringRowsSchema
+      ),
   });
 }
 
@@ -82,7 +101,13 @@ function useRefreshBoth() {
 export function useSaveRecurring() {
   const refresh = useRefreshBoth();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: number | undefined; body: RecurringBody }): Promise<number> => {
+    mutationFn: async ({
+      id,
+      body,
+    }: {
+      id: number | undefined;
+      body: RecurringBody;
+    }): Promise<number> => {
       if (id !== undefined) {
         await coreApi.patch(`/recurring-expenses/${id}`, body);
         return 0;
@@ -101,7 +126,13 @@ export function useSaveRecurring() {
 export function useChangeRecurringState() {
   const refresh = useRefreshBoth();
   return useMutation({
-    mutationFn: async ({ id, state }: { id: number; state: RecurringState }) => {
+    mutationFn: async ({
+      id,
+      state,
+    }: {
+      id: number;
+      state: RecurringState;
+    }) => {
       await coreApi.patch(`/recurring-expenses/${id}`, { state });
     },
     onSuccess: refresh,

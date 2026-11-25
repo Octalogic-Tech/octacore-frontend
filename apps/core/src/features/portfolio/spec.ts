@@ -25,7 +25,8 @@ export const caseStudyDialog: PlannedDialogSpec = {
 export const portfolioLinkDialog: PlannedDialogSpec = {
   title: 'New portfolio link',
   previewLabel: 'Preview the portfolio link dialog',
-  summary: 'Make a link for one client with just the case studies that fit what they asked for.',
+  summary:
+    'Make a link for one client with just the case studies that fit what they asked for.',
   fields: [
     'Client, from the Clients list',
     'Case studies, chosen from the library and put in order',

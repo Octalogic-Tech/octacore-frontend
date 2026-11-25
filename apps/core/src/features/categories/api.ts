@@ -8,7 +8,8 @@ const KEY = ['categories'] as const;
 export function useCategories() {
   return useQuery({
     queryKey: KEY,
-    queryFn: async () => unwrap((await coreApi.get('/categories')).data, categoryRowsSchema),
+    queryFn: async () =>
+      unwrap((await coreApi.get('/categories')).data, categoryRowsSchema),
   });
 }
 

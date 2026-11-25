@@ -26,10 +26,16 @@ afterEach(() => {
 describe('LeavePage', () => {
   it('is titled Leave, and lists every leave of everyone', async () => {
     renderWithProviders(<LeavePage />);
-    expect(screen.getByRole('heading', { level: 1, name: 'Leave' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Leave' })
+    ).toBeInTheDocument();
     const table = await screen.findByRole('table', { name: 'Leave' });
-    expect(within(table).getAllByRole('row')).toHaveLength(leaveRows.length + 1);
-    expect(screen.getByRole('columnheader', { name: 'Person' })).toBeInTheDocument();
+    expect(within(table).getAllByRole('row')).toHaveLength(
+      leaveRows.length + 1
+    );
+    expect(
+      screen.getByRole('columnheader', { name: 'Person' })
+    ).toBeInTheDocument();
     expect(coreApi.get).toHaveBeenCalledWith('/leaves', { params: undefined });
   });
 
@@ -38,6 +44,8 @@ describe('LeavePage', () => {
     renderWithProviders(<LeavePage />);
     expect(await screen.findByLabelText('Search leave')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Add leave' }));
-    expect(screen.getByRole('dialog', { name: 'New leave' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'New leave' })
+    ).toBeInTheDocument();
   });
 });

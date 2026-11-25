@@ -30,9 +30,12 @@ export type PersonRow = z.output<typeof personRowSchema>;
 export function personMatches(person: PersonRow, query: string): boolean {
   const needle = query.trim().toLowerCase();
   if (!needle) return true;
-  return [person.name, person.email, person.phone, ...person.technologies.map((technology) => technology.name)].some(
-    (text) => text.toLowerCase().includes(needle),
-  );
+  return [
+    person.name,
+    person.email,
+    person.phone,
+    ...person.technologies.map((technology) => technology.name),
+  ].some((text) => text.toLowerCase().includes(needle));
 }
 
 // Every field is text, so a blank field can be told from a typed one. The dates are what a date input holds:
@@ -54,11 +57,20 @@ export const personFormSchema = z
   })
   .superRefine((values, context) => {
     if (values.email !== '' && !z.email().safeParse(values.email).success) {
-      context.addIssue({ code: 'custom', path: ['email'], message: 'Enter a valid email address' });
+      context.addIssue({
+        code: 'custom',
+        path: ['email'],
+        message: 'Enter a valid email address',
+      });
     }
     if (values.monthlySalary === '') return;
     const problem = amountProblem(values.monthlySalary, { allowZero: true });
-    if (problem !== null) context.addIssue({ code: 'custom', path: ['monthlySalary'], message: problem });
+    if (problem !== null)
+      context.addIssue({
+        code: 'custom',
+        path: ['monthlySalary'],
+        message: problem,
+      });
   });
 
 export type PersonFormValues = z.infer<typeof personFormSchema>;
@@ -85,8 +97,13 @@ export function toFormValues(person?: PersonRow): PersonFormValues {
     leaveDate: person.leaveDate,
     imageLink: person.imageLink,
     contractLink: person.contractLink,
-    monthlySalary: person.monthlySalaryPaise === null ? '' : toAmountText(person.monthlySalaryPaise),
-    technologyIds: person.technologies.map((technology) => String(technology.id)),
+    monthlySalary:
+      person.monthlySalaryPaise === null
+        ? ''
+        : toAmountText(person.monthlySalaryPaise),
+    technologyIds: person.technologies.map((technology) =>
+      String(technology.id)
+    ),
   };
 }
 
@@ -114,7 +131,8 @@ export function toPersonBody(values: PersonFormValues): PersonBody {
     leaveDate: orNull(values.leaveDate),
     imageLink: orNull(values.imageLink),
     contractLink: orNull(values.contractLink),
-    monthlySalaryPaise: values.monthlySalary === '' ? null : parseAmount(values.monthlySalary),
+    monthlySalaryPaise:
+      values.monthlySalary === '' ? null : parseAmount(values.monthlySalary),
     technologyIds: values.technologyIds.map(Number),
   };
 }

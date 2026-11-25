@@ -4,7 +4,12 @@ export const milestoneDialog: PlannedDialogSpec = {
   title: 'Milestone',
   previewLabel: 'Preview the milestone dialog',
   summary: 'Add or change one step in a fixed-cost project’s payment schedule.',
-  fields: ['Name', 'Amount, or a percent of the agreed price', 'Due date', 'Notes'],
+  fields: [
+    'Name',
+    'Amount, or a percent of the agreed price',
+    'Due date',
+    'Notes',
+  ],
   happens: [
     'Added to the project’s schedule in the order of its due date.',
     'The schedule shows its total against the agreed price and warns when they differ.',
@@ -16,7 +21,8 @@ export const milestoneDialog: PlannedDialogSpec = {
 export const milestonesSpec: PlannedSpec = {
   id: 'milestones',
   title: 'Milestone schedule',
-  summary: 'Split a fixed-cost project’s price into milestones with an amount and a due date, and invoice each one.',
+  summary:
+    'Split a fixed-cost project’s price into milestones with an amount and a due date, and invoice each one.',
   surface: 'page',
   home: 'Project page › Milestones tab',
   size: 'M',

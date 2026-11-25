@@ -11,11 +11,17 @@ import {
   type ClientFormValues,
 } from './schema';
 
-const form = (over: Partial<ClientFormValues> = {}): ClientFormValues => ({ ...emptyClientForm, name: 'Acme', ...over });
+const form = (over: Partial<ClientFormValues> = {}): ClientFormValues => ({
+  ...emptyClientForm,
+  name: 'Acme',
+  ...over,
+});
 
 const messages = (values: ClientFormValues) => {
   const result = clientFormSchema.safeParse(values);
-  return result.success ? [] : result.error.issues.map((issue) => issue.message);
+  return result.success
+    ? []
+    : result.error.issues.map((issue) => issue.message);
 };
 
 const clients = clientRowsSchema.parse(clientRows);
@@ -33,7 +39,13 @@ describe('row schemas', () => {
       countryName: 'India',
     });
     expect(acme).not.toHaveProperty('country');
-    expect(globex).toMatchObject({ id: 2, description: '', countryId: null, city: '', countryName: '' });
+    expect(globex).toMatchObject({
+      id: 2,
+      description: '',
+      countryId: null,
+      city: '',
+      countryName: '',
+    });
   });
 
   it('keeps the id of a country the service no longer embeds', () => {
@@ -50,7 +62,12 @@ describe('row schemas', () => {
   });
 
   it('turns a contact without an email into an empty one', () => {
-    expect(contacts[1]).toMatchObject({ clientId: 3, name: 'Grace Hopper', email: '', phone: '+44 20 7946 0001' });
+    expect(contacts[1]).toMatchObject({
+      clientId: 3,
+      name: 'Grace Hopper',
+      email: '',
+      phone: '+44 20 7946 0001',
+    });
   });
 
   it.each([
@@ -71,28 +88,49 @@ describe('clientFormSchema', () => {
   });
 
   it('requires a contact name once an email or a phone is given', () => {
-    expect(messages(form({ contactEmail: 'ada@example.com' }))).toEqual(['Contact name is required']);
-    expect(messages(form({ contactPhone: '123' }))).toEqual(['Contact name is required']);
+    expect(messages(form({ contactEmail: 'ada@example.com' }))).toEqual([
+      'Contact name is required',
+    ]);
+    expect(messages(form({ contactPhone: '123' }))).toEqual([
+      'Contact name is required',
+    ]);
   });
 
   it('checks the email address only when there is one', () => {
-    expect(messages(form({ contactName: 'Ada', contactEmail: 'not-an-email' }))).toEqual([
-      'Enter a valid email address',
-    ]);
-    expect(messages(form({ contactName: 'Ada', contactEmail: 'ada@example.com' }))).toEqual([]);
+    expect(
+      messages(form({ contactName: 'Ada', contactEmail: 'not-an-email' }))
+    ).toEqual(['Enter a valid email address']);
+    expect(
+      messages(form({ contactName: 'Ada', contactEmail: 'ada@example.com' }))
+    ).toEqual([]);
     expect(messages(form({ contactName: 'Ada' }))).toEqual([]);
   });
 
   it('treats a contact group of only spaces as empty', () => {
-    const parsed = clientFormSchema.parse(form({ contactName: '  ', contactEmail: ' ', contactPhone: '   ' }));
-    expect(parsed).toMatchObject({ contactName: '', contactEmail: '', contactPhone: '' });
+    const parsed = clientFormSchema.parse(
+      form({ contactName: '  ', contactEmail: ' ', contactPhone: '   ' })
+    );
+    expect(parsed).toMatchObject({
+      contactName: '',
+      contactEmail: '',
+      contactPhone: '',
+    });
   });
 });
 
 describe('toClientBody', () => {
   it('sends empty optional fields as null and the country as a number', () => {
-    expect(toClientBody(form())).toEqual({ name: 'Acme', description: null, countryId: null, city: null });
-    expect(toClientBody(form({ description: 'Anvils', countryId: '99', city: 'Pune' }))).toEqual({
+    expect(toClientBody(form())).toEqual({
+      name: 'Acme',
+      description: null,
+      countryId: null,
+      city: null,
+    });
+    expect(
+      toClientBody(
+        form({ description: 'Anvils', countryId: '99', city: 'Pune' })
+      )
+    ).toEqual({
       name: 'Acme',
       description: 'Anvils',
       countryId: 99,
@@ -119,7 +157,11 @@ describe('toFormValues', () => {
   });
 
   it('leaves the contact group empty for a client without a contact', () => {
-    expect(toFormValues(clients[1], undefined)).toMatchObject({ contactName: '', contactEmail: '', contactPhone: '' });
+    expect(toFormValues(clients[1], undefined)).toMatchObject({
+      contactName: '',
+      contactEmail: '',
+      contactPhone: '',
+    });
   });
 
   it('opens on None for a country the service no longer lists', () => {
@@ -130,7 +172,13 @@ describe('toFormValues', () => {
 
 describe('planContactStep', () => {
   it('creates a contact for a client that has none', () => {
-    expect(planContactStep(form({ contactName: 'Ada', contactEmail: 'ada@example.com' }), 7, undefined)).toEqual({
+    expect(
+      planContactStep(
+        form({ contactName: 'Ada', contactEmail: 'ada@example.com' }),
+        7,
+        undefined
+      )
+    ).toEqual({
       kind: 'create',
       clientId: 7,
       fields: { name: 'Ada', email: 'ada@example.com', phone: null },
@@ -138,7 +186,13 @@ describe('planContactStep', () => {
   });
 
   it('updates the contact a client already has', () => {
-    expect(planContactStep(form({ contactName: 'Ada King', contactPhone: '123' }), 1, contacts[0])).toEqual({
+    expect(
+      planContactStep(
+        form({ contactName: 'Ada King', contactPhone: '123' }),
+        1,
+        contacts[0]
+      )
+    ).toEqual({
       kind: 'update',
       id: 1,
       fields: { name: 'Ada King', email: null, phone: '123' },
@@ -146,7 +200,10 @@ describe('planContactStep', () => {
   });
 
   it('removes the contact when the group is emptied', () => {
-    expect(planContactStep(form(), 1, contacts[0])).toEqual({ kind: 'remove', id: 1 });
+    expect(planContactStep(form(), 1, contacts[0])).toEqual({
+      kind: 'remove',
+      id: 1,
+    });
   });
 
   it('does nothing when there was no contact and none was entered', () => {
@@ -158,7 +215,10 @@ describe('joinContacts', () => {
   it('attaches each contact to its client and flattens it for searching', () => {
     const rows = joinContacts(clients, contacts);
     expect(rows.map((row) => row.contact?.id)).toEqual([1, undefined, 2]);
-    expect(rows[0]).toMatchObject({ contactName: 'Ada Lovelace', contactEmail: 'ada@example.com' });
+    expect(rows[0]).toMatchObject({
+      contactName: 'Ada Lovelace',
+      contactEmail: 'ada@example.com',
+    });
     expect(rows[1]).toMatchObject({ contactName: '', contactEmail: '' });
   });
 

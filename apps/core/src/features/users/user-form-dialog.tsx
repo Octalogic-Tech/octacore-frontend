@@ -2,14 +2,24 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useAuth } from '@/features/auth/auth-context';
 import { refreshSession, serviceMessage, statusOf } from '@/lib/core-api';
 import { useCreateUser, useUpdateUser } from './api';
-import { emptyUserForm, ROLES, userFormSchema, type UserFormValues } from './schema';
+import {
+  emptyUserForm,
+  ROLES,
+  userFormSchema,
+  type UserFormValues,
+} from './schema';
 import type { User } from './types';
 
 const GENERIC_FAILURE = 'That did not save. Try again.';
@@ -22,7 +32,10 @@ const GENERIC_FAILURE = 'That did not save. Try again.';
 function failureMessage(error: unknown): string {
   const status = statusOf(error);
   const message = serviceMessage(error);
-  if (status === 409 && message === 'A record with the same unique value already exists') {
+  if (
+    status === 409 &&
+    message === 'A record with the same unique value already exists'
+  ) {
     return 'A user with that email already exists';
   }
   if (status === 422 && message === 'Validation failed') return GENERIC_FAILURE;
@@ -36,7 +49,11 @@ interface UserFormDialogProps {
   user?: User;
 }
 
-export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps) {
+export function UserFormDialog({
+  open,
+  onOpenChange,
+  user,
+}: UserFormDialogProps) {
   const create = useCreateUser();
   const update = useUpdateUser();
   const { user: me } = useAuth();
@@ -45,7 +62,10 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
   // Your own password changes through Change password, which asks for the current one; the service refuses it here.
   const ownRow = editing && user.id === me?.id;
   // A password is required when adding and optional when editing, so the schema depends on which this is.
-  const resolver = useMemo(() => zodResolver(userFormSchema(editing)), [editing]);
+  const resolver = useMemo(
+    () => zodResolver(userFormSchema(editing)),
+    [editing]
+  );
   const {
     register,
     handleSubmit,
@@ -56,7 +76,16 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
   useEffect(() => {
     if (open) {
       // The cast is safe only while ROLES is ['admin'], the one role the service has: widen it when roles are added.
-      reset(user ? { name: user.name, email: user.email, role: user.role as UserFormValues['role'], password: '' } : emptyUserForm);
+      reset(
+        user
+          ? {
+              name: user.name,
+              email: user.email,
+              role: user.role as UserFormValues['role'],
+              password: '',
+            }
+          : emptyUserForm
+      );
       setFailure(null);
     }
   }, [open, user, reset]);
@@ -94,9 +123,17 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
         </DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
           <Field label="Name" htmlFor="user-name" error={errors.name?.message}>
-            <Input {...fieldA11y('user-name', errors.name?.message)} {...register('name')} autoComplete="off" />
+            <Input
+              {...fieldA11y('user-name', errors.name?.message)}
+              {...register('name')}
+              autoComplete="off"
+            />
           </Field>
-          <Field label="Email" htmlFor="user-email" error={errors.email?.message}>
+          <Field
+            label="Email"
+            htmlFor="user-email"
+            error={errors.email?.message}
+          >
             <Input
               {...fieldA11y('user-email', errors.email?.message)}
               {...register('email')}
@@ -105,7 +142,10 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
             />
           </Field>
           <Field label="Role" htmlFor="user-role" error={errors.role?.message}>
-            <Select {...fieldA11y('user-role', errors.role?.message)} {...register('role')}>
+            <Select
+              {...fieldA11y('user-role', errors.role?.message)}
+              {...register('role')}
+            >
               {ROLES.map((role) => (
                 <option key={role} value={role}>
                   {role}
@@ -114,7 +154,9 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
             </Select>
           </Field>
           {ownRow ? (
-            <p className="text-small text-navy-72">Use Change password to change your own password.</p>
+            <p className="text-small text-navy-72">
+              Use Change password to change your own password.
+            </p>
           ) : (
             <Field
               label={editing ? 'New password' : 'Password'}
@@ -135,7 +177,10 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
             </Field>
           )}
           {failure ? (
-            <p role="alert" className="text-small font-semibold text-foreground">
+            <p
+              role="alert"
+              className="text-small font-semibold text-foreground"
+            >
               {failure}
             </p>
           ) : null}
@@ -143,7 +188,11 @@ export function UserFormDialog({ open, onOpenChange, user }: UserFormDialogProps
             <Button type="submit" disabled={isSubmitting}>
               Save
             </Button>
-            <Button variant="quiet" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
+            <Button
+              variant="quiet"
+              disabled={isSubmitting}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
           </div>

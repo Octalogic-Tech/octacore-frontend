@@ -2,14 +2,25 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { statusOf } from '@/lib/core-api';
 import { useEmailDraft, useSendInvoice } from './api';
 import { notSetUpMessage } from './invoice-pdf';
-import { emailFormSchema, toEmailFormValues, toSendBody, type EmailDraft, type EmailFormValues } from './schema';
+import {
+  emailFormSchema,
+  toEmailFormValues,
+  toSendBody,
+  type EmailDraft,
+  type EmailFormValues,
+} from './schema';
 
 interface InvoiceRef {
   id: number;
@@ -26,7 +37,13 @@ interface InvoiceEmailDialogProps {
   fallbackFocusId?: string;
 }
 
-export function InvoiceEmailDialog({ open, onOpenChange, invoice, onSent, fallbackFocusId }: InvoiceEmailDialogProps) {
+export function InvoiceEmailDialog({
+  open,
+  onOpenChange,
+  invoice,
+  onSent,
+  fallbackFocusId,
+}: InvoiceEmailDialogProps) {
   const [busy, setBusy] = useState(false);
   return (
     <Dialog
@@ -37,11 +54,21 @@ export function InvoiceEmailDialog({ open, onOpenChange, invoice, onSent, fallba
       }}
     >
       <DialogContent fallbackFocusId={fallbackFocusId} className="max-w-2xl">
-        <DialogTitle>{invoice ? `Email ${invoice.number}` : 'Email'}</DialogTitle>
-        <DialogDescription>Sends the invoice as a PDF attachment. Change anything before you send.</DialogDescription>
+        <DialogTitle>
+          {invoice ? `Email ${invoice.number}` : 'Email'}
+        </DialogTitle>
+        <DialogDescription>
+          Sends the invoice as a PDF attachment. Change anything before you
+          send.
+        </DialogDescription>
         {/* Mounted only while open, so every opening starts from a fresh draft. */}
         {invoice ? (
-          <EmailBody invoice={invoice} onBusyChange={setBusy} onClose={() => onOpenChange(false)} onSent={onSent} />
+          <EmailBody
+            invoice={invoice}
+            onBusyChange={setBusy}
+            onClose={() => onOpenChange(false)}
+            onSent={onSent}
+          />
         ) : null}
       </DialogContent>
     </Dialog>
@@ -68,24 +95,43 @@ function EmailBody({ invoice, onBusyChange, onClose, onSent }: EmailBodyProps) {
   if (draft.isError || !draft.data) {
     return (
       <div role="alert" className="mt-6 grid justify-items-start gap-2">
-        <p className="text-body">{notSetUpMessage(draft.error) ?? 'The email could not be prepared.'}</p>
+        <p className="text-body">
+          {notSetUpMessage(draft.error) ?? 'The email could not be prepared.'}
+        </p>
         <Button variant="quiet" onClick={() => void draft.refetch()}>
           Try again
         </Button>
       </div>
     );
   }
-  return <EmailForm invoice={invoice} draft={draft.data} onBusyChange={onBusyChange} onClose={onClose} onSent={onSent} />;
+  return (
+    <EmailForm
+      invoice={invoice}
+      draft={draft.data}
+      onBusyChange={onBusyChange}
+      onClose={onClose}
+      onSent={onSent}
+    />
+  );
 }
 
-function EmailForm({ invoice, draft, onBusyChange, onClose, onSent }: EmailBodyProps & { draft: EmailDraft }) {
+function EmailForm({
+  invoice,
+  draft,
+  onBusyChange,
+  onClose,
+  onSent,
+}: EmailBodyProps & { draft: EmailDraft }) {
   const send = useSendInvoice();
   const [failure, setFailure] = useState<string | null>(null);
   const {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<EmailFormValues>({ resolver: zodResolver(emailFormSchema), defaultValues: toEmailFormValues(draft) });
+  } = useForm<EmailFormValues>({
+    resolver: zodResolver(emailFormSchema),
+    defaultValues: toEmailFormValues(draft),
+  });
 
   useEffect(() => {
     onBusyChange(isSubmitting);
@@ -104,8 +150,8 @@ function EmailForm({ invoice, draft, onBusyChange, onClose, onSent }: EmailBodyP
           (status === 502
             ? 'The email could not be sent. Check the address and try again.'
             : status === 404
-              ? 'This invoice was removed elsewhere, so it cannot be sent. Close this dialog and go back to Projects.'
-              : 'That did not send. Try again.'),
+            ? 'This invoice was removed elsewhere, so it cannot be sent. Close this dialog and go back to Projects.'
+            : 'That did not send. Try again.')
       );
       return;
     }
@@ -121,13 +167,33 @@ function EmailForm({ invoice, draft, onBusyChange, onClose, onSent }: EmailBodyP
         error={errors.to?.message}
         hint="Separate addresses with a comma or a semicolon."
       >
-        <Input {...fieldA11y('email-to', errors.to?.message)} {...register('to')} autoComplete="off" />
+        <Input
+          {...fieldA11y('email-to', errors.to?.message)}
+          {...register('to')}
+          autoComplete="off"
+        />
       </Field>
-      <Field label="Subject" htmlFor="email-subject" error={errors.subject?.message}>
-        <Input {...fieldA11y('email-subject', errors.subject?.message)} {...register('subject')} autoComplete="off" />
+      <Field
+        label="Subject"
+        htmlFor="email-subject"
+        error={errors.subject?.message}
+      >
+        <Input
+          {...fieldA11y('email-subject', errors.subject?.message)}
+          {...register('subject')}
+          autoComplete="off"
+        />
       </Field>
-      <Field label="Message" htmlFor="email-message" error={errors.message?.message}>
-        <Textarea {...fieldA11y('email-message', errors.message?.message)} {...register('message')} rows={10} />
+      <Field
+        label="Message"
+        htmlFor="email-message"
+        error={errors.message?.message}
+      >
+        <Textarea
+          {...fieldA11y('email-message', errors.message?.message)}
+          {...register('message')}
+          rows={10}
+        />
       </Field>
       {failure ? (
         <p role="alert" className="text-small font-semibold text-foreground">

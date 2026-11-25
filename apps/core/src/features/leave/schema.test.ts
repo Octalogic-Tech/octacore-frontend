@@ -10,7 +10,8 @@ import {
   type LeaveFormValues,
 } from './schema';
 
-const [graceSick, adaWedding, graceEarned, adaTravel] = leaveRowsSchema.parse(leaveRows);
+const [graceSick, adaWedding, graceEarned, adaTravel] =
+  leaveRowsSchema.parse(leaveRows);
 
 const form = (over: Partial<LeaveFormValues> = {}): LeaveFormValues => ({
   personId: '1',
@@ -23,7 +24,9 @@ const form = (over: Partial<LeaveFormValues> = {}): LeaveFormValues => ({
 
 const messages = (values: LeaveFormValues) => {
   const result = leaveFormSchema.safeParse(values);
-  return result.success ? [] : result.error.issues.map((issue) => issue.message);
+  return result.success
+    ? []
+    : result.error.issues.map((issue) => issue.message);
 };
 
 describe('LEAVE_TYPES', () => {
@@ -60,18 +63,33 @@ describe('leaveRowSchema', () => {
   });
 
   it('reads a one-day leave', () => {
-    expect(graceSick).toMatchObject({ startDate: '2026-08-21', endDate: '2026-08-21' });
+    expect(graceSick).toMatchObject({
+      startDate: '2026-08-21',
+      endDate: '2026-08-21',
+    });
   });
 
   it.each([
     ['an id', { ...leaveRows[1], id: undefined }],
     ['the person', { ...leaveRows[1], person: undefined }],
-    ['a type the service does not know', { ...leaveRows[1], leaveType: 'holiday' }],
+    [
+      'a type the service does not know',
+      { ...leaveRows[1], leaveType: 'holiday' },
+    ],
     ['no type', { ...leaveRows[1], leaveType: undefined }],
-    ['a first day that is not a calendar day', { ...leaveRows[1], startDate: '12/03/2026' }],
-    ['a last day that is not a real day', { ...leaveRows[1], endDate: '2026-02-31' }],
+    [
+      'a first day that is not a calendar day',
+      { ...leaveRows[1], startDate: '12/03/2026' },
+    ],
+    [
+      'a last day that is not a real day',
+      { ...leaveRows[1], endDate: '2026-02-31' },
+    ],
     ['no last day', { ...leaveRows[1], endDate: undefined }],
-    ['a person id that is not a whole number', { ...leaveRows[1], personId: '1' }],
+    [
+      'a person id that is not a whole number',
+      { ...leaveRows[1], personId: '1' },
+    ],
   ])('rejects a leave with %s', (_label, row) => {
     expect(leaveRowsSchema.safeParse([row]).success).toBe(false);
   });
@@ -115,7 +133,9 @@ describe('leaveMatches', () => {
 describe('leaveFormSchema', () => {
   it('accepts a leave of several days, and of one day', () => {
     expect(messages(form())).toEqual([]);
-    expect(messages(form({ startDate: '2026-03-12', endDate: '2026-03-12' }))).toEqual([]);
+    expect(
+      messages(form({ startDate: '2026-03-12', endDate: '2026-03-12' }))
+    ).toEqual([]);
   });
 
   it('needs a person', () => {
@@ -126,21 +146,34 @@ describe('leaveFormSchema', () => {
     expect(messages(form({ leaveType }))).toEqual(['Choose a type']);
   });
 
-  it.each(LEAVE_TYPES.map((type) => type.value))('accepts the type %s', (leaveType) => {
-    expect(messages(form({ leaveType }))).toEqual([]);
-  });
+  it.each(LEAVE_TYPES.map((type) => type.value))(
+    'accepts the type %s',
+    (leaveType) => {
+      expect(messages(form({ leaveType }))).toEqual([]);
+    }
+  );
 
   it('needs both days', () => {
-    expect(messages(form({ startDate: '' }))).toEqual(['First day is required']);
+    expect(messages(form({ startDate: '' }))).toEqual([
+      'First day is required',
+    ]);
     expect(messages(form({ endDate: '' }))).toEqual(['Last day is required']);
-    expect(messages(form({ startDate: '', endDate: '' }))).toEqual(['First day is required', 'Last day is required']);
+    expect(messages(form({ startDate: '', endDate: '' }))).toEqual([
+      'First day is required',
+      'Last day is required',
+    ]);
   });
 
   it('refuses a last day before the first, and says so on the last day', () => {
-    const result = leaveFormSchema.safeParse(form({ startDate: '2026-03-14', endDate: '2026-03-12' }));
+    const result = leaveFormSchema.safeParse(
+      form({ startDate: '2026-03-14', endDate: '2026-03-12' })
+    );
     expect(result.success).toBe(false);
     expect(result.error?.issues).toEqual([
-      expect.objectContaining({ path: ['endDate'], message: 'The last day must not be before the first' }),
+      expect.objectContaining({
+        path: ['endDate'],
+        message: 'The last day must not be before the first',
+      }),
     ]);
   });
 
@@ -152,7 +185,13 @@ describe('leaveFormSchema', () => {
 
 describe('toLeaveFormValues', () => {
   it('opens a new leave with nothing chosen and no days', () => {
-    expect(toLeaveFormValues()).toEqual({ personId: '', leaveType: '', startDate: '', endDate: '', reason: '' });
+    expect(toLeaveFormValues()).toEqual({
+      personId: '',
+      leaveType: '',
+      startDate: '',
+      endDate: '',
+      reason: '',
+    });
   });
 
   it('writes a leave as text', () => {
@@ -179,7 +218,9 @@ describe('toLeaveBody', () => {
   });
 
   it('sends a reason that was written', () => {
-    expect(toLeaveBody(form({ reason: 'Family wedding' })).reason).toBe('Family wedding');
+    expect(toLeaveBody(form({ reason: 'Family wedding' })).reason).toBe(
+      'Family wedding'
+    );
   });
 
   it.each([graceSick, adaWedding, graceEarned, adaTravel])(

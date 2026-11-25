@@ -13,15 +13,18 @@ export function useReturnFocus(fallbackId?: string) {
     onOpenAutoFocus: () => {
       // Focus on <body> means the opener was already removed: <body> is connected, but it is no place to return to.
       const active = document.activeElement;
-      opener.current = active instanceof HTMLElement && active !== document.body ? active : null;
+      opener.current =
+        active instanceof HTMLElement && active !== document.body
+          ? active
+          : null;
     },
     onCloseAutoFocus: (event: Event) => {
       event.preventDefault();
       const target = opener.current?.isConnected
         ? opener.current
         : fallbackId
-          ? document.getElementById(fallbackId)
-          : null;
+        ? document.getElementById(fallbackId)
+        : null;
       target?.focus();
     },
   };

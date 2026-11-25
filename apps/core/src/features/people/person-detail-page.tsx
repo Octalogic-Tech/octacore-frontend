@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom';
 import { PageHeader } from '@/components/page-header';
 import { QueryBoundary } from '@/components/query-boundary';
 import { Button } from '@/components/ui/button';
@@ -28,7 +33,8 @@ const EDIT_ID = 'edit-person';
 // The page's tabs, in order. The chosen one is the `tab` in the address, so a reload, Back or a link lands on it.
 const TABS = ['overview', 'allocations', 'leave'] as const;
 type Tab = (typeof TABS)[number];
-const tabOf = (value: string | null): Tab => TABS.find((tab) => tab === value) ?? 'overview';
+const tabOf = (value: string | null): Tab =>
+  TABS.find((tab) => tab === value) ?? 'overview';
 
 const backLink =
   'mb-4 inline-flex min-h-11 items-center font-semibold decoration-teal decoration-2 underline-offset-[0.25em] hover:underline focus-visible:underline';
@@ -39,7 +45,9 @@ function PersonNotFound() {
       <PageHeader title="Person not found" />
       <Panel>
         <div className="grid justify-items-start gap-2 p-6">
-          <p className="text-body">This person does not exist, or they were deleted.</p>
+          <p className="text-body">
+            This person does not exist, or they were deleted.
+          </p>
           <LinkArrow to="/resources/people">Back to people</LinkArrow>
         </div>
       </Panel>
@@ -86,14 +94,28 @@ function PersonDetail({ personId }: { personId: number }) {
     if (!data) return null;
     if (entries.isError || projects.isError) return 'unavailable' as const;
     if (!entries.data || !projects.data) return null;
-    return placementOf({ person: data, projects: projects.data, entries: entries.data, today });
-  }, [data, entries.data, entries.isError, projects.data, projects.isError, today]);
+    return placementOf({
+      person: data,
+      projects: projects.data,
+      entries: entries.data,
+      today,
+    });
+  }, [
+    data,
+    entries.data,
+    entries.isError,
+    projects.data,
+    projects.isError,
+    today,
+  ]);
 
   if (statusOf(person.error) === 404) return <PersonNotFound />;
 
   // The overview is the bare address; every other tab is `?tab=`. Replacing the entry keeps Back for leaving the page.
   function showTab(next: string) {
-    setSearchParams(next === 'overview' ? {} : { tab: next }, { replace: true });
+    setSearchParams(next === 'overview' ? {} : { tab: next }, {
+      replace: true,
+    });
   }
 
   return (
@@ -104,7 +126,11 @@ function PersonDetail({ personId }: { personId: number }) {
       <PageHeader title={data?.name ?? 'Person'}>
         {data ? (
           <>
-            <Button id={EDIT_ID} variant="quiet" onClick={() => setPersonForm(true)}>
+            <Button
+              id={EDIT_ID}
+              variant="quiet"
+              onClick={() => setPersonForm(true)}
+            >
               Edit person
             </Button>
             <Button variant="quiet" onClick={() => setDeleting(true)}>
@@ -139,7 +165,11 @@ function PersonDetail({ personId }: { personId: number }) {
             </TabsList>
 
             <TabsContent value="overview">
-              <PersonOverview person={data} placement={placement} onAllocate={() => setAllocating(true)} />
+              <PersonOverview
+                person={data}
+                placement={placement}
+                onAllocate={() => setAllocating(true)}
+              />
             </TabsContent>
 
             <TabsContent value="allocations">
@@ -153,7 +183,12 @@ function PersonDetail({ personId }: { personId: number }) {
         ) : null}
       </QueryBoundary>
 
-      <PersonFormDialog open={personForm} onOpenChange={setPersonForm} person={data} fallbackFocusId={EDIT_ID} />
+      <PersonFormDialog
+        open={personForm}
+        onOpenChange={setPersonForm}
+        person={data}
+        fallbackFocusId={EDIT_ID}
+      />
 
       <AllocationFormDialog
         open={allocating}

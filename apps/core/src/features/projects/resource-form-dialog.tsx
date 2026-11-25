@@ -2,7 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -38,7 +43,8 @@ interface Option {
 
 /** The record the resource already points at is always an option, so a list that is loading or failed cannot blank it. */
 function withCurrent(options: Option[], current: Option | undefined): Option[] {
-  if (current && !options.some((option) => option.id === current.id)) return [...options, current];
+  if (current && !options.some((option) => option.id === current.id))
+    return [...options, current];
   return options;
 }
 
@@ -60,7 +66,10 @@ export function ResourceFormDialog({
     getValues,
     setValue,
     formState: { errors, isSubmitting },
-  } = useForm<ResourceFormValues>({ resolver: zodResolver(resourceFormSchema), defaultValues: emptyResourceForm });
+  } = useForm<ResourceFormValues>({
+    resolver: zodResolver(resourceFormSchema),
+    defaultValues: emptyResourceForm,
+  });
 
   useEffect(() => {
     if (open) {
@@ -72,22 +81,28 @@ export function ResourceFormDialog({
   const personOptions = useMemo(
     () =>
       withCurrent(
-        (people.data ?? []).map((person) => ({ id: person.id, label: person.name })),
+        (people.data ?? []).map((person) => ({
+          id: person.id,
+          label: person.name,
+        })),
         resource && resource.personId !== null && resource.personName !== ''
           ? { id: resource.personId, label: resource.personName }
-          : undefined,
+          : undefined
       ),
-    [people.data, resource],
+    [people.data, resource]
   );
   const categoryOptions = useMemo(
     () =>
       withCurrent(
-        (categories.data ?? []).map((category) => ({ id: category.id, label: category.name })),
+        (categories.data ?? []).map((category) => ({
+          id: category.id,
+          label: category.name,
+        })),
         resource && resource.categoryName !== ''
           ? { id: resource.categoryId, label: resource.categoryName }
-          : undefined,
+          : undefined
       ),
-    [categories.data, resource],
+    [categories.data, resource]
   );
 
   const personField = register('personId');
@@ -95,7 +110,10 @@ export function ResourceFormDialog({
   const submit = handleSubmit(async (values) => {
     setFailure(null);
     try {
-      await save.mutateAsync({ id: resource?.id, body: toResourceBody(values) });
+      await save.mutateAsync({
+        id: resource?.id,
+        body: toResourceBody(values),
+      });
     } catch (error) {
       // Saving again would repeat a call that cannot succeed: a 409 on add (the project, person or category is gone)
       // or a 404 on edit (the resource is). Anything else may be a passing fault, so it says to try again.
@@ -117,10 +135,20 @@ export function ResourceFormDialog({
     >
       <DialogContent fallbackFocusId={fallbackFocusId}>
         <DialogTitle>{resource ? 'Edit resource' : 'New resource'}</DialogTitle>
-        <DialogDescription>Someone working on this project, with the rate they are billed at.</DialogDescription>
+        <DialogDescription>
+          Someone working on this project, with the rate they are billed at.
+        </DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
-          <Field label="Name" htmlFor="resource-name" error={errors.name?.message}>
-            <Input {...fieldA11y('resource-name', errors.name?.message)} {...register('name')} autoComplete="off" />
+          <Field
+            label="Name"
+            htmlFor="resource-name"
+            error={errors.name?.message}
+          >
+            <Input
+              {...fieldA11y('resource-name', errors.name?.message)}
+              {...register('name')}
+              autoComplete="off"
+            />
           </Field>
           <Field
             label="Person"
@@ -133,9 +161,12 @@ export function ResourceFormDialog({
               {...personField}
               onChange={(event) => {
                 void personField.onChange(event);
-                const picked = personOptions.find((option) => String(option.id) === event.target.value);
+                const picked = personOptions.find(
+                  (option) => String(option.id) === event.target.value
+                );
                 // Only an empty name is filled: a name the person already typed is theirs.
-                if (picked && getValues('name').trim() === '') setValue('name', picked.label);
+                if (picked && getValues('name').trim() === '')
+                  setValue('name', picked.label);
               }}
             >
               <option value="">None</option>
@@ -150,9 +181,14 @@ export function ResourceFormDialog({
             label="Category"
             htmlFor="resource-category"
             error={errors.categoryId?.message}
-            hint={categories.isError ? 'Categories could not be loaded.' : undefined}
+            hint={
+              categories.isError ? 'Categories could not be loaded.' : undefined
+            }
           >
-            <Select {...fieldA11y('resource-category', errors.categoryId?.message)} {...register('categoryId')}>
+            <Select
+              {...fieldA11y('resource-category', errors.categoryId?.message)}
+              {...register('categoryId')}
+            >
               <option value="">Choose…</option>
               {categoryOptions.map((option) => (
                 <option key={option.id} value={String(option.id)}>
@@ -188,20 +224,31 @@ export function ResourceFormDialog({
             />
           </Field>
           {failure === 'failed' ? (
-            <p role="alert" className="text-small font-semibold text-foreground">
+            <p
+              role="alert"
+              className="text-small font-semibold text-foreground"
+            >
               That did not save. Try again.
             </p>
           ) : null}
           {failure === 'changed-elsewhere' ? (
-            <p role="alert" className="text-small font-semibold text-foreground">
-              This changed elsewhere, so it cannot be saved. Close this dialog and go back to Projects.
+            <p
+              role="alert"
+              className="text-small font-semibold text-foreground"
+            >
+              This changed elsewhere, so it cannot be saved. Close this dialog
+              and go back to Projects.
             </p>
           ) : null}
           <div className="flex flex-wrap items-center gap-3">
             <Button type="submit" disabled={isSubmitting}>
               Save
             </Button>
-            <Button variant="quiet" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
+            <Button
+              variant="quiet"
+              disabled={isSubmitting}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
           </div>

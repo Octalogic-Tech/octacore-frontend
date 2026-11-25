@@ -7,7 +7,10 @@ import type { AuthContextValue } from './auth-context';
 import { LoginPage } from './login-page';
 
 const rejection = (status: number) =>
-  new AxiosError('failed', 'ERR_BAD_REQUEST', undefined, null, { status, data: {} } as AxiosResponse);
+  new AxiosError('failed', 'ERR_BAD_REQUEST', undefined, null, {
+    status,
+    data: {},
+  } as AxiosResponse);
 
 function Where() {
   const { pathname, search } = useLocation();
@@ -21,7 +24,10 @@ function Where() {
 
 type Entry = string | { pathname: string; state?: unknown };
 
-function renderLogin(value: Partial<AuthContextValue> = {}, entry: Entry = '/login') {
+function renderLogin(
+  value: Partial<AuthContextValue> = {},
+  entry: Entry = '/login'
+) {
   return render(
     <AuthTestProvider value={{ status: 'anonymous', user: null, ...value }}>
       <MemoryRouter initialEntries={[entry]}>
@@ -30,23 +36,30 @@ function renderLogin(value: Partial<AuthContextValue> = {}, entry: Entry = '/log
           <Route path="*" element={<Where />} />
         </Routes>
       </MemoryRouter>
-    </AuthTestProvider>,
+    </AuthTestProvider>
   );
 }
 
 describe('LoginPage', () => {
   it('asks for an email and a password, with no navigation around it', () => {
     renderLogin();
-    expect(screen.getByRole('heading', { level: 1, name: 'Sign in' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Sign in' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
-    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
+    expect(screen.getByLabelText('Password')).toHaveAttribute(
+      'type',
+      'password'
+    );
     expect(screen.queryByRole('navigation')).not.toBeInTheDocument();
   });
 
   it('shows a neutral blank, and no form, while the session is being restored', () => {
     const { container } = renderLogin({ status: 'loading' });
     expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Sign in' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Sign in' })
+    ).not.toBeInTheDocument();
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
   });
 
@@ -67,7 +80,9 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText('Email'), '  ada@example.com ');
     await user.type(screen.getByLabelText('Password'), ' secret ');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    await waitFor(() => expect(signIn).toHaveBeenCalledWith('ada@example.com', ' secret '));
+    await waitFor(() =>
+      expect(signIn).toHaveBeenCalledWith('ada@example.com', ' secret ')
+    );
   });
 
   it('says the email or password is wrong after a 401', async () => {
@@ -76,7 +91,9 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText('Email'), 'ada@example.com');
     await user.type(screen.getByLabelText('Password'), 'wrong');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Invalid email or password'
+    );
   });
 
   it('treats a 422 from the service like a failed credential check', async () => {
@@ -85,7 +102,9 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText('Email'), 'ada@example.com');
     await user.type(screen.getByLabelText('Password'), 'wrong');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Invalid email or password.'
+    );
   });
 
   it('refuses a password longer than 128 characters before calling the service', async () => {
@@ -96,7 +115,9 @@ describe('LoginPage', () => {
     await user.click(screen.getByLabelText('Password'));
     await user.paste('x'.repeat(129));
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByText('Use at most 128 characters')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Use at most 128 characters')
+    ).toBeInTheDocument();
     expect(signIn).not.toHaveBeenCalled();
   });
 
@@ -106,11 +127,15 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText('Email'), 'ada@example.com');
     await user.type(screen.getByLabelText('Password'), 'wrong');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Invalid email or password'
+    );
     await user.clear(screen.getByLabelText('Password'));
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
     expect(await screen.findByText('Password is required')).toBeInTheDocument();
-    expect(screen.queryByText('Invalid email or password.')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Invalid email or password.')
+    ).not.toBeInTheDocument();
   });
 
   it('says the service could not be reached for any other failure', async () => {
@@ -119,14 +144,20 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText('Email'), 'ada@example.com');
     await user.type(screen.getByLabelText('Password'), 'secret');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not sign you in');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not sign you in'
+    );
   });
 
   it('says when the last sign-out could not reach the service', () => {
     window.localStorage.setItem('octacore.pendingLogout', '1');
     try {
       renderLogin();
-      expect(screen.getByText(/We could not reach the service to end your last session/)).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /We could not reach the service to end your last session/
+        )
+      ).toBeInTheDocument();
     } finally {
       window.localStorage.clear();
     }
@@ -143,13 +174,18 @@ describe('LoginPage', () => {
     await user.type(screen.getByLabelText('Email'), 'ada@example.com');
     await user.type(screen.getByLabelText('Password'), 'secret');
     await user.click(screen.getByRole('button', { name: 'Sign in' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Sign in' })).toBeDisabled());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Sign in' })).toBeDisabled()
+    );
   });
 
   it('sends a signed-in person to the page they were going to, query string included', () => {
     renderLogin(
       { status: 'authenticated' },
-      { pathname: '/login', state: { from: { pathname: '/users', search: '?q=ada' } } },
+      {
+        pathname: '/login',
+        state: { from: { pathname: '/users', search: '?q=ada' } },
+      }
     );
     expect(screen.getByText('at /users?q=ada')).toBeInTheDocument();
   });
@@ -160,7 +196,13 @@ describe('LoginPage', () => {
   });
 
   it('does not loop when the saved page is the login page itself', () => {
-    renderLogin({ status: 'authenticated' }, { pathname: '/login', state: { from: { pathname: '/login', search: '' } } });
+    renderLogin(
+      { status: 'authenticated' },
+      {
+        pathname: '/login',
+        state: { from: { pathname: '/login', search: '' } },
+      }
+    );
     expect(screen.getByText('at /')).toBeInTheDocument();
   });
 });

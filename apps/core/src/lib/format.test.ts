@@ -1,4 +1,10 @@
-import { addMonths, endOfMonth, formatDate, localToday, pluralize } from './format';
+import {
+  addMonths,
+  endOfMonth,
+  formatDate,
+  localToday,
+  pluralize,
+} from './format';
 
 describe('formatDate', () => {
   it('formats an ISO date without shifting the day', () => {
@@ -57,16 +63,26 @@ describe('addMonths', () => {
     ['2026-03-31', -1, '2026-02-28'],
     ['2026-01-31', -2, '2025-11-30'],
     ['2028-02-29', 12, '2029-02-28'],
-  ])('clamps a day past the end of the month: %s + %i is %s', (from, months, to) => {
-    expect(addMonths(from, months)).toBe(to);
-  });
-
-  it.each(['', 'abc', '2026-02-30', '2026-13-01', '2026-00-10', '26-10-01', '2026-10-1', '0002-10-01', ' 2026-10-01'])(
-    'gives nothing for %j',
-    (text) => {
-      expect(addMonths(text, 3)).toBe('');
-    },
+  ])(
+    'clamps a day past the end of the month: %s + %i is %s',
+    (from, months, to) => {
+      expect(addMonths(from, months)).toBe(to);
+    }
   );
+
+  it.each([
+    '',
+    'abc',
+    '2026-02-30',
+    '2026-13-01',
+    '2026-00-10',
+    '26-10-01',
+    '2026-10-1',
+    '0002-10-01',
+    ' 2026-10-01',
+  ])('gives nothing for %j', (text) => {
+    expect(addMonths(text, 3)).toBe('');
+  });
 });
 
 describe('endOfMonth', () => {
@@ -81,7 +97,10 @@ describe('endOfMonth', () => {
     expect(endOfMonth(from)).toBe(to);
   });
 
-  it.each(['', 'nonsense', '2026-02-30', '2026-13-01', '0002-10-01'])('gives nothing for %j', (text) => {
-    expect(endOfMonth(text)).toBe('');
-  });
+  it.each(['', 'nonsense', '2026-02-30', '2026-13-01', '0002-10-01'])(
+    'gives nothing for %j',
+    (text) => {
+      expect(endOfMonth(text)).toBe('');
+    }
+  );
 });

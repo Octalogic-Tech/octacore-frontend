@@ -42,7 +42,12 @@ const serve = ({ people }: { people?: 'fail' | unknown } = {}) =>
 
 function openDialog(props: { leave?: LeaveRow; personId?: number } = {}) {
   return renderWithProviders(
-    <LeaveFormDialog open onOpenChange={onOpenChange} fallbackFocusId="leave-search" {...props} />
+    <LeaveFormDialog
+      open
+      onOpenChange={onOpenChange}
+      fallbackFocusId="leave-search"
+      {...props}
+    />
   );
 }
 
@@ -52,7 +57,11 @@ const optionNames = (select: HTMLElement) =>
     .map((option) => option.textContent);
 
 /** Fills the fields a new leave needs, for the person given or chosen. */
-async function fill(user: ReturnType<typeof userEvent.setup>, first = '2026-11-02', last = '2026-11-06') {
+async function fill(
+  user: ReturnType<typeof userEvent.setup>,
+  first = '2026-11-02',
+  last = '2026-11-06'
+) {
   await user.selectOptions(screen.getByLabelText('Type'), 'Earned');
   await user.type(screen.getByLabelText('First day'), first);
   await user.type(screen.getByLabelText('Last day'), last);
@@ -69,7 +78,9 @@ afterEach(() => {
 describe('LeaveFormDialog: adding', () => {
   it('opens with nothing chosen and no days', async () => {
     openDialog();
-    expect(screen.getByRole('dialog', { name: 'New leave' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'New leave' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Person')).toHaveValue('');
     expect(screen.getByLabelText('Type')).toHaveValue('');
     expect(screen.getByLabelText('First day')).toHaveValue('');
@@ -103,7 +114,9 @@ describe('LeaveFormDialog: adding', () => {
 
   it('says that both the first and the last day count', () => {
     openDialog();
-    expect(screen.getByText(/both the first and the last day count/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/both the first and the last day count/i)
+    ).toBeInTheDocument();
   });
 
   it('posts the person, the type, both days and a null reason', async () => {
@@ -133,7 +146,10 @@ describe('LeaveFormDialog: adding', () => {
     await user.type(screen.getByLabelText('Reason'), '  Family wedding  ');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.post).toHaveBeenCalledWith('/leaves', expect.objectContaining({ reason: 'Family wedding' }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/leaves',
+      expect.objectContaining({ reason: 'Family wedding' })
+    );
   });
 
   it('accepts a single day, the same date in both', async () => {
@@ -145,7 +161,10 @@ describe('LeaveFormDialog: adding', () => {
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
     expect(coreApi.post).toHaveBeenCalledWith(
       '/leaves',
-      expect.objectContaining({ startDate: '2026-11-02', endDate: '2026-11-02' })
+      expect.objectContaining({
+        startDate: '2026-11-02',
+        endDate: '2026-11-02',
+      })
     );
   });
 
@@ -155,7 +174,10 @@ describe('LeaveFormDialog: adding', () => {
     await fill(user);
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Choose a person')).toBeInTheDocument();
-    expect(screen.getByLabelText('Person')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Person')).toHaveAttribute(
+      'aria-invalid',
+      'true'
+    );
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
@@ -174,8 +196,13 @@ describe('LeaveFormDialog: adding', () => {
     openDialog({ personId: 1 });
     await fill(user, '2026-11-06', '2026-11-02');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('The last day must not be before the first')).toBeInTheDocument();
-    expect(screen.getByLabelText('Last day')).toHaveAttribute('aria-invalid', 'true');
+    expect(
+      await screen.findByText('The last day must not be before the first')
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Last day')).toHaveAttribute(
+      'aria-invalid',
+      'true'
+    );
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
@@ -187,7 +214,10 @@ describe('LeaveFormDialog: adding', () => {
     await fill(user);
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.post).toHaveBeenCalledWith('/leaves', expect.objectContaining({ personId: 3 }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/leaves',
+      expect.objectContaining({ personId: 3 })
+    );
   });
 
   it('shows the service’s own words when the leave overlaps another of the person’s, and keeps the dialog open', async () => {
@@ -201,7 +231,9 @@ describe('LeaveFormDialog: adding', () => {
   });
 
   it('saves again under other days after an overlap, and closes', async () => {
-    vi.mocked(coreApi.post).mockRejectedValueOnce(failure(409, OVERLAP)).mockResolvedValueOnce(saved);
+    vi.mocked(coreApi.post)
+      .mockRejectedValueOnce(failure(409, OVERLAP))
+      .mockResolvedValueOnce(saved);
     const user = userEvent.setup();
     openDialog({ personId: 1 });
     await fill(user, '2026-03-11', '2026-03-13');
@@ -211,34 +243,50 @@ describe('LeaveFormDialog: adding', () => {
     await user.type(screen.getByLabelText('First day'), '2026-03-13');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.post).toHaveBeenNthCalledWith(2, '/leaves', expect.objectContaining({ startDate: '2026-03-13' }));
+    expect(coreApi.post).toHaveBeenNthCalledWith(
+      2,
+      '/leaves',
+      expect.objectContaining({ startDate: '2026-03-13' })
+    );
   });
 
   it('shows the service’s words for a person it no longer has', async () => {
-    vi.mocked(coreApi.post).mockRejectedValue(failure(409, 'Referenced record does not exist'));
+    vi.mocked(coreApi.post).mockRejectedValue(
+      failure(409, 'Referenced record does not exist')
+    );
     const user = userEvent.setup();
     openDialog({ personId: 1 });
     await fill(user);
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Referenced record does not exist');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Referenced record does not exist'
+    );
   });
 
   it('shows the service’s words for days it refuses as a 422', async () => {
-    vi.mocked(coreApi.post).mockRejectedValue(failure(422, 'The last day must not be before the first'));
+    vi.mocked(coreApi.post).mockRejectedValue(
+      failure(422, 'The last day must not be before the first')
+    );
     const user = userEvent.setup();
     openDialog({ personId: 1 });
     await fill(user);
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('The last day must not be before the first');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'The last day must not be before the first'
+    );
   });
 
   it('keeps the dialog open and says so when the save fails, and saves the same leave again on a retry', async () => {
-    vi.mocked(coreApi.post).mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce(saved);
+    vi.mocked(coreApi.post)
+      .mockRejectedValueOnce(new Error('down'))
+      .mockResolvedValueOnce(saved);
     const user = userEvent.setup();
     openDialog({ personId: 1 });
     await fill(user);
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That did not save. Try again.'
+    );
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
@@ -258,7 +306,9 @@ describe('LeaveFormDialog: adding', () => {
   it('says so when the people could not be loaded', async () => {
     serve({ people: 'fail' });
     openDialog();
-    expect(await screen.findByText('People could not be loaded.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('People could not be loaded.')
+    ).toBeInTheDocument();
   });
 
   it('closes without saving on Cancel', async () => {
@@ -273,7 +323,9 @@ describe('LeaveFormDialog: adding', () => {
 describe('LeaveFormDialog: editing', () => {
   it('opens on the leave: the person as text it cannot change, the type, the days and the reason', () => {
     openDialog({ leave: adaWedding });
-    expect(screen.getByRole('dialog', { name: 'Edit leave' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Edit leave' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Person')).toHaveValue('Ada Lovelace');
     expect(screen.getByLabelText('Person')).toHaveAttribute('readonly');
     expect(screen.getByLabelText('Type')).toHaveValue('casual');
@@ -324,7 +376,10 @@ describe('LeaveFormDialog: editing', () => {
     await user.clear(screen.getByLabelText('Reason'));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/leaves/1', expect.objectContaining({ reason: null }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/leaves/1',
+      expect.objectContaining({ reason: null })
+    );
   });
 
   it('shows the service’s words when the new days overlap another leave of the person', async () => {

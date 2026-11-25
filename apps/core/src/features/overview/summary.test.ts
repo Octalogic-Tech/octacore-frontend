@@ -2,7 +2,11 @@ import type { InvoiceRow, ProjectRow } from '@/features/projects/schema';
 import { summarize } from './summary';
 
 // The projects' totals are in whole US cents, as the service adds them up from each invoice's `amountUsdCents`.
-const project = (id: number, totalValueCents: number, totalOutstandingCents: number): ProjectRow => ({
+const project = (
+  id: number,
+  totalValueCents: number,
+  totalOutstandingCents: number
+): ProjectRow => ({
   id,
   name: `Project ${id}`,
   description: '',
@@ -12,7 +16,13 @@ const project = (id: number, totalValueCents: number, totalOutstandingCents: num
   clientId: 1,
   countryId: null,
   country: null,
-  billing: { currencyCode: 'USD', currencySymbol: '$', exchangeRate: 1, taxRate: 0, source: 'default' },
+  billing: {
+    currencyCode: 'USD',
+    currencySymbol: '$',
+    exchangeRate: 1,
+    taxRate: 0,
+    source: 'default',
+  },
   projectStatus: 'active',
   projectStatusLabel: 'Active',
   startDate: null,
@@ -55,35 +65,63 @@ const ids = (list: { id: number }[]) => list.map((item) => item.id);
 
 describe('summarize', () => {
   it('totals value and outstanding across projects', () => {
-    const summary = summarize([project(1, 1000, 200), project(2, 500, 0), project(3, 2500, 900)], []);
+    const summary = summarize(
+      [project(1, 1000, 200), project(2, 500, 0), project(3, 2500, 900)],
+      []
+    );
     expect(summary.projectCount).toBe(3);
     expect(summary.totalValue).toBe(4000);
     expect(summary.totalOutstanding).toBe(1100);
   });
 
   it('takes the totals from the projects, in dollars, whatever currencies the invoices are in', () => {
-    const rupees = invoice(1, { currencyCode: 'INR', currencySymbol: '₹', exchangeRate: 88.25, amountCents: 20_000_000, amountUsdCents: 226_629 });
+    const rupees = invoice(1, {
+      currencyCode: 'INR',
+      currencySymbol: '₹',
+      exchangeRate: 88.25,
+      amountCents: 20_000_000,
+      amountUsdCents: 226_629,
+    });
     const summary = summarize([project(1, 226_629, 226_629)], [rupees]);
     expect(summary.totalValue).toBe(226_629);
     expect(summary.totalOutstanding).toBe(226_629);
-    expect(summary.topOutstanding.map((item) => item.totalOutstandingCents)).toEqual([226_629]);
+    expect(
+      summary.topOutstanding.map((item) => item.totalOutstandingCents)
+    ).toEqual([226_629]);
   });
 
   it('lists an unpaid invoice with its own currency, for the page to show in it', () => {
-    const rupees = invoice(1, { currencyCode: 'INR', currencySymbol: '₹', amountCents: 20_000_000 });
-    expect(summarize([], [rupees]).unpaidInvoices[0]).toMatchObject({ currencyCode: 'INR', amountCents: 20_000_000 });
+    const rupees = invoice(1, {
+      currencyCode: 'INR',
+      currencySymbol: '₹',
+      amountCents: 20_000_000,
+    });
+    expect(summarize([], [rupees]).unpaidInvoices[0]).toMatchObject({
+      currencyCode: 'INR',
+      amountCents: 20_000_000,
+    });
   });
 
   it('ranks the five largest outstanding amounts and leaves settled projects out', () => {
     const outstanding = [0, 10, 70, 30, 60, 50, 20];
-    const summary = summarize(outstanding.map((amount, index) => project(index + 1, 100, amount)), []);
-    expect(summary.topOutstanding.map((item) => item.id)).toEqual([3, 5, 6, 4, 7]);
+    const summary = summarize(
+      outstanding.map((amount, index) => project(index + 1, 100, amount)),
+      []
+    );
+    expect(summary.topOutstanding.map((item) => item.id)).toEqual([
+      3, 5, 6, 4, 7,
+    ]);
   });
 
   it('counts every unpaid invoice but lists only the five due soonest', () => {
     // Entered in reverse of their due dates, so the order shown is the sort and not the order given.
-    const unpaid = Array.from({ length: 7 }, (_, index) => invoice(index + 1, { dueDate: `2026-11-0${7 - index}` }));
-    const paid = [invoice(8, { dueDate: '2026-10-01', paidDate: '2026-10-02' }), invoice(9, { paidDate: '2026-10-03' })];
+    const unpaid = Array.from({ length: 7 }, (_, index) =>
+      invoice(index + 1, { dueDate: `2026-11-0${7 - index}` })
+    );
+    const paid = [
+      invoice(8, { dueDate: '2026-10-01', paidDate: '2026-10-02' }),
+      invoice(9, { paidDate: '2026-10-03' }),
+    ];
     const summary = summarize([], [...unpaid, ...paid]);
     expect(summary.unpaidCount).toBe(7);
     expect(ids(summary.unpaidInvoices)).toEqual([7, 6, 5, 4, 3]);
@@ -96,7 +134,7 @@ describe('summarize', () => {
         invoice(1, { issueDate: '2026-10-01' }),
         invoice(2, { issueDate: '2026-09-01' }),
         invoice(3, { dueDate: '2026-12-31' }),
-      ],
+      ]
     );
     expect(ids(summary.unpaidInvoices)).toEqual([3, 2, 1]);
   });
@@ -109,18 +147,26 @@ describe('summarize', () => {
         invoice(3, { dueDate: due, issueDate: '2026-10-05' }),
         invoice(2, { dueDate: due, issueDate: '2026-10-05' }),
         invoice(1, { dueDate: due, issueDate: '2026-10-09' }),
-      ],
+      ]
     );
     expect(ids(summary.unpaidInvoices)).toEqual([2, 3, 1]);
   });
 
   it("names each unpaid invoice's project", () => {
-    const summary = summarize([project(1, 0, 0), project(2, 0, 0)], [invoice(1, { projectId: 2 })]);
-    expect(summary.unpaidInvoices[0]).toMatchObject({ projectName: 'Project 2' });
+    const summary = summarize(
+      [project(1, 0, 0), project(2, 0, 0)],
+      [invoice(1, { projectId: 2 })]
+    );
+    expect(summary.unpaidInvoices[0]).toMatchObject({
+      projectName: 'Project 2',
+    });
   });
 
   it('leaves the invoices it is given in their order', () => {
-    const given = [invoice(1, { dueDate: '2026-12-01' }), invoice(2, { dueDate: '2026-11-01' })];
+    const given = [
+      invoice(1, { dueDate: '2026-12-01' }),
+      invoice(2, { dueDate: '2026-11-01' }),
+    ];
     summarize([], given);
     expect(ids(given)).toEqual([1, 2]);
   });

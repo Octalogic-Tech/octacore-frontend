@@ -12,7 +12,10 @@ export type CategoryInput = z.infer<typeof categorySchema>;
 export const categoryRowSchema = z.object({
   id: z.number().int(),
   name: z.string(),
-  description: z.string().nullable().transform((text) => text ?? ''),
+  description: z
+    .string()
+    .nullable()
+    .transform((text) => text ?? ''),
   createdDate: z.string(),
   updatedDate: z.string(),
 });

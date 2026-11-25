@@ -12,7 +12,11 @@ export function RecurringInvoicesPage() {
       <PlannedFeature
         spec={recurringInvoicesSpec}
         actions={
-          <Button variant="quiet" id="preview-schedule" onClick={() => setOpen(true)}>
+          <Button
+            variant="quiet"
+            id="preview-schedule"
+            onClick={() => setOpen(true)}
+          >
             {scheduleDialog.previewLabel}
           </Button>
         }

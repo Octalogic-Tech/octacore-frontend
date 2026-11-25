@@ -10,13 +10,17 @@ import { PLANNED } from './registry';
 
 function renderAt(route: string, auth?: Partial<AuthContextValue>) {
   return render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
       <AuthTestProvider value={auth}>
         <MemoryRouter initialEntries={[route]}>
           <App />
         </MemoryRouter>
       </AuthTestProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   );
 }
 
@@ -32,7 +36,11 @@ const IN_ORDER = [
 ] as const;
 
 const DIALOGS = [
-  ['recurring-invoices', 'Preview the schedule dialog', 'Schedule a retainer project'],
+  [
+    'recurring-invoices',
+    'Preview the schedule dialog',
+    'Schedule a retainer project',
+  ],
   ['milestones', 'Preview the milestone dialog', 'Milestone'],
   ['currency-tax', 'Preview the tax rate dialog', 'Tax rate'],
   ['profit-loss', 'Preview the expense dialog', 'Add an expense'],
@@ -54,8 +62,13 @@ describe('the planned registry', () => {
       expect(spec.buildsOn.length, `${spec.id} buildsOn`).toBeGreaterThan(0);
       expect(spec.decisions.length, `${spec.id} decisions`).toBeGreaterThan(0);
       for (const dialog of spec.dialogs) {
-        expect(dialog.fields.length, `${dialog.title} fields`).toBeGreaterThan(0);
-        expect(dialog.happens.length, `${dialog.title} happens`).toBeGreaterThan(0);
+        expect(dialog.fields.length, `${dialog.title} fields`).toBeGreaterThan(
+          0
+        );
+        expect(
+          dialog.happens.length,
+          `${dialog.title} happens`
+        ).toBeGreaterThan(0);
       }
     }
   });
@@ -68,8 +81,13 @@ describe('the planned registry', () => {
     const ids = PLANNED.map((spec) => spec.id);
     for (const spec of PLANNED) {
       for (const needed of spec.needs) {
-        expect(ids.indexOf(needed), `${spec.id} needs ${needed}`).toBeGreaterThanOrEqual(0);
-        expect(ids.indexOf(needed), `${spec.id} needs ${needed}`).toBeLessThan(ids.indexOf(spec.id));
+        expect(
+          ids.indexOf(needed),
+          `${spec.id} needs ${needed}`
+        ).toBeGreaterThanOrEqual(0);
+        expect(ids.indexOf(needed), `${spec.id} needs ${needed}`).toBeLessThan(
+          ids.indexOf(spec.id)
+        );
       }
     }
   });
@@ -78,7 +96,9 @@ describe('the planned registry', () => {
 describe('the Planned index', () => {
   it('lists every piece in the suggested build order', () => {
     renderAt('/planned');
-    expect(screen.getByRole('heading', { level: 1, name: 'Planned' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Planned' })
+    ).toBeInTheDocument();
     const list = screen.getByRole('list', { name: 'Suggested build order' });
     const titles = within(list)
       .getAllByRole('heading', { level: 2 })
@@ -88,36 +108,58 @@ describe('the Planned index', () => {
 
   it.each(IN_ORDER)('links %s to its own page', (id, title) => {
     renderAt('/planned');
-    expect(screen.getByRole('link', { name: title })).toHaveAttribute('href', `/planned/${id}`);
+    expect(screen.getByRole('link', { name: title })).toHaveAttribute(
+      'href',
+      `/planned/${id}`
+    );
   });
 
   it('has no card for Quotes, which is a real page now', () => {
     renderAt('/planned');
     expect(screen.queryByRole('link', { name: 'Quote generator' })).toBeNull();
-    expect(screen.queryByRole('heading', { level: 2, name: 'Quote generator' })).toBeNull();
+    expect(
+      screen.queryByRole('heading', { level: 2, name: 'Quote generator' })
+    ).toBeNull();
   });
 
   it('says what a piece waits on', () => {
     renderAt('/planned');
     const card = screen.getByRole('listitem', { name: 'Cash-flow forecast' });
-    expect(within(card).getByText(/Build after/)).toHaveTextContent('Build after: Currency and tax, Milestone schedule');
+    expect(within(card).getByText(/Build after/)).toHaveTextContent(
+      'Build after: Currency and tax, Milestone schedule'
+    );
   });
 });
 
 describe('a planned page', () => {
-  it.each(IN_ORDER)('%s says it is not built, and what it will be', (id, title) => {
-    renderAt(`/planned/${id}`);
-    expect(screen.getByRole('heading', { level: 1, name: title })).toBeInTheDocument();
-    expect(screen.getByText('Planned, not built yet')).toBeInTheDocument();
-    for (const section of ['What it will do', 'Builds on', 'Open decisions']) {
-      expect(screen.getByRole('heading', { level: 2, name: section })).toBeInTheDocument();
+  it.each(IN_ORDER)(
+    '%s says it is not built, and what it will be',
+    (id, title) => {
+      renderAt(`/planned/${id}`);
+      expect(
+        screen.getByRole('heading', { level: 1, name: title })
+      ).toBeInTheDocument();
+      expect(screen.getByText('Planned, not built yet')).toBeInTheDocument();
+      for (const section of [
+        'What it will do',
+        'Builds on',
+        'Open decisions',
+      ]) {
+        expect(
+          screen.getByRole('heading', { level: 2, name: section })
+        ).toBeInTheDocument();
+      }
+      expect(
+        screen.getByRole('link', { name: 'All planned work' })
+      ).toHaveAttribute('href', '/planned');
     }
-    expect(screen.getByRole('link', { name: 'All planned work' })).toHaveAttribute('href', '/planned');
-  });
+  );
 
   it('no longer has a planned page for Quotes', () => {
     renderAt('/planned/quotes');
-    expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Page not found' })
+    ).toBeInTheDocument();
     expect(screen.queryByText('Planned, not built yet')).toBeNull();
   });
 
@@ -126,17 +168,26 @@ describe('a planned page', () => {
     expect(screen.queryByRole('button', { name: /Preview/ })).toBeNull();
   });
 
-  it.each(DIALOGS)('%s opens the %s, which lists its fields and closes', async (id, button, title) => {
-    const user = userEvent.setup();
-    renderAt(`/planned/${id}`);
-    await user.click(screen.getByRole('button', { name: button }));
-    const dialog = await screen.findByRole('dialog', { name: title });
-    expect(within(dialog).getByText('Preview only, not a working form')).toBeInTheDocument();
-    expect(within(dialog).getByRole('heading', { name: 'Fields' })).toBeInTheDocument();
-    expect(within(dialog).getByRole('heading', { name: 'What happens' })).toBeInTheDocument();
-    await user.click(within(dialog).getByRole('button', { name: 'Close' }));
-    expect(screen.queryByRole('dialog')).toBeNull();
-  });
+  it.each(DIALOGS)(
+    '%s opens the %s, which lists its fields and closes',
+    async (id, button, title) => {
+      const user = userEvent.setup();
+      renderAt(`/planned/${id}`);
+      await user.click(screen.getByRole('button', { name: button }));
+      const dialog = await screen.findByRole('dialog', { name: title });
+      expect(
+        within(dialog).getByText('Preview only, not a working form')
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByRole('heading', { name: 'Fields' })
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByRole('heading', { name: 'What happens' })
+      ).toBeInTheDocument();
+      await user.click(within(dialog).getByRole('button', { name: 'Close' }));
+      expect(screen.queryByRole('dialog')).toBeNull();
+    }
+  );
 });
 
 describe('Planned in the sidebar', () => {
@@ -144,19 +195,27 @@ describe('Planned in the sidebar', () => {
     renderAt('/');
     const nav = screen.getByRole('navigation', { name: 'Main' });
     expect(within(nav).getByText('Planned')).toBeInTheDocument();
-    expect(within(nav).getByRole('link', { name: 'Planned features' })).toHaveAttribute('href', '/planned');
+    expect(
+      within(nav).getByRole('link', { name: 'Planned features' })
+    ).toHaveAttribute('href', '/planned');
   });
 
   it('keeps Planned features current on a planned page', () => {
     renderAt('/planned/cash-flow');
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    expect(within(nav).getByRole('link', { name: 'Planned features' })).toHaveAttribute('aria-current', 'page');
+    expect(
+      within(nav).getByRole('link', { name: 'Planned features' })
+    ).toHaveAttribute('aria-current', 'page');
   });
 
   it('hides the link and the pages from anyone who is not an admin', () => {
     renderAt('/planned', { user: { ...adminUser, role: 'viewer' } });
     const nav = screen.getByRole('navigation', { name: 'Main' });
-    expect(within(nav).queryByRole('link', { name: 'Planned features' })).toBeNull();
-    expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeInTheDocument();
+    expect(
+      within(nav).queryByRole('link', { name: 'Planned features' })
+    ).toBeNull();
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Page not found' })
+    ).toBeInTheDocument();
   });
 });

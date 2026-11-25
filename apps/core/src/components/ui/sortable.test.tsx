@@ -32,15 +32,27 @@ function applyMove(groups: Groups, move: SortableMove): Groups {
 
 const announcements: SortableAnnouncements = {
   pickedUp: ({ id }) => `Picked up ${id}`,
-  moved: ({ id }, to) => (to.index === undefined ? `Moved ${id} to place ${to.group + 1}` : `Moved ${id} to group ${to.group + 1}, position ${to.index + 1}`),
-  dropped: ({ id }, to) => (to.index === undefined ? `Dropped ${id} at place ${to.group + 1}` : `Dropped ${id} in group ${to.group + 1}, position ${to.index + 1}`),
+  moved: ({ id }, to) =>
+    to.index === undefined
+      ? `Moved ${id} to place ${to.group + 1}`
+      : `Moved ${id} to group ${to.group + 1}, position ${to.index + 1}`,
+  dropped: ({ id }, to) =>
+    to.index === undefined
+      ? `Dropped ${id} at place ${to.group + 1}`
+      : `Dropped ${id} in group ${to.group + 1}, position ${to.index + 1}`,
   cancelled: ({ id }) => `Put ${id} back`,
 };
 
 const START: Groups = { g1: ['a1', 'a2'], g2: ['b1'], g3: [] };
 
 /** Three groups of items, each group and item with its own handle, and an input in every item. */
-function Board({ onMove = () => undefined, initial = START }: { onMove?: (move: SortableMove) => void; initial?: Groups }) {
+function Board({
+  onMove = () => undefined,
+  initial = START,
+}: {
+  onMove?: (move: SortableMove) => void;
+  initial?: Groups;
+}) {
   const [groups, setGroups] = useState(initial);
   return (
     <Sortable
@@ -53,19 +65,37 @@ function Board({ onMove = () => undefined, initial = START }: { onMove?: (move: 
     >
       <SortableContent>
         {Object.entries(groups).map(([group, items]) => (
-          <SortableGroup key={group} value={group} role="group" aria-label={group}>
-            <SortableGroupHandle aria-label={`Drag ${group}`}>grip</SortableGroupHandle>
+          <SortableGroup
+            key={group}
+            value={group}
+            role="group"
+            aria-label={group}
+          >
+            <SortableGroupHandle aria-label={`Drag ${group}`}>
+              grip
+            </SortableGroupHandle>
             {items.map((item) => (
-              <SortableItem key={item} value={item} role="group" aria-label={item}>
+              <SortableItem
+                key={item}
+                value={item}
+                role="group"
+                aria-label={item}
+              >
                 <span>{`${item} body`}</span>
-                <SortableItemHandle aria-label={`Drag ${item}`}>grip</SortableItemHandle>
+                <SortableItemHandle aria-label={`Drag ${item}`}>
+                  grip
+                </SortableItemHandle>
                 <input aria-label={`${item} text`} />
               </SortableItem>
             ))}
           </SortableGroup>
         ))}
       </SortableContent>
-      <SortableOverlay>{({ value, variant }) => <p>{`${variant} ${String(value)} in the air`}</p>}</SortableOverlay>
+      <SortableOverlay>
+        {({ value, variant }) => (
+          <p>{`${variant} ${String(value)} in the air`}</p>
+        )}
+      </SortableOverlay>
     </Sortable>
   );
 }
@@ -126,11 +156,19 @@ describe('Sortable: only the handle starts a drag', () => {
   it('keeps a finger on a handle from scrolling the page, and shows a grab cursor', () => {
     render(<Board />);
     for (const name of ['Drag a1', 'Drag g1']) {
-      expect(screen.getByRole('button', { name })).toHaveClass('touch-none', 'select-none', 'cursor-grab');
+      expect(screen.getByRole('button', { name })).toHaveClass(
+        'touch-none',
+        'select-none',
+        'cursor-grab'
+      );
     }
     // The item and the group are not: touch scrolling over them keeps working.
-    expect(screen.getByRole('group', { name: 'a1' })).not.toHaveClass('touch-none');
-    expect(screen.getByRole('group', { name: 'g1' })).not.toHaveClass('touch-none');
+    expect(screen.getByRole('group', { name: 'a1' })).not.toHaveClass(
+      'touch-none'
+    );
+    expect(screen.getByRole('group', { name: 'g1' })).not.toHaveClass(
+      'touch-none'
+    );
   });
 
   it('is not picked up by a key pressed in an input inside the item', async () => {
@@ -162,17 +200,28 @@ describe('Sortable: the keyboard', () => {
     render(<Board onMove={onMove} />);
     await pickUp(user, 'Drag a1');
     await user.keyboard('{ArrowDown}');
-    expect(await screen.findByText('Moved a1 to group 1, position 2')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Moved a1 to group 1, position 2')
+    ).toBeInTheDocument();
     // Inside one group nothing changes until the item is put down.
     expect(onMove).not.toHaveBeenCalled();
     await user.keyboard(' ');
     expect(onMove).toHaveBeenCalledTimes(1);
-    expect(onMove).toHaveBeenCalledWith({ kind: 'item', id: 'a1', from: { group: 0, index: 0 }, to: { group: 0, index: 1 } });
+    expect(onMove).toHaveBeenCalledWith({
+      kind: 'item',
+      id: 'a1',
+      from: { group: 0, index: 0 },
+      to: { group: 0, index: 1 },
+    });
     expect(order()).toEqual(['g1', 'a2', 'a1', 'g2', 'b1', 'g3']);
-    expect(await screen.findByText('Dropped a1 in group 1, position 2')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Dropped a1 in group 1, position 2')
+    ).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText(/in the air/)).toBeNull());
     // Focus goes back to the handle it was picked up by.
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Drag a1' })).toHaveFocus());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Drag a1' })).toHaveFocus()
+    );
   });
 
   it('moves an item past the end of its group to the start of the next, while it is held', async () => {
@@ -182,21 +231,43 @@ describe('Sortable: the keyboard', () => {
     await pickUp(user, 'Drag a2');
     await user.keyboard('{ArrowDown}');
     // It is shown in the new group while it is still held.
-    await waitFor(() => expect(order()).toEqual(['g1', 'a1', 'g2', 'a2', 'b1', 'g3']));
-    expect(onMove).toHaveBeenCalledWith({ kind: 'item', id: 'a2', from: { group: 0, index: 1 }, to: { group: 1, index: 0 } });
-    expect(await screen.findByText('Moved a2 to group 2, position 1')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(order()).toEqual(['g1', 'a1', 'g2', 'a2', 'b1', 'g3'])
+    );
+    expect(onMove).toHaveBeenCalledWith({
+      kind: 'item',
+      id: 'a2',
+      from: { group: 0, index: 1 },
+      to: { group: 1, index: 0 },
+    });
+    expect(
+      await screen.findByText('Moved a2 to group 2, position 1')
+    ).toBeInTheDocument();
     // On down the group, then into the empty group after it.
     await user.keyboard('{ArrowDown}');
-    expect(await screen.findByText('Moved a2 to group 2, position 2')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Moved a2 to group 2, position 2')
+    ).toBeInTheDocument();
     await user.keyboard('{ArrowDown}');
-    await waitFor(() => expect(order()).toEqual(['g1', 'a1', 'g2', 'b1', 'g3', 'a2']));
-    expect(await screen.findByText('Moved a2 to group 3, position 1')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(order()).toEqual(['g1', 'a1', 'g2', 'b1', 'g3', 'a2'])
+    );
+    expect(
+      await screen.findByText('Moved a2 to group 3, position 1')
+    ).toBeInTheDocument();
     await user.keyboard(' ');
-    expect(await screen.findByText('Dropped a2 in group 3, position 1')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Dropped a2 in group 3, position 1')
+    ).toBeInTheDocument();
     expect(order()).toEqual(['g1', 'a1', 'g2', 'b1', 'g3', 'a2']);
     // Into the second group, then into the third: the step inside the second group was never a change of its own.
     expect(onMove).toHaveBeenCalledTimes(2);
-    expect(onMove).toHaveBeenLastCalledWith({ kind: 'item', id: 'a2', from: { group: 1, index: 0 }, to: { group: 2, index: 0 } });
+    expect(onMove).toHaveBeenLastCalledWith({
+      kind: 'item',
+      id: 'a2',
+      from: { group: 1, index: 0 },
+      to: { group: 2, index: 0 },
+    });
   });
 
   it('moves an item above the start of its group to the end of the one before', async () => {
@@ -204,10 +275,16 @@ describe('Sortable: the keyboard', () => {
     render(<Board />);
     await pickUp(user, 'Drag b1');
     await user.keyboard('{ArrowUp}');
-    await waitFor(() => expect(order()).toEqual(['g1', 'a1', 'a2', 'b1', 'g2', 'g3']));
-    expect(await screen.findByText('Moved b1 to group 1, position 3')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(order()).toEqual(['g1', 'a1', 'a2', 'b1', 'g2', 'g3'])
+    );
+    expect(
+      await screen.findByText('Moved b1 to group 1, position 3')
+    ).toBeInTheDocument();
     await user.keyboard('{ArrowUp}');
-    expect(await screen.findByText('Moved b1 to group 1, position 2')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Moved b1 to group 1, position 2')
+    ).toBeInTheDocument();
     await user.keyboard(' ');
     expect(order()).toEqual(['g1', 'a1', 'b1', 'a2', 'g2', 'g3']);
   });
@@ -218,10 +295,19 @@ describe('Sortable: the keyboard', () => {
     render(<Board onMove={onMove} />);
     await pickUp(user, 'Drag a2');
     await user.keyboard('{ArrowDown}');
-    await waitFor(() => expect(order()).toEqual(['g1', 'a1', 'g2', 'a2', 'b1', 'g3']));
+    await waitFor(() =>
+      expect(order()).toEqual(['g1', 'a1', 'g2', 'a2', 'b1', 'g3'])
+    );
     await user.keyboard('{Escape}');
-    await waitFor(() => expect(order()).toEqual(['g1', 'a1', 'a2', 'g2', 'b1', 'g3']));
-    expect(onMove).toHaveBeenLastCalledWith({ kind: 'item', id: 'a2', from: { group: 1, index: 0 }, to: { group: 0, index: 1 } });
+    await waitFor(() =>
+      expect(order()).toEqual(['g1', 'a1', 'a2', 'g2', 'b1', 'g3'])
+    );
+    expect(onMove).toHaveBeenLastCalledWith({
+      kind: 'item',
+      id: 'a2',
+      from: { group: 1, index: 0 },
+      to: { group: 0, index: 1 },
+    });
     expect(await screen.findByText('Put a2 back')).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByText(/in the air/)).toBeNull());
   });
@@ -252,9 +338,16 @@ describe('Sortable: the keyboard', () => {
     expect(await screen.findByText('Moved g1 to place 3')).toBeInTheDocument();
     expect(onMove).not.toHaveBeenCalled();
     await user.keyboard(' ');
-    expect(onMove).toHaveBeenCalledWith({ kind: 'group', id: 'g1', from: 0, to: 2 });
+    expect(onMove).toHaveBeenCalledWith({
+      kind: 'group',
+      id: 'g1',
+      from: 0,
+      to: 2,
+    });
     expect(order()).toEqual(['g2', 'b1', 'g3', 'g1', 'a1', 'a2']);
-    expect(await screen.findByText('Dropped g1 at place 3')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Dropped g1 at place 3')
+    ).toBeInTheDocument();
   });
 
   it('stops at the ends: up from the first place and down from the last do nothing', async () => {

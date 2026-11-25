@@ -12,7 +12,11 @@ export function CurrencyTaxPage() {
       <PlannedFeature
         spec={currencyTaxSpec}
         actions={
-          <Button variant="quiet" id="preview-tax-rate" onClick={() => setOpen(true)}>
+          <Button
+            variant="quiet"
+            id="preview-tax-rate"
+            onClick={() => setOpen(true)}
+          >
             {taxRateDialog.previewLabel}
           </Button>
         }

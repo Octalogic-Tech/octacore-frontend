@@ -11,7 +11,10 @@ import { summarize } from './summary';
 export function OverviewPage() {
   const projects = useProjects();
   const invoices = useAllInvoices();
-  const summary = useMemo(() => summarize(projects.data ?? [], invoices.data ?? []), [projects.data, invoices.data]);
+  const summary = useMemo(
+    () => summarize(projects.data ?? [], invoices.data ?? []),
+    [projects.data, invoices.data]
+  );
 
   return (
     <>
@@ -29,9 +32,15 @@ export function OverviewPage() {
         <div className="border-t border-navy">
           <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-b border-rule py-5">
             <p className="max-w-[64ch] text-statement">
-              <span className="tabular font-semibold">{formatUsd(summary.totalOutstanding)}</span> outstanding
-              across {pluralize(summary.projectCount, 'project')}, of{' '}
-              <span className="tabular font-semibold">{formatUsd(summary.totalValue)}</span> in total.
+              <span className="tabular font-semibold">
+                {formatUsd(summary.totalOutstanding)}
+              </span>{' '}
+              outstanding across {pluralize(summary.projectCount, 'project')},
+              of{' '}
+              <span className="tabular font-semibold">
+                {formatUsd(summary.totalValue)}
+              </span>{' '}
+              in total.
             </p>
             <LinkArrow to="/projects">All projects</LinkArrow>
           </div>
@@ -39,7 +48,9 @@ export function OverviewPage() {
             <p className="max-w-[64ch] text-statement">
               {summary.unpaidCount === 0
                 ? 'No invoices are unpaid.'
-                : `${pluralize(summary.unpaidCount, 'invoice')} ${summary.unpaidCount === 1 ? 'is' : 'are'} unpaid.`}
+                : `${pluralize(summary.unpaidCount, 'invoice')} ${
+                    summary.unpaidCount === 1 ? 'is' : 'are'
+                  } unpaid.`}
             </p>
             <LinkArrow to="/finance/invoices">Review invoices</LinkArrow>
           </div>
@@ -51,16 +62,27 @@ export function OverviewPage() {
               Largest outstanding
             </h2>
             {summary.topOutstanding.length === 0 ? (
-              <p className="mt-3 border-t border-navy pt-3 text-body text-navy-80">Nothing is outstanding.</p>
+              <p className="mt-3 border-t border-navy pt-3 text-body text-navy-80">
+                Nothing is outstanding.
+              </p>
             ) : (
               <ul className="mt-3 border-t border-navy">
                 {summary.topOutstanding.map((project) => (
-                  <li key={project.id} className="flex items-baseline justify-between gap-4 border-b border-rule py-3">
+                  <li
+                    key={project.id}
+                    className="flex items-baseline justify-between gap-4 border-b border-rule py-3"
+                  >
                     <span>
-                      <span className="block font-semibold">{project.name}</span>
-                      <span className="block text-small text-navy-80">{project.clientName}</span>
+                      <span className="block font-semibold">
+                        {project.name}
+                      </span>
+                      <span className="block text-small text-navy-80">
+                        {project.clientName}
+                      </span>
                     </span>
-                    <span className="tabular">{formatUsd(project.totalOutstandingCents)}</span>
+                    <span className="tabular">
+                      {formatUsd(project.totalOutstandingCents)}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -72,20 +94,34 @@ export function OverviewPage() {
               Unpaid invoices
             </h2>
             {summary.unpaidInvoices.length === 0 ? (
-              <p className="mt-3 border-t border-navy pt-3 text-body text-navy-80">Nothing is unpaid.</p>
+              <p className="mt-3 border-t border-navy pt-3 text-body text-navy-80">
+                Nothing is unpaid.
+              </p>
             ) : (
               <ul className="mt-3 border-t border-navy">
                 {summary.unpaidInvoices.map((invoice) => (
-                  <li key={invoice.id} className="flex items-baseline justify-between gap-4 border-b border-rule py-3">
+                  <li
+                    key={invoice.id}
+                    className="flex items-baseline justify-between gap-4 border-b border-rule py-3"
+                  >
                     <span>
-                      <span className="block font-semibold">{invoice.number}</span>
+                      <span className="block font-semibold">
+                        {invoice.number}
+                      </span>
                       <span className="block text-small text-navy-80">
-                        {[invoice.projectName, invoice.dueDate ? `due ${formatDate(invoice.dueDate)}` : 'no due date']
+                        {[
+                          invoice.projectName,
+                          invoice.dueDate
+                            ? `due ${formatDate(invoice.dueDate)}`
+                            : 'no due date',
+                        ]
                           .filter(Boolean)
                           .join(', ')}
                       </span>
                     </span>
-                    <span className="tabular">{formatMoney(invoice.totalCents, invoice)}</span>
+                    <span className="tabular">
+                      {formatMoney(invoice.totalCents, invoice)}
+                    </span>
                   </li>
                 ))}
               </ul>

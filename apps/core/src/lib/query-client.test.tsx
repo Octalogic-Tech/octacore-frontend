@@ -20,7 +20,9 @@ describe('offline behaviour', () => {
     onlineManager.setOnline(false);
     vi.mocked(coreApi.get).mockRejectedValue(new Error('offline'));
     renderWithProviders(<CategoriesPage />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('We could not load this data');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'We could not load this data'
+    );
     expect(screen.queryByText('No categories yet.')).not.toBeInTheDocument();
   });
 

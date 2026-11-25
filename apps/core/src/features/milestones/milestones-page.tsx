@@ -12,7 +12,11 @@ export function MilestonesPage() {
       <PlannedFeature
         spec={milestonesSpec}
         actions={
-          <Button variant="quiet" id="preview-milestone" onClick={() => setOpen(true)}>
+          <Button
+            variant="quiet"
+            id="preview-milestone"
+            onClick={() => setOpen(true)}
+          >
             {milestoneDialog.previewLabel}
           </Button>
         }

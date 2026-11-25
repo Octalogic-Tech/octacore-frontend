@@ -12,7 +12,11 @@ const base = process.env.CORE_API_WRITE_URL;
 const email = process.env.CORE_API_TEST_EMAIL;
 const password = process.env.CORE_API_TEST_PASSWORD;
 
-const call = (method: string, path: string, options: { body?: unknown; token?: string; cookie?: string } = {}) =>
+const call = (
+  method: string,
+  path: string,
+  options: { body?: unknown; token?: string; cookie?: string } = {}
+) =>
   fetch(`${base}${path}`, {
     method,
     headers: {
@@ -24,11 +28,13 @@ const call = (method: string, path: string, options: { body?: unknown; token?: s
   });
 
 /** `name=value` of the refresh cookie a response sets. */
-const cookieOf = (response: Response) => (response.headers.get('set-cookie') ?? '').split(';')[0];
+const cookieOf = (response: Response) =>
+  (response.headers.get('set-cookie') ?? '').split(';')[0];
 
 describe.skipIf(!base)('the running core service, sign-in and users', () => {
   it('signs in, manages a user, and ends sessions the way the app expects', async () => {
-    if (!email || !password) throw new Error('Set CORE_API_TEST_EMAIL and CORE_API_TEST_PASSWORD.');
+    if (!email || !password)
+      throw new Error('Set CORE_API_TEST_EMAIL and CORE_API_TEST_PASSWORD.');
     const stamp = Date.now();
     const newEmail = `live-${stamp}@example.com`;
     const newPassword = `live passphrase ${stamp}`;
@@ -37,7 +43,9 @@ describe.skipIf(!base)('the running core service, sign-in and users', () => {
     expect((await call('GET', '/users')).status).toBe(401);
 
     // Sign in: the access token comes in the body, the refresh token only as an httpOnly cookie.
-    const login = await call('POST', '/auth/login', { body: { email, password } });
+    const login = await call('POST', '/auth/login', {
+      body: { email, password },
+    });
     expect(login.status).toBe(200);
     expect(login.headers.get('set-cookie')).toContain('HttpOnly');
     expect(login.headers.get('set-cookie')).toContain('Path=/api/v1/auth');
@@ -47,9 +55,13 @@ describe.skipIf(!base)('the running core service, sign-in and users', () => {
     expect(refreshCookie).toMatch(/^octacore_refresh=/);
 
     // A wrong password is the same 401 as an unknown account.
-    const wrong = await call('POST', '/auth/login', { body: { email, password: 'not the password' } });
+    const wrong = await call('POST', '/auth/login', {
+      body: { email, password: 'not the password' },
+    });
     expect(wrong.status).toBe(401);
-    expect(await wrong.json()).toMatchObject({ message: 'Invalid email or password' });
+    expect(await wrong.json()).toMatchObject({
+      message: 'Invalid email or password',
+    });
 
     // Add a user, read it back, change it. The id is taken from the raw body first, so a failed check on that body
     // still deletes the user it created.
@@ -57,21 +69,37 @@ describe.skipIf(!base)('the running core service, sign-in and users', () => {
     try {
       const created = await call('POST', '/users', {
         token: session.accessToken,
-        body: { name: 'Live Check', email: newEmail, role: 'admin', password: newPassword },
+        body: {
+          name: 'Live Check',
+          email: newEmail,
+          role: 'admin',
+          password: newPassword,
+        },
       });
       expect(created.status).toBe(201);
       const createdText = await created.text();
-      createdId = (JSON.parse(createdText) as { data?: { id?: number } }).data?.id;
+      createdId = (JSON.parse(createdText) as { data?: { id?: number } }).data
+        ?.id;
       // The raw body, not the parsed row: parsing drops keys it does not know, which would hide a leaked hash.
       expect(createdText).not.toMatch(/password/i);
       const row = unwrap(JSON.parse(createdText), userRowSchema);
 
-      const listed = unwrap(await (await call('GET', '/users', { token: session.accessToken })).json(), userRowsSchema);
+      const listed = unwrap(
+        await (
+          await call('GET', '/users', { token: session.accessToken })
+        ).json(),
+        userRowsSchema
+      );
       expect(listed.map((user) => user.id)).toContain(row.id);
 
       const duplicate = await call('POST', '/users', {
         token: session.accessToken,
-        body: { name: 'Dup', email: newEmail.toUpperCase(), role: 'admin', password: newPassword },
+        body: {
+          name: 'Dup',
+          email: newEmail.toUpperCase(),
+          role: 'admin',
+          password: newPassword,
+        },
       });
       expect(duplicate.status).toBe(409);
 
@@ -80,31 +108,65 @@ describe.skipIf(!base)('the running core service, sign-in and users', () => {
         body: { name: 'Live Checked' },
       });
       expect(patched.status).toBe(200);
-      expect(unwrap(await patched.json(), userRowSchema).name).toBe('Live Checked');
+      expect(unwrap(await patched.json(), userRowSchema).name).toBe(
+        'Live Checked'
+      );
 
       // The new user can sign in, and is locked out the moment they are deleted.
-      const newLogin = await call('POST', '/auth/login', { body: { email: newEmail, password: newPassword } });
+      const newLogin = await call('POST', '/auth/login', {
+        body: { email: newEmail, password: newPassword },
+      });
       expect(newLogin.status).toBe(200);
-      const newToken = unwrap(await newLogin.json(), authSessionSchema).accessToken;
-      expect((await call('GET', '/categories', { token: newToken })).status).toBe(200);
-      expect((await call('DELETE', `/users/${row.id}`, { token: session.accessToken })).status).toBe(200);
-      expect((await call('GET', '/categories', { token: newToken })).status).toBe(401);
-      expect((await call('POST', '/auth/login', { body: { email: newEmail, password: newPassword } })).status).toBe(401);
+      const newToken = unwrap(
+        await newLogin.json(),
+        authSessionSchema
+      ).accessToken;
+      expect(
+        (await call('GET', '/categories', { token: newToken })).status
+      ).toBe(200);
+      expect(
+        (
+          await call('DELETE', `/users/${row.id}`, {
+            token: session.accessToken,
+          })
+        ).status
+      ).toBe(200);
+      expect(
+        (await call('GET', '/categories', { token: newToken })).status
+      ).toBe(401);
+      expect(
+        (
+          await call('POST', '/auth/login', {
+            body: { email: newEmail, password: newPassword },
+          })
+        ).status
+      ).toBe(401);
 
       // You cannot delete yourself.
-      const self = await call('DELETE', `/users/${session.user.id}`, { token: session.accessToken });
+      const self = await call('DELETE', `/users/${session.user.id}`, {
+        token: session.accessToken,
+      });
       expect(self.status).toBe(409);
     } finally {
-      if (createdId !== undefined) await call('DELETE', `/users/${createdId}`, { token: session.accessToken });
+      if (createdId !== undefined)
+        await call('DELETE', `/users/${createdId}`, {
+          token: session.accessToken,
+        });
     }
 
     // Refresh rotates the cookie; logout revokes it, and a logged-out token is refused straight away.
-    const refreshed = await call('POST', '/auth/refresh', { cookie: refreshCookie });
+    const refreshed = await call('POST', '/auth/refresh', {
+      cookie: refreshCookie,
+    });
     expect(refreshed.status).toBe(200);
     unwrap(await refreshed.json(), authSessionSchema);
     const rotatedCookie = cookieOf(refreshed);
     expect(rotatedCookie).not.toBe(refreshCookie);
-    expect((await call('POST', '/auth/logout', { cookie: rotatedCookie })).status).toBe(200);
-    expect((await call('POST', '/auth/refresh', { cookie: rotatedCookie })).status).toBe(401);
+    expect(
+      (await call('POST', '/auth/logout', { cookie: rotatedCookie })).status
+    ).toBe(200);
+    expect(
+      (await call('POST', '/auth/refresh', { cookie: rotatedCookie })).status
+    ).toBe(401);
   });
 });

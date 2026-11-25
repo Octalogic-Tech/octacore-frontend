@@ -10,7 +10,9 @@ export function RequireAuth() {
   const { status } = useAuth();
   const location = useLocation();
 
-  if (status === 'loading') return <div aria-busy="true" className="min-h-dvh" />;
-  if (status === 'anonymous') return <Navigate to="/login" replace state={{ from: location }} />;
+  if (status === 'loading')
+    return <div aria-busy="true" className="min-h-dvh" />;
+  if (status === 'anonymous')
+    return <Navigate to="/login" replace state={{ from: location }} />;
   return <Outlet />;
 }

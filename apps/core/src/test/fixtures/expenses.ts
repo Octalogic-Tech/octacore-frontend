@@ -2,10 +2,20 @@ import { AxiosError, type AxiosResponse } from 'axios';
 
 // Rows shaped like the core service's answers for the expense routes, in its envelope, with made-up values.
 const stamp = '2026-10-01T09:30:00.000000Z';
-const audit = { status: 1, createdDate: stamp, updatedDate: stamp, deletedDate: null };
+const audit = {
+  status: 1,
+  createdDate: stamp,
+  updatedDate: stamp,
+  deletedDate: null,
+};
 
 export const expenseTypeRows = [
-  { id: 1, ...audit, name: 'Software subscription', description: 'Tools we pay for' },
+  {
+    id: 1,
+    ...audit,
+    name: 'Software subscription',
+    description: 'Tools we pay for',
+  },
   { id: 2, ...audit, name: 'Travel', description: null },
 ];
 
@@ -43,7 +53,12 @@ export const expenseRows = [
     chargeDate: '2026-09-15',
     amountCents: 10000,
     originalCountryId: 99,
-    originalCountry: { id: 99, name: 'India', currencyCode: 'INR', currencySymbol: '₹' },
+    originalCountry: {
+      id: 99,
+      name: 'India',
+      currencyCode: 'INR',
+      currencySymbol: '₹',
+    },
     originalAmount: 882500,
     exchangeRate: 88.25,
     recurringExpenseId: null,
@@ -63,7 +78,12 @@ export const recurringRows = [
     personId: null,
     person: null,
     countryId: 226,
-    country: { id: 226, name: 'United States', currencyCode: 'USD', currencySymbol: '$' },
+    country: {
+      id: 226,
+      name: 'United States',
+      currencyCode: 'USD',
+      currencySymbol: '$',
+    },
     amount: 1500,
     frequency: 'monthly',
     startDate: '2026-07-01',
@@ -87,7 +107,12 @@ export const recurringRows = [
     personId: 1,
     person: { id: 1, name: 'Ada Lovelace' },
     countryId: 99,
-    country: { id: 99, name: 'India', currencyCode: 'INR', currencySymbol: '₹' },
+    country: {
+      id: 99,
+      name: 'India',
+      currencyCode: 'INR',
+      currencySymbol: '₹',
+    },
     amount: 882500,
     frequency: 'monthly',
     startDate: '2026-08-15',
@@ -111,7 +136,12 @@ export const recurringRows = [
     personId: null,
     person: null,
     countryId: 226,
-    country: { id: 226, name: 'United States', currencyCode: 'USD', currencySymbol: '$' },
+    country: {
+      id: 226,
+      name: 'United States',
+      currencyCode: 'USD',
+      currencySymbol: '$',
+    },
     amount: 900,
     frequency: 'quarterly',
     startDate: '2026-01-10',
@@ -130,7 +160,12 @@ export const summaryData = {
   count: 2,
   byType: [
     { expenseTypeId: 2, name: 'Travel', totalCents: 10000, count: 1 },
-    { expenseTypeId: 1, name: 'Software subscription', totalCents: 1500, count: 1 },
+    {
+      expenseTypeId: 1,
+      name: 'Software subscription',
+      totalCents: 1500,
+      count: 1,
+    },
   ],
   byMonth: [
     { month: '2026-09', totalCents: 10000 },
@@ -138,7 +173,12 @@ export const summaryData = {
   ],
 };
 
-export const expensesEnvelope = (data: unknown) => ({ statusCode: 200, message: 'ok', data, meta: null });
+export const expensesEnvelope = (data: unknown) => ({
+  statusCode: 200,
+  message: 'ok',
+  data,
+  meta: null,
+});
 
 /** What a failed call rejects with: the service's own message sits in the body of its answer. */
 export const rejection = (status: number, message: string) =>
@@ -151,7 +191,8 @@ export const rejection = (status: number, message: string) =>
  * A `coreApi.get` implementation that answers by path, in the service's envelope, and fails loudly on a path the
  * test did not expect: `vi.mocked(coreApi.get).mockImplementation(answering({ '/countries': countryRows }))`.
  */
-export const answering = (answers: Record<string, unknown>) => async (url: string) => {
-  if (!(url in answers)) throw new Error(`Unexpected GET ${url}`);
-  return { data: expensesEnvelope(answers[url]) } as never;
-};
+export const answering =
+  (answers: Record<string, unknown>) => async (url: string) => {
+    if (!(url in answers)) throw new Error(`Unexpected GET ${url}`);
+    return { data: expensesEnvelope(answers[url]) } as never;
+  };

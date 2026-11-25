@@ -1,7 +1,20 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { ComponentProps } from 'react';
-import { Kanban, KanbanBoard, KanbanColumn, KanbanItem, KanbanItemHandle, KanbanOverlay } from './kanban';
+import {
+  Kanban,
+  KanbanBoard,
+  KanbanColumn,
+  KanbanItem,
+  KanbanItemHandle,
+  KanbanOverlay,
+} from './kanban';
 
 interface Card {
   key: string;
@@ -10,7 +23,11 @@ interface Card {
 /** Two columns and one card, with a handle to pick it up by and an overlay that shows while it is held. */
 function Board(props: Partial<ComponentProps<typeof Kanban<Card>>>) {
   return (
-    <Kanban value={{ 'col-a': [{ key: 'card-1' }], 'col-b': [] }} getItemValue={(card) => card.key} {...props}>
+    <Kanban
+      value={{ 'col-a': [{ key: 'card-1' }], 'col-b': [] }}
+      getItemValue={(card) => card.key}
+      {...props}
+    >
       <KanbanBoard>
         <KanbanColumn value="col-a">
           <KanbanItem value="card-1">
@@ -28,11 +45,14 @@ type User = ReturnType<typeof userEvent.setup>;
 
 // dnd-kit puts its listeners on the document, which outlives a test: a drag still held at the end of one (a mouse not
 // released, a card not put down) would take the next test's click or Tab, and a click is swallowed for a moment after a
-// drag ends. So each test ends with everything let go and dnd-kit given the moment it takes to clean up.
+// drag ends. So each test ends with everything let go and dnd-kit given the moment it takes to clean up. dnd-kit takes
+// its document click listener off 50ms after a drag ends, and a listener shared by name: a shorter wait let that timer
+// of the last test remove the listener the next test's drag had just relied on, so the click that ends a drag followed
+// a link on a slow run. Timers fire in order of expiry, so a longer wait started later always runs after the 50ms one.
 afterEach(async () => {
   fireEvent.keyDown(document, { code: 'Escape' });
   fireEvent.mouseUp(document);
-  await new Promise((resolve) => setTimeout(resolve, 10));
+  await new Promise((resolve) => setTimeout(resolve, 60));
 });
 
 /**
@@ -54,18 +74,28 @@ async function dragAndRelease(user: User, target: Element, distance: number) {
 
 /** One card that is its own handle, with a link and a button inside it, and an overlay that shows while it is held. */
 function CardBoard(
-  props: Partial<ComponentProps<typeof Kanban<Card>>> & { onLink?: () => void; onButton?: () => void }
+  props: Partial<ComponentProps<typeof Kanban<Card>>> & {
+    onLink?: () => void;
+    onButton?: () => void;
+  }
 ) {
   const { onLink, onButton, ...kanbanProps } = props;
   return (
-    <Kanban value={{ 'col-a': [{ key: 'card-1' }], 'col-b': [] }} getItemValue={(card) => card.key} {...kanbanProps}>
+    <Kanban
+      value={{ 'col-a': [{ key: 'card-1' }], 'col-b': [] }}
+      getItemValue={(card) => card.key}
+      {...kanbanProps}
+    >
       <KanbanBoard>
         <KanbanColumn value="col-a">
           <KanbanItem
             value="card-1"
             asHandle
             aria-label="Ada"
-            sortableAttributes={{ role: 'group', roleDescription: 'draggable card' }}
+            sortableAttributes={{
+              role: 'group',
+              roleDescription: 'draggable card',
+            }}
           >
             <a
               href="#ada"
@@ -101,7 +131,9 @@ describe('Kanban: a card picked up with the keyboard', () => {
     expect(await screen.findByText('Card in the air')).toBeInTheDocument();
     expect(onDragStart).toHaveBeenCalledTimes(1);
     await user.keyboard(' ');
-    await waitFor(() => expect(screen.queryByText('Card in the air')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByText('Card in the air')).not.toBeInTheDocument()
+    );
     expect(onDragEnd).toHaveBeenCalledTimes(1);
   });
 
@@ -113,7 +145,9 @@ describe('Kanban: a card picked up with the keyboard', () => {
     await user.keyboard(' ');
     expect(await screen.findByText('Card in the air')).toBeInTheDocument();
     await user.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByText('Card in the air')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByText('Card in the air')).not.toBeInTheDocument()
+    );
     expect(onDragCancel).toHaveBeenCalledTimes(1);
   });
 
@@ -122,7 +156,9 @@ describe('Kanban: a card picked up with the keyboard', () => {
     render(<Board />);
     await user.tab();
     await user.keyboard(' ');
-    expect(await screen.findByText('Picked up item at position 1 of 1')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Picked up item at position 1 of 1')
+    ).toBeInTheDocument();
     // Put it down again: a card still held at the end of a test would swallow the next test's Tab (dnd-kit ends a drag on it).
     await user.keyboard('{Escape}');
   });
@@ -131,15 +167,25 @@ describe('Kanban: a card picked up with the keyboard', () => {
 describe('Kanban: a caller that opts out', () => {
   it('keeps the built-in drag from starting by preventing default on the event that began it (a pointer drag)', async () => {
     const user = userEvent.setup();
-    render(<Board onDragStart={(event) => event.activatorEvent.preventDefault()} />);
-    await pressAndMove(user, screen.getByRole('button', { name: 'Drag card 1' }), 30);
+    render(
+      <Board onDragStart={(event) => event.activatorEvent.preventDefault()} />
+    );
+    await pressAndMove(
+      user,
+      screen.getByRole('button', { name: 'Drag card 1' }),
+      30
+    );
     expect(screen.queryByText('Card in the air')).not.toBeInTheDocument();
   });
 
   it('lets a pointer drag start when it does not', async () => {
     const user = userEvent.setup();
     render(<Board />);
-    await pressAndMove(user, screen.getByRole('button', { name: 'Drag card 1' }), 30);
+    await pressAndMove(
+      user,
+      screen.getByRole('button', { name: 'Drag card 1' }),
+      30
+    );
     expect(await screen.findByText('Card in the air')).toBeInTheDocument();
   });
 });
@@ -161,11 +207,17 @@ describe('Kanban: a pointer drag', () => {
     const onDragEnd = vi.fn();
     const user = userEvent.setup();
     render(<Board onDragStart={onDragStart} onDragEnd={onDragEnd} />);
-    await pressAndMove(user, screen.getByRole('button', { name: 'Drag card 1' }), 12);
+    await pressAndMove(
+      user,
+      screen.getByRole('button', { name: 'Drag card 1' }),
+      12
+    );
     expect(await screen.findByText('Card in the air')).toBeInTheDocument();
     expect(onDragStart).toHaveBeenCalledTimes(1);
     await user.pointer({ keys: '[/MouseLeft]' });
-    await waitFor(() => expect(screen.queryByText('Card in the air')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByText('Card in the air')).not.toBeInTheDocument()
+    );
     expect(onDragEnd).toHaveBeenCalledTimes(1);
   });
 });
@@ -187,7 +239,9 @@ describe('Kanban: a card that is its own handle', () => {
     await pressAndMove(user, screen.getByRole('link', { name: 'Ada' }), 20);
     expect(await screen.findByText('Card in the air')).toBeInTheDocument();
     await user.pointer({ keys: '[/MouseLeft]' });
-    await waitFor(() => expect(screen.queryByText('Card in the air')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByText('Card in the air')).not.toBeInTheDocument()
+    );
     expect(onLink).not.toHaveBeenCalled();
   });
 
@@ -196,7 +250,13 @@ describe('Kanban: a card that is its own handle', () => {
     const onButton = vi.fn();
     const onDragStart = vi.fn();
     const user = userEvent.setup();
-    render(<CardBoard onLink={onLink} onButton={onButton} onDragStart={onDragStart} />);
+    render(
+      <CardBoard
+        onLink={onLink}
+        onButton={onButton}
+        onDragStart={onDragStart}
+      />
+    );
     await user.click(screen.getByRole('link', { name: 'Ada' }));
     await user.click(screen.getByRole('button', { name: 'Menu' }));
     expect(onLink).toHaveBeenCalledTimes(1);
@@ -213,7 +273,9 @@ describe('Kanban: a card that is its own handle', () => {
     await user.keyboard('{Enter}');
     expect(await screen.findByText('Card in the air')).toBeInTheDocument();
     await user.keyboard('{Escape}');
-    await waitFor(() => expect(screen.queryByText('Card in the air')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.queryByText('Card in the air')).not.toBeInTheDocument()
+    );
   });
 
   it('is not picked up by a key pressed on a link or a button inside it: Enter follows the link, Space presses the button', async () => {
@@ -221,7 +283,13 @@ describe('Kanban: a card that is its own handle', () => {
     const onButton = vi.fn();
     const onDragStart = vi.fn();
     const user = userEvent.setup();
-    render(<CardBoard onLink={onLink} onButton={onButton} onDragStart={onDragStart} />);
+    render(
+      <CardBoard
+        onLink={onLink}
+        onButton={onButton}
+        onDragStart={onDragStart}
+      />
+    );
     await user.tab();
     await user.tab();
     expect(screen.getByRole('link', { name: 'Ada' })).toHaveFocus();
@@ -241,12 +309,17 @@ describe('Kanban: a card that is its own handle', () => {
     const card = screen.getByRole('group', { name: 'Ada' });
     expect(card).toHaveAttribute('aria-roledescription', 'draggable card');
     expect(card).toHaveAttribute('tabindex', '0');
-    expect(screen.queryByRole('button', { name: 'Ada' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Ada' })
+    ).not.toBeInTheDocument();
   });
 
   it('is a button, as dnd-kit makes it, when no role is given', () => {
     render(
-      <Kanban value={{ 'col-a': [{ key: 'card-1' }] }} getItemValue={(card) => card.key}>
+      <Kanban
+        value={{ 'col-a': [{ key: 'card-1' }] }}
+        getItemValue={(card) => card.key}
+      >
         <KanbanBoard>
           <KanbanColumn value="col-a">
             <KanbanItem value="card-1" asHandle aria-label="Plain" />
@@ -254,7 +327,10 @@ describe('Kanban: a card that is its own handle', () => {
         </KanbanBoard>
       </Kanban>
     );
-    expect(screen.getByRole('button', { name: 'Plain' })).toHaveAttribute('aria-roledescription', 'sortable');
+    expect(screen.getByRole('button', { name: 'Plain' })).toHaveAttribute(
+      'aria-roledescription',
+      'sortable'
+    );
   });
 
   it('shows a grab cursor and does not stop a finger scrolling over it', () => {
@@ -267,7 +343,10 @@ describe('Kanban: a card that is its own handle', () => {
   it('is not draggable, or focusable, while it is disabled', async () => {
     const user = userEvent.setup();
     render(
-      <Kanban value={{ 'col-a': [{ key: 'card-1' }] }} getItemValue={(card) => card.key}>
+      <Kanban
+        value={{ 'col-a': [{ key: 'card-1' }] }}
+        getItemValue={(card) => card.key}
+      >
         <KanbanBoard>
           <KanbanColumn value="col-a">
             <KanbanItem value="card-1" asHandle disabled aria-label="Locked" />

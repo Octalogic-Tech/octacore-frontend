@@ -1,9 +1,19 @@
 import { api } from '@/lib/api';
 import { AxiosError } from 'axios';
 import { userRows } from '@/test/fixtures/users';
-import { envelope, fakeAdapter, sessionEnvelope, type FakeAdapter } from '@/test/fake-adapter';
+import {
+  envelope,
+  fakeAdapter,
+  sessionEnvelope,
+  type FakeAdapter,
+} from '@/test/fake-adapter';
 import { coreApi, refreshSession } from './core-api';
-import { getAccessToken, onSessionEnded, onSessionUser, setAccessToken } from './session';
+import {
+  getAccessToken,
+  onSessionEnded,
+  onSessionUser,
+  setAccessToken,
+} from './session';
 
 const coreAdapter = coreApi.defaults.adapter;
 const mockAdapter = api.defaults.adapter;
@@ -16,7 +26,8 @@ afterEach(() => {
   setAccessToken(null);
 });
 
-const refreshCalls = (adapter: FakeAdapter) => adapter.calls.filter((call) => call.url === '/auth/refresh');
+const refreshCalls = (adapter: FakeAdapter) =>
+  adapter.calls.filter((call) => call.url === '/auth/refresh');
 
 /** A server that only accepts the token it hands out on refresh ('new'), after a short delay. */
 const serverAcceptingNewToken = () =>
@@ -59,7 +70,9 @@ describe('coreApi', () => {
     coreApi.defaults.adapter = adapter;
 
     // What a retry looks like: the same config, still holding the header stamped on its first attempt.
-    await coreApi.get('/categories', { headers: { Authorization: 'Bearer stale' } });
+    await coreApi.get('/categories', {
+      headers: { Authorization: 'Bearer stale' },
+    });
 
     expect(adapter.calls[0].headers.get('Authorization')).toBeFalsy();
   });
@@ -82,7 +95,11 @@ describe('coreApi', () => {
     const response = await coreApi.get('/categories');
 
     expect(response.data.data).toEqual(['ok']);
-    expect(adapter.calls.map((call) => call.url)).toEqual(['/categories', '/auth/refresh', '/categories']);
+    expect(adapter.calls.map((call) => call.url)).toEqual([
+      '/categories',
+      '/auth/refresh',
+      '/categories',
+    ]);
     expect(getAccessToken()).toBe('new');
   });
 
@@ -91,7 +108,10 @@ describe('coreApi', () => {
     const adapter = serverAcceptingNewToken();
     coreApi.defaults.adapter = adapter;
 
-    await Promise.all([coreApi.get('/categories'), coreApi.get('/technologies')]);
+    await Promise.all([
+      coreApi.get('/categories'),
+      coreApi.get('/technologies'),
+    ]);
 
     expect(refreshCalls(adapter)).toHaveLength(1);
   });
@@ -99,14 +119,18 @@ describe('coreApi', () => {
   it('treats /auth/change-password like any protected request: refresh once and retry', async () => {
     setAccessToken('old');
     const adapter = fakeAdapter((config) => {
-      if (config.url === '/auth/refresh') return { status: 200, data: sessionEnvelope('new') };
+      if (config.url === '/auth/refresh')
+        return { status: 200, data: sessionEnvelope('new') };
       return config.headers.get('Authorization') === 'Bearer new'
         ? { status: 200, data: sessionEnvelope('changed') }
         : { status: 401, data: envelope(null, 401) };
     });
     coreApi.defaults.adapter = adapter;
 
-    await coreApi.post('/auth/change-password', { currentPassword: 'a', newPassword: 'b' });
+    await coreApi.post('/auth/change-password', {
+      currentPassword: 'a',
+      newPassword: 'b',
+    });
 
     expect(adapter.calls.map((call) => call.url)).toEqual([
       '/auth/change-password',
@@ -121,9 +145,14 @@ describe('coreApi', () => {
     const ended = vi.fn();
     const off = onSessionEnded(ended);
     setAccessToken('old');
-    coreApi.defaults.adapter = fakeAdapter(() => ({ status: 401, data: envelope(null, 401) }));
+    coreApi.defaults.adapter = fakeAdapter(() => ({
+      status: 401,
+      data: envelope(null, 401),
+    }));
 
-    await expect(coreApi.get('/categories')).rejects.toMatchObject({ response: { status: 401 } });
+    await expect(coreApi.get('/categories')).rejects.toMatchObject({
+      response: { status: 401 },
+    });
 
     expect(ended).toHaveBeenCalledTimes(1);
     expect(getAccessToken()).toBeNull();
@@ -138,51 +167,75 @@ describe('coreApi', () => {
         throw new AxiosError('Network Error', 'ERR_NETWORK', config);
       },
     ],
-  ] as const)('keeps the session when the refresh fails with %s, and rejects with the original 401', async (_, refreshAnswer) => {
-    const ended = vi.fn();
-    const off = onSessionEnded(ended);
-    setAccessToken('old');
-    coreApi.defaults.adapter = fakeAdapter((config) =>
-      config.url === '/auth/refresh' ? refreshAnswer(config) : { status: 401, data: envelope(null, 401) },
-    );
+  ] as const)(
+    'keeps the session when the refresh fails with %s, and rejects with the original 401',
+    async (_, refreshAnswer) => {
+      const ended = vi.fn();
+      const off = onSessionEnded(ended);
+      setAccessToken('old');
+      coreApi.defaults.adapter = fakeAdapter((config) =>
+        config.url === '/auth/refresh'
+          ? refreshAnswer(config)
+          : { status: 401, data: envelope(null, 401) }
+      );
 
-    await expect(coreApi.get('/categories')).rejects.toMatchObject({
-      config: { url: '/categories' },
-      response: { status: 401 },
-    });
+      await expect(coreApi.get('/categories')).rejects.toMatchObject({
+        config: { url: '/categories' },
+        response: { status: 401 },
+      });
 
-    expect(ended).not.toHaveBeenCalled();
-    expect(getAccessToken()).toBe('old');
-    off();
-  });
+      expect(ended).not.toHaveBeenCalled();
+      expect(getAccessToken()).toBe('old');
+      off();
+    }
+  );
 
-  it.each(['/auth/login', '/auth/refresh', '/auth/logout'])('does not try to refresh after a 401 from %s', async (path) => {
-    const adapter = fakeAdapter(() => ({ status: 401, data: envelope(null, 401) }));
-    coreApi.defaults.adapter = adapter;
+  it.each(['/auth/login', '/auth/refresh', '/auth/logout'])(
+    'does not try to refresh after a 401 from %s',
+    async (path) => {
+      const adapter = fakeAdapter(() => ({
+        status: 401,
+        data: envelope(null, 401),
+      }));
+      coreApi.defaults.adapter = adapter;
 
-    await expect(coreApi.post(path, {})).rejects.toMatchObject({ response: { status: 401 } });
+      await expect(coreApi.post(path, {})).rejects.toMatchObject({
+        response: { status: 401 },
+      });
 
-    expect(adapter.calls.map((call) => call.url)).toEqual([path]);
-  });
+      expect(adapter.calls.map((call) => call.url)).toEqual([path]);
+    }
+  );
 
   it('retries a request at most once, so a server that keeps answering 401 cannot loop', async () => {
     setAccessToken('old');
     const adapter = fakeAdapter((config) =>
       config.url === '/auth/refresh'
         ? { status: 200, data: sessionEnvelope('new') }
-        : { status: 401, data: envelope(null, 401) },
+        : { status: 401, data: envelope(null, 401) }
     );
     coreApi.defaults.adapter = adapter;
 
-    await expect(coreApi.get('/categories')).rejects.toMatchObject({ response: { status: 401 } });
+    await expect(coreApi.get('/categories')).rejects.toMatchObject({
+      response: { status: 401 },
+    });
 
-    expect(adapter.calls.map((call) => call.url)).toEqual(['/categories', '/auth/refresh', '/categories']);
+    expect(adapter.calls.map((call) => call.url)).toEqual([
+      '/categories',
+      '/auth/refresh',
+      '/categories',
+    ]);
   });
 
   it('does not touch errors that are not a 401', async () => {
-    coreApi.defaults.adapter = fakeAdapter(() => ({ status: 409, data: envelope(null, 409) }));
+    coreApi.defaults.adapter = fakeAdapter(() => ({
+      status: 409,
+      data: envelope(null, 409),
+    }));
 
-    await expect(coreApi.get('/categories')).rejects.toMatchObject({ response: { status: 409 } });
+    await expect(coreApi.get('/categories')).rejects.toMatchObject({
+      response: { status: 409 },
+    });
   });
 });
 
@@ -191,7 +244,10 @@ describe('refreshSession', () => {
     const adapter = serverAcceptingNewToken();
     coreApi.defaults.adapter = adapter;
 
-    const [first, second] = await Promise.all([refreshSession(), refreshSession()]);
+    const [first, second] = await Promise.all([
+      refreshSession(),
+      refreshSession(),
+    ]);
 
     expect(refreshCalls(adapter)).toHaveLength(1);
     expect(first).toBe(second);
@@ -211,9 +267,14 @@ describe('refreshSession', () => {
 
   it('rejects and leaves the token alone when the cookie is refused', async () => {
     setAccessToken('keep');
-    coreApi.defaults.adapter = fakeAdapter(() => ({ status: 401, data: envelope(null, 401) }));
+    coreApi.defaults.adapter = fakeAdapter(() => ({
+      status: 401,
+      data: envelope(null, 401),
+    }));
 
-    await expect(refreshSession()).rejects.toMatchObject({ response: { status: 401 } });
+    await expect(refreshSession()).rejects.toMatchObject({
+      response: { status: 401 },
+    });
 
     expect(getAccessToken()).toBe('keep');
   });
@@ -225,7 +286,9 @@ describe('refreshSession', () => {
     const pending = refreshSession();
     setAccessToken(null);
 
-    await expect(pending).rejects.toThrow('The session ended while it was being refreshed');
+    await expect(pending).rejects.toThrow(
+      'The session ended while it was being refreshed'
+    );
     expect(getAccessToken()).toBeNull();
   });
 
@@ -236,12 +299,17 @@ describe('refreshSession', () => {
 
     await refreshSession();
 
-    expect(listener).toHaveBeenCalledWith(expect.objectContaining({ id: userRows[0].id, email: userRows[0].email }));
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({ id: userRows[0].id, email: userRows[0].email })
+    );
     off();
   });
 
   it('rejects an answer that is not a session', async () => {
-    coreApi.defaults.adapter = fakeAdapter(() => ({ status: 200, data: envelope({ nope: true }) }));
+    coreApi.defaults.adapter = fakeAdapter(() => ({
+      status: 200,
+      data: envelope({ nope: true }),
+    }));
 
     await expect(refreshSession()).rejects.toThrow();
   });

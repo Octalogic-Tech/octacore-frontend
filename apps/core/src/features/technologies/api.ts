@@ -8,7 +8,8 @@ export const technologiesKey = ['technologies'] as const;
 export function useTechnologies() {
   return useQuery({
     queryKey: technologiesKey,
-    queryFn: async () => unwrap((await coreApi.get('/technologies')).data, technologyRowsSchema),
+    queryFn: async () =>
+      unwrap((await coreApi.get('/technologies')).data, technologyRowsSchema),
   });
 }
 
@@ -39,7 +40,10 @@ function useRefreshAfterChange() {
 export function useUpdateTechnology() {
   const refresh = useRefreshAfterChange();
   return useMutation({
-    mutationFn: async ({ id, ...input }: TechnologyChanges & { id: number }) => {
+    mutationFn: async ({
+      id,
+      ...input
+    }: TechnologyChanges & { id: number }) => {
       await coreApi.patch(`/technologies/${id}`, input);
     },
     onSuccess: refresh,

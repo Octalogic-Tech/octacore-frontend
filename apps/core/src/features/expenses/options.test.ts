@@ -7,7 +7,10 @@ describe('withCurrent', () => {
   ];
 
   it('adds the record’s own choice when the list lacks it', () => {
-    expect(withCurrent(options, { id: 9, label: 'Nine' })).toEqual([...options, { id: 9, label: 'Nine' }]);
+    expect(withCurrent(options, { id: 9, label: 'Nine' })).toEqual([
+      ...options,
+      { id: 9, label: 'Nine' },
+    ]);
   });
 
   it('leaves the list alone when it has the choice, or there is none', () => {

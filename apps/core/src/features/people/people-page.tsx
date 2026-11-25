@@ -9,7 +9,14 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { formatDate } from '@/lib/format';
 import { formatInr } from '@/lib/money';
@@ -21,12 +28,14 @@ export function PeoplePage() {
   const people = usePeople();
   const remove = useDeletePerson();
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState<{ open: boolean; person?: PersonRow }>({ open: false });
+  const [form, setForm] = useState<{ open: boolean; person?: PersonRow }>({
+    open: false,
+  });
   const [toDelete, setToDelete] = useState<PersonRow | null>(null);
 
   const filtered = useMemo(
     () => (people.data ?? []).filter((person) => personMatches(person, search)),
-    [people.data, search],
+    [people.data, search]
   );
   const paging = usePagedRows(filtered);
 
@@ -92,16 +101,30 @@ export function PeoplePage() {
                         </Link>
                       </TableCell>
                       <TableCell className="min-w-[12rem]">
-                        {person.email ? <span className="block">{person.email}</span> : null}
-                        {person.phone ? <span className="block text-small">{person.phone}</span> : null}
+                        {person.email ? (
+                          <span className="block">{person.email}</span>
+                        ) : null}
+                        {person.phone ? (
+                          <span className="block text-small">
+                            {person.phone}
+                          </span>
+                        ) : null}
                       </TableCell>
                       <TableCell className="min-w-[10rem]">
-                        {person.technologies.map((technology) => technology.name).join(', ')}
+                        {person.technologies
+                          .map((technology) => technology.name)
+                          .join(', ')}
                       </TableCell>
-                      <TableCell className="tabular whitespace-nowrap">{formatDate(person.joinDate)}</TableCell>
-                      <TableCell className="tabular whitespace-nowrap">{formatDate(person.leaveDate)}</TableCell>
+                      <TableCell className="tabular whitespace-nowrap">
+                        {formatDate(person.joinDate)}
+                      </TableCell>
+                      <TableCell className="tabular whitespace-nowrap">
+                        {formatDate(person.leaveDate)}
+                      </TableCell>
                       <TableCell className="tabular whitespace-nowrap text-right">
-                        {person.monthlySalaryPaise === null ? '' : formatInr(person.monthlySalaryPaise)}
+                        {person.monthlySalaryPaise === null
+                          ? ''
+                          : formatInr(person.monthlySalaryPaise)}
                       </TableCell>
                       <TableCell>
                         {person.contractLink ? (
@@ -122,7 +145,11 @@ export function PeoplePage() {
                           icon={LuPencil}
                           onClick={() => setForm({ open: true, person })}
                         />
-                        <IconButton label={`Delete ${person.name}`} icon={LuTrash2} onClick={() => setToDelete(person)} />
+                        <IconButton
+                          label={`Delete ${person.name}`}
+                          icon={LuTrash2}
+                          onClick={() => setToDelete(person)}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

@@ -48,13 +48,22 @@ export default function App() {
           <Route path="resources/allocation" element={<AllocationPage />} />
           <Route path="resources/leave" element={<LeavePage />} />
           {/* People moved into Resources: a saved link still lands on it. */}
-          <Route path="people" element={<Navigate to="/resources/people" replace />} />
+          <Route
+            path="people"
+            element={<Navigate to="/resources/people" replace />}
+          />
           <Route path="finance/invoices" element={<InvoicesPage />} />
           <Route path="finance/expenses" element={<ExpensesPage />} />
           {/* Recurring expenses are now a tab of Expenses: a saved link still lands on it. */}
-          <Route path="finance/recurring" element={<Navigate to="/finance/expenses?tab=recurring" replace />} />
+          <Route
+            path="finance/recurring"
+            element={<Navigate to="/finance/expenses?tab=recurring" replace />}
+          />
           {/* The page used to be Receipts and bills: a saved link still lands on the right page. */}
-          <Route path="finance/receipts-bills" element={<Navigate to="/finance/invoices" replace />} />
+          <Route
+            path="finance/receipts-bills"
+            element={<Navigate to="/finance/invoices" replace />}
+          />
           <Route path="categories" element={<CategoriesPage />} />
           <Route path="technologies" element={<TechnologiesPage />} />
           <Route path="countries" element={<CountriesPage />} />
@@ -79,7 +88,10 @@ export default function App() {
             <Route index element={<PlannedPage />} />
             <Route path="currency-tax" element={<CurrencyTaxPage />} />
             <Route path="milestones" element={<MilestonesPage />} />
-            <Route path="recurring-invoices" element={<RecurringInvoicesPage />} />
+            <Route
+              path="recurring-invoices"
+              element={<RecurringInvoicesPage />}
+            />
             <Route path="skills" element={<SkillsPage />} />
             <Route path="cash-flow" element={<CashFlowPage />} />
             <Route path="profit-loss" element={<ProfitLossPage />} />

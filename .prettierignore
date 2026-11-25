@@ -1,6 +1,10 @@
 # Add files here to ignore them from prettier formatting
 /dist
 /coverage
-/.nx/cache
-/.nx/workspace-data
-.nx/self-healing
+/.nx
+/node_modules
+pnpm-lock.yaml
+# Notes and plans, not source
+/docs
+# Vendored agent skills; skills-lock.json pins their hashes
+/.agents

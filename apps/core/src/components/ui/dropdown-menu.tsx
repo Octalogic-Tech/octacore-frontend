@@ -30,7 +30,10 @@ export function DropdownMenuContent({
 }
 
 /** What the group below is for ("Move to"): Slate Navy, small, and not a choice. */
-export function DropdownMenuLabel({ className, ...props }: ComponentProps<typeof DropdownMenuPrimitive.Label>) {
+export function DropdownMenuLabel({
+  className,
+  ...props
+}: ComponentProps<typeof DropdownMenuPrimitive.Label>) {
   return (
     <DropdownMenuPrimitive.Label
       data-slot="dropdown-menu-label"
@@ -44,7 +47,10 @@ export function DropdownMenuLabel({ className, ...props }: ComponentProps<typeof
 }
 
 /** A 44px choice. The one in focus (by arrow key or by pointer) is a Soft Hairline fill with a teal bar on its left. */
-export function DropdownMenuItem({ className, ...props }: ComponentProps<typeof DropdownMenuPrimitive.Item>) {
+export function DropdownMenuItem({
+  className,
+  ...props
+}: ComponentProps<typeof DropdownMenuPrimitive.Item>) {
   return (
     <DropdownMenuPrimitive.Item
       data-slot="dropdown-menu-item"
@@ -60,7 +66,10 @@ export function DropdownMenuItem({ className, ...props }: ComponentProps<typeof 
 }
 
 /** A hairline between groups of choices. */
-export function DropdownMenuSeparator({ className, ...props }: ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
+export function DropdownMenuSeparator({
+  className,
+  ...props
+}: ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
   return (
     <DropdownMenuPrimitive.Separator
       data-slot="dropdown-menu-separator"

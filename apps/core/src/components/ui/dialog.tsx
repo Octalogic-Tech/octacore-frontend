@@ -19,14 +19,17 @@ export function DialogContent({
   const returnFocus = useReturnFocus(fallbackFocusId);
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay data-slot="dialog-overlay" className="fixed inset-0 z-50 bg-scrim" />
+      <DialogPrimitive.Overlay
+        data-slot="dialog-overlay"
+        className="fixed inset-0 z-50 bg-scrim"
+      />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         onOpenAutoFocus={returnFocus.onOpenAutoFocus}
         onCloseAutoFocus={returnFocus.onCloseAutoFocus}
         className={cn(
           'cut-br fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-xl -translate-x-1/2 -translate-y-1/2 overflow-y-auto bg-background p-6 [--cut:1.75rem] sm:p-8',
-          className,
+          className
         )}
         {...props}
       >
@@ -42,17 +45,26 @@ export function DialogContent({
   );
 }
 
-export function DialogTitle({ className, ...props }: ComponentProps<typeof DialogPrimitive.Title>) {
+export function DialogTitle({
+  className,
+  ...props
+}: ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn('pr-10 text-title font-semibold text-foreground', className)}
+      className={cn(
+        'pr-10 text-title font-semibold text-foreground',
+        className
+      )}
       {...props}
     />
   );
 }
 
-export function DialogDescription({ className, ...props }: ComponentProps<typeof DialogPrimitive.Description>) {
+export function DialogDescription({
+  className,
+  ...props
+}: ComponentProps<typeof DialogPrimitive.Description>) {
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"

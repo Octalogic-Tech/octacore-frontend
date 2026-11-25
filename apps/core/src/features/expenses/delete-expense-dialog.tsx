@@ -11,7 +11,11 @@ interface DeleteExpenseDialogProps {
 }
 
 /** Asks before deleting an expense. A charge a recurring expense made is not made again, and the question says so. */
-export function DeleteExpenseDialog({ expense, onClose, fallbackFocusId }: DeleteExpenseDialogProps) {
+export function DeleteExpenseDialog({
+  expense,
+  onClose,
+  fallbackFocusId,
+}: DeleteExpenseDialogProps) {
   const remove = useDeleteExpense();
   const generated = expense !== null && expense.recurringExpenseId !== null;
   return (
@@ -21,7 +25,11 @@ export function DeleteExpenseDialog({ expense, onClose, fallbackFocusId }: Delet
         if (!open) onClose();
       }}
       title={`Delete expense “${expense?.name ?? ''}”?`}
-      description={generated ? 'This cannot be undone. The charge is not created again.' : 'This cannot be undone.'}
+      description={
+        generated
+          ? 'This cannot be undone. The charge is not created again.'
+          : 'This cannot be undone.'
+      }
       confirmLabel="Delete expense"
       fallbackFocusId={fallbackFocusId}
       onConfirm={async () => {

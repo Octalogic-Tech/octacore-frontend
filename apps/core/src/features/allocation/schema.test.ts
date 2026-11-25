@@ -17,9 +17,12 @@ vi.mock('@/lib/format', async (importOriginal) => ({
   localToday: () => '2026-10-20',
 }));
 
-const [graceToBench, adaOnWebsite, , adaOnBench] = allocationRowsSchema.parse(allocationRows);
+const [graceToBench, adaOnWebsite, , adaOnBench] =
+  allocationRowsSchema.parse(allocationRows);
 
-const form = (over: Partial<AllocationFormValues> = {}): AllocationFormValues => ({
+const form = (
+  over: Partial<AllocationFormValues> = {}
+): AllocationFormValues => ({
   personId: '1',
   card: '1',
   projectId: 'bench',
@@ -30,7 +33,9 @@ const form = (over: Partial<AllocationFormValues> = {}): AllocationFormValues =>
 
 const messages = (values: AllocationFormValues) => {
   const result = allocationFormSchema.safeParse(values);
-  return result.success ? [] : result.error.issues.map((issue) => issue.message);
+  return result.success
+    ? []
+    : result.error.issues.map((issue) => issue.message);
 };
 
 describe('allocationRowSchema', () => {
@@ -51,7 +56,11 @@ describe('allocationRowSchema', () => {
   });
 
   it('reads a null project as the bench, and keeps a note that was written', () => {
-    expect(graceToBench).toMatchObject({ projectId: null, project: null, note: 'Between projects' });
+    expect(graceToBench).toMatchObject({
+      projectId: null,
+      project: null,
+      note: 'Between projects',
+    });
     expect(adaOnBench).toMatchObject({ projectId: null, project: null });
   });
 
@@ -62,25 +71,51 @@ describe('allocationRowSchema', () => {
   it('keeps the card the entry belongs to, and whether it says the card is removed', () => {
     const [secondCard, removed] = allocationRowsSchema.parse([
       { ...allocationRows[1], card: 2 },
-      { ...allocationRows[1], card: 3, removed: true, projectId: null, project: null },
+      {
+        ...allocationRows[1],
+        card: 3,
+        removed: true,
+        projectId: null,
+        project: null,
+      },
     ]);
     expect(secondCard).toMatchObject({ card: 2, removed: false, projectId: 1 });
-    expect(removed).toMatchObject({ card: 3, removed: true, projectId: null, project: null });
+    expect(removed).toMatchObject({
+      card: 3,
+      removed: true,
+      projectId: null,
+      project: null,
+    });
   });
 
   it.each([
     ['an id', { ...allocationRows[1], id: undefined }],
     ['the person', { ...allocationRows[1], person: undefined }],
-    ['the project field, which is null for the bench and never absent', { ...allocationRows[1], project: undefined }],
-    ['a project id that is not a whole number', { ...allocationRows[1], projectId: '1' }],
-    ['a date that is not a calendar day', { ...allocationRows[1], effectiveDate: '12/03/2026' }],
-    ['a date that is not a real day', { ...allocationRows[1], effectiveDate: '2026-02-31' }],
+    [
+      'the project field, which is null for the bench and never absent',
+      { ...allocationRows[1], project: undefined },
+    ],
+    [
+      'a project id that is not a whole number',
+      { ...allocationRows[1], projectId: '1' },
+    ],
+    [
+      'a date that is not a calendar day',
+      { ...allocationRows[1], effectiveDate: '12/03/2026' },
+    ],
+    [
+      'a date that is not a real day',
+      { ...allocationRows[1], effectiveDate: '2026-02-31' },
+    ],
     ['no date', { ...allocationRows[1], effectiveDate: undefined }],
     ['no card', { ...allocationRows[1], card: undefined }],
     ['a card that is not a whole number', { ...allocationRows[1], card: 1.5 }],
     ['card 0', { ...allocationRows[1], card: 0 }],
     ['no removed flag', { ...allocationRows[1], removed: undefined }],
-    ['a removed flag that is not a boolean', { ...allocationRows[1], removed: 'yes' }],
+    [
+      'a removed flag that is not a boolean',
+      { ...allocationRows[1], removed: 'yes' },
+    ],
   ])('rejects an entry with %s', (_label, row) => {
     expect(allocationRowsSchema.safeParse([row]).success).toBe(false);
   });
@@ -100,7 +135,9 @@ describe('allocationFormSchema', () => {
   });
 
   it('does not let a new card be one that is removed: there is nothing to remove yet', () => {
-    expect(messages(form({ card: NEW_CARD, projectId: REMOVED }))).toEqual(['A new card cannot be removed']);
+    expect(messages(form({ card: NEW_CARD, projectId: REMOVED }))).toEqual([
+      'A new card cannot be removed',
+    ]);
   });
 
   it('accepts an entry that puts a person on a project, or on the bench', () => {
@@ -113,12 +150,19 @@ describe('allocationFormSchema', () => {
   });
 
   it('needs a date', () => {
-    expect(messages(form({ effectiveDate: '' }))).toEqual(['Effective date is required']);
+    expect(messages(form({ effectiveDate: '' }))).toEqual([
+      'Effective date is required',
+    ]);
   });
 
-  it.each(['', 'Bench', 'none', '2.5', '-1', '0'])('refuses %j as a project', (projectId) => {
-    expect(messages(form({ projectId }))).toEqual(['Choose a project or the bench']);
-  });
+  it.each(['', 'Bench', 'none', '2.5', '-1', '0'])(
+    'refuses %j as a project',
+    (projectId) => {
+      expect(messages(form({ projectId }))).toEqual([
+        'Choose a project or the bench',
+      ]);
+    }
+  );
 
   it('accepts a note, or none', () => {
     expect(messages(form({ note: 'Covering a sick day' }))).toEqual([]);
@@ -157,10 +201,22 @@ describe('toAllocationFormValues', () => {
   it('writes the card of an entry, and a removed entry as the "removed" option', () => {
     const [second, removed] = allocationRowsSchema.parse([
       { ...allocationRows[1], card: 2 },
-      { ...allocationRows[1], card: 2, removed: true, projectId: null, project: null },
+      {
+        ...allocationRows[1],
+        card: 2,
+        removed: true,
+        projectId: null,
+        project: null,
+      },
     ]);
-    expect(toAllocationFormValues(second)).toMatchObject({ card: '2', projectId: '1' });
-    expect(toAllocationFormValues(removed)).toMatchObject({ card: '2', projectId: 'removed' });
+    expect(toAllocationFormValues(second)).toMatchObject({
+      card: '2',
+      projectId: '1',
+    });
+    expect(toAllocationFormValues(removed)).toMatchObject({
+      card: '2',
+      projectId: 'removed',
+    });
   });
 });
 
@@ -171,7 +227,11 @@ describe('toAllocationBody', () => {
   });
 
   it('sends the person and the card as numbers, the date as typed, and an empty note as null', () => {
-    expect(toAllocationBody(form({ personId: '7', card: '2', effectiveDate: '2026-02-03' }))).toEqual({
+    expect(
+      toAllocationBody(
+        form({ personId: '7', card: '2', effectiveDate: '2026-02-03' })
+      )
+    ).toEqual({
       personId: 7,
       card: 2,
       projectId: null,
@@ -182,7 +242,10 @@ describe('toAllocationBody', () => {
   });
 
   it('sends a removed card as removed with no project', () => {
-    expect(toAllocationBody(form({ projectId: REMOVED }))).toMatchObject({ projectId: null, removed: true });
+    expect(toAllocationBody(form({ projectId: REMOVED }))).toMatchObject({
+      projectId: null,
+      removed: true,
+    });
   });
 
   it('sends a new card as no number at all, which is for the cards endpoint and not the entries', () => {
@@ -190,7 +253,9 @@ describe('toAllocationBody', () => {
   });
 
   it('sends a note that was written', () => {
-    expect(toAllocationBody(form({ note: 'Covering a sick day' })).note).toBe('Covering a sick day');
+    expect(toAllocationBody(form({ note: 'Covering a sick day' })).note).toBe(
+      'Covering a sick day'
+    );
   });
 
   it.each([adaOnWebsite, graceToBench, adaOnBench])(
@@ -206,7 +271,7 @@ describe('toAllocationBody', () => {
         effectiveDate: row.effectiveDate,
         note: row.note === '' ? null : row.note,
       });
-    },
+    }
   );
 });
 
@@ -219,14 +284,25 @@ describe('cardChoices', () => {
     const rows = allocationRowsSchema.parse([
       { ...allocationRows[1], id: 7, card: 3 },
       { ...allocationRows[1], id: 6, card: 2 },
-      { ...allocationRows[1], id: 5, card: 3, removed: true, projectId: null, project: null },
+      {
+        ...allocationRows[1],
+        id: 5,
+        card: 3,
+        removed: true,
+        projectId: null,
+        project: null,
+      },
       { ...allocationRows[1], id: 4, card: 1 },
     ]);
     expect(cardChoices(rows)).toEqual([1, 2, 3]);
   });
 
   it('always offers card 1, even when the entries are all of a later card', () => {
-    expect(cardChoices(allocationRowsSchema.parse([{ ...allocationRows[1], card: 2 }]))).toEqual([1, 2]);
+    expect(
+      cardChoices(
+        allocationRowsSchema.parse([{ ...allocationRows[1], card: 2 }])
+      )
+    ).toEqual([1, 2]);
   });
 });
 
@@ -252,14 +328,22 @@ describe('allocationMatches', () => {
 
   it('finds a removed entry by "Card removed", which is what its project column says, and not by Bench', () => {
     const [removed] = allocationRowsSchema.parse([
-      { ...allocationRows[1], card: 2, removed: true, projectId: null, project: null },
+      {
+        ...allocationRows[1],
+        card: 2,
+        removed: true,
+        projectId: null,
+        project: null,
+      },
     ]);
     expect(allocationMatches(removed, 'removed')).toBe(true);
     expect(allocationMatches(removed, 'bench')).toBe(false);
   });
 
   it('finds an entry by its card, as the ledger writes it', () => {
-    const [second] = allocationRowsSchema.parse([{ ...allocationRows[1], card: 2 }]);
+    const [second] = allocationRowsSchema.parse([
+      { ...allocationRows[1], card: 2 },
+    ]);
     expect(allocationMatches(second, 'card 2')).toBe(true);
     expect(allocationMatches(adaOnWebsite, 'card 2')).toBe(false);
     expect(allocationMatches(adaOnWebsite, 'card 1')).toBe(true);

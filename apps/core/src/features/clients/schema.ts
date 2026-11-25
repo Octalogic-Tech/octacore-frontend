@@ -16,7 +16,10 @@ export const clientRowSchema = z
     city: z.string().nullable().transform(nullToEmpty),
     country: z.object({ nicename: z.string() }).nullable(),
   })
-  .transform(({ country, ...row }) => ({ ...row, countryName: country?.nicename ?? '' }));
+  .transform(({ country, ...row }) => ({
+    ...row,
+    countryName: country?.nicename ?? '',
+  }));
 
 export const clientRowsSchema = z.array(clientRowSchema);
 
@@ -41,7 +44,11 @@ interface ContactGroup {
 }
 
 /** The contact group is optional as a whole: it counts as filled as soon as any of its fields is. */
-export function contactIsFilled({ contactName, contactEmail, contactPhone }: ContactGroup): boolean {
+export function contactIsFilled({
+  contactName,
+  contactEmail,
+  contactPhone,
+}: ContactGroup): boolean {
   return contactName !== '' || contactEmail !== '' || contactPhone !== '';
 }
 
@@ -58,10 +65,21 @@ export const clientFormSchema = z
   })
   .superRefine((values, context) => {
     if (contactIsFilled(values) && values.contactName === '') {
-      context.addIssue({ code: 'custom', path: ['contactName'], message: 'Contact name is required' });
+      context.addIssue({
+        code: 'custom',
+        path: ['contactName'],
+        message: 'Contact name is required',
+      });
     }
-    if (values.contactEmail !== '' && !z.email().safeParse(values.contactEmail).success) {
-      context.addIssue({ code: 'custom', path: ['contactEmail'], message: 'Enter a valid email address' });
+    if (
+      values.contactEmail !== '' &&
+      !z.email().safeParse(values.contactEmail).success
+    ) {
+      context.addIssue({
+        code: 'custom',
+        path: ['contactEmail'],
+        message: 'Enter a valid email address',
+      });
     }
   });
 
@@ -77,13 +95,19 @@ export const emptyClientForm: ClientFormValues = {
   contactPhone: '',
 };
 
-export function toFormValues(client?: ClientRow, contact?: ContactRow): ClientFormValues {
+export function toFormValues(
+  client?: ClientRow,
+  contact?: ContactRow
+): ClientFormValues {
   if (!client) return emptyClientForm;
   return {
     name: client.name,
     description: client.description,
     // A country the service no longer lists comes back as null: the form opens on None, not on a stale id.
-    countryId: client.countryId !== null && client.countryName !== '' ? String(client.countryId) : '',
+    countryId:
+      client.countryId !== null && client.countryName !== ''
+        ? String(client.countryId)
+        : '',
     city: client.city,
     contactName: contact?.name ?? '',
     contactEmail: contact?.email ?? '',
@@ -123,15 +147,18 @@ export type ContactStep =
 export function planContactStep(
   values: ClientFormValues,
   clientId: number,
-  existing: ContactRow | undefined,
+  existing: ContactRow | undefined
 ): ContactStep | null {
-  if (!contactIsFilled(values)) return existing ? { kind: 'remove', id: existing.id } : null;
+  if (!contactIsFilled(values))
+    return existing ? { kind: 'remove', id: existing.id } : null;
   const fields: ContactFields = {
     name: values.contactName,
     email: orNull(values.contactEmail),
     phone: orNull(values.contactPhone),
   };
-  return existing ? { kind: 'update', id: existing.id, fields } : { kind: 'create', clientId, fields };
+  return existing
+    ? { kind: 'update', id: existing.id, fields }
+    : { kind: 'create', clientId, fields };
 }
 
 export interface ClientListRow extends ClientRow {
@@ -142,13 +169,22 @@ export interface ClientListRow extends ClientRow {
 }
 
 /** One row per client. The service allows one live contact per client; if it ever sent two, the first wins. */
-export function joinContacts(clients: ClientRow[], contacts: ContactRow[]): ClientListRow[] {
+export function joinContacts(
+  clients: ClientRow[],
+  contacts: ContactRow[]
+): ClientListRow[] {
   const byClient = new Map<number, ContactRow>();
   for (const contact of contacts) {
-    if (!byClient.has(contact.clientId)) byClient.set(contact.clientId, contact);
+    if (!byClient.has(contact.clientId))
+      byClient.set(contact.clientId, contact);
   }
   return clients.map((client) => {
     const contact = byClient.get(client.id);
-    return { ...client, contact, contactName: contact?.name ?? '', contactEmail: contact?.email ?? '' };
+    return {
+      ...client,
+      contact,
+      contactName: contact?.name ?? '',
+      contactEmail: contact?.email ?? '',
+    };
   });
 }

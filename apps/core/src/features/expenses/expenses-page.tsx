@@ -11,7 +11,8 @@ import { RecurringTab } from './recurring-tab';
 const TABS = ['overview', 'one-time', 'recurring'] as const;
 type Tab = (typeof TABS)[number];
 
-const tabOf = (value: string | null): Tab => TABS.find((tab) => tab === value) ?? 'overview';
+const tabOf = (value: string | null): Tab =>
+  TABS.find((tab) => tab === value) ?? 'overview';
 
 /** All the company's spending in one place: a month at a glance, the one-off expenses, and the ones that repeat. */
 export function ExpensesPage() {
@@ -24,12 +25,16 @@ export function ExpensesPage() {
 
   // The Overview is the bare address; every other tab is `?tab=`. Replacing the entry keeps Back for leaving the page.
   function showTab(next: string) {
-    setSearchParams(next === 'overview' ? {} : { tab: next }, { replace: true });
+    setSearchParams(next === 'overview' ? {} : { tab: next }, {
+      replace: true,
+    });
   }
 
   // The month on the Overview is `?month=`, left out for this month.
   function showMonth(next: string) {
-    setSearchParams(next === thisMonth ? {} : { month: next }, { replace: true });
+    setSearchParams(next === thisMonth ? {} : { month: next }, {
+      replace: true,
+    });
   }
 
   return (
@@ -42,7 +47,11 @@ export function ExpensesPage() {
           <TabsTrigger value="recurring">Recurring</TabsTrigger>
         </TabsList>
         <TabsContent value="overview">
-          <OverviewTab month={month} thisMonth={thisMonth} onMonthChange={showMonth} />
+          <OverviewTab
+            month={month}
+            thisMonth={thisMonth}
+            onMonthChange={showMonth}
+          />
         </TabsContent>
         <TabsContent value="one-time">
           <OneTimeTab />

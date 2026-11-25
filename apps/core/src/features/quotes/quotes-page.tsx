@@ -9,7 +9,14 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { formatMoney } from '@/features/expenses/money';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { filterBy } from '@/lib/filter';
@@ -18,7 +25,8 @@ import { useDeleteQuote, useQuotes } from './api';
 import { formatHours } from './calc';
 import type { QuoteRow } from './schema';
 
-const lineCountOf = (quote: QuoteRow) => quote.sections.reduce((sum, section) => sum + section.lines.length, 0);
+const lineCountOf = (quote: QuoteRow) =>
+  quote.sections.reduce((sum, section) => sum + section.lines.length, 0);
 
 const NEW_QUOTE = '/quotes/new';
 
@@ -31,7 +39,10 @@ export function QuotesPage() {
   const [toDelete, setToDelete] = useState<QuoteRow | null>(null);
 
   const rows = useMemo(() => quotes.data ?? [], [quotes.data]);
-  const filtered = useMemo(() => filterBy(rows, search, ['title']), [rows, search]);
+  const filtered = useMemo(
+    () => filterBy(rows, search, ['title']),
+    [rows, search]
+  );
   const paging = usePagedRows(filtered);
 
   return (
@@ -94,7 +105,9 @@ export function QuotesPage() {
                         </Link>
                       </TableCell>
                       {/* The lines of every section. */}
-                      <TableCell className="tabular text-right">{lineCountOf(quote)}</TableCell>
+                      <TableCell className="tabular text-right">
+                        {lineCountOf(quote)}
+                      </TableCell>
                       {/* The service answers hours as decimal numbers (1485, 36.34); the mirror's formatter wants hundredths. */}
                       <TableCell className="tabular text-right">
                         {formatHours(Math.round(quote.totals.totalHours * 100))}
@@ -105,14 +118,20 @@ export function QuotesPage() {
                           currencySymbol: quote.currencyCode,
                         })}
                       </TableCell>
-                      <TableCell className="whitespace-nowrap">{formatDate(quote.updatedDate)}</TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {formatDate(quote.updatedDate)}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         <IconButton
                           label={`Edit ${quote.title}`}
                           icon={LuPencil}
                           onClick={() => navigate(`/quotes/${quote.id}`)}
                         />
-                        <IconButton label={`Delete ${quote.title}`} icon={LuTrash2} onClick={() => setToDelete(quote)} />
+                        <IconButton
+                          label={`Delete ${quote.title}`}
+                          icon={LuTrash2}
+                          onClick={() => setToDelete(quote)}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

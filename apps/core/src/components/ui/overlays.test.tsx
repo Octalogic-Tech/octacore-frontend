@@ -1,7 +1,12 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ConfirmDialog } from './confirm-dialog';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from './dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from './dialog';
 import { Sheet, SheetContent } from './sheet';
 
 describe('Dialog', () => {
@@ -13,7 +18,7 @@ describe('Dialog', () => {
           <DialogTitle>New category</DialogTitle>
           <DialogDescription>Give it a name.</DialogDescription>
         </DialogContent>
-      </Dialog>,
+      </Dialog>
     );
     const dialog = screen.getByRole('dialog', { name: 'New category' });
     expect(dialog).toHaveAccessibleDescription('Give it a name.');
@@ -29,7 +34,7 @@ describe('Dialog', () => {
           <DialogTitle>Title</DialogTitle>
           <DialogDescription>Text</DialogDescription>
         </DialogContent>
-      </Dialog>,
+      </Dialog>
     );
     const close = screen.getByRole('button', { name: 'Close' });
     expect(close).toHaveClass('size-11');
@@ -49,22 +54,24 @@ describe('ConfirmDialog', () => {
         description="This cannot be undone."
         confirmLabel="Delete category"
         onConfirm={onConfirm}
-      />,
+      />
     );
     return onOpenChange;
   }
 
   it('shows the explicit wording', () => {
     setup(vi.fn().mockResolvedValue(undefined));
-    expect(screen.getByRole('alertdialog', { name: 'Delete category “Web”?' })).toHaveAccessibleDescription(
-      'This cannot be undone.',
-    );
+    expect(
+      screen.getByRole('alertdialog', { name: 'Delete category “Web”?' })
+    ).toHaveAccessibleDescription('This cannot be undone.');
   });
 
   it('confirms, then closes', async () => {
     const onConfirm = vi.fn().mockResolvedValue(undefined);
     const onOpenChange = setup(onConfirm);
-    await userEvent.click(screen.getByRole('button', { name: 'Delete category' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Delete category' })
+    );
     expect(onConfirm).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
   });
@@ -72,15 +79,26 @@ describe('ConfirmDialog', () => {
   it('stays open and says so when the action fails', async () => {
     const onConfirm = vi.fn().mockRejectedValue(new Error('network'));
     const onOpenChange = setup(onConfirm);
-    await userEvent.click(screen.getByRole('button', { name: 'Delete category' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Delete category' })
+    );
     expect(await screen.findByRole('alert')).toHaveTextContent('Try again');
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
-    expect(screen.getByRole('button', { name: 'Delete category' })).toBeEnabled();
+    expect(
+      screen.getByRole('button', { name: 'Delete category' })
+    ).toBeEnabled();
   });
 
   it('shows the message the service wrote when it is asked to, and the general one when there is none', async () => {
-    const failureMessage = vi.fn((error: unknown) => (error instanceof Error && error.message === 'in use' ? 'It is in use.' : undefined));
-    const onConfirm = vi.fn().mockRejectedValueOnce(new Error('in use')).mockRejectedValueOnce(new Error('network'));
+    const failureMessage = vi.fn((error: unknown) =>
+      error instanceof Error && error.message === 'in use'
+        ? 'It is in use.'
+        : undefined
+    );
+    const onConfirm = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('in use'))
+      .mockRejectedValueOnce(new Error('network'));
     render(
       <ConfirmDialog
         open
@@ -90,12 +108,20 @@ describe('ConfirmDialog', () => {
         confirmLabel="Delete category"
         onConfirm={onConfirm}
         failureMessage={failureMessage}
-      />,
+      />
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Delete category' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Delete category' })
+    );
     expect(await screen.findByRole('alert')).toHaveTextContent('It is in use.');
-    await userEvent.click(screen.getByRole('button', { name: 'Delete category' }));
-    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('That did not work. Try again.'));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'Delete category' })
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'That did not work. Try again.'
+      )
+    );
   });
 
   it('cancels without confirming', async () => {
@@ -114,10 +140,12 @@ describe('Sheet', () => {
         <SheetContent title="Menu">
           <p>Links</p>
         </SheetContent>
-      </Sheet>,
+      </Sheet>
     );
     expect(screen.getByRole('dialog', { name: 'Menu' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Close menu' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Close menu' })
+    ).toBeInTheDocument();
   });
 });
 
@@ -128,7 +156,7 @@ describe('ConfirmDialog while the action is in flight', () => {
       () =>
         new Promise<void>((_, reject) => {
           fail = reject;
-        }),
+        })
     );
     const onOpenChange = vi.fn();
     render(
@@ -139,7 +167,7 @@ describe('ConfirmDialog while the action is in flight', () => {
         description="Sure?"
         confirmLabel="Delete it"
         onConfirm={onConfirm}
-      />,
+      />
     );
     await userEvent.click(screen.getByRole('button', { name: 'Delete it' }));
     await userEvent.keyboard('{Escape}');

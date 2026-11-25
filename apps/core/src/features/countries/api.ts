@@ -11,7 +11,8 @@ export const COUNTRIES_KEY = ['countries'] as const;
 export function useCountries() {
   return useQuery({
     queryKey: COUNTRIES_KEY,
-    queryFn: async () => unwrap((await coreApi.get('/countries')).data, countriesSchema),
+    queryFn: async () =>
+      unwrap((await coreApi.get('/countries')).data, countriesSchema),
   });
 }
 
@@ -37,7 +38,13 @@ function useRefresh() {
 export function useSaveCountry() {
   const refresh = useRefresh();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: number | undefined; body: CountryBody }) => {
+    mutationFn: async ({
+      id,
+      body,
+    }: {
+      id: number | undefined;
+      body: CountryBody;
+    }) => {
       if (id === undefined) await coreApi.post('/countries', body);
       else await coreApi.patch(`/countries/${id}`, body);
     },
@@ -62,7 +69,11 @@ export function useDeleteCountry() {
 export function useSyncRates() {
   const refresh = useRefresh();
   return useMutation({
-    mutationFn: async () => unwrap((await coreApi.post('/countries/sync-rates')).data, syncResultSchema),
+    mutationFn: async () =>
+      unwrap(
+        (await coreApi.post('/countries/sync-rates')).data,
+        syncResultSchema
+      ),
     onSettled: refresh,
   });
 }

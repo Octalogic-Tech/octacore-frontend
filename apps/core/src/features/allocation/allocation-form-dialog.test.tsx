@@ -2,7 +2,11 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { coreApi } from '@/lib/core-api';
-import { allocationEnvelope, allocationRows, allocationsEnvelope } from '@/test/fixtures/allocations';
+import {
+  allocationEnvelope,
+  allocationRows,
+  allocationsEnvelope,
+} from '@/test/fixtures/allocations';
 import { peopleEnvelope } from '@/test/fixtures/people';
 import { projectsEnvelope } from '@/test/fixtures/projects';
 import { renderWithProviders } from '@/test/utils';
@@ -20,11 +24,13 @@ vi.mock('@/lib/format', async (importOriginal) => ({
   localToday: () => '2026-10-20',
 }));
 
-const [, adaOnWebsite, , adaOnBench] = allocationRowsSchema.parse(allocationRows);
+const [, adaOnWebsite, , adaOnBench] =
+  allocationRowsSchema.parse(allocationRows);
 
 const onOpenChange = vi.fn();
 
-const DUPLICATE = 'This person already has an entry for that card on that date; edit it instead';
+const DUPLICATE =
+  'This person already has an entry for that card on that date; edit it instead';
 
 /** What the service answers a save with; the dialog does not read it. */
 const saved = { data: allocationEnvelope() };
@@ -38,16 +44,27 @@ const failure = (status: number, message = 'refused') =>
     config: {} as never,
   });
 
-type Served = { people?: 'fail' | unknown; projects?: 'fail' | unknown; entries?: unknown[] };
+type Served = {
+  people?: 'fail' | unknown;
+  projects?: 'fail' | unknown;
+  entries?: unknown[];
+};
 
 /** The service filters entries by person; the stand-in does too. `entries` are what the service holds. */
 const serve = ({ people, projects, entries = allocationRows }: Served = {}) =>
-  vi.mocked(coreApi.get).mockImplementation((async (path: string, config?: { params?: { personId?: number } }) => {
+  vi.mocked(coreApi.get).mockImplementation((async (
+    path: string,
+    config?: { params?: { personId?: number } }
+  ) => {
     if (path === '/allocations') {
       const personId = config?.params?.personId;
       return {
         data: allocationsEnvelope(
-          personId === undefined ? entries : entries.filter((row) => (row as { personId: number }).personId === personId),
+          personId === undefined
+            ? entries
+            : entries.filter(
+                (row) => (row as { personId: number }).personId === personId
+              )
         ),
       };
     }
@@ -64,7 +81,12 @@ const serve = ({ people, projects, entries = allocationRows }: Served = {}) =>
 
 function openDialog(props: { entry?: AllocationRow; personId?: number } = {}) {
   return renderWithProviders(
-    <AllocationFormDialog open onOpenChange={onOpenChange} fallbackFocusId="allocation-search" {...props} />,
+    <AllocationFormDialog
+      open
+      onOpenChange={onOpenChange}
+      fallbackFocusId="allocation-search"
+      {...props}
+    />
   );
 }
 
@@ -84,7 +106,9 @@ afterEach(() => {
 describe('AllocationFormDialog: adding', () => {
   it('opens dated today, on the bench option, with nobody chosen', async () => {
     openDialog();
-    expect(screen.getByRole('dialog', { name: 'New allocation entry' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'New allocation entry' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Effective date')).toHaveValue('2026-10-20');
     expect(screen.getByLabelText('Project')).toHaveValue('bench');
     expect(screen.getByLabelText('Person')).toHaveValue('');
@@ -96,7 +120,13 @@ describe('AllocationFormDialog: adding', () => {
     openDialog();
     await screen.findByRole('option', { name: 'Website' });
     // Website is active, Mobile app is on hold and Legacy portal is completed: all are offered.
-    expect(optionNames(screen.getByLabelText('Project'))).toEqual(['Bench', 'Legacy portal', 'Mobile app', 'Website', 'Card removed']);
+    expect(optionNames(screen.getByLabelText('Project'))).toEqual([
+      'Bench',
+      'Legacy portal',
+      'Mobile app',
+      'Website',
+      'Card removed',
+    ]);
   });
 
   it('offers every person, A to Z, after a prompt to choose one', async () => {
@@ -156,7 +186,10 @@ describe('AllocationFormDialog: adding', () => {
     openDialog();
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText('Choose a person')).toBeInTheDocument();
-    expect(screen.getByLabelText('Person')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Person')).toHaveAttribute(
+      'aria-invalid',
+      'true'
+    );
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
@@ -165,7 +198,9 @@ describe('AllocationFormDialog: adding', () => {
     openDialog({ personId: 1 });
     await user.clear(screen.getByLabelText('Effective date'));
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('Effective date is required')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Effective date is required')
+    ).toBeInTheDocument();
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
@@ -181,7 +216,10 @@ describe('AllocationFormDialog: adding', () => {
     expect(screen.queryByLabelText('Person')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.post).toHaveBeenCalledWith('/allocations', expect.objectContaining({ personId: 3 }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/allocations',
+      expect.objectContaining({ personId: 3 })
+    );
   });
 
   it('says so, on the date, when the person already has an entry that day, and keeps the dialog open', async () => {
@@ -190,13 +228,18 @@ describe('AllocationFormDialog: adding', () => {
     openDialog({ personId: 1 });
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText(DUPLICATE)).toBeInTheDocument();
-    expect(screen.getByLabelText('Effective date')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Effective date')).toHaveAttribute(
+      'aria-invalid',
+      'true'
+    );
     expect(screen.getByLabelText('Effective date')).toHaveFocus();
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
   it('saves again under another date after a clash, and closes', async () => {
-    vi.mocked(coreApi.post).mockRejectedValueOnce(failure(409, DUPLICATE)).mockResolvedValueOnce(saved);
+    vi.mocked(coreApi.post)
+      .mockRejectedValueOnce(failure(409, DUPLICATE))
+      .mockResolvedValueOnce(saved);
     const user = userEvent.setup();
     openDialog({ personId: 1 });
     await user.click(screen.getByRole('button', { name: 'Save' }));
@@ -205,24 +248,36 @@ describe('AllocationFormDialog: adding', () => {
     await user.type(screen.getByLabelText('Effective date'), '2026-10-21');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.post).toHaveBeenNthCalledWith(2, '/allocations', expect.objectContaining({ effectiveDate: '2026-10-21' }));
+    expect(coreApi.post).toHaveBeenNthCalledWith(
+      2,
+      '/allocations',
+      expect.objectContaining({ effectiveDate: '2026-10-21' })
+    );
   });
 
   it('shows the service’s own words for any other refusal it wrote for people', async () => {
-    vi.mocked(coreApi.post).mockRejectedValue(failure(409, 'Referenced record does not exist'));
+    vi.mocked(coreApi.post).mockRejectedValue(
+      failure(409, 'Referenced record does not exist')
+    );
     const user = userEvent.setup();
     openDialog({ personId: 1 });
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Referenced record does not exist');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Referenced record does not exist'
+    );
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
   it('keeps the dialog open and says so when the save fails, and saves the same entry again on a retry', async () => {
-    vi.mocked(coreApi.post).mockRejectedValueOnce(new Error('down')).mockResolvedValueOnce(saved);
+    vi.mocked(coreApi.post)
+      .mockRejectedValueOnce(new Error('down'))
+      .mockResolvedValueOnce(saved);
     const user = userEvent.setup();
     openDialog({ personId: 1 });
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('That did not save. Try again.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That did not save. Try again.'
+    );
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
@@ -241,9 +296,16 @@ describe('AllocationFormDialog: adding', () => {
   it('says so when the people could not be loaded, and the projects too, and still offers the bench', async () => {
     serve({ people: 'fail', projects: 'fail' });
     openDialog();
-    expect(await screen.findByText('People could not be loaded.')).toBeInTheDocument();
-    expect(await screen.findByText('Projects could not be loaded.')).toBeInTheDocument();
-    expect(optionNames(screen.getByLabelText('Project'))).toEqual(['Bench', 'Card removed']);
+    expect(
+      await screen.findByText('People could not be loaded.')
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText('Projects could not be loaded.')
+    ).toBeInTheDocument();
+    expect(optionNames(screen.getByLabelText('Project'))).toEqual([
+      'Bench',
+      'Card removed',
+    ]);
   });
 
   it('closes without saving on Cancel', async () => {
@@ -258,12 +320,16 @@ describe('AllocationFormDialog: adding', () => {
 describe('AllocationFormDialog: editing', () => {
   it('opens on the entry: the person as text it cannot change, the project, the date and the note', () => {
     openDialog({ entry: adaOnBench });
-    expect(screen.getByRole('dialog', { name: 'Edit allocation entry' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog', { name: 'Edit allocation entry' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Person')).toHaveValue('Ada Lovelace');
     expect(screen.getByLabelText('Person')).toHaveAttribute('readonly');
     expect(screen.getByLabelText('Project')).toHaveValue('bench');
     expect(screen.getByLabelText('Effective date')).toHaveValue('2025-11-03');
-    expect(screen.getByLabelText('Note')).toHaveValue('Joined, not on a project yet');
+    expect(screen.getByLabelText('Note')).toHaveValue(
+      'Joined, not on a project yet'
+    );
   });
 
   it('opens an entry on a project with the project chosen, before the project list has arrived', () => {
@@ -312,7 +378,10 @@ describe('AllocationFormDialog: editing', () => {
     await user.selectOptions(screen.getByLabelText('Project'), 'Legacy portal');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenLastCalledWith('/allocations/3', expect.objectContaining({ projectId: 3 }));
+    expect(coreApi.patch).toHaveBeenLastCalledWith(
+      '/allocations/3',
+      expect.objectContaining({ projectId: 3 })
+    );
   });
 
   it('sends the project when an entry on the bench is put on a project', async () => {
@@ -323,7 +392,10 @@ describe('AllocationFormDialog: editing', () => {
     await user.selectOptions(screen.getByLabelText('Project'), 'Website');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/1', expect.objectContaining({ projectId: 1 }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/allocations/1',
+      expect.objectContaining({ projectId: 1 })
+    );
   });
 
   it('sends a null note to clear it when the field is emptied', async () => {
@@ -333,36 +405,61 @@ describe('AllocationFormDialog: editing', () => {
     await user.clear(screen.getByLabelText('Note'));
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/1', { effectiveDate: '2025-11-03', note: null });
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/1', {
+      effectiveDate: '2025-11-03',
+      note: null,
+    });
   });
 
   it('still offers and keeps a project that has since been deleted, and does not name it, which the service would refuse', async () => {
-    const retired = { ...allocationRows[1], projectId: 99, project: { id: 99, name: 'Retired project' } };
+    const retired = {
+      ...allocationRows[1],
+      projectId: 99,
+      project: { id: 99, name: 'Retired project' },
+    };
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     openDialog({ entry: allocationRowsSchema.parse([retired])[0] });
     await screen.findByRole('option', { name: 'Website' });
     expect(screen.getByLabelText('Project')).toHaveValue('99');
-    expect(screen.getByRole('option', { name: 'Retired project' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('option', { name: 'Retired project' })
+    ).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/3', { effectiveDate: '2026-03-12', note: null });
-    expect(vi.mocked(coreApi.patch).mock.calls[0][1]).not.toHaveProperty('projectId');
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/3', {
+      effectiveDate: '2026-03-12',
+      note: null,
+    });
+    expect(vi.mocked(coreApi.patch).mock.calls[0][1]).not.toHaveProperty(
+      'projectId'
+    );
   });
 
   it('changes only the note of an entry of a deleted project without naming the project', async () => {
-    const retired = { ...allocationRows[1], projectId: 99, project: { id: 99, name: 'Retired project' } };
+    const retired = {
+      ...allocationRows[1],
+      projectId: 99,
+      project: { id: 99, name: 'Retired project' },
+    };
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     openDialog({ entry: allocationRowsSchema.parse([retired])[0] });
     await user.type(screen.getByLabelText('Note'), 'Handed over');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/3', { effectiveDate: '2026-03-12', note: 'Handed over' });
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/3', {
+      effectiveDate: '2026-03-12',
+      note: 'Handed over',
+    });
   });
 
   it('moves an entry of a deleted project to a live one, or to the bench, by naming that', async () => {
-    const retired = { ...allocationRows[1], projectId: 99, project: { id: 99, name: 'Retired project' } };
+    const retired = {
+      ...allocationRows[1],
+      projectId: 99,
+      project: { id: 99, name: 'Retired project' },
+    };
     vi.mocked(coreApi.patch).mockResolvedValue(saved);
     const user = userEvent.setup();
     openDialog({ entry: allocationRowsSchema.parse([retired])[0] });
@@ -370,15 +467,24 @@ describe('AllocationFormDialog: editing', () => {
     await user.selectOptions(screen.getByLabelText('Project'), 'Bench');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/3', expect.objectContaining({ projectId: null }));
+    expect(coreApi.patch).toHaveBeenCalledWith(
+      '/allocations/3',
+      expect.objectContaining({ projectId: null })
+    );
   });
 
   it('keeps the project of the entry chosen while the projects fail to load', async () => {
     serve({ projects: 'fail' });
     openDialog({ entry: adaOnWebsite });
-    expect(await screen.findByText('Projects could not be loaded.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Projects could not be loaded.')
+    ).toBeInTheDocument();
     expect(screen.getByLabelText('Project')).toHaveValue('1');
-    expect(optionNames(screen.getByLabelText('Project'))).toEqual(['Bench', 'Website', 'Card removed']);
+    expect(optionNames(screen.getByLabelText('Project'))).toEqual([
+      'Bench',
+      'Website',
+      'Card removed',
+    ]);
   });
 
   it('says so on the date when it now clashes with another entry of the person', async () => {
@@ -396,7 +502,7 @@ describe('AllocationFormDialog: editing', () => {
     openDialog({ entry: adaOnWebsite });
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'This entry was removed elsewhere, so it cannot be saved. Close this dialog and go back to the ledger.',
+      'This entry was removed elsewhere, so it cannot be saved. Close this dialog and go back to the ledger.'
     );
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
@@ -411,8 +517,23 @@ describe('AllocationFormDialog: editing', () => {
 });
 
 describe('AllocationFormDialog: cards', () => {
-  const secondCard = { ...allocationRows[1], id: 20, card: 2, projectId: 2, project: { id: 2, name: 'Mobile app' }, effectiveDate: '2026-06-01' };
-  const removedSecond = { ...allocationRows[1], id: 21, card: 2, removed: true, projectId: null, project: null, effectiveDate: '2026-07-01' };
+  const secondCard = {
+    ...allocationRows[1],
+    id: 20,
+    card: 2,
+    projectId: 2,
+    project: { id: 2, name: 'Mobile app' },
+    effectiveDate: '2026-06-01',
+  };
+  const removedSecond = {
+    ...allocationRows[1],
+    id: 21,
+    card: 2,
+    removed: true,
+    projectId: null,
+    project: null,
+    effectiveDate: '2026-07-01',
+  };
   const secondOfAda = allocationRowsSchema.parse([secondCard])[0];
   const removalOfAda = allocationRowsSchema.parse([removedSecond])[0];
 
@@ -420,14 +541,27 @@ describe('AllocationFormDialog: cards', () => {
     serve({ entries: [secondCard, ...allocationRows] });
     openDialog({ personId: 1 });
     expect(screen.getByLabelText('Card')).toHaveValue('1');
-    await waitFor(() => expect(optionNames(screen.getByLabelText('Card'))).toEqual(['Card 1', 'Card 2', 'New card']));
+    await waitFor(() =>
+      expect(optionNames(screen.getByLabelText('Card'))).toEqual([
+        'Card 1',
+        'Card 2',
+        'New card',
+      ])
+    );
   });
 
   it('offers only Card 1 and a new card to a person with no entries', async () => {
     serve({ entries: [] });
     openDialog({ personId: 3 });
-    await waitFor(() => expect(coreApi.get).toHaveBeenCalledWith('/allocations', { params: { personId: 3 } }));
-    expect(optionNames(screen.getByLabelText('Card'))).toEqual(['Card 1', 'New card']);
+    await waitFor(() =>
+      expect(coreApi.get).toHaveBeenCalledWith('/allocations', {
+        params: { personId: 3 },
+      })
+    );
+    expect(optionNames(screen.getByLabelText('Card'))).toEqual([
+      'Card 1',
+      'New card',
+    ]);
   });
 
   it('offers the cards of the person chosen, and goes back to Card 1 when another person is chosen', async () => {
@@ -436,10 +570,21 @@ describe('AllocationFormDialog: cards', () => {
     openDialog();
     await screen.findByRole('option', { name: 'Ada Lovelace' });
     await user.selectOptions(screen.getByLabelText('Person'), 'Ada Lovelace');
-    await waitFor(() => expect(optionNames(screen.getByLabelText('Card'))).toEqual(['Card 1', 'Card 2', 'New card']));
+    await waitFor(() =>
+      expect(optionNames(screen.getByLabelText('Card'))).toEqual([
+        'Card 1',
+        'Card 2',
+        'New card',
+      ])
+    );
     await user.selectOptions(screen.getByLabelText('Card'), 'Card 2');
     await user.selectOptions(screen.getByLabelText('Person'), 'Grace Hopper');
-    await waitFor(() => expect(optionNames(screen.getByLabelText('Card'))).toEqual(['Card 1', 'New card']));
+    await waitFor(() =>
+      expect(optionNames(screen.getByLabelText('Card'))).toEqual([
+        'Card 1',
+        'New card',
+      ])
+    );
     expect(screen.getByLabelText('Card')).toHaveValue('1');
   });
 
@@ -448,7 +593,9 @@ describe('AllocationFormDialog: cards', () => {
     vi.mocked(coreApi.post).mockResolvedValue(saved);
     const user = userEvent.setup();
     openDialog({ personId: 1 });
-    await waitFor(() => expect(optionNames(screen.getByLabelText('Card'))).toContain('Card 2'));
+    await waitFor(() =>
+      expect(optionNames(screen.getByLabelText('Card'))).toContain('Card 2')
+    );
     await user.selectOptions(screen.getByLabelText('Card'), 'Card 2');
     await screen.findByRole('option', { name: 'Website' });
     await user.selectOptions(screen.getByLabelText('Project'), 'Website');
@@ -504,7 +651,9 @@ describe('AllocationFormDialog: cards', () => {
     await user.selectOptions(screen.getByLabelText('Card'), 'New card');
     await user.selectOptions(screen.getByLabelText('Project'), 'Card removed');
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('A new card cannot be removed')).toBeInTheDocument();
+    expect(
+      await screen.findByText('A new card cannot be removed')
+    ).toBeInTheDocument();
     expect(coreApi.post).not.toHaveBeenCalled();
   });
 
@@ -527,7 +676,10 @@ describe('AllocationFormDialog: cards', () => {
     await user.selectOptions(screen.getByLabelText('Project'), 'Card removed');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.post).toHaveBeenCalledWith('/allocations', expect.objectContaining({ card: 1, projectId: null, removed: true }));
+    expect(coreApi.post).toHaveBeenCalledWith(
+      '/allocations',
+      expect.objectContaining({ card: 1, projectId: null, removed: true })
+    );
   });
 
   it('shows a clash on the date in the service’s words when the card has an entry that day', async () => {
@@ -536,15 +688,22 @@ describe('AllocationFormDialog: cards', () => {
     openDialog({ personId: 1 });
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(await screen.findByText(DUPLICATE)).toBeInTheDocument();
-    expect(screen.getByLabelText('Effective date')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Effective date')).toHaveAttribute(
+      'aria-invalid',
+      'true'
+    );
   });
 
   it('shows the service’s refusal of a card that does not exist, and of a new card, above the buttons', async () => {
-    vi.mocked(coreApi.post).mockRejectedValue(failure(409, 'That card does not exist'));
+    vi.mocked(coreApi.post).mockRejectedValue(
+      failure(409, 'That card does not exist')
+    );
     const user = userEvent.setup();
     openDialog({ personId: 1 });
     await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent('That card does not exist');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'That card does not exist'
+    );
     expect(onOpenChange).not.toHaveBeenCalledWith(false);
   });
 
@@ -561,7 +720,10 @@ describe('AllocationFormDialog: cards', () => {
     await user.type(screen.getByLabelText('Note'), 'Handed over');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/20', { effectiveDate: '2026-06-01', note: 'Handed over' });
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/20', {
+      effectiveDate: '2026-06-01',
+      note: 'Handed over',
+    });
   });
 
   it('opens an entry that removes a card on "Card removed", and sends nothing about it when it is saved unchanged', async () => {
@@ -571,7 +733,10 @@ describe('AllocationFormDialog: cards', () => {
     expect(screen.getByLabelText('Project')).toHaveValue('removed');
     await user.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
-    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/21', { effectiveDate: '2026-07-01', note: null });
+    expect(coreApi.patch).toHaveBeenCalledWith('/allocations/21', {
+      effectiveDate: '2026-07-01',
+      note: null,
+    });
   });
 
   it('turns an entry on a project into the removal of its card: no project, removed', async () => {

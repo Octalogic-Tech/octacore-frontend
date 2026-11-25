@@ -1,4 +1,8 @@
-export type LiveSend = (method: string, path: string, body?: unknown) => Promise<Response>;
+export type LiveSend = (
+  method: string,
+  path: string,
+  body?: unknown
+) => Promise<Response>;
 
 /**
  * Signs in to a real core service with the admin that `make seed-admin` created on the scratch database
@@ -9,7 +13,7 @@ export async function signInLive(base: string): Promise<LiveSend> {
   const password = process.env.CORE_API_TEST_PASSWORD;
   if (!email || !password) {
     throw new Error(
-      'Set CORE_API_TEST_EMAIL and CORE_API_TEST_PASSWORD to the admin created with `make seed-admin` on the scratch database.',
+      'Set CORE_API_TEST_EMAIL and CORE_API_TEST_PASSWORD to the admin created with `make seed-admin` on the scratch database.'
     );
   }
   const login = await fetch(`${base}/auth/login`, {
@@ -17,12 +21,16 @@ export async function signInLive(base: string): Promise<LiveSend> {
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  if (!login.ok) throw new Error(`Signing in to ${base} failed with status ${login.status}`);
+  if (!login.ok)
+    throw new Error(`Signing in to ${base} failed with status ${login.status}`);
   const accessToken = (await login.json()).data.accessToken as string;
   return (method, path, body) =>
     fetch(`${base}${path}`, {
       method,
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${accessToken}` },
+      headers: {
+        'content-type': 'application/json',
+        authorization: `Bearer ${accessToken}`,
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
 }

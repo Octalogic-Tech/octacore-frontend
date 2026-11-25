@@ -15,7 +15,8 @@ export const skillsDialog: PlannedDialogSpec = {
 export const skillsSpec: PlannedSpec = {
   id: 'skills',
   title: 'Skills matrix',
-  summary: 'Record which technologies each person knows, so you can ask who knows a stack and is free.',
+  summary:
+    'Record which technologies each person knows, so you can ask who knows a stack and is free.',
   surface: 'page',
   home: 'Work › Skills',
   size: 'S–M',

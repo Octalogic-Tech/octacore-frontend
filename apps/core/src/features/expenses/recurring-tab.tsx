@@ -7,17 +7,33 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { PRIMARY_CURRENCY } from '@/features/countries/schema';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { serviceMessage } from '@/lib/core-api';
 import { formatDate, pluralize } from '@/lib/format';
 import { formatUsd } from '@/lib/money';
-import { useChangeRecurringState, useDeleteRecurring, useRecurringExpenses } from './api';
+import {
+  useChangeRecurringState,
+  useDeleteRecurring,
+  useRecurringExpenses,
+} from './api';
 import { formatMoney } from './money';
 import { RecurringFormDialog } from './recurring-form-dialog';
 import { costTotals, sortRecurring } from './recurring';
-import { FREQUENCY_LABELS, STATE_LABELS, type RecurringRow, type RecurringState } from './schema';
+import {
+  FREQUENCY_LABELS,
+  STATE_LABELS,
+  type RecurringRow,
+  type RecurringState,
+} from './schema';
 
 const NONE = '—';
 
@@ -31,12 +47,14 @@ interface StateAction {
 const ACTIONS: Record<RecurringState, StateAction> = {
   paused: {
     title: (name) => `Pause “${name}”?`,
-    description: 'No charges are created while it is paused. When you resume it, the charges it missed are not created.',
+    description:
+      'No charges are created while it is paused. When you resume it, the charges it missed are not created.',
     confirm: 'Pause',
   },
   active: {
     title: (name) => `Resume “${name}”?`,
-    description: 'Charges start again from the first charge date on or after today.',
+    description:
+      'Charges start again from the first charge date on or after today.',
     confirm: 'Resume',
   },
   cancelled: {
@@ -47,7 +65,11 @@ const ACTIONS: Record<RecurringState, StateAction> = {
 };
 
 function StateBadge({ state }: { state: RecurringState }) {
-  return <Badge variant={state === 'active' ? 'solid' : 'outline'}>{STATE_LABELS[state]}</Badge>;
+  return (
+    <Badge variant={state === 'active' ? 'solid' : 'outline'}>
+      {STATE_LABELS[state]}
+    </Badge>
+  );
 }
 
 /** The recurring expenses, and what the active ones cost: add one, change it, pause it, resume it, end it. */
@@ -55,20 +77,35 @@ export function RecurringTab() {
   const recurring = useRecurringExpenses();
   const changeState = useChangeRecurringState();
   const remove = useDeleteRecurring();
-  const [form, setForm] = useState<{ open: boolean; expense?: RecurringRow }>({ open: false });
-  const [action, setAction] = useState<{ expense: RecurringRow; state: RecurringState } | null>(null);
+  const [form, setForm] = useState<{ open: boolean; expense?: RecurringRow }>({
+    open: false,
+  });
+  const [action, setAction] = useState<{
+    expense: RecurringRow;
+    state: RecurringState;
+  } | null>(null);
   const [toDelete, setToDelete] = useState<RecurringRow | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 
-  const rows = useMemo(() => sortRecurring(recurring.data ?? []), [recurring.data]);
-  const totals = useMemo(() => costTotals(recurring.data ?? []), [recurring.data]);
+  const rows = useMemo(
+    () => sortRecurring(recurring.data ?? []),
+    [recurring.data]
+  );
+  const totals = useMemo(
+    () => costTotals(recurring.data ?? []),
+    [recurring.data]
+  );
   const paging = usePagedRows(rows);
   const pending = action ? ACTIONS[action.state] : null;
 
   function saved(generated: number) {
     setProblem(null);
-    setNotice(generated > 0 ? `Created ${pluralize(generated, 'charge')}.` : 'Saved. No charge is due yet.');
+    setNotice(
+      generated > 0
+        ? `Created ${pluralize(generated, 'charge')}.`
+        : 'Saved. No charge is due yet.'
+    );
   }
 
   return (
@@ -76,7 +113,8 @@ export function RecurringTab() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
         {recurring.data ? (
           <p className="tabular text-body font-semibold">
-            Active: {formatUsd(totals.monthly)} per month · {formatUsd(totals.yearly)} per year
+            Active: {formatUsd(totals.monthly)} per month ·{' '}
+            {formatUsd(totals.yearly)} per year
           </p>
         ) : (
           <span />
@@ -87,12 +125,18 @@ export function RecurringTab() {
       </div>
 
       {notice ? (
-        <p role="status" className="mb-4 text-small font-semibold text-foreground">
+        <p
+          role="status"
+          className="mb-4 text-small font-semibold text-foreground"
+        >
           {notice}
         </p>
       ) : null}
       {problem ? (
-        <p role="alert" className="mb-4 text-small font-semibold text-foreground">
+        <p
+          role="alert"
+          className="mb-4 text-small font-semibold text-foreground"
+        >
           {problem}
         </p>
       ) : null}
@@ -130,7 +174,11 @@ export function RecurringTab() {
                 <TableRow key={expense.id}>
                   <TableCell>
                     <span className="font-semibold">{expense.name}</span>
-                    {expense.notes ? <div className="text-small text-navy-72">{expense.notes}</div> : null}
+                    {expense.notes ? (
+                      <div className="text-small text-navy-72">
+                        {expense.notes}
+                      </div>
+                    ) : null}
                   </TableCell>
                   <TableCell>{expense.expenseType.name}</TableCell>
                   <TableCell>{expense.person?.name ?? NONE}</TableCell>
@@ -140,13 +188,17 @@ export function RecurringTab() {
                     ) : (
                       <>
                         {formatMoney(expense.amount, expense.country)}
-                        <div className="text-small text-navy-72">about {formatUsd(expense.amountCents)}</div>
+                        <div className="text-small text-navy-72">
+                          about {formatUsd(expense.amountCents)}
+                        </div>
                       </>
                     )}
                   </TableCell>
                   <TableCell>{FREQUENCY_LABELS[expense.frequency]}</TableCell>
                   <TableCell className="tabular whitespace-nowrap">
-                    {expense.nextChargeDate ? formatDate(expense.nextChargeDate) : 'Ended'}
+                    {expense.nextChargeDate
+                      ? formatDate(expense.nextChargeDate)
+                      : 'Ended'}
                   </TableCell>
                   <TableCell>
                     <StateBadge state={expense.state} />
@@ -181,7 +233,9 @@ export function RecurringTab() {
                       <IconButton
                         label={`Cancel ${expense.name}`}
                         icon={LuBan}
-                        onClick={() => setAction({ expense, state: 'cancelled' })}
+                        onClick={() =>
+                          setAction({ expense, state: 'cancelled' })
+                        }
                       />
                     )}
                     <IconButton
@@ -225,11 +279,16 @@ export function RecurringTab() {
           if (!action) return;
           setNotice(null);
           try {
-            await changeState.mutateAsync({ id: action.expense.id, state: action.state });
+            await changeState.mutateAsync({
+              id: action.expense.id,
+              state: action.state,
+            });
             setProblem(null);
           } catch (error) {
             // A resume after the end date is a 422 with the reason: it is shown on the page, once this closes.
-            setProblem(serviceMessage(error) ?? 'That did not work. Try again.');
+            setProblem(
+              serviceMessage(error) ?? 'That did not work. Try again.'
+            );
           }
         }}
       />

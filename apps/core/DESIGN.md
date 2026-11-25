@@ -137,6 +137,7 @@ The app speaks in numbers inside sentences ("$55,000 outstanding across 8 projec
 The visual world was set by the brief ("based off the octa-website") and is taken from `../../../octa-website/DESIGN.md`; this file records what was built from it and where it differs.
 
 **Key Characteristics:**
+
 - Grey ground, navy ink, a navy sidebar; teal is a signal, never decoration or text on grey.
 - Hairline rules at 0 degrees; framed panels with one 45 degree cut at the bottom right.
 - Square corners everywhere. No shadows (one 1px seam inside the primary button), no gradients, no red.
@@ -158,6 +159,7 @@ Exactly the website's palette; no other colour enters the app.
 Measured contrast: navy on grey 10.54:1; Slate Navy on grey 5.76:1; Muted Navy on grey 4.82:1; Slate Navy on Soft Hairline 5.00:1; white on navy 11.82:1; Mist on navy 7.37:1; teal on navy 7.60:1; white on Night Navy 13.81:1. Muted Navy on Soft Hairline is 4.19:1, so Muted Navy text is never placed on a hover fill.
 
 ### Named Rules
+
 **The Teal Is a Signal Rule.** Teal means action, current state or the brand's own arm. A resting arm is Hairline on grey and Mist on navy, and turns teal on hover, focus or current.
 **The Three Colours Rule.** Nothing is added that is not navy, teal, grey or a tint of them. `src/design-contract.test.ts` fails the build on any other colour.
 
@@ -191,41 +193,53 @@ Every corner is square (radius 0). The one non-rectangular silhouette is the 45 
 ## Components
 
 ### Buttons
+
 A label and a square arm cell, 52px tall; one primary per screen. Hover and keyboard focus fill the cell teal and swing the arm into an arrow (220ms and 320ms). The quiet variant is plain text, 44px tall, with a teal underline on hover and focus; it is used for Cancel, Previous and Next. A table row's actions (Edit, Delete, Preview and the like) are icon buttons instead: one Lucide mark in a 44px square with no text, named by its `aria-label` and tooltip ("Edit Acme"), and a teal bar under the mark on hover and focus.
 
 ### Navigation
+
 Logo, then groups of text links (Work, Resources, Finance, Reference data, and for admins Admin and Planned). Group names are Small, uppercase and tracked, in Mist. The current page is white with a teal arm and `aria-current="page"`; other links are Mist with a Mist arm that lengthens and turns teal on hover.
 
 ### Account
+
 At the foot of the sidebar and the menu sheet, a single 44px button: the person's initials in a square Night Navy tile (first letter of the first and last word of the name), the name, and a drawn chevron. It opens a popover upward, as wide as the button, with the email and then Change password and Sign out as quiet buttons. The popover is a grey object with a 1px navy frame: flat, no scrim, and it closes on Escape, an outside click or a choice. Change password closes it and opens its dialog, and focus comes back to the name button.
 
 ### Inputs
+
 Underline fields: no box, no fill. A 1px Muted Navy rule that turns navy on hover and firms to 3px navy on focus, with padding compensating so nothing moves. A drawn arm leads the label. Errors are a 2px navy rule and a navy arm before the message, announced with `role="alert"`; there is no red. Select is a native select with a drawn chevron; the Yes and No choice is a pair of native radio buttons styled as 44px chips, the chosen one a navy block. A choice of several, where any number can be chosen (a project's technologies), is the same chip as a native checkbox.
 
 ### Tabs
+
 A page with more than one subject splits into tabs: text only (the icon set is for row actions), 44px tall, on a navy rule the width of the content. Labels are Slate Navy; hover, keyboard focus and the selected tab turn them Octalogic Navy, and the selected tab also carries a 3px teal bar on the rule. A count follows the name in regular weight ("Invoices 4") once it is known. The selected tab lives in the address (`?tab=`, bare for the first tab), replacing the history entry so Back leaves the page; an unknown value opens the first tab. Only the open tab is on the page.
 
 ### Board
+
 The allocation board is the registry's Kanban component restyled to the tokens, and it is the one page that fills the window: edge to edge beside the sidebar, with small gutters, and down to the bottom, under the title and the tabs (the shell's `<main>` gives its centred column up while the board is on screen). The columns fill that height: each is a Soft Hairline well in a Hairline frame, 288px wide, with its name, head count and monthly cost under a Hairline, and scrolls its own cards when there are many; the row of columns scrolls sideways inside the board, so the page itself never scrolls. A card is a flat Paper Grey object in a Hairline frame with the person's name as a link, "Card 1 of 2" in Slate Navy when the person has several cards (nothing when they have one), the card's share of their salary (their salary split evenly between their cards) and, when it is on the bench because its project is not active, a note; it has no date, which the ledger holds. The column head counts cards ("1 card, ₹85,000.00 a month"); only its count is set in tabular figures, because the font draws the punctuation of tabular amounts wide. The whole card is picked up, with the mouse (after 6px, so a click on the name or the menu button is still a click), by touch (after a short press, so a swipe still scrolls the column) or by the keyboard (focus the card, then space or enter), and it shows a grab cursor; it is announced as a draggable card in a list, not as a button. At its top right a 44px button with a drawn three-square mark (like the other marks, not an icon from the set) opens the card's menu, as Trello's does: a flat grey object with a Navy frame with a Move to group (a 44px item for each other column, the way to move without dragging), a Hairline, Duplicate (a copy of the card on the same project, for a person on more than one project) and Delete card, which is shown but disabled, with its reason ("A person keeps at least one card") in Slate Navy under it, when the person has one card. The card in flight is an outlined navy card, with no shadow; a card whose move is being saved is dimmed and locked until it settles.
 
 ### Sortable lists
+
 The quote editor's sections and lines are put in order with the Sortable component (`components/ui/sortable.tsx`, on dnd-kit like the board). Unlike a board card, only a handle picks one up: a Lucide grip (`LuGripVertical`) as an icon button at the start of the section header and of each line row, named "Drag section 2" or "Drag line 3", 44px on a phone and as compact as the line table from `md`. The mouse or a finger starts a drag after 6px (the handle does not scroll the page), the keyboard with space; the arrows move it one place, space drops and escape cancels, each told to a screen reader. What is held is an outlined navy strip with the title and the hours, with no shadow.
 
 ### Panels and tables
+
 A framed panel (grey, 1px navy frame, one cut corner) holds a table: a navy rule under the heads, Hairline between rows, rows at least 44px, amounts right-aligned in tabular figures, a pager at the foot (rows per page, range, Previous and Next).
 
 ### Dialogs
+
 A grey object on the scrim with the cut corner, the title at Title size, a description, a 44px close button and the form below. A destructive action asks in an alert dialog with explicit wording ("Delete category “Web”? This cannot be undone.") and a navy button, never red.
 
 ### Badges
+
 Status is a word, not a colour: navy filled while money is still owed (Unpaid, Overdue), outlined for Paid.
 
 ### States
+
 Loading is five grey rows. A failed request is an inline message with a Try again button. An empty table says what is missing and offers the add action. A search with no match says so.
 
 ## Do's and Don'ts
 
 ### Do:
+
 - **Do** keep teal a signal and every corner square.
 - **Do** draw marks (arm, tick, chevron, close) rather than importing an icon set, and give a row action an icon button with a label that names the row.
 - **Do** put amounts and dates in tabular figures and keep every target at least 44px.
@@ -233,6 +247,7 @@ Loading is five grey rows. A failed request is an inline message with a Try agai
 - **Do** keep motion to hover and focus, and respect `prefers-reduced-motion`.
 
 ### Don't:
+
 - **Don't** use red, gradients, glows or shadows; delete is a confirmation, not a colour.
 - **Don't** round a corner.
 - **Don't** add an icon set other than Lucide (the design-contract test fails on one), or use icons outside table row actions.
@@ -243,6 +258,7 @@ Loading is five grey rows. A failed request is an inline message with a Try agai
 ## Differences from octa-website
 
 Deliberate, so a later reader does not "fix" them back:
+
 - The sidebar is a navy field with no top-left cut: a full-height sidebar would only reveal a grey wedge at the window corner.
 - Dialogs use a clip-path cut; framed panels use the corner svg. The website uses the svg technique for panels only.
 - shadcn's `accent` token is the Soft Hairline hover fill, not teal; teal is the separate `signal` token. `destructive` is navy.

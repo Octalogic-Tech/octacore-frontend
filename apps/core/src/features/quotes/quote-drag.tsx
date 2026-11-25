@@ -1,7 +1,17 @@
 import { useRef } from 'react';
-import type { FieldErrors, UseFormClearErrors, UseFormGetValues, UseFormSetError, UseFormSetValue } from 'react-hook-form';
+import type {
+  FieldErrors,
+  UseFormClearErrors,
+  UseFormGetValues,
+  UseFormSetError,
+  UseFormSetValue,
+} from 'react-hook-form';
 import { LuGripVertical } from 'react-icons/lu';
-import type { SortableAnnouncements, SortableMove, SortablePlace } from '@/components/ui/sortable';
+import type {
+  SortableAnnouncements,
+  SortableMove,
+  SortablePlace,
+} from '@/components/ui/sortable';
 import { pathOf, wrongFields } from './form-errors';
 import { hoursText, sectionHours } from './quote-section';
 import { NONE } from './quote-line-row';
@@ -45,7 +55,10 @@ export function useQuoteDrag({
   const picked = useRef(0);
 
   const layout = Object.fromEntries(
-    sections.map((section) => [section.uid ?? '', section.lines.map((line) => line.uid ?? '')]),
+    sections.map((section) => [
+      section.uid ?? '',
+      section.lines.map((line) => line.uid ?? ''),
+    ])
   );
 
   function onMove(move: SortableMove) {
@@ -53,7 +66,10 @@ export function useQuoteDrag({
     // Where every section and line was, carried through the same move to find where each is now.
     const marks = before.map((section, sectionIndex) => ({
       section: sectionIndex,
-      lines: section.lines.map((_line, lineIndex) => ({ section: sectionIndex, line: lineIndex })),
+      lines: section.lines.map((_line, lineIndex) => ({
+        section: sectionIndex,
+        line: lineIndex,
+      })),
     }));
     let after: typeof before;
     let moved: typeof marks;
@@ -69,7 +85,9 @@ export function useQuoteDrag({
       moved = moveLine(marks, from, to);
       if (after === before) return;
       for (const section of new Set([from.section, to.section])) {
-        setValue(`sections.${section}.lines`, after[section].lines, { shouldDirty: true });
+        setValue(`sections.${section}.lines`, after[section].lines, {
+          shouldDirty: true,
+        });
       }
     }
 
@@ -78,23 +96,41 @@ export function useQuoteDrag({
     const now = new Map<string, { section: number; line?: number }>();
     moved.forEach((mark, sectionIndex) => {
       now.set(`${mark.section}`, { section: sectionIndex });
-      mark.lines.forEach((line, lineIndex) => now.set(`${line.section}.${line.line}`, { section: sectionIndex, line: lineIndex }));
+      mark.lines.forEach((line, lineIndex) =>
+        now.set(`${line.section}.${line.line}`, {
+          section: sectionIndex,
+          line: lineIndex,
+        })
+      );
     });
     clearErrors(before.map((_section, index) => `sections.${index}` as const));
     for (const field of wrong) {
-      const at = now.get(field.line === undefined ? `${field.section}` : `${field.section}.${field.line}`);
-      if (at) setError(pathOf({ ...at, field: field.field }), { type: field.error.type, message: field.error.message });
+      const at = now.get(
+        field.line === undefined
+          ? `${field.section}`
+          : `${field.section}.${field.line}`
+      );
+      if (at)
+        setError(pathOf({ ...at, field: field.field }), {
+          type: field.error.type,
+          message: field.error.message,
+        });
     }
   }
 
   const numberAt = (place: SortablePlace) =>
-    place.index === undefined ? place.group + 1 : (firstLineNumbers[place.group] ?? 1) + place.index;
-  const where = (place: SortablePlace) => `section ${place.group + 1}, position ${(place.index ?? 0) + 1}`;
+    place.index === undefined
+      ? place.group + 1
+      : (firstLineNumbers[place.group] ?? 1) + place.index;
+  const where = (place: SortablePlace) =>
+    `section ${place.group + 1}, position ${(place.index ?? 0) + 1}`;
 
   const announcements: SortableAnnouncements = {
     pickedUp: (drag) => {
       picked.current = numberAt(drag.from);
-      return `Picked up ${drag.kind === 'group' ? 'section' : 'line'} ${picked.current}`;
+      return `Picked up ${drag.kind === 'group' ? 'section' : 'line'} ${
+        picked.current
+      }`;
     },
     moved: (drag, to) =>
       drag.kind === 'group'
@@ -106,12 +142,20 @@ export function useQuoteDrag({
         : `Dropped line ${picked.current} in ${where(to)}`,
     cancelled: (drag) =>
       drag.kind === 'group'
-        ? `Cancelled: section ${picked.current} is back at position ${drag.from.group + 1}`
+        ? `Cancelled: section ${picked.current} is back at position ${
+            drag.from.group + 1
+          }`
         : `Cancelled: line ${picked.current} is back in ${where(drag.from)}`,
   };
 
   /** A compact stand-in for what is held: a section's header or a line's row, each its title and its hours. */
-  function renderHeld({ value, variant }: { value: string; variant: 'group' | 'item' }) {
+  function renderHeld({
+    value,
+    variant,
+  }: {
+    value: string;
+    variant: 'group' | 'item';
+  }) {
     let title = '';
     let hours: number | null = null;
     if (variant === 'group') {
@@ -119,7 +163,9 @@ export function useQuoteDrag({
       title = section?.title.trim() || 'Untitled section';
       hours = sectionHours(section?.lines ?? []);
     } else {
-      const line = sections.flatMap((entry) => entry.lines).find((entry) => entry.uid === value);
+      const line = sections
+        .flatMap((entry) => entry.lines)
+        .find((entry) => entry.uid === value);
       title = line?.title.trim() || 'Untitled line';
       hours = lineHours(line);
     }
@@ -128,9 +174,15 @@ export function useQuoteDrag({
         data-slot="quote-drag-preview"
         className="flex min-h-11 items-center gap-3 border border-foreground bg-background px-3 text-small text-foreground"
       >
-        <LuGripVertical aria-hidden="true" focusable="false" className="size-4 flex-none" />
+        <LuGripVertical
+          aria-hidden="true"
+          focusable="false"
+          className="size-4 flex-none"
+        />
         <span className="min-w-0 flex-1 truncate font-semibold">{title}</span>
-        <span className="tabular flex-none">{hours === null ? NONE : hoursText(hours)}</span>
+        <span className="tabular flex-none">
+          {hours === null ? NONE : hoursText(hours)}
+        </span>
       </div>
     );
   }

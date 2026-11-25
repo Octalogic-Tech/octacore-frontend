@@ -8,7 +8,14 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { filterBy } from '@/lib/filter';
 import { formatDate } from '@/lib/format';
@@ -20,16 +27,24 @@ export function ExpenseTypesPage() {
   const { data, isLoading, isError, refetch } = useExpenseTypes();
   const remove = useDeleteExpenseType();
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState<{ open: boolean; expenseType?: ExpenseTypeRow }>({ open: false });
+  const [form, setForm] = useState<{
+    open: boolean;
+    expenseType?: ExpenseTypeRow;
+  }>({ open: false });
   const [toDelete, setToDelete] = useState<ExpenseTypeRow | null>(null);
 
-  const filtered = useMemo(() => filterBy(data ?? [], search, ['name', 'description']), [data, search]);
+  const filtered = useMemo(
+    () => filterBy(data ?? [], search, ['name', 'description']),
+    [data, search]
+  );
   const paging = usePagedRows(filtered);
 
   return (
     <>
       <PageHeader title="Expense types">
-        <Button onClick={() => setForm({ open: true })}>Add expense type</Button>
+        <Button onClick={() => setForm({ open: true })}>
+          Add expense type
+        </Button>
       </PageHeader>
 
       <div className="mb-6">
@@ -60,7 +75,9 @@ export function ExpenseTypesPage() {
           }
         >
           {filtered.length === 0 ? (
-            <p className="p-6 text-body">No expense types match “{search.trim()}”.</p>
+            <p className="p-6 text-body">
+              No expense types match “{search.trim()}”.
+            </p>
           ) : (
             <>
               <Table>
@@ -76,10 +93,16 @@ export function ExpenseTypesPage() {
                 <TableBody>
                   {paging.pageRows.map((expenseType) => (
                     <TableRow key={expenseType.id}>
-                      <TableCell className="font-semibold">{expenseType.name}</TableCell>
+                      <TableCell className="font-semibold">
+                        {expenseType.name}
+                      </TableCell>
                       <TableCell>{expenseType.description}</TableCell>
-                      <TableCell className="tabular">{formatDate(expenseType.createdDate)}</TableCell>
-                      <TableCell className="tabular">{formatDate(expenseType.updatedDate)}</TableCell>
+                      <TableCell className="tabular">
+                        {formatDate(expenseType.createdDate)}
+                      </TableCell>
+                      <TableCell className="tabular">
+                        {formatDate(expenseType.updatedDate)}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         <IconButton
                           label={`Edit ${expenseType.name}`}

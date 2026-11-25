@@ -8,7 +8,14 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { filterBy } from '@/lib/filter';
 import { useDeleteTechnology, useTechnologies } from './api';
@@ -19,12 +26,14 @@ export function TechnologiesPage() {
   const { data, isLoading, isError, refetch } = useTechnologies();
   const remove = useDeleteTechnology();
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState<{ open: boolean; technology?: Technology }>({ open: false });
+  const [form, setForm] = useState<{ open: boolean; technology?: Technology }>({
+    open: false,
+  });
   const [toDelete, setToDelete] = useState<Technology | null>(null);
 
   const filtered = useMemo(
     () => filterBy(data ?? [], search, ['name', 'categoryName', 'description']),
-    [data, search],
+    [data, search]
   );
   const paging = usePagedRows(filtered);
 
@@ -62,7 +71,9 @@ export function TechnologiesPage() {
           }
         >
           {filtered.length === 0 ? (
-            <p className="p-6 text-body">No technologies match “{search.trim()}”.</p>
+            <p className="p-6 text-body">
+              No technologies match “{search.trim()}”.
+            </p>
           ) : (
             <>
               <Table>
@@ -77,9 +88,13 @@ export function TechnologiesPage() {
                 <TableBody>
                   {paging.pageRows.map((technology) => (
                     <TableRow key={technology.id}>
-                      <TableCell className="font-semibold">{technology.name}</TableCell>
+                      <TableCell className="font-semibold">
+                        {technology.name}
+                      </TableCell>
                       <TableCell>{technology.categoryName || '—'}</TableCell>
-                      <TableCell className="min-w-[16rem]">{technology.description}</TableCell>
+                      <TableCell className="min-w-[16rem]">
+                        {technology.description}
+                      </TableCell>
                       <TableCell className="whitespace-nowrap text-right">
                         <IconButton
                           label={`Edit ${technology.name}`}

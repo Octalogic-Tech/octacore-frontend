@@ -30,7 +30,8 @@
   --color-rule-on-navy: #2f5672;
   --color-scrim: rgb(3 17 29 / 0.45);
 
-  --font-sans: 'Schibsted Grotesk Variable', 'Schibsted Fallback', system-ui, sans-serif;
+  --font-sans: 'Schibsted Grotesk Variable', 'Schibsted Fallback', system-ui,
+    sans-serif;
 
   /* Type scale, fluid between 360px and 1280px viewports (octa-website). Never below 14px. */
   --text-headline: clamp(1.875rem, 1.6rem + 1.2vw, 2.75rem);
@@ -172,8 +173,7 @@
     background: currentColor;
     transform: rotate(-45deg);
     transform-origin: left center;
-    transition:
-      width 220ms var(--ease-out-quart),
+    transition: width 220ms var(--ease-out-quart),
       color 220ms var(--ease-out-quart);
   }
 
@@ -190,8 +190,7 @@
   .arm-arrow__head {
     opacity: 0;
     transform: translateX(-4px);
-    transition:
-      opacity 160ms var(--ease-out-quart),
+    transition: opacity 160ms var(--ease-out-quart),
       transform 320ms var(--ease-out-expo);
   }
   :is(a, button):is(:hover, :focus-visible) .arm-arrow__shaft {

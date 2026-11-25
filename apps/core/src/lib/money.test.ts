@@ -1,4 +1,11 @@
-import { MAX_CENTS, amountProblem, formatInr, formatUsd, parseAmount, toAmountText } from './money';
+import {
+  MAX_CENTS,
+  amountProblem,
+  formatInr,
+  formatUsd,
+  parseAmount,
+  toAmountText,
+} from './money';
 
 describe('MAX_CENTS', () => {
   it('is one hundred million dollars', () => {
@@ -40,9 +47,12 @@ describe('toAmountText', () => {
 });
 
 describe('amountProblem', () => {
-  it.each(['7', '7.2', '7.20', ' 7.20 ', '0.05', '100000000', '100000000.00'])('accepts %j', (text) => {
-    expect(amountProblem(text)).toBeNull();
-  });
+  it.each(['7', '7.2', '7.20', ' 7.20 ', '0.05', '100000000', '100000000.00'])(
+    'accepts %j',
+    (text) => {
+      expect(amountProblem(text)).toBeNull();
+    }
+  );
 
   it('asks for an amount when there is none', () => {
     expect(amountProblem('')).toBe('Enter an amount');
@@ -66,21 +76,29 @@ describe('amountProblem', () => {
     'lots',
     '12345678901',
   ])('explains how to type %j', (text) => {
-    expect(amountProblem(text)).toBe('Enter an amount like 7.20, with no commas or signs');
+    expect(amountProblem(text)).toBe(
+      'Enter an amount like 7.20, with no commas or signs'
+    );
   });
 
   it('refuses zero unless zero is allowed', () => {
     expect(amountProblem('0')).toBe('The amount must be more than zero');
     expect(amountProblem('0.00')).toBe('The amount must be more than zero');
-    expect(amountProblem('0', { allowZero: false })).toBe('The amount must be more than zero');
+    expect(amountProblem('0', { allowZero: false })).toBe(
+      'The amount must be more than zero'
+    );
     expect(amountProblem('0', { allowZero: true })).toBeNull();
     expect(amountProblem('0.00', { allowZero: true })).toBeNull();
   });
 
   it('still refuses what is not an amount when zero is allowed', () => {
     expect(amountProblem('', { allowZero: true })).toBe('Enter an amount');
-    expect(amountProblem('-0', { allowZero: true })).toBe('Enter an amount like 7.20, with no commas or signs');
-    expect(amountProblem('100000000.01', { allowZero: true })).toBe('The amount is too large');
+    expect(amountProblem('-0', { allowZero: true })).toBe(
+      'Enter an amount like 7.20, with no commas or signs'
+    );
+    expect(amountProblem('100000000.01', { allowZero: true })).toBe(
+      'The amount is too large'
+    );
   });
 
   it('refuses more than the service takes', () => {

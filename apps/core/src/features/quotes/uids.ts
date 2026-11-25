@@ -25,7 +25,11 @@ export function newLine(): LineFormValues {
 
 /** A section with an empty title and one blank line, or none when the quote has no room for another line. */
 export function newSection(withLine: boolean): SectionFormValues {
-  return { uid: nextUid('section'), title: '', lines: withLine ? [newLine()] : [] };
+  return {
+    uid: nextUid('section'),
+    title: '',
+    lines: withLine ? [newLine()] : [],
+  };
 }
 
 /** The form's values with a uid on every section and line that has none. */
@@ -35,7 +39,10 @@ export function withUids(values: QuoteFormValues): QuoteFormValues {
     sections: values.sections.map((section) => ({
       ...section,
       uid: section.uid ?? nextUid('section'),
-      lines: section.lines.map((line) => ({ ...line, uid: line.uid ?? nextUid('line') })),
+      lines: section.lines.map((line) => ({
+        ...line,
+        uid: line.uid ?? nextUid('line'),
+      })),
     })),
   };
 }

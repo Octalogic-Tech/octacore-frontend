@@ -12,7 +12,11 @@ export function SkillsPage() {
       <PlannedFeature
         spec={skillsSpec}
         actions={
-          <Button variant="quiet" id="preview-skills" onClick={() => setOpen(true)}>
+          <Button
+            variant="quiet"
+            id="preview-skills"
+            onClick={() => setOpen(true)}
+          >
             {skillsDialog.previewLabel}
           </Button>
         }

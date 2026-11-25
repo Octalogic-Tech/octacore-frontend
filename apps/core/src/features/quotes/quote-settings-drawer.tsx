@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react';
-import { useController, type Control, type FieldErrors, type UseFormRegister } from 'react-hook-form';
+import {
+  useController,
+  type Control,
+  type FieldErrors,
+  type UseFormRegister,
+} from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { Field, fieldA11y } from '@/components/ui/field';
@@ -22,8 +27,18 @@ interface QuoteSettingsDrawerProps {
 }
 
 const ROLES = [
-  { legend: 'Developer', key: 'developer', count: 'developerCount', rate: 'developerRate' },
-  { legend: 'Project manager', key: 'manager', count: 'managerCount', rate: 'managerRate' },
+  {
+    legend: 'Developer',
+    key: 'developer',
+    count: 'developerCount',
+    rate: 'developerRate',
+  },
+  {
+    legend: 'Project manager',
+    key: 'manager',
+    count: 'managerCount',
+    rate: 'managerRate',
+  },
   { legend: 'Tester', key: 'tester', count: 'testerCount', rate: 'testerRate' },
 ] as const;
 
@@ -70,7 +85,11 @@ const PERCENTAGES = [
 
 const TIME = [
   { name: 'hoursPerDay', id: 'quote-hours-per-day', label: 'Hours in a day' },
-  { name: 'hoursPerMonth', id: 'quote-hours-per-month', label: 'Hours in a month' },
+  {
+    name: 'hoursPerMonth',
+    id: 'quote-hours-per-month',
+    label: 'Hours in a month',
+  },
 ] as const;
 
 /**
@@ -78,7 +97,9 @@ const TIME = [
  * save lands on what is wrong; with nothing wrong, the first field as usual.
  */
 function focusFirstWrongField(event: Event) {
-  const wrong = (event.currentTarget as HTMLElement).querySelector<HTMLElement>('[aria-invalid="true"]');
+  const wrong = (event.currentTarget as HTMLElement).querySelector<HTMLElement>(
+    '[aria-invalid="true"]'
+  );
   if (!wrong) return;
   event.preventDefault();
   // A failed save has react-hook-form focus its own first wrong field on a timer, which is not always this one (the
@@ -89,7 +110,9 @@ function focusFirstWrongField(event: Event) {
 function Group({ legend, children }: { legend: string; children: ReactNode }) {
   return (
     <fieldset className="grid gap-4">
-      <legend className="mb-2 text-body font-semibold text-foreground">{legend}</legend>
+      <legend className="mb-2 text-body font-semibold text-foreground">
+        {legend}
+      </legend>
       {children}
     </fieldset>
   );
@@ -139,11 +162,22 @@ export function QuoteSettingsDrawer({
   currencyCode,
   fallbackFocusId,
 }: QuoteSettingsDrawerProps) {
-  const text = (name: SettingName, id: string, label: string, inputMode: 'numeric' | 'decimal', hint?: string) => {
+  const text = (
+    name: SettingName,
+    id: string,
+    label: string,
+    inputMode: 'numeric' | 'decimal',
+    hint?: string
+  ) => {
     const message = errors[name]?.message;
     return (
       <Field key={name} label={label} htmlFor={id} error={message} hint={hint}>
-        <Input {...fieldA11y(id, message)} {...register(name)} inputMode={inputMode} autoComplete="off" />
+        <Input
+          {...fieldA11y(id, message)}
+          {...register(name)}
+          inputMode={inputMode}
+          autoComplete="off"
+        />
       </Field>
     );
   };
@@ -159,23 +193,43 @@ export function QuoteSettingsDrawer({
       >
         <div className="grid gap-8">
           <Group legend="Rates">
-            {/^[A-Z]{3}$/.test(code) ? <p className="text-small text-navy-72">Rates are per hour, in {code}.</p> : null}
+            {/^[A-Z]{3}$/.test(code) ? (
+              <p className="text-small text-navy-72">
+                Rates are per hour, in {code}.
+              </p>
+            ) : null}
             {ROLES.map((role) => (
               <fieldset key={role.key} className="grid gap-4 sm:grid-cols-2">
-                <legend className="mb-2 text-small font-semibold text-navy-80">{role.legend}</legend>
-                {text(role.count, `quote-${role.key}-count`, 'People', 'numeric')}
-                {text(role.rate, `quote-${role.key}-rate`, 'Rate per hour', 'decimal')}
+                <legend className="mb-2 text-small font-semibold text-navy-80">
+                  {role.legend}
+                </legend>
+                {text(
+                  role.count,
+                  `quote-${role.key}-count`,
+                  'People',
+                  'numeric'
+                )}
+                {text(
+                  role.rate,
+                  `quote-${role.key}-rate`,
+                  'Rate per hour',
+                  'decimal'
+                )}
               </fieldset>
             ))}
           </Group>
 
           <Group legend="Percentages">
-            {PERCENTAGES.map((field) => text(field.name, field.id, field.label, 'decimal', field.hint))}
+            {PERCENTAGES.map((field) =>
+              text(field.name, field.id, field.label, 'decimal', field.hint)
+            )}
           </Group>
 
           <Group legend="Time">
             <div className="grid gap-4 sm:grid-cols-2">
-              {TIME.map((field) => text(field.name, field.id, field.label, 'numeric'))}
+              {TIME.map((field) =>
+                text(field.name, field.id, field.label, 'numeric')
+              )}
             </div>
           </Group>
 

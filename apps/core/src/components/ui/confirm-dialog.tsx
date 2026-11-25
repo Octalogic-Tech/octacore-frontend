@@ -66,11 +66,19 @@ export function ConfirmDialog({
         <AlertDialog.Content
           onOpenAutoFocus={returnFocus.onOpenAutoFocus}
           onCloseAutoFocus={returnFocus.onCloseAutoFocus}
-          className="cut-br fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 bg-background p-6 [--cut:1.75rem] sm:p-8">
-          <AlertDialog.Title className="text-title font-semibold text-foreground">{title}</AlertDialog.Title>
-          <AlertDialog.Description className="mt-2 text-body text-navy-80">{description}</AlertDialog.Description>
+          className="cut-br fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 bg-background p-6 [--cut:1.75rem] sm:p-8"
+        >
+          <AlertDialog.Title className="text-title font-semibold text-foreground">
+            {title}
+          </AlertDialog.Title>
+          <AlertDialog.Description className="mt-2 text-body text-navy-80">
+            {description}
+          </AlertDialog.Description>
           {failure ? (
-            <p role="alert" className="mt-4 text-small font-semibold text-foreground">
+            <p
+              role="alert"
+              className="mt-4 text-small font-semibold text-foreground"
+            >
               {failure}
             </p>
           ) : null}
@@ -78,7 +86,10 @@ export function ConfirmDialog({
             <Button onClick={confirm} disabled={pending}>
               {confirmLabel}
             </Button>
-            <AlertDialog.Cancel className={buttonVariants({ variant: 'quiet' })} disabled={pending}>
+            <AlertDialog.Cancel
+              className={buttonVariants({ variant: 'quiet' })}
+              disabled={pending}
+            >
               Cancel
             </AlertDialog.Cancel>
           </div>

@@ -22,12 +22,22 @@ function LoadingRows() {
 }
 
 /** Every data view passes through here, so a failed or empty request is never a blank panel. */
-export function QueryBoundary({ isLoading, isError, onRetry, isEmpty, empty, children }: QueryBoundaryProps) {
+export function QueryBoundary({
+  isLoading,
+  isError,
+  onRetry,
+  isEmpty,
+  empty,
+  children,
+}: QueryBoundaryProps) {
   if (isLoading) return <LoadingRows />;
   if (isError) {
     return (
       <div role="alert" className="grid justify-items-start gap-2 p-6">
-        <p className="text-body">We could not load this data. Check that the API is running, then try again.</p>
+        <p className="text-body">
+          We could not load this data. Check that the API is running, then try
+          again.
+        </p>
         <Button variant="quiet" onClick={onRetry}>
           Try again
         </Button>

@@ -31,7 +31,10 @@ export function DrawerContent({
   const returnFocus = useReturnFocus(fallbackFocusId);
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay data-slot="drawer-overlay" className="fixed inset-0 z-50 bg-scrim" />
+      <DialogPrimitive.Overlay
+        data-slot="drawer-overlay"
+        className="fixed inset-0 z-50 bg-scrim"
+      />
       <DialogPrimitive.Content
         data-slot="drawer-content"
         onOpenAutoFocus={(event) => {
@@ -41,12 +44,14 @@ export function DrawerContent({
         onCloseAutoFocus={returnFocus.onCloseAutoFocus}
         className={cn(
           'fixed inset-y-0 right-0 z-50 w-[min(28rem,100%)] overflow-y-auto border-l border-rule bg-background p-6 sm:p-8',
-          className,
+          className
         )}
         {...props}
       >
         <DrawerTitle>{title}</DrawerTitle>
-        {description ? <DialogDescription>{description}</DialogDescription> : null}
+        {description ? (
+          <DialogDescription>{description}</DialogDescription>
+        ) : null}
         <div className="mt-6">{children}</div>
         <DialogPrimitive.Close
           aria-label="Close"
@@ -59,11 +64,17 @@ export function DrawerContent({
   );
 }
 
-export function DrawerTitle({ className, ...props }: ComponentProps<typeof DialogPrimitive.Title>) {
+export function DrawerTitle({
+  className,
+  ...props
+}: ComponentProps<typeof DialogPrimitive.Title>) {
   return (
     <DialogPrimitive.Title
       data-slot="drawer-title"
-      className={cn('pr-10 text-title font-semibold text-foreground', className)}
+      className={cn(
+        'pr-10 text-title font-semibold text-foreground',
+        className
+      )}
       {...props}
     />
   );

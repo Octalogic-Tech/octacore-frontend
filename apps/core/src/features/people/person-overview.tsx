@@ -26,7 +26,11 @@ interface PersonOverviewProps {
 
 /** The places of several cards, each place once with how many cards are on it: Website, the bench, and so on. */
 function places(cards: readonly CardPlacement[]) {
-  const grouped: { key: string; project: CardPlacement['project']; count: number }[] = [];
+  const grouped: {
+    key: string;
+    project: CardPlacement['project'];
+    count: number;
+  }[] = [];
   for (const { project } of cards) {
     const key = project ? `project-${project.id}` : 'bench';
     const found = grouped.find((place) => place.key === key);
@@ -54,22 +58,33 @@ function placementSentence(placement: Placement | 'unavailable'): ReactNode {
       return (
         <>
           On{' '}
-          <Link to={`/projects/${placement.project.id}`} className={projectLink}>
+          <Link
+            to={`/projects/${placement.project.id}`}
+            className={projectLink}
+          >
             {placement.project.name}
           </Link>{' '}
-          since <span className="tabular font-semibold">{formatDate(placement.since)}</span>
+          since{' '}
+          <span className="tabular font-semibold">
+            {formatDate(placement.since)}
+          </span>
         </>
       );
     case 'bench':
       if (placement.note !== null) return `On the bench. ${placement.note}`;
       return (
         <>
-          On the bench since <span className="tabular font-semibold">{formatDate(placement.since ?? '')}</span>
+          On the bench since{' '}
+          <span className="tabular font-semibold">
+            {formatDate(placement.since ?? '')}
+          </span>
         </>
       );
     case 'several': {
       // A card on a project that is not active is on the bench, and the sentence says which project it was on.
-      const notes = placement.cards.flatMap((card) => (card.note === null ? [] : [card.note]));
+      const notes = placement.cards.flatMap((card) =>
+        card.note === null ? [] : [card.note]
+      );
       return (
         <>
           On{' '}
@@ -100,11 +115,17 @@ function placementSentence(placement: Placement | 'unavailable'): ReactNode {
   }
 }
 
-export function PersonOverview({ person, placement, onAllocate }: PersonOverviewProps) {
+export function PersonOverview({
+  person,
+  placement,
+  onAllocate,
+}: PersonOverviewProps) {
   return (
     <>
       <div className="mb-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-        <p className="max-w-[64ch] text-statement">{placement === null ? null : placementSentence(placement)}</p>
+        <p className="max-w-[64ch] text-statement">
+          {placement === null ? null : placementSentence(placement)}
+        </p>
         <Button id="allocate-person" onClick={onAllocate}>
           Allocate
         </Button>
@@ -130,16 +151,22 @@ export function PersonOverview({ person, placement, onAllocate }: PersonOverview
         <div>
           <dt className="text-small text-navy-80">Monthly salary</dt>
           <dd className="tabular font-semibold">
-            {person.monthlySalaryPaise === null ? NONE : formatInr(person.monthlySalaryPaise)}
+            {person.monthlySalaryPaise === null
+              ? NONE
+              : formatInr(person.monthlySalaryPaise)}
           </dd>
         </div>
         <div>
           <dt className="text-small text-navy-80">Joined</dt>
-          <dd className="tabular font-semibold">{person.joinDate ? formatDate(person.joinDate) : NONE}</dd>
+          <dd className="tabular font-semibold">
+            {person.joinDate ? formatDate(person.joinDate) : NONE}
+          </dd>
         </div>
         <div>
           <dt className="text-small text-navy-80">Left</dt>
-          <dd className="tabular font-semibold">{person.leaveDate ? formatDate(person.leaveDate) : NONE}</dd>
+          <dd className="tabular font-semibold">
+            {person.leaveDate ? formatDate(person.leaveDate) : NONE}
+          </dd>
         </div>
         <div>
           <dt className="text-small text-navy-80">Contract</dt>
@@ -162,7 +189,9 @@ export function PersonOverview({ person, placement, onAllocate }: PersonOverview
         <div className="sm:col-span-3">
           <dt className="text-small text-navy-80">Technologies</dt>
           <dd className="font-semibold">
-            {person.technologies.map((technology) => technology.name).join(', ') || NONE}
+            {person.technologies
+              .map((technology) => technology.name)
+              .join(', ') || NONE}
           </dd>
         </div>
       </dl>

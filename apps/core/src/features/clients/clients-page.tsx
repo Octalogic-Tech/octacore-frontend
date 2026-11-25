@@ -8,7 +8,14 @@ import { Button } from '@/components/ui/button';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { IconButton } from '@/components/ui/icon-button';
 import { Panel } from '@/components/ui/panel';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { usePagedRows } from '@/hooks/use-paged-rows';
 import { filterBy } from '@/lib/filter';
 import { useClientContacts, useClients, useDeleteClient } from './api';
@@ -20,13 +27,26 @@ export function ClientsPage() {
   const contacts = useClientContacts();
   const remove = useDeleteClient();
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState<{ open: boolean; client?: ClientListRow }>({ open: false });
+  const [form, setForm] = useState<{ open: boolean; client?: ClientListRow }>({
+    open: false,
+  });
   const [toDelete, setToDelete] = useState<ClientListRow | null>(null);
 
-  const rows = useMemo(() => joinContacts(clients.data ?? [], contacts.data ?? []), [clients.data, contacts.data]);
+  const rows = useMemo(
+    () => joinContacts(clients.data ?? [], contacts.data ?? []),
+    [clients.data, contacts.data]
+  );
   const filtered = useMemo(
-    () => filterBy(rows, search, ['name', 'description', 'city', 'countryName', 'contactName', 'contactEmail']),
-    [rows, search],
+    () =>
+      filterBy(rows, search, [
+        'name',
+        'description',
+        'city',
+        'countryName',
+        'contactName',
+        'contactEmail',
+      ]),
+    [rows, search]
   );
   const paging = usePagedRows(filtered);
 
@@ -84,14 +104,28 @@ export function ClientsPage() {
                 <TableBody>
                   {paging.pageRows.map((client) => (
                     <TableRow key={client.id}>
-                      <TableCell className="font-semibold">{client.name}</TableCell>
-                      <TableCell className="min-w-[14rem]">{client.description}</TableCell>
+                      <TableCell className="font-semibold">
+                        {client.name}
+                      </TableCell>
+                      <TableCell className="min-w-[14rem]">
+                        {client.description}
+                      </TableCell>
                       <TableCell className="min-w-[12rem]">
                         {client.contact ? (
                           <>
-                            <span className="block font-semibold">{client.contact.name}</span>
-                            {client.contact.email ? <span className="block text-small">{client.contact.email}</span> : null}
-                            {client.contact.phone ? <span className="block text-small">{client.contact.phone}</span> : null}
+                            <span className="block font-semibold">
+                              {client.contact.name}
+                            </span>
+                            {client.contact.email ? (
+                              <span className="block text-small">
+                                {client.contact.email}
+                              </span>
+                            ) : null}
+                            {client.contact.phone ? (
+                              <span className="block text-small">
+                                {client.contact.phone}
+                              </span>
+                            ) : null}
                           </>
                         ) : null}
                       </TableCell>
@@ -103,7 +137,11 @@ export function ClientsPage() {
                           icon={LuPencil}
                           onClick={() => setForm({ open: true, client })}
                         />
-                        <IconButton label={`Delete ${client.name}`} icon={LuTrash2} onClick={() => setToDelete(client)} />
+                        <IconButton
+                          label={`Delete ${client.name}`}
+                          icon={LuTrash2}
+                          onClick={() => setToDelete(client)}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}

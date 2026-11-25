@@ -13,9 +13,17 @@ describe('expenses', () => {
     cy.get(nav).contains('a', 'Expenses').click();
     cy.contains('h1', 'Expenses');
     cy.get('[role="tab"]').then((tabs) => {
-      expect([...tabs].map((tab) => tab.textContent)).to.deep.equal(['Overview', 'One-time', 'Recurring']);
+      expect([...tabs].map((tab) => tab.textContent)).to.deep.equal([
+        'Overview',
+        'One-time',
+        'Recurring',
+      ]);
     });
-    cy.contains('[role="tab"]', 'Overview').should('have.attr', 'aria-selected', 'true');
+    cy.contains('[role="tab"]', 'Overview').should(
+      'have.attr',
+      'aria-selected',
+      'true'
+    );
     cy.location('search').should('eq', '');
     // Recurring expenses are a tab, not a page of their own.
     cy.get(nav).contains('a', 'Recurring').should('not.exist');
@@ -70,7 +78,11 @@ describe('expenses', () => {
     cy.visit('/finance/recurring');
     cy.location('pathname').should('eq', '/finance/expenses');
     cy.location('search').should('eq', '?tab=recurring');
-    cy.contains('[role="tab"]', 'Recurring').should('have.attr', 'aria-selected', 'true');
+    cy.contains('[role="tab"]', 'Recurring').should(
+      'have.attr',
+      'aria-selected',
+      'true'
+    );
   });
 
   it('shows the new expense dialog with the United States chosen and a person to pick', () => {
@@ -79,13 +91,17 @@ describe('expenses', () => {
     cy.get('[role="dialog"]').within(() => {
       cy.get('#expense-country').should('have.value', '226');
       // Only the active countries that have a rate are offered: Japan has none yet, the United Kingdom is switched off.
-      cy.get('#expense-country option[value]:not([value=""])').then((options) => {
-        expect([...options].map((option) => option.textContent)).to.deep.equal([
-          'Germany · EUR',
-          'India · INR',
-          'United States · USD',
-        ]);
-      });
+      cy.get('#expense-country option[value]:not([value=""])').then(
+        (options) => {
+          expect(
+            [...options].map((option) => option.textContent)
+          ).to.deep.equal([
+            'Germany · EUR',
+            'India · INR',
+            'United States · USD',
+          ]);
+        }
+      );
       cy.get('#expense-person').select('Asha Rao');
       cy.get('#expense-country').select('99');
       cy.get('#expense-amount').type('8825');

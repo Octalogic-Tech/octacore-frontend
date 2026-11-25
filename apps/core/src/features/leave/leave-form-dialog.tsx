@@ -2,7 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Field, fieldA11y } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
@@ -29,7 +34,13 @@ interface LeaveFormDialogProps {
   fallbackFocusId: string;
 }
 
-export function LeaveFormDialog({ open, onOpenChange, leave, personId, fallbackFocusId }: LeaveFormDialogProps) {
+export function LeaveFormDialog({
+  open,
+  onOpenChange,
+  leave,
+  personId,
+  fallbackFocusId,
+}: LeaveFormDialogProps) {
   const people = usePeople();
   const save = useSaveLeave();
   // A message to show above the buttons: the service's own words when it wrote them for people (a leave that overlaps
@@ -40,12 +51,19 @@ export function LeaveFormDialog({ open, onOpenChange, leave, personId, fallbackF
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<LeaveFormValues>({ resolver: zodResolver(leaveFormSchema), defaultValues: toLeaveFormValues() });
+  } = useForm<LeaveFormValues>({
+    resolver: zodResolver(leaveFormSchema),
+    defaultValues: toLeaveFormValues(),
+  });
 
   useEffect(() => {
     if (open) {
       const values = toLeaveFormValues(leave);
-      reset(leave === undefined && personId !== undefined ? { ...values, personId: String(personId) } : values);
+      reset(
+        leave === undefined && personId !== undefined
+          ? { ...values, personId: String(personId) }
+          : values
+      );
       setFailure(null);
     }
   }, [open, leave, personId, reset]);
@@ -87,11 +105,16 @@ export function LeaveFormDialog({ open, onOpenChange, leave, personId, fallbackF
       <DialogContent fallbackFocusId={fallbackFocusId}>
         <DialogTitle>{leave ? 'Edit leave' : 'New leave'}</DialogTitle>
         <DialogDescription>
-          Both the first and the last day count. A single day has the same date in both.
+          Both the first and the last day count. A single day has the same date
+          in both.
         </DialogDescription>
         <form onSubmit={submit} noValidate className="mt-6 grid gap-6">
           {personId !== undefined ? null : leave ? (
-            <Field label="Person" htmlFor="leave-person" hint="The person of a leave cannot be changed.">
+            <Field
+              label="Person"
+              htmlFor="leave-person"
+              hint="The person of a leave cannot be changed."
+            >
               <Input id="leave-person" value={leave.person.name} readOnly />
             </Field>
           ) : (
@@ -101,7 +124,10 @@ export function LeaveFormDialog({ open, onOpenChange, leave, personId, fallbackF
               error={errors.personId?.message}
               hint={people.isError ? 'People could not be loaded.' : undefined}
             >
-              <Select {...fieldA11y('leave-person', errors.personId?.message)} {...register('personId')}>
+              <Select
+                {...fieldA11y('leave-person', errors.personId?.message)}
+                {...register('personId')}
+              >
                 <option value="">Choose…</option>
                 {personOptions.map((option) => (
                   <option key={option.id} value={String(option.id)}>
@@ -111,8 +137,15 @@ export function LeaveFormDialog({ open, onOpenChange, leave, personId, fallbackF
               </Select>
             </Field>
           )}
-          <Field label="Type" htmlFor="leave-type" error={errors.leaveType?.message}>
-            <Select {...fieldA11y('leave-type', errors.leaveType?.message)} {...register('leaveType')}>
+          <Field
+            label="Type"
+            htmlFor="leave-type"
+            error={errors.leaveType?.message}
+          >
+            <Select
+              {...fieldA11y('leave-type', errors.leaveType?.message)}
+              {...register('leaveType')}
+            >
               <option value="">Choose…</option>
               {LEAVE_TYPES.map((type) => (
                 <option key={type.value} value={type.value}>
@@ -122,18 +155,45 @@ export function LeaveFormDialog({ open, onOpenChange, leave, personId, fallbackF
             </Select>
           </Field>
           <div className="grid gap-6 sm:grid-cols-2">
-            <Field label="First day" htmlFor="leave-start" error={errors.startDate?.message}>
-              <Input {...fieldA11y('leave-start', errors.startDate?.message)} {...register('startDate')} type="date" />
+            <Field
+              label="First day"
+              htmlFor="leave-start"
+              error={errors.startDate?.message}
+            >
+              <Input
+                {...fieldA11y('leave-start', errors.startDate?.message)}
+                {...register('startDate')}
+                type="date"
+              />
             </Field>
-            <Field label="Last day" htmlFor="leave-end" error={errors.endDate?.message}>
-              <Input {...fieldA11y('leave-end', errors.endDate?.message)} {...register('endDate')} type="date" />
+            <Field
+              label="Last day"
+              htmlFor="leave-end"
+              error={errors.endDate?.message}
+            >
+              <Input
+                {...fieldA11y('leave-end', errors.endDate?.message)}
+                {...register('endDate')}
+                type="date"
+              />
             </Field>
           </div>
-          <Field label="Reason" htmlFor="leave-reason" error={errors.reason?.message}>
-            <Input {...fieldA11y('leave-reason', errors.reason?.message)} {...register('reason')} autoComplete="off" />
+          <Field
+            label="Reason"
+            htmlFor="leave-reason"
+            error={errors.reason?.message}
+          >
+            <Input
+              {...fieldA11y('leave-reason', errors.reason?.message)}
+              {...register('reason')}
+              autoComplete="off"
+            />
           </Field>
           {failure ? (
-            <p role="alert" className="text-small font-semibold text-foreground">
+            <p
+              role="alert"
+              className="text-small font-semibold text-foreground"
+            >
               {failure}
             </p>
           ) : null}
@@ -141,7 +201,11 @@ export function LeaveFormDialog({ open, onOpenChange, leave, personId, fallbackF
             <Button type="submit" disabled={isSubmitting}>
               Save
             </Button>
-            <Button variant="quiet" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
+            <Button
+              variant="quiet"
+              disabled={isSubmitting}
+              onClick={() => onOpenChange(false)}
+            >
               Cancel
             </Button>
           </div>

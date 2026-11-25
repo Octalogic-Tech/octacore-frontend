@@ -87,12 +87,20 @@ function padded(hours: bigint, bp: number): bigint {
 }
 
 /** The totals of a quote from its settings and lines, by the formulas of the design's section 8.3. */
-export function quoteTotals(settings: CalcSettings, lines: readonly CalcLine[]): QuoteTotals {
+export function quoteTotals(
+  settings: CalcSettings,
+  lines: readonly CalcLine[]
+): QuoteTotals {
   // Each line is padded by the time buffer on its own, a half going up (the editor's "Hours with buffer" column), and every
   // hours figure after it starts from the padded sum.
-  const lineHours = lines.map((line) => BigInt(line.units) * BigInt(line.hoursHundredths));
+  const lineHours = lines.map(
+    (line) => BigInt(line.units) * BigInt(line.hoursHundredths)
+  );
   const baseHours = lineHours.reduce((sum, hours) => sum + hours, 0n);
-  const bufferedBaseHours = lineHours.reduce((sum, hours) => sum + padded(hours, settings.timeBufferBp), 0n);
+  const bufferedBaseHours = lineHours.reduce(
+    (sum, hours) => sum + padded(hours, settings.timeBufferBp),
+    0n
+  );
 
   const testingHours = percentOf(bufferedBaseHours, settings.testingBp);
   const bugFixHours = percentOf(bufferedBaseHours, settings.bugFixBp);
@@ -107,7 +115,10 @@ export function quoteTotals(settings: CalcSettings, lines: readonly CalcLine[]):
 
   // The calendar follows the build alone: the team builds while the manager manages.
   const personDays = divHalfUp(totalHours, BigInt(settings.hoursPerDay));
-  const elapsedMonths = divHalfUp(buildHours, developers * BigInt(settings.hoursPerMonth));
+  const elapsedMonths = divHalfUp(
+    buildHours,
+    developers * BigInt(settings.hoursPerMonth)
+  );
 
   const developmentCost = costOf(developmentHours, settings.developerRateCents);
   const managementCost = costOf(managementHours, settings.managerRateCents);
@@ -117,7 +128,8 @@ export function quoteTotals(settings: CalcSettings, lines: readonly CalcLine[]):
   // product is never negative, so `BigInt` division (which cuts toward zero) is a floor here.
   const negotiationBuffer = percentOf(subtotal, settings.negotiationBufferBp);
   const amountBeforeDiscount = subtotal + negotiationBuffer;
-  const discount = (amountBeforeDiscount * BigInt(settings.discountBp)) / 10_000n;
+  const discount =
+    (amountBeforeDiscount * BigInt(settings.discountBp)) / 10_000n;
 
   return {
     baseHours: Number(baseHours),
@@ -148,7 +160,10 @@ export function quoteTotals(settings: CalcSettings, lines: readonly CalcLine[]):
  * A line's hours with the time buffer on top, as the editor's "Hours with buffer" column shows them: `hours x (10000 + bp) /
  * 10000`, half up, in hundredths. `quoteTotals` adds these up, line by line, into `bufferedBaseHours`.
  */
-export function bufferedHours(hoursHundredths: number, bufferBp: number): number {
+export function bufferedHours(
+  hoursHundredths: number,
+  bufferBp: number
+): number {
   return Number(padded(BigInt(hoursHundredths), bufferBp));
 }
 

@@ -29,8 +29,11 @@ export function ProjectOverview({ project, invoices }: ProjectOverviewProps) {
   // A client the service no longer embeds comes back as null while `clientId` is still set: nothing is shown for it.
   const hasClient = project.clientId !== null && project.clientName !== '';
   const details = useClientDetails(hasClient ? project.clientId : null);
-  const location = [details.client?.city, details.client?.countryName].filter(Boolean).join(', ');
-  const clientFact = (state: ListState, value: ReactNode) => (hasClient ? known(state, value) : NONE);
+  const location = [details.client?.city, details.client?.countryName]
+    .filter(Boolean)
+    .join(', ');
+  const clientFact = (state: ListState, value: ReactNode) =>
+    hasClient ? known(state, value) : NONE;
 
   return (
     <>
@@ -39,11 +42,21 @@ export function ProjectOverview({ project, invoices }: ProjectOverviewProps) {
           'Nothing is invoiced yet.'
         ) : (
           <>
-            <span className="tabular font-semibold">{formatUsd(project.totalOutstandingCents)}</span> outstanding
-            of <span className="tabular font-semibold">{formatUsd(project.totalValueCents)}</span> invoiced
+            <span className="tabular font-semibold">
+              {formatUsd(project.totalOutstandingCents)}
+            </span>{' '}
+            outstanding of{' '}
+            <span className="tabular font-semibold">
+              {formatUsd(project.totalValueCents)}
+            </span>{' '}
+            invoiced
             {overdue > 0 ? (
               <>
-                , <span className="tabular font-semibold">{formatUsd(overdue)}</span> of it overdue
+                ,{' '}
+                <span className="tabular font-semibold">
+                  {formatUsd(overdue)}
+                </span>{' '}
+                of it overdue
               </>
             ) : null}
             .
@@ -58,11 +71,15 @@ export function ProjectOverview({ project, invoices }: ProjectOverviewProps) {
         </div>
         <div>
           <dt className="text-small text-navy-80">Location</dt>
-          <dd className="font-semibold">{clientFact(details.clientsState, location)}</dd>
+          <dd className="font-semibold">
+            {clientFact(details.clientsState, location)}
+          </dd>
         </div>
         <div>
           <dt className="text-small text-navy-80">Contact</dt>
-          <dd className="font-semibold">{clientFact(details.contactsState, details.contact?.name)}</dd>
+          <dd className="font-semibold">
+            {clientFact(details.contactsState, details.contact?.name)}
+          </dd>
         </div>
         <div>
           <dt className="text-small text-navy-80">Email</dt>
@@ -70,16 +87,21 @@ export function ProjectOverview({ project, invoices }: ProjectOverviewProps) {
             {clientFact(
               details.contactsState,
               details.contact?.email ? (
-                <a href={`mailto:${details.contact.email}`} className={mailLink}>
+                <a
+                  href={`mailto:${details.contact.email}`}
+                  className={mailLink}
+                >
                   {details.contact.email}
                 </a>
-              ) : null,
+              ) : null
             )}
           </dd>
         </div>
         <div>
           <dt className="text-small text-navy-80">Phone</dt>
-          <dd className="font-semibold">{clientFact(details.contactsState, details.contact?.phone)}</dd>
+          <dd className="font-semibold">
+            {clientFact(details.contactsState, details.contact?.phone)}
+          </dd>
         </div>
         <div>
           <dt className="text-small text-navy-80">Project type</dt>
@@ -95,26 +117,40 @@ export function ProjectOverview({ project, invoices }: ProjectOverviewProps) {
         </div>
         <div>
           <dt className="text-small text-navy-80">Discount</dt>
-          <dd className="font-semibold">{project.discountPercent > 0 ? `${project.discountPercent}%` : NONE}</dd>
+          <dd className="font-semibold">
+            {project.discountPercent > 0 ? `${project.discountPercent}%` : NONE}
+          </dd>
         </div>
         <div>
           <dt className="text-small text-navy-80">Start</dt>
-          <dd className="font-semibold">{project.startDate ? formatDate(project.startDate) : NONE}</dd>
+          <dd className="font-semibold">
+            {project.startDate ? formatDate(project.startDate) : NONE}
+          </dd>
         </div>
         <div>
           <dt className="text-small text-navy-80">End</dt>
-          <dd className="font-semibold">{project.endDate ? formatDate(project.endDate) : NONE}</dd>
+          <dd className="font-semibold">
+            {project.endDate ? formatDate(project.endDate) : NONE}
+          </dd>
         </div>
         <div className="sm:col-span-2">
           <dt className="text-small text-navy-80">Billing address</dt>
-          <dd className="whitespace-pre-line font-semibold">{project.billingAddress || NONE}</dd>
+          <dd className="whitespace-pre-line font-semibold">
+            {project.billingAddress || NONE}
+          </dd>
         </div>
         <div className="sm:col-span-3">
           <dt className="text-small text-navy-80">Technologies</dt>
-          <dd className="font-semibold">{project.technologies.map((technology) => technology.name).join(', ') || NONE}</dd>
+          <dd className="font-semibold">
+            {project.technologies
+              .map((technology) => technology.name)
+              .join(', ') || NONE}
+          </dd>
         </div>
       </dl>
-      {project.description ? <p className="max-w-[64ch] text-body">{project.description}</p> : null}
+      {project.description ? (
+        <p className="max-w-[64ch] text-body">{project.description}</p>
+      ) : null}
     </>
   );
 }
